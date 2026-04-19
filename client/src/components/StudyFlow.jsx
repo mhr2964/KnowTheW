@@ -12,6 +12,26 @@ function FieldToggle({ col, side, active, onToggle }) {
   );
 }
 
+const STAT_GROUPS = [
+  { label: 'General',    color: '#888888', keys: new Set(['SEASON_ID', 'TEAM_ABBREVIATION', 'GP', 'GS', 'MIN', 'PF']) },
+  { label: 'Shooting',   color: '#ff6b00', keys: new Set(['PTS', 'FGM', 'FGA', 'FG_PCT', 'FG3M', 'FG3A', 'FG3_PCT', 'FTM', 'FTA', 'FT_PCT']) },
+  { label: 'Rebounds',   color: '#4a9eff', keys: new Set(['OREB', 'DREB', 'REB']) },
+  { label: 'Playmaking', color: '#4ade80', keys: new Set(['AST', 'TOV']) },
+  { label: 'Defense',    color: '#f87171', keys: new Set(['STL', 'BLK']) },
+];
+
+function groupFields(fields) {
+  const sections = [];
+  const assigned = new Set();
+  STAT_GROUPS.forEach(group => {
+    const inGroup = fields.filter(k => group.keys.has(k));
+    if (inGroup.length) { sections.push({ group, keys: inGroup }); inGroup.forEach(k => assigned.add(k)); }
+  });
+  const rest = fields.filter(k => !assigned.has(k));
+  if (rest.length) sections.push({ group: { label: 'Other', color: '#888888' }, keys: rest });
+  return sections;
+}
+
 function fmtVal(col, val) {
   if (val === null || val === undefined || val === '') return '—';
   if (col?.type === 'pct') {
@@ -25,24 +45,46 @@ function fmtVal(col, val) {
 }
 
 function CardSide({ card, fields, columns }) {
-  const cls = fields.length <= 2
-    ? 'card-content card-content--focus'
-    : 'card-content';
+  if (fields.length <= 2) {
+    return (
+      <div className="card-content card-content--focus">
+        {fields.map(key => {
+          const col = columns.find(c => c.key === key);
+          const val = card[key];
+          if (col?.type === 'image' && val) return <img key={key} src={val} alt="" className="card-img" />;
+          return (
+            <div key={key} className="card-field">
+              <span className="card-field-label">{col?.label}</span>
+              <span className="card-field-value">{fmtVal(col, val)}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const sections = groupFields(fields);
   return (
-    <div className={cls}>
-      {fields.map(key => {
-        const col = columns.find(c => c.key === key);
-        const val = card[key];
-        if (col?.type === 'image' && val) {
-          return <img key={key} src={val} alt="" className="card-img" />;
-        }
-        return (
-          <div key={key} className="card-field">
-            <span className="card-field-label">{col?.label}</span>
-            <span className="card-field-value">{fmtVal(col, val)}</span>
+    <div className="card-content">
+      {sections.map(({ group, keys: sectionKeys }) => (
+        <div key={group.label} className="card-group">
+          <div className="card-group-header">
+            <span className="card-group-bar" style={{ background: group.color }} />
+            <span className="card-group-label">{group.label}</span>
           </div>
-        );
-      })}
+          {sectionKeys.map(key => {
+            const col = columns.find(c => c.key === key);
+            const val = card[key];
+            if (col?.type === 'image' && val) return <img key={key} src={val} alt="" className="card-img" />;
+            return (
+              <div key={key} className="card-field">
+                <span className="card-field-label">{col?.label}</span>
+                <span className="card-field-value">{fmtVal(col, val)}</span>
+              </div>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }
