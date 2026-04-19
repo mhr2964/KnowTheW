@@ -142,6 +142,13 @@ export default function StudyFlow({ data, columns, deckName, onClose, onSave, in
 
   if (phase === 'picker') {
     const canStart = frontFields.length > 0 && backFields.length > 0;
+    const allKeys = columns.map(c => c.key);
+    const allFront = allKeys.every(k => frontFields.includes(k));
+    const allBack  = allKeys.every(k => backFields.includes(k));
+    const toggleAll = (side, selectAll) => {
+      const setter = side === 'front' ? setFrontFields : setBackFields;
+      setter(selectAll ? allKeys : []);
+    };
     return (
       <div className="study-overlay" onClick={onClose}>
         <div className="picker-modal" onClick={e => e.stopPropagation()}>
@@ -154,7 +161,12 @@ export default function StudyFlow({ data, columns, deckName, onClose, onSave, in
           </div>
           <div className="picker-body">
             <div className="picker-side">
-              <h3>Front <span className="side-hint">what you see first</span></h3>
+              <div className="picker-side-header">
+                <h3>Front <span className="side-hint">what you see first</span></h3>
+                <button type="button" className="select-all-btn" onClick={() => toggleAll('front', !allFront)}>
+                  {allFront ? 'Deselect all' : 'Select all'}
+                </button>
+              </div>
               <div className="field-buttons">
                 {columns.map(col => (
                   <FieldToggle key={col.key} col={col} side="front" active={frontFields.includes(col.key)} onToggle={toggle} />
@@ -163,7 +175,12 @@ export default function StudyFlow({ data, columns, deckName, onClose, onSave, in
             </div>
             <div className="picker-arrow">→</div>
             <div className="picker-side">
-              <h3>Back <span className="side-hint">what you&apos;re recalling</span></h3>
+              <div className="picker-side-header">
+                <h3>Back <span className="side-hint">what you&apos;re recalling</span></h3>
+                <button type="button" className="select-all-btn" onClick={() => toggleAll('back', !allBack)}>
+                  {allBack ? 'Deselect all' : 'Select all'}
+                </button>
+              </div>
               <div className="field-buttons">
                 {columns.map(col => (
                   <FieldToggle key={col.key} col={col} side="back" active={backFields.includes(col.key)} onToggle={toggle} />
