@@ -64,8 +64,9 @@ function CardSide({ card, fields, columns }) {
   }
 
   const sections = groupFields(fields);
+  const wide = fields.length > 8;
   return (
-    <div className="card-content">
+    <div className={wide ? 'card-content card-content--wide' : 'card-content'}>
       {sections.map(({ group, keys: sectionKeys }) => (
         <div key={group.label} className="card-group">
           <div className="card-group-header">

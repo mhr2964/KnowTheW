@@ -359,6 +359,17 @@ body {
 .card-content--focus .card-field-label { font-size: 0.75rem; }
 
 .card-img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; align-self: center; margin-bottom: 0.5rem; }
+/* 2-column layout for large field sets */
+.card-content--wide {
+  max-width: 500px;
+  column-count: 2;
+  column-gap: 2rem;
+}
+.card-content--wide .card-group {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 .card-group { display: flex; flex-direction: column; width: 100%; }
 .card-group + .card-group { margin-top: 0.75rem; }
 .card-group-header {
