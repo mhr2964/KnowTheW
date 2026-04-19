@@ -78,7 +78,11 @@ function getRoster(teamId, teamName) {
   return rosterPromises[teamId];
 }
 
-getTeams().catch(err => console.error('Teams fetch failed:', err.message));
+getTeams()
+  .then(teams => Promise.all(
+    teams.map(t => getRoster(t.id, t.name).catch(err => console.error(`Roster failed ${t.name}:`, err.message)))
+  ))
+  .catch(err => console.error('Startup prefetch failed:', err.message));
 
 router.get('/teams', async (req, res) => {
   try {
