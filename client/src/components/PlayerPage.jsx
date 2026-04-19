@@ -31,7 +31,7 @@ function StatTable({ stats, onStudy }) {
   );
 }
 
-export default function PlayerPage({ player, stats, onBack }) {
+export default function PlayerPage({ player, stats, onBack, onSaveDeck }) {
   const [studying, setStudying] = useState(false);
 
   const bioItems = [
@@ -93,6 +93,7 @@ export default function PlayerPage({ player, stats, onBack }) {
           columns={studyColumns}
           deckName={`${player.name} Stats`}
           onClose={() => setStudying(false)}
+          onSave={onSaveDeck}
         />
       )}
     </>

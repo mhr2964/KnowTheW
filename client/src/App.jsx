@@ -277,6 +277,7 @@ export default function App() {
                 player={selectedPlayer.player}
                 stats={selectedPlayer.stats}
                 onBack={goBack}
+                onSaveDeck={saveDeck}
               />
             )}
             {!playerLoading && !selectedPlayer && (
