@@ -331,7 +331,7 @@ router.get('/debug/bdl', async (req, res) => {
   res.json({
     searchStewart: { status: r1.status, body: await r1.json().catch(() => null) },
     allPlayers: { status: r2.status, body: await r2.json().catch(() => null) },
-    seasonStats: { status: r3.status, body: await r3.json().catch(() => null) },
+    seasonStats: { status: r3.status, body: await r3.text().catch(() => null) },
   });
 });
 
