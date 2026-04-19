@@ -106,4 +106,10 @@ router.get('/status', (req, res) => {
   res.json({ status: 'ok', app: 'KnowTheW', cacheReady: cache !== null });
 });
 
+router.get('/debug/roster/:id', async (req, res) => {
+  const r = await fetch(`${ESPN}/teams/${req.params.id}/roster`);
+  const d = await r.json();
+  res.json(d);
+});
+
 module.exports = router;
