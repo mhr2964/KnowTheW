@@ -3,35 +3,14 @@ const router = express.Router();
 
 const ESPN = 'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba';
 const ESPN_WEB = 'https://site.web.api.espn.com/apis/common/v3/sports/basketball/wnba';
-const WNBA_STATS = 'https://stats.wnba.com/stats';
-const WNBA_HEADERS = {
-  'Accept': 'application/json, text/plain, */*',
-  'Accept-Encoding': 'gzip, deflate, br',
-  'Accept-Language': 'en-US,en;q=0.9',
-  'Connection': 'keep-alive',
-  'Host': 'stats.wnba.com',
-  'Origin': 'https://www.wnba.com',
-  'Referer': 'https://www.wnba.com/',
-  'sec-ch-ua': '"Google Chrome";v="124", "Chromium";v="124", "Not-A.Brand";v="99"',
-  'sec-ch-ua-mobile': '?0',
-  'sec-ch-ua-platform': '"Windows"',
-  'sec-fetch-dest': 'empty',
-  'sec-fetch-mode': 'cors',
-  'sec-fetch-site': 'same-site',
-  'x-nba-stats-origin': 'stats',
-  'x-nba-stats-token': 'true',
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-};
+const BDL = 'https://api.balldontlie.io';
 
-// ── ESPN caches ──────────────────────────────────────────────────────────────
+// ── Caches ───────────────────────────────────────────────────────────────────
 let teamsPromise = null;
 const rosterPromises = {};
 const rosterData = {};
 const playerById = {};
-
-// ── WNBA Stats caches ────────────────────────────────────────────────────────
-let wnbaMapPromise = null;
-const wnbaIdByName = {};
+const bdlIdCache = {};
 
 // ── ESPN helpers ─────────────────────────────────────────────────────────────
 async function fetchTeams() {
@@ -79,12 +58,7 @@ async function fetchPlayerStats(playerId) {
   const data = await res.json();
   const s = data.statistics;
   if (!s || !s.labels) return null;
-  return {
-    labels: s.labels,
-    names: s.names,
-    displayNames: s.displayNames,
-    splits: s.splits,
-  };
+  return { labels: s.labels, names: s.names, displayNames: s.displayNames, splits: s.splits };
 }
 
 function getTeams() {
@@ -103,96 +77,7 @@ function getRoster(teamId, teamName) {
   return rosterPromises[teamId];
 }
 
-// ── WNBA Stats helpers ───────────────────────────────────────────────────────
-function normName(s) {
-  return String(s)
-    .toLowerCase()
-    .replace(/[\u2018\u2019\u0060\u00b4]/g, "'") // curly/backtick apostrophes → straight
-    .replace(/\./g, '')                            // remove periods (Jr., Sr., etc.)
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-async function buildWNBAMap() {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 12000);
-  try {
-    const res = await fetch(
-      `${WNBA_STATS}/commonallplayers?LeagueID=10&Season=2024&IsOnlyCurrentSeason=0`,
-      { headers: WNBA_HEADERS, signal: ctrl.signal }
-    );
-    if (!res.ok) throw new Error(`commonallplayers ${res.status}`);
-    const json = await res.json();
-    const rs = json.resultSets[0];
-    const ni = rs.headers.indexOf('DISPLAY_FIRST_LAST');
-    const ii = rs.headers.indexOf('PERSON_ID');
-    const map = {};
-    rs.rowSet.forEach(r => {
-      const raw = String(r[ni]);
-      map[raw.toLowerCase()] = r[ii];   // exact lowercase
-      map[normName(raw)] = r[ii];        // normalized (apostrophes, periods)
-    });
-    console.log(`WNBA player map loaded: ${Object.keys(map).length} entries`);
-    return map;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-function getWNBAMap() {
-  if (!wnbaMapPromise) {
-    wnbaMapPromise = buildWNBAMap().catch(err => {
-      console.error('WNBA map build failed:', err.message);
-      wnbaMapPromise = null;
-      return {};
-    });
-  }
-  return wnbaMapPromise;
-}
-
-async function resolveWNBAId(name) {
-  const key = name.toLowerCase();
-  if (key in wnbaIdByName) return wnbaIdByName[key];
-  const map = await getWNBAMap();
-  const id = map[key] ?? map[normName(name)] ?? null;
-  wnbaIdByName[key] = id;
-  if (!id) console.warn(`WNBA ID not found for: "${name}" (map size: ${Object.keys(map).length})`);
-  return id;
-}
-
-function toTable(rs) {
-  if (!rs || !rs.rowSet?.length) return null;
-  return { headers: rs.headers, rows: rs.rowSet };
-}
-
-async function wnbaFetch(path) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 10000);
-  try {
-    const res = await fetch(`${WNBA_STATS}/${path}`, { headers: WNBA_HEADERS, signal: ctrl.signal });
-    if (!res.ok) return null;
-    const json = await res.json();
-    const out = {};
-    (json.resultSets || []).forEach(rs => { out[rs.name] = toTable(rs); });
-    return out;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-function shapeSplits(d) {
-  if (!d) return null;
-  return {
-    regular: d.SeasonTotalsRegularSeason || null,
-    regularCareer: d.CareerTotalsRegularSeason || null,
-    playoffs: d.SeasonTotalsPostSeason || null,
-    playoffCareer: d.CareerTotalsPostSeason || null,
-  };
-}
-
-// ── ESPN stats → BRef-format converter ──────────────────────────────────────
+// ── ESPN stats → BRef-format converter (fallback) ────────────────────────────
 const ESPN_TO_COL = {
   gamesPlayed: 'GP', gamesStarted: 'GS',
   avgMinutes: 'MIN', avgPoints: 'PTS',
@@ -221,9 +106,6 @@ function espnToSplits(espnStats) {
 }
 
 // ── BallDontLie helpers ──────────────────────────────────────────────────────
-const BDL = 'https://api.balldontlie.io';
-const bdlIdCache = {};
-
 function bdlAuthHeaders() {
   return { Authorization: process.env.BALLDONTLIE_KEY || '' };
 }
@@ -361,14 +243,12 @@ function bdlToDetailedStats(allSeasons) {
   };
 }
 
-// ── Startup prefetch ────────────────────────────────���────────────────────────
+// ── Startup prefetch ─────────────────────────────────────────────────────────
 getTeams()
   .then(teams => Promise.all(
     teams.map(t => getRoster(t.id, t.name).catch(err => console.error(`Roster failed ${t.name}:`, err.message)))
   ))
   .catch(err => console.error('Startup prefetch failed:', err.message));
-
-getWNBAMap();
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 router.get('/teams', async (req, res) => {
@@ -413,8 +293,7 @@ router.get('/players/:id', async (req, res) => {
   try {
     const player = playerById[req.params.id];
     if (!player) return res.status(404).json({ error: 'player not found — load their team roster first' });
-    const stats = await fetchPlayerStats(req.params.id);
-    res.json({ player, stats });
+    res.json({ player });
   } catch {
     res.status(500).json({ error: 'failed to load player' });
   }
@@ -425,32 +304,14 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
     const player = playerById[req.params.id];
     if (!player) return res.status(404).json({ error: 'player not found' });
 
-    // 1. BallDontLie (preferred — reliable, Per Game + Totals + Per 36 + Playoffs)
-    if (process.env.BALLDONTLIE_KEY) {
-      const bdlId = await resolveBDLId(player.name);
-      if (bdlId) {
-        const seasons = await fetchBDLSeasonStats(bdlId);
-        if (seasons?.length) return res.json(bdlToDetailedStats(seasons));
-      }
+    // 1. BallDontLie — primary source
+    const bdlId = await resolveBDLId(player.name);
+    if (bdlId) {
+      const seasons = await fetchBDLSeasonStats(bdlId);
+      if (seasons?.length) return res.json(bdlToDetailedStats(seasons));
     }
 
-    // 2. WNBA Stats API (blocked in practice, kept as future fallback)
-    const wnbaId = await resolveWNBAId(player.name);
-    if (wnbaId) {
-      const [pg, tot, p36, p100] = await Promise.all([
-        wnbaFetch(`playercareerstats?PlayerID=${wnbaId}&PerMode=PerGame`),
-        wnbaFetch(`playercareerstats?PlayerID=${wnbaId}&PerMode=Totals`),
-        wnbaFetch(`playercareerstats?PlayerID=${wnbaId}&PerMode=Per36`),
-        wnbaFetch(`playercareerstats?PlayerID=${wnbaId}&PerMode=Per100Possessions`),
-      ]);
-      if (pg || tot || p36 || p100) {
-        return res.json({ source: 'wnba', wnbaId,
-          perGame: shapeSplits(pg), totals: shapeSplits(tot),
-          per36: shapeSplits(p36), per100: shapeSplits(p100) });
-      }
-    }
-
-    // 3. ESPN fallback — Per Game only
+    // 2. ESPN fallback — Per Game only
     const espnStats = await fetchPlayerStats(req.params.id);
     const splits = espnToSplits(espnStats);
     if (!splits) return res.status(404).json({ error: 'no stats available for this player' });
@@ -461,17 +322,6 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
   }
 });
 
-router.get('/debug/wnba', async (req, res) => {
-  const map = await getWNBAMap().catch(() => ({}));
-  const size = Object.keys(map).length;
-  const q = req.query.name;
-  if (q) {
-    const id = map[q.toLowerCase()] ?? map[normName(q)] ?? null;
-    return res.json({ query: q, wnbaId: id, mapSize: size });
-  }
-  res.json({ mapSize: size, sample: Object.entries(map).slice(0, 10) });
-});
-
 router.get('/status', (req, res) => {
   res.json({
     status: 'ok',
@@ -479,7 +329,6 @@ router.get('/status', (req, res) => {
     teamsLoaded: teamsPromise !== null,
     rostersCached: Object.keys(rosterData).length,
     playersCached: Object.keys(playerById).length,
-    wnbaMapLoaded: wnbaMapPromise !== null,
   });
 });
 
