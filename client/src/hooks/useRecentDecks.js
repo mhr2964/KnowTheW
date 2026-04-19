@@ -2,9 +2,20 @@ import { useState, useCallback } from 'react';
 
 const STORAGE_KEY = 'knowthew_recent_decks';
 const MAX_RECENT = 5;
+const PCT_KEYS = new Set(['FG_PCT', 'FG3_PCT', 'FT_PCT']);
+
+function migrateDeck(deck) {
+  if (!deck.columns) return deck;
+  return {
+    ...deck,
+    columns: deck.columns.map(c =>
+      PCT_KEYS.has(c.key) ? { ...c, type: 'pct' } : c
+    ),
+  };
+}
 
 function load() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  try { return (JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')).map(migrateDeck); }
   catch { return []; }
 }
 
