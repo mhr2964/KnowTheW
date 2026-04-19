@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRecentDecks } from './hooks/useRecentDecks';
 import RosterTable from './components/RosterTable';
 import RecentDecks from './components/RecentDecks';
@@ -86,34 +86,52 @@ export default function App() {
   const [error, setError] = useState(null);
   const [activeStudy, setActiveStudy] = useState(null);
 
+  const rosterAbortRef = useRef(null);
+  const searchAbortRef = useRef(null);
+
   const { decks, saveDeck } = useRecentDecks();
 
   useEffect(() => {
-    fetch('/api/teams')
+    const controller = new AbortController();
+    fetch('/api/teams', { signal: controller.signal })
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(data => { setTeams(data); setLoading(false); })
-      .catch(() => { setError('Could not load teams — is the server running?'); setLoading(false); });
+      .catch(err => {
+        if (err.name !== 'AbortError') {
+          setError('Could not load teams — is the server running?');
+          setLoading(false);
+        }
+      });
+    return () => controller.abort();
   }, []);
 
   const handleTeamClick = useCallback((team) => {
+    if (rosterAbortRef.current) rosterAbortRef.current.abort();
+    const controller = new AbortController();
+    rosterAbortRef.current = controller;
+
     setSelectedTeam(team);
     setView('team');
     setRoster([]);
     setRosterLoading(true);
-    fetch(`/api/teams/${team.id}/roster`)
+    fetch(`/api/teams/${team.id}/roster`, { signal: controller.signal })
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(data => { setRoster(data.players); setRosterLoading(false); })
-      .catch(() => { setRoster([]); setRosterLoading(false); });
+      .catch(err => { if (err.name !== 'AbortError') { setRoster([]); setRosterLoading(false); } });
   }, []);
 
   const handleSearch = useCallback((q) => {
+    if (searchAbortRef.current) searchAbortRef.current.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+
     setView('search');
     setSearchResults(null);
     setSearchLoading(true);
-    fetch(`/api/search?q=${encodeURIComponent(q)}`)
+    fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal: controller.signal })
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(data => { setSearchResults(data); setSearchLoading(false); })
-      .catch(() => { setSearchResults({ teams: [], players: [] }); setSearchLoading(false); });
+      .catch(err => { if (err.name !== 'AbortError') { setSearchResults({ teams: [], players: [] }); setSearchLoading(false); } });
   }, []);
 
   const handleRestudy = useCallback((deck) => {

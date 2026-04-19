@@ -3,8 +3,9 @@ const router = express.Router();
 
 const ESPN = 'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba';
 
-let teams = null;
-const rosterCache = {};
+let teamsPromise = null;
+const rosterPromises = {};
+const rosterData = {};
 
 async function fetchTeams() {
   const res = await fetch(`${ESPN}/teams?limit=100`);
@@ -34,17 +35,19 @@ async function fetchRoster(teamId) {
   }));
 }
 
-async function getTeams() {
-  if (teams) return teams;
-  teams = await fetchTeams();
-  return teams;
+function getTeams() {
+  if (!teamsPromise) teamsPromise = fetchTeams();
+  return teamsPromise;
 }
 
-async function getRoster(teamId) {
-  if (rosterCache[teamId]) return rosterCache[teamId];
-  const players = await fetchRoster(teamId);
-  rosterCache[teamId] = players;
-  return players;
+function getRoster(teamId) {
+  if (!rosterPromises[teamId]) {
+    rosterPromises[teamId] = fetchRoster(teamId).then(players => {
+      rosterData[teamId] = players;
+      return players;
+    });
+  }
+  return rosterPromises[teamId];
 }
 
 getTeams().catch(err => console.error('Teams fetch failed:', err.message));
@@ -77,8 +80,8 @@ router.get('/search', async (req, res) => {
     const matchedTeams = allTeams.filter(
       t => t.name.toLowerCase().includes(q) || t.abbreviation.toLowerCase().includes(q)
     );
-    const cachedPlayers = Object.values(rosterCache).flat();
-    const matchedPlayers = cachedPlayers
+    const matchedPlayers = Object.values(rosterData)
+      .flat()
       .filter(p => p.name.toLowerCase().includes(q))
       .slice(0, 30);
     res.json({ teams: matchedTeams, players: matchedPlayers });
@@ -91,8 +94,8 @@ router.get('/status', (req, res) => {
   res.json({
     status: 'ok',
     app: 'KnowTheW',
-    teamsLoaded: teams !== null,
-    rostersCached: Object.keys(rosterCache).length,
+    teamsLoaded: teamsPromise !== null,
+    rostersCached: Object.keys(rosterData).length,
   });
 });
 
