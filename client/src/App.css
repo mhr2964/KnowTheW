@@ -399,13 +399,12 @@ body {
 .card-field:last-child { border-bottom: none; }
 .card-subgroup {
   position: relative;
-  padding-left: 1rem;
 }
 .card-subgroup:first-child { margin-top: 0.4rem; }
 .card-subgroup + .card-subgroup { margin-top: 0.4rem; }
 .card-subgroup-vert-label {
   position: absolute;
-  left: 0; top: 0; bottom: 0;
+  left: -1.1rem; top: 0; bottom: 0;
   width: 1rem;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
