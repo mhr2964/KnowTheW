@@ -76,7 +76,7 @@ const COMING_SOON = ['Advanced', 'Shooting', 'Adj. Shooting', 'Play-by-Play'];
 const SOURCE_ACTIVE = {
   bdl:  new Set(['perGame', 'totals', 'per36']),
   wnba: new Set(['perGame', 'totals', 'per36', 'per100']),
-  espn: new Set(['perGame']),
+  espn: new Set(['perGame', 'totals', 'per36']),
 };
 
 export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
@@ -153,9 +153,6 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
           ))}
         </div>
 
-        {data.source === 'espn' && (
-          <p className="stats-source-note">Limited data — only Per Game available from ESPN fallback</p>
-        )}
 
         <div className="stat-table-header">
           <div className="stat-season-bar">

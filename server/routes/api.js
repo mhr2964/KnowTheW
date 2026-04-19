@@ -90,19 +90,48 @@ const ESPN_TO_COL = {
   offRebounds: 'OREB', defRebounds: 'DREB', avgFouls: 'PF',
 };
 
+const ESPN_AVG_COLS = new Set(['MIN', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'TOV', 'PF',
+  'FGM', 'FGA', 'FG3M', 'FG3A', 'FTM', 'FTA', 'OREB', 'DREB']);
+const ESPN_PCT_COLS = new Set(['FG_PCT', 'FG3_PCT', 'FT_PCT']);
+
+function espnTransformRow(headers, row, mode) {
+  if (mode === 'perGame') return row;
+  const gpIdx = headers.indexOf('GP');
+  const minIdx = headers.indexOf('MIN');
+  const gp = row[gpIdx] || 1;
+  const mpg = row[minIdx] || 0;
+  const totalMin = mpg * gp;
+  return row.map((val, i) => {
+    const h = headers[i];
+    if (!ESPN_AVG_COLS.has(h) || ESPN_PCT_COLS.has(h)) return val;
+    if (mode === 'totals') return val != null ? Math.round(val * gp) : val;
+    if (h === 'MIN') return 36;
+    return totalMin > 0 && val != null ? (val * gp / totalMin) * 36 : null;
+  });
+}
+
+function espnBuildTable(headers, rows, mode) {
+  if (!rows.length) return null;
+  return { headers, rows: rows.map(r => espnTransformRow(headers, r, mode)) };
+}
+
 function espnToSplits(espnStats) {
   if (!espnStats?.splits?.length) return null;
   const headers = ['SEASON_ID', ...espnStats.names.map(n => ESPN_TO_COL[n] || n)];
-  const regularRows = espnStats.splits
+  const dataRows = espnStats.splits
     .filter(s => s.displayName !== 'Career')
     .map(s => [s.displayName, ...s.stats]);
   const careerSplit = espnStats.splits.find(s => s.displayName === 'Career');
-  return {
-    regular: regularRows.length ? { headers, rows: regularRows } : null,
-    regularCareer: careerSplit ? { headers, rows: [[careerSplit.displayName, ...careerSplit.stats]] } : null,
+  const careerRow = careerSplit ? [careerSplit.displayName, ...careerSplit.stats] : null;
+
+  const build = mode => ({
+    regular: espnBuildTable(headers, dataRows, mode),
+    regularCareer: careerRow ? { headers, rows: [espnTransformRow(headers, careerRow, mode)] } : null,
     playoffs: null,
     playoffCareer: null,
-  };
+  });
+
+  return { perGame: build('perGame'), totals: build('totals'), per36: build('per36'), per100: null };
 }
 
 // ── BallDontLie helpers ──────────────────────────────────────────────────────
@@ -311,11 +340,11 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
       if (seasons?.length) return res.json(bdlToDetailedStats(seasons));
     }
 
-    // 2. ESPN fallback — Per Game only
+    // 2. ESPN fallback
     const espnStats = await fetchPlayerStats(req.params.id);
     const splits = espnToSplits(espnStats);
     if (!splits) return res.status(404).json({ error: 'no stats available for this player' });
-    res.json({ source: 'espn', perGame: splits, totals: null, per36: null, per100: null });
+    res.json({ source: 'espn', ...splits });
   } catch (err) {
     console.error('detailed-stats:', err.message);
     res.status(500).json({ error: 'failed to load detailed stats' });
