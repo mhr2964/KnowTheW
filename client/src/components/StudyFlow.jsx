@@ -14,7 +14,16 @@ function FieldToggle({ col, side, active, onToggle }) {
 
 const STAT_GROUPS = [
   { label: 'General',    color: '#888888', keys: new Set(['SEASON_ID', 'TEAM_ABBREVIATION', 'GP', 'GS', 'MIN', 'PF']) },
-  { label: 'Shooting',   color: '#ff6b00', keys: new Set(['PTS', 'FGM', 'FGA', 'FG_PCT', 'FG3M', 'FG3A', 'FG3_PCT', 'FTM', 'FTA', 'FT_PCT']) },
+  {
+    label: 'Shooting', color: '#ff6b00',
+    keys: new Set(['PTS', 'FGM', 'FGA', 'FG_PCT', 'FG3M', 'FG3A', 'FG3_PCT', 'FTM', 'FTA', 'FT_PCT']),
+    subGroups: [
+      { label: 'Points',      keys: new Set(['PTS']) },
+      { label: 'Field Goals', keys: new Set(['FGM', 'FGA', 'FG_PCT']) },
+      { label: '3-Pointers',  keys: new Set(['FG3M', 'FG3A', 'FG3_PCT']) },
+      { label: 'Free Throws', keys: new Set(['FTM', 'FTA', 'FT_PCT']) },
+    ],
+  },
   { label: 'Rebounds',   color: '#4a9eff', keys: new Set(['OREB', 'DREB', 'REB']) },
   { label: 'Playmaking', color: '#4ade80', keys: new Set(['AST', 'TOV']) },
   { label: 'Defense',    color: '#f87171', keys: new Set(['STL', 'BLK']) },
@@ -65,24 +74,39 @@ function CardSide({ card, fields, columns }) {
 
   const sections = groupFields(fields);
 
+  function renderField(key) {
+    const col = columns.find(c => c.key === key);
+    const val = card[key];
+    if (col?.type === 'image' && val) return <img key={key} src={val} alt="" className="card-img" />;
+    return (
+      <div key={key} className="card-field">
+        <span className="card-field-label">{col?.label}</span>
+        <span className="card-field-value">{fmtVal(col, val)}</span>
+      </div>
+    );
+  }
+
   function renderGroup({ group, keys: sectionKeys }) {
+    const body = group.subGroups
+      ? group.subGroups.map(sg => {
+          const sgKeys = sectionKeys.filter(k => sg.keys.has(k));
+          if (!sgKeys.length) return null;
+          return (
+            <div key={sg.label} className="card-subgroup">
+              <span className="card-subgroup-label">{sg.label}</span>
+              {sgKeys.map(renderField)}
+            </div>
+          );
+        })
+      : sectionKeys.map(renderField);
+
     return (
       <div key={group.label} className="card-group">
         <div className="card-group-header">
           <span className="card-group-bar" style={{ background: group.color }} />
           <span className="card-group-label">{group.label}</span>
         </div>
-        {sectionKeys.map(key => {
-          const col = columns.find(c => c.key === key);
-          const val = card[key];
-          if (col?.type === 'image' && val) return <img key={key} src={val} alt="" className="card-img" />;
-          return (
-            <div key={key} className="card-field">
-              <span className="card-field-label">{col?.label}</span>
-              <span className="card-field-value">{fmtVal(col, val)}</span>
-            </div>
-          );
-        })}
+        {body}
       </div>
     );
   }
