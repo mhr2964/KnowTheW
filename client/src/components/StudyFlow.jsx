@@ -13,8 +13,13 @@ function FieldToggle({ col, side, active, onToggle }) {
 }
 
 function CardSide({ card, fields, columns }) {
+  const n = fields.length;
+  const cls = [
+    'card-content',
+    n >= 7 ? 'card-content--grid' : n >= 5 ? 'card-content--compact' : '',
+  ].filter(Boolean).join(' ');
   return (
-    <div className="card-content">
+    <div className={cls}>
       {fields.map(key => {
         const col = columns.find(c => c.key === key);
         const val = card[key];

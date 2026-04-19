@@ -318,23 +318,25 @@ body {
 }
 
 .flashcard {
-  width: 600px; max-width: 90vw; height: 340px;
+  width: 600px; max-width: 90vw;
   cursor: pointer; user-select: none;
 }
 .flashcard-inner {
-  position: relative; width: 100%; height: 100%;
+  display: grid; width: 100%;
   transform-style: preserve-3d;
   transition: transform 0.42s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
 
 .flashcard-face {
-  position: absolute; inset: 0;
+  grid-row: 1; grid-column: 1;
+  position: relative;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 16px; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   backface-visibility: hidden; -webkit-backface-visibility: hidden;
   padding: 2.5rem;
+  min-height: 340px;
 }
 .flashcard-back {
   transform: rotateY(180deg);
@@ -349,6 +351,22 @@ body {
 .card-field { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
 .card-field-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
 .card-field-value { font-size: 1.6rem; font-weight: 800; }
+
+/* 5–6 fields: tighten spacing and scale down values */
+.card-content--compact { gap: 0.45rem; }
+.card-content--compact .card-field { gap: 0.1rem; }
+.card-content--compact .card-field-value { font-size: 1.2rem; }
+
+/* 7+ fields: two-column grid */
+.card-content--grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem 2rem;
+  justify-items: center;
+  width: 100%;
+}
+.card-content--grid .card-field { gap: 0.1rem; width: 100%; align-items: center; }
+.card-content--grid .card-field-value { font-size: 1rem; }
 
 .flip-hint {
   position: absolute; bottom: 1rem;
@@ -596,7 +614,6 @@ body {
   .premium-cta { align-items: flex-start; }
   .team-header { padding: 1rem; }
   .team-header-name { font-size: 1.3rem; }
-  .flashcard { height: 280px; }
   .card-field-value { font-size: 1.2rem; }
   .study-fullscreen { padding: 1rem; }
   .player-hero { flex-direction: column; align-items: center; text-align: center; gap: 1rem; }
