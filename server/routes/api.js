@@ -26,18 +26,17 @@ async function buildCache() {
       const r = await fetch(`${ESPN}/teams/${team.id}/roster`);
       if (!r.ok) return { teamId: team.id, players: [] };
       const d = await r.json();
-      const players = (d.athletes || []).flatMap(group =>
-        (group.items || []).map(p => ({
+      const raw = (d.athletes || []);
+      const players = raw.flatMap(entry => entry.items ? entry.items : [entry]).map(p => ({
           id: p.id,
-          name: p.fullName,
+          name: p.fullName || p.displayName,
           position: p.position?.abbreviation || '',
           jersey: p.jersey || '',
           headshot: p.headshot?.href || null,
           teamId: team.id,
           teamName: team.name,
           teamAbbr: team.abbreviation,
-        }))
-      );
+        }));
       return { teamId: team.id, players };
     })
   );
