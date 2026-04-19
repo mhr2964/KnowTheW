@@ -64,30 +64,45 @@ function CardSide({ card, fields, columns }) {
   }
 
   const sections = groupFields(fields);
-  const wide = fields.length > 8;
-  return (
-    <div className={wide ? 'card-content card-content--wide' : 'card-content'}>
-      {sections.map(({ group, keys: sectionKeys }) => (
-        <div key={group.label} className="card-group">
-          <div className="card-group-header">
-            <span className="card-group-bar" style={{ background: group.color }} />
-            <span className="card-group-label">{group.label}</span>
-          </div>
-          {sectionKeys.map(key => {
-            const col = columns.find(c => c.key === key);
-            const val = card[key];
-            if (col?.type === 'image' && val) return <img key={key} src={val} alt="" className="card-img" />;
-            return (
-              <div key={key} className="card-field">
-                <span className="card-field-label">{col?.label}</span>
-                <span className="card-field-value">{fmtVal(col, val)}</span>
-              </div>
-            );
-          })}
+
+  function renderGroup({ group, keys: sectionKeys }) {
+    return (
+      <div key={group.label} className="card-group">
+        <div className="card-group-header">
+          <span className="card-group-bar" style={{ background: group.color }} />
+          <span className="card-group-label">{group.label}</span>
         </div>
-      ))}
-    </div>
-  );
+        {sectionKeys.map(key => {
+          const col = columns.find(c => c.key === key);
+          const val = card[key];
+          if (col?.type === 'image' && val) return <img key={key} src={val} alt="" className="card-img" />;
+          return (
+            <div key={key} className="card-field">
+              <span className="card-field-label">{col?.label}</span>
+              <span className="card-field-value">{fmtVal(col, val)}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (fields.length > 8) {
+    const left = [], right = [];
+    let lCount = 0, rCount = 0;
+    sections.forEach(sec => {
+      if (lCount <= rCount) { left.push(sec); lCount += sec.keys.length; }
+      else { right.push(sec); rCount += sec.keys.length; }
+    });
+    return (
+      <div className="card-content card-content--wide">
+        <div className="card-col">{left.map(renderGroup)}</div>
+        <div className="card-col">{right.map(renderGroup)}</div>
+      </div>
+    );
+  }
+
+  return <div className="card-content">{sections.map(renderGroup)}</div>;
 }
 
 export default function StudyFlow({ data, columns, deckName, onClose, onSave, initialFrontFields, initialBackFields }) {
