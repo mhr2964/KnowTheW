@@ -397,15 +397,12 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 .card-field:last-child { border-bottom: none; }
-.card-subgroup { display: flex; flex-direction: column; }
-.card-subgroup + .card-subgroup { margin-top: 0.35rem; }
-.card-subgroup-label {
-  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--text-muted);
-  padding: 0.25rem 0 0.15rem;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  margin-bottom: 0.05rem;
+.card-subgroup {
+  display: flex; flex-direction: column;
+  border-left: 2px solid rgba(255,255,255,0.1);
+  padding-left: 0.5rem;
 }
+.card-subgroup + .card-subgroup { margin-top: 0.4rem; }
 
 .card-field-label {
   font-size: 0.75rem; font-weight: 600; color: #b0b0b0;
