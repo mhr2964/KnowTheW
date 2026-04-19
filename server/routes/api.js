@@ -3,14 +3,12 @@ const router = express.Router();
 
 const ESPN = 'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba';
 const ESPN_WEB = 'https://site.web.api.espn.com/apis/common/v3/sports/basketball/wnba';
-const BDL = 'https://api.balldontlie.io';
 
 // ── Caches ───────────────────────────────────────────────────────────────────
 let teamsPromise = null;
 const rosterPromises = {};
 const rosterData = {};
 const playerById = {};
-const bdlIdCache = {};
 
 // ── ESPN helpers ─────────────────────────────────────────────────────────────
 async function fetchTeams() {
@@ -52,15 +50,6 @@ async function fetchRoster(teamId, teamName) {
   }));
 }
 
-async function fetchPlayerStats(playerId) {
-  const res = await fetch(`${ESPN_WEB}/athletes/${playerId}/overview`);
-  if (!res.ok) return null;
-  const data = await res.json();
-  const s = data.statistics;
-  if (!s || !s.labels) return null;
-  return { labels: s.labels, names: s.names, displayNames: s.displayNames, splits: s.splits };
-}
-
 function getTeams() {
   if (!teamsPromise) teamsPromise = fetchTeams();
   return teamsPromise;
@@ -77,198 +66,148 @@ function getRoster(teamId, teamName) {
   return rosterPromises[teamId];
 }
 
-// ── ESPN stats → BRef-format converter (fallback) ────────────────────────────
-const ESPN_TO_COL = {
-  gamesPlayed: 'GP', gamesStarted: 'GS',
-  avgMinutes: 'MIN', avgPoints: 'PTS',
-  avgRebounds: 'REB', avgAssists: 'AST',
-  avgSteals: 'STL', avgBlocks: 'BLK', avgTurnovers: 'TOV',
-  fieldGoalsMade: 'FGM', fieldGoalsAttempted: 'FGA', fieldGoalPct: 'FG_PCT',
-  threePointFieldGoalsMade: 'FG3M', threePointFieldGoalsAttempted: 'FG3A',
-  threePointFieldGoalPct: 'FG3_PCT',
-  freeThrowsMade: 'FTM', freeThrowsAttempted: 'FTA', freeThrowPct: 'FT_PCT',
-  offRebounds: 'OREB', defRebounds: 'DREB', avgFouls: 'PF',
-};
-
-const ESPN_AVG_COLS = new Set(['MIN', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'TOV', 'PF',
-  'FGM', 'FGA', 'FG3M', 'FG3A', 'FTM', 'FTA', 'OREB', 'DREB']);
-const ESPN_PCT_COLS = new Set(['FG_PCT', 'FG3_PCT', 'FT_PCT']);
-
-function espnTransformRow(headers, row, mode) {
-  if (mode === 'perGame') return row;
-  const gpIdx = headers.indexOf('GP');
-  const minIdx = headers.indexOf('MIN');
-  const gp = row[gpIdx] || 1;
-  const mpg = row[minIdx] || 0;
-  const totalMin = mpg * gp;
-  return row.map((val, i) => {
-    const h = headers[i];
-    if (!ESPN_AVG_COLS.has(h) || ESPN_PCT_COLS.has(h)) return val;
-    if (mode === 'totals') return val != null ? Math.round(val * gp) : val;
-    if (h === 'MIN') return 36;
-    return totalMin > 0 && val != null ? (val * gp / totalMin) * 36 : null;
-  });
-}
-
-function espnBuildTable(headers, rows, mode) {
-  if (!rows.length) return null;
-  return { headers, rows: rows.map(r => espnTransformRow(headers, r, mode)) };
-}
-
-function espnToSplits(espnStats) {
-  if (!espnStats?.splits?.length) return null;
-  const headers = ['SEASON_ID', ...espnStats.names.map(n => ESPN_TO_COL[n] || n)];
-  const dataRows = espnStats.splits
-    .filter(s => s.displayName !== 'Career')
-    .map(s => [s.displayName, ...s.stats]);
-  const careerSplit = espnStats.splits.find(s => s.displayName === 'Career');
-  const careerRow = careerSplit ? [careerSplit.displayName, ...careerSplit.stats] : null;
-
-  const build = mode => ({
-    regular: espnBuildTable(headers, dataRows, mode),
-    regularCareer: careerRow ? { headers, rows: [espnTransformRow(headers, careerRow, mode)] } : null,
-    playoffs: null,
-    playoffCareer: null,
-  });
-
-  return { perGame: build('perGame'), totals: build('totals'), per36: build('per36'), per100: null };
-}
-
-// ── BallDontLie helpers ──────────────────────────────────────────────────────
-function bdlAuthHeaders() {
-  return { Authorization: process.env.BALLDONTLIE_KEY || '' };
-}
-
-async function resolveBDLId(playerName) {
-  if (playerName in bdlIdCache) return bdlIdCache[playerName];
-  try {
-    const res = await fetch(
-      `${BDL}/wnba/v1/players?search=${encodeURIComponent(playerName)}&per_page=10`,
-      { headers: bdlAuthHeaders() }
-    );
-    if (!res.ok) { bdlIdCache[playerName] = null; return null; }
-    const json = await res.json();
-    const lower = playerName.toLowerCase();
-    const match = (json.data || []).find(p =>
-      `${p.first_name} ${p.last_name}`.toLowerCase() === lower
-    ) || json.data?.[0] || null;
-    const id = match?.id ?? null;
-    bdlIdCache[playerName] = id;
-    return id;
-  } catch {
-    bdlIdCache[playerName] = null;
-    return null;
-  }
-}
-
-async function fetchBDLSeasonStats(bdlId) {
-  const params = new URLSearchParams({ 'player_ids[]': bdlId, per_page: 100 });
-  const res = await fetch(`${BDL}/wnba/v1/player_season_stats?${params}`, { headers: bdlAuthHeaders() });
-  if (!res.ok) return null;
-  const json = await res.json();
-  const data = json.data || [];
-  if (json.meta?.next_cursor) {
-    const p2 = new URLSearchParams({ 'player_ids[]': bdlId, per_page: 100, cursor: json.meta.next_cursor });
-    const r2 = await fetch(`${BDL}/wnba/v1/player_season_stats?${p2}`, { headers: bdlAuthHeaders() });
-    if (r2.ok) data.push(...((await r2.json()).data || []));
-  }
-  return data;
-}
-
-const BDL_COLS = ['SEASON_ID', 'TEAM_ABBREVIATION', 'GP', 'MIN',
+// ── ESPN detailed stats ───────────────────────────────────────────────────────
+const ESPN_DETAILED_HEADERS = [
+  'SEASON_ID', 'TEAM_ABBREVIATION', 'GP', 'GS', 'MIN',
   'FGM', 'FGA', 'FG_PCT', 'FG3M', 'FG3A', 'FG3_PCT',
-  'FTM', 'FTA', 'FT_PCT', 'REB', 'AST', 'STL', 'BLK', 'TOV', 'PTS'];
+  'FTM', 'FTA', 'FT_PCT', 'OREB', 'DREB', 'REB',
+  'AST', 'STL', 'BLK', 'TOV', 'PF', 'PTS',
+];
 
-function bdlSeasonRow(s, mode) {
-  const gp = s.games_played || 0;
-  const mpg = parseFloat(s.min) || 0;
-  const totalMin = mpg * gp;
-  const fgm = s.fgm || 0, fga = s.fga || 0;
-  const fg3m = s.fg3m || 0, fg3a = s.fg3a || 0;
-  const ftm = s.ftm || 0, fta = s.fta || 0;
-  const fgPct = fga > 0 ? fgm / fga : null;
-  const fg3Pct = fg3a > 0 ? fg3m / fg3a : null;
-  const ftPct = fta > 0 ? ftm / fta : null;
-  const reb = s.reb || 0, ast = s.ast || 0;
-  const stl = s.stl || 0, blk = s.blk || 0;
-  const tov = s.turnover || 0, pts = s.pts || 0;
-
-  if (mode === 'perGame') {
-    return [s.season, s.team.abbreviation, gp, mpg,
-      fgm, fga, fgPct, fg3m, fg3a, fg3Pct, ftm, fta, ftPct,
-      reb, ast, stl, blk, tov, pts];
-  }
-  if (mode === 'totals') {
-    const t = v => Math.round(v * gp);
-    return [s.season, s.team.abbreviation, gp, Math.round(totalMin),
-      t(fgm), t(fga), fgPct, t(fg3m), t(fg3a), fg3Pct, t(ftm), t(fta), ftPct,
-      t(reb), t(ast), t(stl), t(blk), t(tov), t(pts)];
-  }
-  // per36
-  const p = v => totalMin > 0 ? (v * gp / totalMin) * 36 : null;
-  return [s.season, s.team.abbreviation, gp, 36,
-    p(fgm), p(fga), fgPct, p(fg3m), p(fg3a), fg3Pct, p(ftm), p(fta), ftPct,
-    p(reb), p(ast), p(stl), p(blk), p(tov), p(pts)];
+function parseStat(name, val) {
+  const n = parseFloat(val);
+  if (isNaN(n)) return null;
+  return (name.endsWith('Pct') || name.endsWith('Percentage')) ? n / 100 : n;
 }
 
-function bdlCareerRow(seasons, mode) {
-  if (!seasons.length) return null;
-  const gp = seasons.reduce((s, r) => s + (r.games_played || 0), 0);
-  const totalMin = seasons.reduce((s, r) => s + (parseFloat(r.min) || 0) * (r.games_played || 0), 0);
-  const sum = f => seasons.reduce((s, r) => s + (r[f] || 0) * (r.games_played || 0), 0);
-  const fgm = sum('fgm'), fga = sum('fga');
-  const fg3m = sum('fg3m'), fg3a = sum('fg3a');
-  const ftm = sum('ftm'), fta = sum('fta');
-  const fgPct = fga > 0 ? fgm / fga : null;
-  const fg3Pct = fg3a > 0 ? fg3m / fg3a : null;
-  const ftPct = fta > 0 ? ftm / fta : null;
-  const reb = sum('reb'), ast = sum('ast');
-  const stl = sum('stl'), blk = sum('blk');
-  const tov = sum('turnover'), pts = sum('pts');
-
-  if (mode === 'perGame') {
-    return ['Career', '', gp, totalMin / gp,
-      fgm / gp, fga / gp, fgPct, fg3m / gp, fg3a / gp, fg3Pct, ftm / gp, fta / gp, ftPct,
-      reb / gp, ast / gp, stl / gp, blk / gp, tov / gp, pts / gp];
-  }
-  if (mode === 'totals') {
-    return ['Career', '', gp, Math.round(totalMin),
-      Math.round(fgm), Math.round(fga), fgPct, Math.round(fg3m), Math.round(fg3a), fg3Pct,
-      Math.round(ftm), Math.round(fta), ftPct,
-      Math.round(reb), Math.round(ast), Math.round(stl), Math.round(blk), Math.round(tov), Math.round(pts)];
-  }
-  // per36
-  const p = v => totalMin > 0 ? (v / totalMin) * 36 : null;
-  return ['Career', '', gp, 36,
-    p(fgm), p(fga), fgPct, p(fg3m), p(fg3a), fg3Pct, p(ftm), p(fta), ftPct,
-    p(reb), p(ast), p(stl), p(blk), p(tov), p(pts)];
+function parseStatMap(names, stats) {
+  const m = {};
+  names.forEach((name, i) => {
+    const val = stats?.[i];
+    if (name.includes('-')) {
+      const [n1, n2] = name.split('-');
+      if (typeof val === 'string' && val.includes('-')) {
+        const dash = val.indexOf('-');
+        m[n1] = parseStat(n1, val.slice(0, dash));
+        m[n2] = parseStat(n2, val.slice(dash + 1));
+      } else {
+        m[n1] = null;
+        m[n2] = null;
+      }
+    } else {
+      m[name] = parseStat(name, val);
+    }
+  });
+  return m;
 }
 
-function bdlToTable(seasons, mode) {
-  if (!seasons.length) return null;
-  return { headers: BDL_COLS, rows: [...seasons].sort((a, b) => a.season - b.season).map(s => bdlSeasonRow(s, mode)) };
+function avgMapToRow(seasonId, teamAbbr, m) {
+  return [
+    seasonId, teamAbbr,
+    m.gamesPlayed, m.gamesStarted, m.avgMinutes,
+    m.avgFieldGoalsMade, m.avgFieldGoalsAttempted, m.fieldGoalPct,
+    m.avgThreePointFieldGoalsMade, m.avgThreePointFieldGoalsAttempted, m.threePointFieldGoalPct,
+    m.avgFreeThrowsMade, m.avgFreeThrowsAttempted, m.freeThrowPct,
+    m.avgOffensiveRebounds, m.avgDefensiveRebounds, m.avgRebounds,
+    m.avgAssists, m.avgSteals, m.avgBlocks, m.avgTurnovers, m.avgFouls, m.avgPoints,
+  ];
 }
 
-function bdlToCareer(seasons, mode) {
-  const row = bdlCareerRow(seasons, mode);
-  return row ? { headers: BDL_COLS, rows: [row] } : null;
+function totalsMapToRow(seasonId, teamAbbr, tm, gp, totalMin) {
+  return [
+    seasonId, teamAbbr,
+    gp, null, totalMin !== null ? Math.round(totalMin) : null,
+    tm.fieldGoalsMade, tm.fieldGoalsAttempted, tm.fieldGoalPct,
+    tm.threePointFieldGoalsMade, tm.threePointFieldGoalsAttempted, tm.threePointFieldGoalPct,
+    tm.freeThrowsMade, tm.freeThrowsAttempted, tm.freeThrowPct,
+    tm.offensiveRebounds, tm.defensiveRebounds, tm.totalRebounds,
+    tm.assists, tm.steals, tm.blocks, tm.turnovers, tm.fouls, tm.points,
+  ];
 }
 
-function bdlToDetailedStats(allSeasons) {
-  const regular = allSeasons.filter(s => s.season_type === 2);
-  const playoffs = allSeasons.filter(s => s.season_type === 3);
-  const build = (reg, post, mode) => ({
-    regular: bdlToTable(reg, mode),
-    regularCareer: bdlToCareer(reg, mode),
-    playoffs: bdlToTable(post, mode),
-    playoffCareer: bdlToCareer(post, mode),
+function per36MapToRow(seasonId, teamAbbr, tm, gp, totalMin) {
+  const p = v => (v !== null && totalMin > 0) ? (v / totalMin) * 36 : null;
+  return [
+    seasonId, teamAbbr,
+    gp, null, 36,
+    p(tm.fieldGoalsMade), p(tm.fieldGoalsAttempted), tm.fieldGoalPct,
+    p(tm.threePointFieldGoalsMade), p(tm.threePointFieldGoalsAttempted), tm.threePointFieldGoalPct,
+    p(tm.freeThrowsMade), p(tm.freeThrowsAttempted), tm.freeThrowPct,
+    p(tm.offensiveRebounds), p(tm.defensiveRebounds), p(tm.totalRebounds),
+    p(tm.assists), p(tm.steals), p(tm.blocks), p(tm.turnovers), p(tm.fouls), p(tm.points),
+  ];
+}
+
+function parseESPNSeasonData(data, teamsById) {
+  if (!data?.categories) return null;
+  const avgCat = data.categories.find(c => c.name === 'averages');
+  const totCat = data.categories.find(c => c.name === 'totals');
+  if (!avgCat || !totCat) return null;
+
+  const avgByYear = {};
+  avgCat.statistics.forEach(entry => {
+    const year = String(entry.season.year);
+    avgByYear[year] = {
+      map: parseStatMap(avgCat.names, entry.stats),
+      teamAbbr: teamsById[entry.teamId]?.abbreviation || '',
+    };
+  });
+
+  const totByYear = {};
+  totCat.statistics.forEach(entry => {
+    const year = String(entry.season.year);
+    totByYear[year] = {
+      map: parseStatMap(totCat.names, entry.stats),
+      teamAbbr: teamsById[entry.teamId]?.abbreviation || '',
+    };
+  });
+
+  const years = [...new Set([...Object.keys(avgByYear), ...Object.keys(totByYear)])].sort();
+
+  const pgRows = [], totRows = [], p36Rows = [];
+  years.forEach(year => {
+    const avg = avgByYear[year];
+    const tot = totByYear[year];
+    if (avg) pgRows.push(avgMapToRow(year, avg.teamAbbr, avg.map));
+    if (avg && tot) {
+      const totalMin = (avg.map.avgMinutes || 0) * (avg.map.gamesPlayed || 0);
+      totRows.push(totalsMapToRow(year, tot.teamAbbr, tot.map, avg.map.gamesPlayed, totalMin));
+      p36Rows.push(per36MapToRow(year, tot.teamAbbr, tot.map, avg.map.gamesPlayed, totalMin));
+    }
+  });
+
+  const avgCareer = parseStatMap(avgCat.names, avgCat.totals);
+  const totCareer = parseStatMap(totCat.names, totCat.totals);
+  const careerGp = avgCareer.gamesPlayed;
+  const careerTotalMin = Object.values(avgByYear).reduce(
+    (s, a) => s + (a.map.avgMinutes || 0) * (a.map.gamesPlayed || 0), 0
+  );
+
+  const makeTable = rows => rows.length ? { headers: ESPN_DETAILED_HEADERS, rows } : null;
+  const makeCareer = row => ({ headers: ESPN_DETAILED_HEADERS, rows: [row] });
+
+  return {
+    pg:  { table: makeTable(pgRows),  career: makeCareer(avgMapToRow('Career', '', avgCareer)) },
+    tot: { table: makeTable(totRows), career: makeCareer(totalsMapToRow('Career', '', totCareer, careerGp, careerTotalMin)) },
+    p36: { table: makeTable(p36Rows), career: makeCareer(per36MapToRow('Career', '', totCareer, careerGp, careerTotalMin)) },
+  };
+}
+
+function buildDetailedStats(regData, postData, teamsById) {
+  const reg = parseESPNSeasonData(regData, teamsById);
+  const post = parseESPNSeasonData(postData, teamsById);
+  const makeSplit = getter => ({
+    regular:       reg  ? getter(reg).table  : null,
+    regularCareer: reg  ? getter(reg).career : null,
+    playoffs:      post ? getter(post).table  : null,
+    playoffCareer: post ? getter(post).career : null,
   });
   return {
-    source: 'bdl',
-    perGame: build(regular, playoffs, 'perGame'),
-    totals: build(regular, playoffs, 'totals'),
-    per36: build(regular, playoffs, 'per36'),
-    per100: null,
+    source: 'espn',
+    perGame: makeSplit(r => r.pg),
+    totals:  makeSplit(r => r.tot),
+    per36:   makeSplit(r => r.p36),
+    per100:  null,
   };
 }
 
@@ -333,50 +272,21 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
     const player = playerById[req.params.id];
     if (!player) return res.status(404).json({ error: 'player not found' });
 
-    // 1. BallDontLie — primary source
-    const bdlId = await resolveBDLId(player.name);
-    if (bdlId) {
-      const seasons = await fetchBDLSeasonStats(bdlId);
-      if (seasons?.length) return res.json(bdlToDetailedStats(seasons));
-    }
+    const [teams, regData, postData] = await Promise.all([
+      getTeams(),
+      fetch(`${ESPN_WEB}/athletes/${req.params.id}/stats?seasontype=2`).then(r => r.ok ? r.json() : null),
+      fetch(`${ESPN_WEB}/athletes/${req.params.id}/stats?seasontype=3`).then(r => r.ok ? r.json() : null),
+    ]);
 
-    // 2. ESPN fallback
-    const espnStats = await fetchPlayerStats(req.params.id);
-    const splits = espnToSplits(espnStats);
-    if (!splits) return res.status(404).json({ error: 'no stats available for this player' });
-    res.json({ source: 'espn', ...splits });
+    const teamsById = Object.fromEntries(teams.map(t => [t.id, t]));
+    const result = buildDetailedStats(regData, postData, teamsById);
+
+    if (!result.perGame.regular) return res.status(404).json({ error: 'no stats available for this player' });
+    res.json(result);
   } catch (err) {
     console.error('detailed-stats:', err.message);
     res.status(500).json({ error: 'failed to load detailed stats' });
   }
-});
-
-router.get('/debug/bdl', async (req, res) => {
-  const key = process.env.BALLDONTLIE_KEY || '';
-  // Step 1: resolve Breanna Stewart's BDL id
-  const searchRes = await fetch(`${BDL}/wnba/v1/players?search=Breanna+Stewart&per_page=5`, { headers: { Authorization: key } });
-  const searchJson = await searchRes.json().catch(() => null);
-  const bdlId = searchJson?.data?.[0]?.id ?? null;
-
-  // Step 2: fetch her season stats
-  let statsStatus = null, statsBody = null, seasonTypes = null;
-  if (bdlId) {
-    const statsRes = await fetch(`${BDL}/wnba/v1/player_season_stats?player_ids[]=${bdlId}&per_page=100`, { headers: { Authorization: key } });
-    statsStatus = statsRes.status;
-    const statsJson = await statsRes.json().catch(() => null);
-    statsBody = statsJson;
-    seasonTypes = (statsJson?.data || []).map(s => s.season_type);
-  }
-
-  res.json({
-    keyPreview: key ? `${key.slice(0, 6)}...${key.slice(-4)}` : 'MISSING',
-    searchStatus: searchRes.status,
-    bdlId,
-    statsStatus,
-    seasonCount: statsBody?.data?.length ?? null,
-    seasonTypes,
-    firstSeason: statsBody?.data?.[0] ?? null,
-  });
 });
 
 router.get('/status', (req, res) => {
