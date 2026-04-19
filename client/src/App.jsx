@@ -3,6 +3,7 @@ import { useRecentDecks } from './hooks/useRecentDecks';
 import RosterTable from './components/RosterTable';
 import RecentDecks from './components/RecentDecks';
 import StudyFlow from './components/StudyFlow';
+import PlayerPage from './components/PlayerPage';
 import './App.css';
 
 function SearchBar({ onSearch }) {
@@ -85,9 +86,13 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeStudy, setActiveStudy] = useState(null);
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [playerLoading, setPlayerLoading] = useState(false);
+  const [prevView, setPrevView] = useState('home');
 
   const rosterAbortRef = useRef(null);
   const searchAbortRef = useRef(null);
+  const playerAbortRef = useRef(null);
 
   const { decks, saveDeck } = useRecentDecks();
 
@@ -134,6 +139,20 @@ export default function App() {
       .catch(err => { if (err.name !== 'AbortError') { setSearchResults({ teams: [], players: [] }); setSearchLoading(false); } });
   }, []);
 
+  const handlePlayerClick = useCallback((playerId) => {
+    if (playerAbortRef.current) playerAbortRef.current.abort();
+    const controller = new AbortController();
+    playerAbortRef.current = controller;
+
+    setView(current => { setPrevView(current); return 'player'; });
+    setSelectedPlayer(null);
+    setPlayerLoading(true);
+    fetch(`/api/players/${playerId}`, { signal: controller.signal })
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(data => { setSelectedPlayer(data); setPlayerLoading(false); })
+      .catch(err => { if (err.name !== 'AbortError') setPlayerLoading(false); });
+  }, []);
+
   const handleRestudy = useCallback((deck) => {
     setActiveStudy({
       data: deck.data,
@@ -144,7 +163,8 @@ export default function App() {
     });
   }, []);
 
-  const goHome = () => { setView('home'); setSelectedTeam(null); setSearchResults(null); };
+  const goHome = () => { setView('home'); setSelectedTeam(null); setSearchResults(null); setSelectedPlayer(null); };
+  const goBack = () => { setView(prevView); setSelectedPlayer(null); };
 
   return (
     <div className="app">
@@ -188,6 +208,7 @@ export default function App() {
                 players={roster}
                 teamName={selectedTeam.name}
                 onSaveDeck={saveDeck}
+                onPlayerClick={handlePlayerClick}
               />
             )}
             {!rosterLoading && roster.length === 0 && (
@@ -217,7 +238,12 @@ export default function App() {
                     <h3 className="section-title">Players</h3>
                     <div className="search-player-list">
                       {searchResults.players.map(player => (
-                        <div key={player.id} className="search-player-row">
+                        <button
+                          key={player.id}
+                          type="button"
+                          className="search-player-row search-player-row-btn"
+                          onClick={() => handlePlayerClick(player.id)}
+                        >
                           {player.headshot
                             ? <img src={player.headshot} alt={player.name} className="player-headshot" />
                             : <div className="player-headshot placeholder" />
@@ -231,7 +257,7 @@ export default function App() {
                               {player.teamName ? ` · ${player.teamName}` : ''}
                             </span>
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </>
@@ -240,6 +266,21 @@ export default function App() {
                   <p className="status-msg">No results found.</p>
                 )}
               </>
+            )}
+          </>
+        )}
+        {view === 'player' && (
+          <>
+            {playerLoading && <p className="status-msg">Loading player...</p>}
+            {!playerLoading && selectedPlayer && (
+              <PlayerPage
+                player={selectedPlayer.player}
+                stats={selectedPlayer.stats}
+                onBack={goBack}
+              />
+            )}
+            {!playerLoading && !selectedPlayer && (
+              <p className="status-msg">Could not load player data.</p>
             )}
           </>
         )}

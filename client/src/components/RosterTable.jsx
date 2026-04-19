@@ -8,7 +8,7 @@ const ROSTER_COLUMNS = [
   { key: 'position', label: 'Position', type: 'text' },
 ];
 
-export default function RosterTable({ players, teamName, onSaveDeck }) {
+export default function RosterTable({ players, teamName, onSaveDeck, onPlayerClick }) {
   const [studying, setStudying] = useState(false);
 
   return (
@@ -28,7 +28,12 @@ export default function RosterTable({ players, teamName, onSaveDeck }) {
           <span>Pos</span>
         </div>
         {players.map(player => (
-          <div key={player.id} className="data-table-row">
+          <button
+            key={player.id}
+            type="button"
+            className="data-table-row data-table-row-btn"
+            onClick={() => onPlayerClick && onPlayerClick(player.id)}
+          >
             {player.headshot
               ? <img src={player.headshot} alt={player.name} className="table-headshot" />
               : <div className="table-headshot placeholder" />
@@ -36,7 +41,7 @@ export default function RosterTable({ players, teamName, onSaveDeck }) {
             <span>{player.name}</span>
             <span className="muted">{player.jersey || '—'}</span>
             <span className="muted">{player.position || '—'}</span>
-          </div>
+          </button>
         ))}
       </div>
 

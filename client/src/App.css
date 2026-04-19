@@ -387,6 +387,69 @@ body {
 .done-sub { color: var(--text-muted); font-size: 0.9rem; }
 .done-actions { display: flex; gap: 0.75rem; margin-top: 0.5rem; }
 
+/* ── Clickable table rows / search player rows ── */
+.data-table-row-btn {
+  width: 100%; background: none; border: none; color: inherit;
+  text-align: left; cursor: pointer; font: inherit;
+}
+.data-table-row-btn:hover { background: var(--surface-2); }
+
+.search-player-row-btn {
+  width: 100%; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); text-align: left; cursor: pointer;
+  color: inherit; font: inherit;
+  transition: background 0.12s, border-color 0.12s;
+}
+.search-player-row-btn:hover { background: var(--surface-2); border-color: var(--accent); }
+
+/* ── Player Hero ── */
+.player-hero {
+  display: flex; align-items: flex-start; gap: 2rem;
+  padding: 1.5rem; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  margin-bottom: 1.75rem;
+}
+.player-hero-img {
+  width: 120px; height: 120px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+}
+.player-hero-img.placeholder { background: var(--surface-2); }
+.player-hero-info { display: flex; flex-direction: column; gap: 0.5rem; }
+.player-hero-meta { display: flex; align-items: center; gap: 0.75rem; }
+.player-hero-jersey {
+  font-size: 1rem; font-weight: 800; color: var(--accent);
+}
+.player-hero-team { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+.player-hero-name { font-size: 2rem; font-weight: 800; line-height: 1.1; }
+
+.player-bio-grid {
+  display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-top: 0.25rem;
+}
+.player-bio-item { display: flex; flex-direction: column; gap: 0.1rem; }
+.player-bio-label { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.player-bio-value { font-size: 0.88rem; font-weight: 600; }
+
+/* ── Stats Table ── */
+.stats-table {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; margin-bottom: 2.5rem;
+}
+.stats-table-head,
+.stats-table-row {
+  display: grid;
+  grid-template-columns: 140px repeat(12, 1fr);
+  padding: 0.6rem 1rem; font-size: 0.8rem;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+.stats-table-head {
+  background: var(--surface-2);
+  font-size: 0.7rem; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.stats-table-row:last-child { border-bottom: none; }
+.stats-season-col { font-weight: 600; color: var(--text-muted); font-size: 0.8rem; }
+.stats-career { font-weight: 700; color: var(--accent); }
+
 /* ── Footer ── */
 .footer {
   border-top: 1px solid var(--border); padding: 1.25rem 2rem;
@@ -406,4 +469,9 @@ body {
   .flashcard { height: 280px; }
   .card-field-value { font-size: 1.2rem; }
   .study-fullscreen { padding: 1rem; }
+  .player-hero { flex-direction: column; align-items: center; text-align: center; gap: 1rem; }
+  .player-bio-grid { justify-content: center; }
+  .player-hero-meta { justify-content: center; }
+  .stats-table-head,
+  .stats-table-row { grid-template-columns: 100px repeat(12, 1fr); font-size: 0.72rem; padding: 0.5rem 0.75rem; }
 }

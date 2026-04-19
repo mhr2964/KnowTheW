@@ -2,10 +2,12 @@ const express = require('express');
 const router = express.Router();
 
 const ESPN = 'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba';
+const ESPN_WEB = 'https://site.web.api.espn.com/apis/common/v3/sports/basketball/wnba';
 
 let teamsPromise = null;
 const rosterPromises = {};
 const rosterData = {};
+const playerById = {};
 
 async function fetchTeams() {
   const res = await fetch(`${ESPN}/teams?limit=100`);
@@ -22,7 +24,7 @@ async function fetchTeams() {
   }));
 }
 
-async function fetchRoster(teamId) {
+async function fetchRoster(teamId, teamName) {
   const res = await fetch(`${ESPN}/teams/${teamId}/roster`);
   if (!res.ok) throw new Error(`ESPN roster ${res.status}`);
   const data = await res.json();
@@ -30,9 +32,34 @@ async function fetchRoster(teamId) {
     id: p.id,
     name: p.fullName || p.displayName,
     position: p.position?.abbreviation || '',
+    positionName: p.position?.displayName || '',
     jersey: p.jersey || '',
     headshot: p.headshot?.href || null,
+    height: p.displayHeight || null,
+    weight: p.displayWeight || null,
+    age: p.age || null,
+    college: p.college?.name || null,
+    birthPlace: p.birthPlace
+      ? [p.birthPlace.city, p.birthPlace.state, p.birthPlace.country].filter(Boolean).join(', ')
+      : null,
+    experience: p.experience?.years ?? null,
+    teamId,
+    teamName,
   }));
+}
+
+async function fetchPlayerStats(playerId) {
+  const res = await fetch(`${ESPN_WEB}/athletes/${playerId}/overview`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  const s = data.statistics;
+  if (!s || !s.labels) return null;
+  return {
+    labels: s.labels,
+    names: s.names,
+    displayNames: s.displayNames,
+    splits: s.splits,
+  };
 }
 
 function getTeams() {
@@ -40,10 +67,11 @@ function getTeams() {
   return teamsPromise;
 }
 
-function getRoster(teamId) {
+function getRoster(teamId, teamName) {
   if (!rosterPromises[teamId]) {
-    rosterPromises[teamId] = fetchRoster(teamId).then(players => {
+    rosterPromises[teamId] = fetchRoster(teamId, teamName).then(players => {
       rosterData[teamId] = players;
+      players.forEach(p => { playerById[p.id] = p; });
       return players;
     });
   }
@@ -65,7 +93,7 @@ router.get('/teams/:id/roster', async (req, res) => {
     const allTeams = await getTeams();
     const team = allTeams.find(t => t.id === req.params.id);
     if (!team) return res.status(404).json({ error: 'team not found' });
-    const players = await getRoster(team.id);
+    const players = await getRoster(team.id, team.name);
     res.json({ team, players });
   } catch {
     res.status(500).json({ error: 'failed to load roster' });
@@ -90,12 +118,24 @@ router.get('/search', async (req, res) => {
   }
 });
 
+router.get('/players/:id', async (req, res) => {
+  try {
+    const player = playerById[req.params.id];
+    if (!player) return res.status(404).json({ error: 'player not found — load their team roster first' });
+    const stats = await fetchPlayerStats(req.params.id);
+    res.json({ player, stats });
+  } catch {
+    res.status(500).json({ error: 'failed to load player' });
+  }
+});
+
 router.get('/status', (req, res) => {
   res.json({
     status: 'ok',
     app: 'KnowTheW',
     teamsLoaded: teamsPromise !== null,
     rostersCached: Object.keys(rosterData).length,
+    playersCached: Object.keys(playerById).length,
   });
 });
 
