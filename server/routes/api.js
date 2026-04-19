@@ -95,6 +95,15 @@ function getRoster(teamId, teamName) {
 }
 
 // ── WNBA Stats helpers ───────────────────────────────────────────────────────
+function normName(s) {
+  return String(s)
+    .toLowerCase()
+    .replace(/[\u2018\u2019\u0060\u00b4]/g, "'") // curly/backtick apostrophes → straight
+    .replace(/\./g, '')                            // remove periods (Jr., Sr., etc.)
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 async function buildWNBAMap() {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 12000);
@@ -109,8 +118,12 @@ async function buildWNBAMap() {
     const ni = rs.headers.indexOf('DISPLAY_FIRST_LAST');
     const ii = rs.headers.indexOf('PERSON_ID');
     const map = {};
-    rs.rowSet.forEach(r => { map[String(r[ni]).toLowerCase()] = r[ii]; });
-    console.log(`WNBA player map loaded: ${Object.keys(map).length} players`);
+    rs.rowSet.forEach(r => {
+      const raw = String(r[ni]);
+      map[raw.toLowerCase()] = r[ii];   // exact lowercase
+      map[normName(raw)] = r[ii];        // normalized (apostrophes, periods)
+    });
+    console.log(`WNBA player map loaded: ${Object.keys(map).length} entries`);
     return map;
   } finally {
     clearTimeout(timer);
@@ -132,8 +145,9 @@ async function resolveWNBAId(name) {
   const key = name.toLowerCase();
   if (key in wnbaIdByName) return wnbaIdByName[key];
   const map = await getWNBAMap();
-  const id = map[key] ?? null;
+  const id = map[key] ?? map[normName(name)] ?? null;
   wnbaIdByName[key] = id;
+  if (!id) console.warn(`WNBA ID not found for: "${name}" (map size: ${Object.keys(map).length})`);
   return id;
 }
 
@@ -254,6 +268,17 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
     console.error('detailed-stats:', err.message);
     res.status(500).json({ error: 'failed to load detailed stats' });
   }
+});
+
+router.get('/debug/wnba', async (req, res) => {
+  const map = await getWNBAMap().catch(() => ({}));
+  const size = Object.keys(map).length;
+  const q = req.query.name;
+  if (q) {
+    const id = map[q.toLowerCase()] ?? map[normName(q)] ?? null;
+    return res.json({ query: q, wnbaId: id, mapSize: size });
+  }
+  res.json({ mapSize: size, sample: Object.entries(map).slice(0, 10) });
 });
 
 router.get('/status', (req, res) => {
