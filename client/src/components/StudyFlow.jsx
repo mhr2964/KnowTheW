@@ -105,7 +105,7 @@ export default function StudyFlow({ data, columns, deckName, onClose, onSave, in
             </div>
             <div className="picker-arrow">→</div>
             <div className="picker-side">
-              <h3>Back <span className="side-hint">what you're recalling</span></h3>
+              <h3>Back <span className="side-hint">what you&apos;re recalling</span></h3>
               <div className="field-buttons">
                 {columns.map(col => (
                   <FieldToggle key={col.key} col={col} side="back" active={backFields.includes(col.key)} onToggle={toggle} />
