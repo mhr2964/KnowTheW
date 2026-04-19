@@ -401,7 +401,7 @@ body {
   display: flex; flex-direction: row;
   gap: 0.4rem;
 }
-.card-subgroup:first-child { margin-top: 0.3rem; }
+.card-subgroup:first-child { margin-top: 0.4rem; }
 .card-subgroup + .card-subgroup { margin-top: 0.4rem; }
 .card-subgroup-vert-label {
   writing-mode: vertical-rl;
