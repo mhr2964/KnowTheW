@@ -325,16 +325,15 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
 router.get('/debug/bdl', async (req, res) => {
   const key = process.env.BALLDONTLIE_KEY || '';
   const url = `${BDL}/wnba/v1/player_season_stats?per_page=3`;
-  const [r1, r2, r3] = await Promise.all([
-    fetch(url, { headers: { Authorization: key } }),
-    fetch(url, { headers: { Authorization: `Bearer ${key}` } }),
-    fetch(url),
+  const [r1, r2] = await Promise.all([
+    fetch(url, { headers: { Authorization: key }, redirect: 'follow' }),
+    fetch(url, { headers: { Authorization: key }, redirect: 'manual' }),
   ]);
   res.json({
     keyPreview: key ? `${key.slice(0, 6)}...${key.slice(-4)}` : 'MISSING',
-    rawKey: { status: r1.status, body: await r1.text().catch(() => null) },
-    bearerKey: { status: r2.status, body: await r2.text().catch(() => null) },
-    noAuth: { status: r3.status, body: await r3.text().catch(() => null) },
+    keyLength: key.length,
+    followRedirect: { status: r1.status, body: await r1.text().catch(() => null) },
+    noRedirect: { status: r2.status, location: r2.headers.get('location'), body: await r2.text().catch(() => null) },
   });
 });
 
