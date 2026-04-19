@@ -323,8 +323,16 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
 });
 
 router.get('/debug/bdl', async (req, res) => {
-  const testRes = await fetch(`${BDL}/wnba/v1/players?search=Breanna+Stewart&per_page=1`, { headers: bdlAuthHeaders() });
-  res.json({ status: testRes.status, ok: testRes.ok, body: await testRes.json().catch(() => null) });
+  const [r1, r2, r3] = await Promise.all([
+    fetch(`${BDL}/wnba/v1/players?search=Stewart&per_page=3`, { headers: bdlAuthHeaders() }),
+    fetch(`${BDL}/wnba/v1/players?per_page=3`, { headers: bdlAuthHeaders() }),
+    fetch(`${BDL}/wnba/v1/player_season_stats?per_page=3`, { headers: bdlAuthHeaders() }),
+  ]);
+  res.json({
+    searchStewart: { status: r1.status, body: await r1.json().catch(() => null) },
+    allPlayers: { status: r2.status, body: await r2.json().catch(() => null) },
+    seasonStats: { status: r3.status, body: await r3.json().catch(() => null) },
+  });
 });
 
 router.get('/status', (req, res) => {
