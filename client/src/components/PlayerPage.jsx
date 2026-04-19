@@ -1,58 +1,18 @@
-import { useState } from 'react';
-import StudyFlow from './StudyFlow';
+import DetailedStats from './DetailedStats';
 
-function StatTable({ stats, onStudy }) {
-  const cols = stats.names.map((name, i) => ({ key: name, label: stats.labels[i] }));
-  return (
-    <>
-      <div className="table-toolbar">
-        <h3 className="section-title">Season Stats</h3>
-        <button type="button" className="study-trigger-btn" onClick={onStudy}>
-          Study this table
-        </button>
-      </div>
-      <div className="stats-table">
-        <div className="stats-table-head">
-          <span className="stats-season-col">Season</span>
-          {cols.map(c => <span key={c.key}>{c.label}</span>)}
-        </div>
-        {stats.splits.map(split => (
-          <div key={split.displayName} className="stats-table-row">
-            <span className="stats-season-col">{split.displayName}</span>
-            {split.stats.map((val, i) => (
-              <span key={cols[i].key} className={split.displayName === 'Career' ? 'stats-career' : ''}>
-                {val}
-              </span>
-            ))}
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}
-
-export default function PlayerPage({ player, stats, onBack, onSaveDeck }) {
-  const [studying, setStudying] = useState(false);
-
+export default function PlayerPage({ player, onBack, onSaveDeck }) {
   const bioItems = [
     player.positionName && { label: 'Position', value: player.positionName },
     player.height && { label: 'Height', value: player.height },
     player.weight && { label: 'Weight', value: player.weight },
     player.age && { label: 'Age', value: player.age },
-    player.experience !== null && player.experience !== undefined && { label: 'Experience', value: `${player.experience} yr${player.experience !== 1 ? 's' : ''}` },
+    player.experience !== null && player.experience !== undefined && {
+      label: 'Experience',
+      value: `${player.experience} yr${player.experience !== 1 ? 's' : ''}`,
+    },
     player.college && { label: 'College', value: player.college },
     player.birthPlace && { label: 'Hometown', value: player.birthPlace },
   ].filter(Boolean);
-
-  const studyData = stats ? stats.splits.map(split => ({
-    season: split.displayName,
-    ...Object.fromEntries(stats.names.map((name, i) => [name, split.stats[i]])),
-  })) : [];
-
-  const studyColumns = stats ? [
-    { key: 'season', label: 'Season', type: 'text' },
-    ...stats.names.map((name, i) => ({ key: name, label: stats.labels[i], type: 'text' })),
-  ] : [];
 
   return (
     <>
@@ -82,20 +42,11 @@ export default function PlayerPage({ player, stats, onBack, onSaveDeck }) {
         </div>
       </div>
 
-      {stats
-        ? <StatTable stats={stats} onStudy={() => setStudying(true)} />
-        : <p className="status-msg">No stats available for this player yet.</p>
-      }
-
-      {studying && stats && (
-        <StudyFlow
-          data={studyData}
-          columns={studyColumns}
-          deckName={`${player.name} Stats`}
-          onClose={() => setStudying(false)}
-          onSave={onSaveDeck}
-        />
-      )}
+      <DetailedStats
+        playerId={player.id}
+        playerName={player.name}
+        onSaveDeck={onSaveDeck}
+      />
     </>
   );
 }

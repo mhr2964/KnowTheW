@@ -275,7 +275,6 @@ export default function App() {
             {!playerLoading && selectedPlayer && (
               <PlayerPage
                 player={selectedPlayer.player}
-                stats={selectedPlayer.stats}
                 onBack={goBack}
                 onSaveDeck={saveDeck}
               />
