@@ -353,16 +353,29 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
 
 router.get('/debug/bdl', async (req, res) => {
   const key = process.env.BALLDONTLIE_KEY || '';
-  const url = `${BDL}/wnba/v1/player_season_stats?per_page=3`;
-  const [r1, r2] = await Promise.all([
-    fetch(url, { headers: { Authorization: key }, redirect: 'follow' }),
-    fetch(url, { headers: { Authorization: key }, redirect: 'manual' }),
-  ]);
+  // Step 1: resolve Breanna Stewart's BDL id
+  const searchRes = await fetch(`${BDL}/wnba/v1/players?search=Breanna+Stewart&per_page=5`, { headers: { Authorization: key } });
+  const searchJson = await searchRes.json().catch(() => null);
+  const bdlId = searchJson?.data?.[0]?.id ?? null;
+
+  // Step 2: fetch her season stats
+  let statsStatus = null, statsBody = null, seasonTypes = null;
+  if (bdlId) {
+    const statsRes = await fetch(`${BDL}/wnba/v1/player_season_stats?player_ids[]=${bdlId}&per_page=100`, { headers: { Authorization: key } });
+    statsStatus = statsRes.status;
+    const statsJson = await statsRes.json().catch(() => null);
+    statsBody = statsJson;
+    seasonTypes = (statsJson?.data || []).map(s => s.season_type);
+  }
+
   res.json({
     keyPreview: key ? `${key.slice(0, 6)}...${key.slice(-4)}` : 'MISSING',
-    keyLength: key.length,
-    followRedirect: { status: r1.status, body: await r1.text().catch(() => null) },
-    noRedirect: { status: r2.status, location: r2.headers.get('location'), body: await r2.text().catch(() => null) },
+    searchStatus: searchRes.status,
+    bdlId,
+    statsStatus,
+    seasonCount: statsBody?.data?.length ?? null,
+    seasonTypes,
+    firstSeason: statsBody?.data?.[0] ?? null,
   });
 });
 
