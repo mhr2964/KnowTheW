@@ -345,12 +345,23 @@ body {
 
 .card-content {
   display: flex; flex-direction: column;
-  width: 100%; max-width: 420px;
+  width: 100%; max-width: 300px;
 }
+/* 1–2 fields: big centered display */
+.card-content--focus {
+  align-items: center; gap: 1.75rem; max-width: none;
+}
+.card-content--focus .card-field {
+  flex-direction: column; align-items: center;
+  border-bottom: none; padding: 0; gap: 0.5rem;
+}
+.card-content--focus .card-field-value { font-size: 2.4rem; font-weight: 800; text-align: center; }
+.card-content--focus .card-field-label { font-size: 0.75rem; }
+
 .card-img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; align-self: center; margin-bottom: 0.5rem; }
 .card-field {
   display: flex; justify-content: space-between; align-items: baseline;
-  gap: 2rem; padding: 0.45rem 0;
+  gap: 1.5rem; padding: 0.4rem 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 .card-field:last-child { border-bottom: none; }

@@ -12,9 +12,21 @@ function FieldToggle({ col, side, active, onToggle }) {
   );
 }
 
+function fmtVal(col, val) {
+  if (val === null || val === undefined || val === '') return '—';
+  if (col?.type === 'pct') {
+    if (typeof val !== 'number') return '—';
+    return (val * 100).toFixed(1) + '%';
+  }
+  return String(val);
+}
+
 function CardSide({ card, fields, columns }) {
+  const cls = fields.length <= 2
+    ? 'card-content card-content--focus'
+    : 'card-content';
   return (
-    <div className="card-content">
+    <div className={cls}>
       {fields.map(key => {
         const col = columns.find(c => c.key === key);
         const val = card[key];
@@ -24,7 +36,7 @@ function CardSide({ card, fields, columns }) {
         return (
           <div key={key} className="card-field">
             <span className="card-field-label">{col?.label}</span>
-            <span className="card-field-value">{val || '—'}</span>
+            <span className="card-field-value">{fmtVal(col, val)}</span>
           </div>
         );
       })}

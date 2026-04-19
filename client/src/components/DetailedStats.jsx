@@ -125,7 +125,7 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
     );
     const studyCols = headers
       .filter(h => !HIDDEN.has(h))
-      .map(h => ({ key: h, label: LABELS[h] ?? h, type: 'text' }));
+      .map(h => ({ key: h, label: LABELS[h] ?? h, type: PCT_COLS.has(h) ? 'pct' : 'text' }));
     const typeLabel = enabledTypes.find(t => t.key === safeType)?.label ?? safeType;
     const suffix = curSeason === 'playoffs' ? ' (Playoffs)' : '';
     setStudyConfig({ data: studyData, columns: studyCols, deckName: `${playerName} ${typeLabel}${suffix}` });
