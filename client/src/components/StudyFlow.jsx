@@ -93,7 +93,8 @@ function CardSide({ card, fields, columns }) {
           if (!sgKeys.length) return null;
           return (
             <div key={sg.label} className="card-subgroup">
-              {sgKeys.map(renderField)}
+              <span className="card-subgroup-vert-label">{sg.label}</span>
+              <div className="card-subgroup-fields">{sgKeys.map(renderField)}</div>
             </div>
           );
         })
