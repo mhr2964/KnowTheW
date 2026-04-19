@@ -324,17 +324,17 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
 
 router.get('/debug/bdl', async (req, res) => {
   const key = process.env.BALLDONTLIE_KEY || '';
+  const url = `${BDL}/wnba/v1/player_season_stats?per_page=3`;
   const [r1, r2, r3] = await Promise.all([
-    fetch(`${BDL}/wnba/v1/players?search=Stewart&per_page=3`, { headers: bdlAuthHeaders() }),
-    fetch(`${BDL}/wnba/v1/players?per_page=3`, { headers: bdlAuthHeaders() }),
-    fetch(`${BDL}/wnba/v1/player_season_stats?per_page=3`, { headers: bdlAuthHeaders() }),
+    fetch(url, { headers: { Authorization: key } }),
+    fetch(url, { headers: { Authorization: `Bearer ${key}` } }),
+    fetch(url),
   ]);
   res.json({
-    keyPresent: !!key,
     keyPreview: key ? `${key.slice(0, 6)}...${key.slice(-4)}` : 'MISSING',
-    searchStewart: { status: r1.status, body: await r1.json().catch(() => null) },
-    allPlayers: { status: r2.status, body: await r2.json().catch(() => null) },
-    seasonStats: { status: r3.status, body: await r3.text().catch(() => null) },
+    rawKey: { status: r1.status, body: await r1.text().catch(() => null) },
+    bearerKey: { status: r2.status, body: await r2.text().catch(() => null) },
+    noAuth: { status: r3.status, body: await r3.text().catch(() => null) },
   });
 });
 
