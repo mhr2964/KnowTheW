@@ -67,7 +67,7 @@ function BrefTable({ regular, career }) {
   );
 }
 
-const TABLE_TYPES = [
+const ALL_TABLE_TYPES = [
   { key: 'perGame', label: 'Per Game' },
   { key: 'totals', label: 'Totals' },
   { key: 'per36', label: 'Per 36' },
@@ -102,7 +102,13 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
   if (error) return <p className="status-msg error">Could not load career stats.</p>;
   if (!data) return null;
 
-  const tableData = data[activeType];
+  const isESPN = data.source === 'espn';
+  const TABLE_TYPES = isESPN
+    ? ALL_TABLE_TYPES.filter(t => t.key === 'perGame')
+    : ALL_TABLE_TYPES;
+
+  const safeType = TABLE_TYPES.find(t => t.key === activeType) ? activeType : 'perGame';
+  const tableData = data[safeType];
   const hasPlayoffs = !!tableData?.playoffs?.rows?.length;
   const curSeason = (!hasPlayoffs && activeSeason === 'playoffs') ? 'regular' : activeSeason;
 
@@ -132,11 +138,14 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
             <button
               key={t.key}
               type="button"
-              className={`stat-type-tab${activeType === t.key ? ' active' : ''}`}
+              className={`stat-type-tab${safeType === t.key ? ' active' : ''}`}
               onClick={() => setActiveType(t.key)}
             >
               {t.label}
             </button>
+          ))}
+          {isESPN && ALL_TABLE_TYPES.filter(t => t.key !== 'perGame').map(t => (
+            <button key={t.key} type="button" className="stat-type-tab soon" disabled>{t.label}</button>
           ))}
           {COMING_SOON.map(label => (
             <button key={label} type="button" className="stat-type-tab soon" disabled>
@@ -145,7 +154,10 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
           ))}
         </div>
 
-        <div className="stat-table-header">
+          {isESPN && (
+          <p className="stats-source-note">Showing ESPN data — Totals/Per 36/Per 100 unavailable</p>
+        )}
+      <div className="stat-table-header">
           <div className="stat-season-bar">
             <button
               type="button"

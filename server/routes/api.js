@@ -6,12 +6,21 @@ const ESPN_WEB = 'https://site.web.api.espn.com/apis/common/v3/sports/basketball
 const WNBA_STATS = 'https://stats.wnba.com/stats';
 const WNBA_HEADERS = {
   'Accept': 'application/json, text/plain, */*',
+  'Accept-Encoding': 'gzip, deflate, br',
   'Accept-Language': 'en-US,en;q=0.9',
+  'Connection': 'keep-alive',
+  'Host': 'stats.wnba.com',
+  'Origin': 'https://www.wnba.com',
+  'Referer': 'https://www.wnba.com/',
+  'sec-ch-ua': '"Google Chrome";v="124", "Chromium";v="124", "Not-A.Brand";v="99"',
+  'sec-ch-ua-mobile': '?0',
+  'sec-ch-ua-platform': '"Windows"',
+  'sec-fetch-dest': 'empty',
+  'sec-fetch-mode': 'cors',
+  'sec-fetch-site': 'same-site',
   'x-nba-stats-origin': 'stats',
   'x-nba-stats-token': 'true',
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'Referer': 'https://www.wnba.com/',
-  'Origin': 'https://www.wnba.com',
 };
 
 // ── ESPN caches ──────────────────────────────────────────────────────────────
@@ -183,6 +192,34 @@ function shapeSplits(d) {
   };
 }
 
+// ── ESPN stats → BRef-format converter ──────────────────────────────────────
+const ESPN_TO_COL = {
+  gamesPlayed: 'GP', gamesStarted: 'GS',
+  avgMinutes: 'MIN', avgPoints: 'PTS',
+  avgRebounds: 'REB', avgAssists: 'AST',
+  avgSteals: 'STL', avgBlocks: 'BLK', avgTurnovers: 'TOV',
+  fieldGoalsMade: 'FGM', fieldGoalsAttempted: 'FGA', fieldGoalPct: 'FG_PCT',
+  threePointFieldGoalsMade: 'FG3M', threePointFieldGoalsAttempted: 'FG3A',
+  threePointFieldGoalPct: 'FG3_PCT',
+  freeThrowsMade: 'FTM', freeThrowsAttempted: 'FTA', freeThrowPct: 'FT_PCT',
+  offRebounds: 'OREB', defRebounds: 'DREB', avgFouls: 'PF',
+};
+
+function espnToSplits(espnStats) {
+  if (!espnStats?.splits?.length) return null;
+  const headers = ['SEASON_ID', ...espnStats.names.map(n => ESPN_TO_COL[n] || n)];
+  const regularRows = espnStats.splits
+    .filter(s => s.displayName !== 'Career')
+    .map(s => [s.displayName, ...s.stats]);
+  const careerSplit = espnStats.splits.find(s => s.displayName === 'Career');
+  return {
+    regular: regularRows.length ? { headers, rows: regularRows } : null,
+    regularCareer: careerSplit ? { headers, rows: [[careerSplit.displayName, ...careerSplit.stats]] } : null,
+    playoffs: null,
+    playoffCareer: null,
+  };
+}
+
 // ── Startup prefetch ─────────────────────────────────────────────────────────
 getTeams()
   .then(teams => Promise.all(
@@ -247,22 +284,39 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
     const player = playerById[req.params.id];
     if (!player) return res.status(404).json({ error: 'player not found' });
 
+    // Try WNBA Stats API first (full tables)
     const wnbaId = await resolveWNBAId(player.name);
-    if (!wnbaId) return res.status(404).json({ error: 'not found in WNBA Stats database' });
+    if (wnbaId) {
+      const [pg, tot, p36, p100] = await Promise.all([
+        wnbaFetch(`playercareerstats?PlayerID=${wnbaId}&PerMode=PerGame`),
+        wnbaFetch(`playercareerstats?PlayerID=${wnbaId}&PerMode=Totals`),
+        wnbaFetch(`playercareerstats?PlayerID=${wnbaId}&PerMode=Per36`),
+        wnbaFetch(`playercareerstats?PlayerID=${wnbaId}&PerMode=Per100Possessions`),
+      ]);
+      const anyData = pg || tot || p36 || p100;
+      if (anyData) {
+        return res.json({
+          source: 'wnba',
+          wnbaId,
+          perGame: shapeSplits(pg),
+          totals: shapeSplits(tot),
+          per36: shapeSplits(p36),
+          per100: shapeSplits(p100),
+        });
+      }
+    }
 
-    const [pg, tot, p36, p100] = await Promise.all([
-      wnbaFetch(`playercareerstats?PlayerID=${wnbaId}&PerMode=PerGame`),
-      wnbaFetch(`playercareerstats?PlayerID=${wnbaId}&PerMode=Totals`),
-      wnbaFetch(`playercareerstats?PlayerID=${wnbaId}&PerMode=Per36`),
-      wnbaFetch(`playercareerstats?PlayerID=${wnbaId}&PerMode=Per100Possessions`),
-    ]);
+    // Fallback: ESPN overview stats → Per Game only
+    const espnStats = await fetchPlayerStats(req.params.id);
+    const splits = espnToSplits(espnStats);
+    if (!splits) return res.status(404).json({ error: 'no stats available for this player' });
 
     res.json({
-      wnbaId,
-      perGame: shapeSplits(pg),
-      totals: shapeSplits(tot),
-      per36: shapeSplits(p36),
-      per100: shapeSplits(p100),
+      source: 'espn',
+      perGame: splits,
+      totals: null,
+      per36: null,
+      per100: null,
     });
   } catch (err) {
     console.error('detailed-stats:', err.message);

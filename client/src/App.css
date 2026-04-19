@@ -564,6 +564,15 @@ body {
 }
 .career-row td:first-child { color: var(--text-muted); }
 
+.stats-source-note {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: none;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  padding: 0.4rem 1rem;
+}
+
 .stats-na {
   color: var(--text-muted);
   padding: 2.5rem;
