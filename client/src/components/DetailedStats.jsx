@@ -36,9 +36,7 @@ function BrefTable({ regular, career }) {
     <div className="bref-wrap">
       <table className="bref-table">
         <thead>
-          <tr>
-            {cols.map(c => <th key={c.key}>{c.label}</th>)}
-          </tr>
+          <tr>{cols.map(c => <th key={c.key}>{c.label}</th>)}</tr>
         </thead>
         <tbody>
           {rows.map((row, ri) => (
@@ -73,8 +71,13 @@ const ALL_TABLE_TYPES = [
   { key: 'per36', label: 'Per 36' },
   { key: 'per100', label: 'Per 100 Poss' },
 ];
-
 const COMING_SOON = ['Advanced', 'Shooting', 'Adj. Shooting', 'Play-by-Play'];
+
+const SOURCE_ACTIVE = {
+  bdl:  new Set(['perGame', 'totals', 'per36']),
+  wnba: new Set(['perGame', 'totals', 'per36', 'per100']),
+  espn: new Set(['perGame']),
+};
 
 export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
   const [data, setData] = useState(null);
@@ -98,22 +101,20 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
   }, [playerId]);
 
   if (loading) return <p className="status-msg" style={{ padding: '2rem 0' }}>Loading career stats…</p>;
-  if (error === 'not_found') return <p className="status-msg">No career stats found in WNBA Stats database for this player.</p>;
+  if (error === 'not_found') return <p className="status-msg">No career stats found for this player.</p>;
   if (error) return <p className="status-msg error">Could not load career stats.</p>;
   if (!data) return null;
 
-  const isESPN = data.source === 'espn';
-  const TABLE_TYPES = isESPN
-    ? ALL_TABLE_TYPES.filter(t => t.key === 'perGame')
-    : ALL_TABLE_TYPES;
+  const activeKeys = SOURCE_ACTIVE[data.source] ?? new Set(['perGame']);
+  const enabledTypes = ALL_TABLE_TYPES.filter(t => activeKeys.has(t.key));
+  const disabledTypes = ALL_TABLE_TYPES.filter(t => !activeKeys.has(t.key));
+  const safeType = activeKeys.has(activeType) ? activeType : 'perGame';
 
-  const safeType = TABLE_TYPES.find(t => t.key === activeType) ? activeType : 'perGame';
   const tableData = data[safeType];
   const hasPlayoffs = !!tableData?.playoffs?.rows?.length;
   const curSeason = (!hasPlayoffs && activeSeason === 'playoffs') ? 'regular' : activeSeason;
-
   const regular = curSeason === 'regular' ? tableData?.regular : tableData?.playoffs;
-  const career = curSeason === 'regular' ? tableData?.regularCareer : tableData?.playoffCareer;
+  const career  = curSeason === 'regular' ? tableData?.regularCareer : tableData?.playoffCareer;
 
   function openStudy() {
     if (!regular) return;
@@ -125,7 +126,7 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
     const studyCols = headers
       .filter(h => !HIDDEN.has(h))
       .map(h => ({ key: h, label: LABELS[h] ?? h, type: 'text' }));
-    const typeLabel = TABLE_TYPES.find(t => t.key === activeType)?.label ?? activeType;
+    const typeLabel = enabledTypes.find(t => t.key === safeType)?.label ?? safeType;
     const suffix = curSeason === 'playoffs' ? ' (Playoffs)' : '';
     setStudyConfig({ data: studyData, columns: studyCols, deckName: `${playerName} ${typeLabel}${suffix}` });
   }
@@ -134,7 +135,7 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
     <>
       <div className="detailed-stats">
         <div className="stat-type-tabs">
-          {TABLE_TYPES.map(t => (
+          {enabledTypes.map(t => (
             <button
               key={t.key}
               type="button"
@@ -144,20 +145,19 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
               {t.label}
             </button>
           ))}
-          {isESPN && ALL_TABLE_TYPES.filter(t => t.key !== 'perGame').map(t => (
+          {disabledTypes.map(t => (
             <button key={t.key} type="button" className="stat-type-tab soon" disabled>{t.label}</button>
           ))}
           {COMING_SOON.map(label => (
-            <button key={label} type="button" className="stat-type-tab soon" disabled>
-              {label}
-            </button>
+            <button key={label} type="button" className="stat-type-tab soon" disabled>{label}</button>
           ))}
         </div>
 
-          {isESPN && (
-          <p className="stats-source-note">Showing ESPN data — Totals/Per 36/Per 100 unavailable</p>
+        {data.source === 'espn' && (
+          <p className="stats-source-note">Limited data — only Per Game available from ESPN fallback</p>
         )}
-      <div className="stat-table-header">
+
+        <div className="stat-table-header">
           <div className="stat-season-bar">
             <button
               type="button"
