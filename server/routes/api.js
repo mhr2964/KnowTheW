@@ -322,6 +322,11 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
   }
 });
 
+router.get('/debug/bdl', async (req, res) => {
+  const testRes = await fetch(`${BDL}/wnba/v1/players?search=Breanna+Stewart&per_page=1`, { headers: bdlAuthHeaders() });
+  res.json({ status: testRes.status, ok: testRes.ok, body: await testRes.json().catch(() => null) });
+});
+
 router.get('/status', (req, res) => {
   res.json({
     status: 'ok',
