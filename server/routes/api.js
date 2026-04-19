@@ -3,15 +3,14 @@ const router = express.Router();
 
 const ESPN = 'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba';
 
-let cache = null;
-let cacheLoading = null;
+let teams = null;
+const rosterCache = {};
 
-async function buildCache() {
+async function fetchTeams() {
   const res = await fetch(`${ESPN}/teams?limit=100`);
   if (!res.ok) throw new Error(`ESPN teams ${res.status}`);
   const data = await res.json();
-
-  const teams = data.sports[0].leagues[0].teams.map(({ team: t }) => ({
+  return data.sports[0].leagues[0].teams.map(({ team: t }) => ({
     id: t.id,
     name: t.displayName,
     shortName: t.shortDisplayName,
@@ -20,54 +19,39 @@ async function buildCache() {
     logo: t.logos?.[0]?.href || null,
     slug: t.slug,
   }));
-
-  const rosterResults = await Promise.allSettled(
-    teams.map(async (team) => {
-      const r = await fetch(`${ESPN}/teams/${team.id}/roster`);
-      if (!r.ok) return { teamId: team.id, players: [] };
-      const d = await r.json();
-      const raw = (d.athletes || []);
-      const players = raw.flatMap(entry => entry.items ? entry.items : [entry]).map(p => ({
-          id: p.id,
-          name: p.fullName || p.displayName,
-          position: p.position?.abbreviation || '',
-          jersey: p.jersey || '',
-          headshot: p.headshot?.href || null,
-          teamId: team.id,
-          teamName: team.name,
-          teamAbbr: team.abbreviation,
-        }));
-      return { teamId: team.id, players };
-    })
-  );
-
-  const playersByTeam = {};
-  for (const r of rosterResults) {
-    if (r.status === 'fulfilled') {
-      playersByTeam[r.value.teamId] = r.value.players;
-    }
-  }
-
-  return { teams, playersByTeam };
 }
 
-function getCache() {
-  if (cache) return Promise.resolve(cache);
-  if (cacheLoading) return cacheLoading;
-  cacheLoading = buildCache().then(data => {
-    cache = data;
-    cacheLoading = null;
-    return data;
-  });
-  return cacheLoading;
+async function fetchRoster(teamId) {
+  const res = await fetch(`${ESPN}/teams/${teamId}/roster`);
+  if (!res.ok) throw new Error(`ESPN roster ${res.status}`);
+  const data = await res.json();
+  return (data.athletes || []).map(p => ({
+    id: p.id,
+    name: p.fullName || p.displayName,
+    position: p.position?.abbreviation || '',
+    jersey: p.jersey || '',
+    headshot: p.headshot?.href || null,
+  }));
 }
 
-getCache().catch(err => console.error('Cache build failed:', err.message));
+async function getTeams() {
+  if (teams) return teams;
+  teams = await fetchTeams();
+  return teams;
+}
+
+async function getRoster(teamId) {
+  if (rosterCache[teamId]) return rosterCache[teamId];
+  const players = await fetchRoster(teamId);
+  rosterCache[teamId] = players;
+  return players;
+}
+
+getTeams().catch(err => console.error('Teams fetch failed:', err.message));
 
 router.get('/teams', async (req, res) => {
   try {
-    const { teams } = await getCache();
-    res.json(teams);
+    res.json(await getTeams());
   } catch {
     res.status(500).json({ error: 'failed to load teams' });
   }
@@ -75,10 +59,11 @@ router.get('/teams', async (req, res) => {
 
 router.get('/teams/:id/roster', async (req, res) => {
   try {
-    const { teams, playersByTeam } = await getCache();
-    const team = teams.find(t => t.id === req.params.id);
+    const allTeams = await getTeams();
+    const team = allTeams.find(t => t.id === req.params.id);
     if (!team) return res.status(404).json({ error: 'team not found' });
-    res.json({ team, players: playersByTeam[team.id] || [] });
+    const players = await getRoster(team.id);
+    res.json({ team, players });
   } catch {
     res.status(500).json({ error: 'failed to load roster' });
   }
@@ -88,12 +73,12 @@ router.get('/search', async (req, res) => {
   const q = (req.query.q || '').toLowerCase().trim();
   if (!q) return res.json({ teams: [], players: [] });
   try {
-    const { teams, playersByTeam } = await getCache();
-    const matchedTeams = teams.filter(
+    const allTeams = await getTeams();
+    const matchedTeams = allTeams.filter(
       t => t.name.toLowerCase().includes(q) || t.abbreviation.toLowerCase().includes(q)
     );
-    const allPlayers = Object.values(playersByTeam).flat();
-    const matchedPlayers = allPlayers
+    const cachedPlayers = Object.values(rosterCache).flat();
+    const matchedPlayers = cachedPlayers
       .filter(p => p.name.toLowerCase().includes(q))
       .slice(0, 30);
     res.json({ teams: matchedTeams, players: matchedPlayers });
@@ -103,13 +88,12 @@ router.get('/search', async (req, res) => {
 });
 
 router.get('/status', (req, res) => {
-  res.json({ status: 'ok', app: 'KnowTheW', cacheReady: cache !== null });
-});
-
-router.get('/debug/roster/:id', async (req, res) => {
-  const r = await fetch(`${ESPN}/teams/${req.params.id}/roster`);
-  const d = await r.json();
-  res.json(d);
+  res.json({
+    status: 'ok',
+    app: 'KnowTheW',
+    teamsLoaded: teams !== null,
+    rostersCached: Object.keys(rosterCache).length,
+  });
 });
 
 module.exports = router;
