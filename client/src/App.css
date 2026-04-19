@@ -344,29 +344,22 @@ body {
 }
 
 .card-content {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 0.75rem; width: 100%;
+  display: flex; flex-direction: column;
+  width: 100%; max-width: 420px;
 }
-.card-img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; }
-.card-field { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
-.card-field-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
-.card-field-value { font-size: 1.6rem; font-weight: 800; }
-
-/* 5–6 fields: tighten spacing and scale down values */
-.card-content--compact { gap: 0.45rem; }
-.card-content--compact .card-field { gap: 0.1rem; }
-.card-content--compact .card-field-value { font-size: 1.2rem; }
-
-/* 7+ fields: two-column grid */
-.card-content--grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.4rem 2rem;
-  justify-items: center;
-  width: 100%;
+.card-img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; align-self: center; margin-bottom: 0.5rem; }
+.card-field {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 2rem; padding: 0.45rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
-.card-content--grid .card-field { gap: 0.1rem; width: 100%; align-items: center; }
-.card-content--grid .card-field-value { font-size: 1rem; }
+.card-field:last-child { border-bottom: none; }
+.card-field-label {
+  font-size: 0.72rem; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  white-space: nowrap; flex-shrink: 0;
+}
+.card-field-value { font-size: 1.05rem; font-weight: 700; text-align: right; }
 
 .flip-hint {
   position: absolute; bottom: 1rem;
