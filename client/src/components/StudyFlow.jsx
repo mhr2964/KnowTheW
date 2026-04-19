@@ -18,6 +18,9 @@ function fmtVal(col, val) {
     if (typeof val !== 'number') return '—';
     return (val * 100).toFixed(1) + '%';
   }
+  if (typeof val === 'number') {
+    return Number.isInteger(val) ? String(val) : val.toFixed(1);
+  }
   return String(val);
 }
 
