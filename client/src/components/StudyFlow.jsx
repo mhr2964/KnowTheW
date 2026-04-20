@@ -18,10 +18,10 @@ const STAT_GROUPS = [
     label: 'Shooting', color: '#ff6b00',
     keys: new Set(['PTS', 'FGM', 'FGA', 'FG_PCT', 'FG3M', 'FG3A', 'FG3_PCT', 'FTM', 'FTA', 'FT_PCT']),
     subGroups: [
-      { label: 'Points',      keys: new Set(['PTS']) },
-      { label: 'Field Goals', keys: new Set(['FGM', 'FGA', 'FG_PCT']) },
-      { label: '3-Pointers',  keys: new Set(['FG3M', 'FG3A', 'FG3_PCT']) },
-      { label: 'Free Throws', keys: new Set(['FTM', 'FTA', 'FT_PCT']) },
+      { label: 'PTS',  keys: new Set(['PTS']) },
+      { label: 'FG',   keys: new Set(['FGM', 'FGA', 'FG_PCT']) },
+      { label: '3PT',  keys: new Set(['FG3M', 'FG3A', 'FG3_PCT']) },
+      { label: 'FT',   keys: new Set(['FTM', 'FTA', 'FT_PCT']) },
     ],
   },
   { label: 'Rebounds',   color: '#4a9eff', keys: new Set(['OREB', 'DREB', 'REB']) },
@@ -91,6 +91,7 @@ function CardSide({ card, fields, columns }) {
       ? group.subGroups.map(sg => {
           const sgKeys = sectionKeys.filter(k => sg.keys.has(k));
           if (!sgKeys.length) return null;
+          if (sgKeys.length < 2) return sgKeys.map(renderField);
           return (
             <div key={sg.label} className="card-subgroup">
               <span className="card-subgroup-vert-label">{sg.label}</span>
