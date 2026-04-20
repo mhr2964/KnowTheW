@@ -1,18 +1,8 @@
 import { useState, useEffect } from 'react';
 import StudyFlow from './StudyFlow';
+import { HIDDEN, LABELS, PCT_COLS, deriveColumns } from '../lib/statsColumns';
 
-const HIDDEN = new Set(['PLAYER_ID', 'LEAGUE_ID', 'TEAM_ID']);
-const LABELS = {
-  SEASON_ID: 'Season', TEAM_ABBREVIATION: 'Team', PLAYER_AGE: 'Age',
-  GP: 'G', GS: 'GS', MIN: 'MP',
-  FGM: 'FG', FGA: 'FGA', FG_PCT: 'FG%',
-  FG3M: '3P', FG3A: '3PA', FG3_PCT: '3P%',
-  FTM: 'FT', FTA: 'FTA', FT_PCT: 'FT%',
-  OREB: 'ORB', DREB: 'DRB', REB: 'TRB',
-  AST: 'AST', STL: 'STL', BLK: 'BLK', TOV: 'TOV', PF: 'PF', PTS: 'PTS',
-};
 const LEFT_COLS = new Set(['SEASON_ID', 'TEAM_ABBREVIATION']);
-const PCT_COLS = new Set(['FG_PCT', 'FG3_PCT', 'FT_PCT']);
 
 function fmt(key, val) {
   if (val === null || val === undefined || val === '') return '—';
@@ -123,9 +113,7 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
     const studyData = [...rows, ...careerRows].map(row =>
       Object.fromEntries(headers.map((h, i) => [h, row[i]]))
     );
-    const studyCols = headers
-      .filter(h => !HIDDEN.has(h))
-      .map(h => ({ key: h, label: LABELS[h] ?? h, type: PCT_COLS.has(h) ? 'pct' : 'text' }));
+    const studyCols = deriveColumns(studyData);
     const typeLabel = enabledTypes.find(t => t.key === safeType)?.label ?? safeType;
     const suffix = curSeason === 'playoffs' ? ' (Playoffs)' : '';
     setStudyConfig({ data: studyData, columns: studyCols, deckName: `${playerName} ${typeLabel}${suffix}` });

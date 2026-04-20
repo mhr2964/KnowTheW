@@ -1,16 +1,18 @@
 import { useState, useCallback } from 'react';
+import { deriveColumns } from '../lib/statsColumns';
 
 const STORAGE_KEY = 'knowthew_recent_decks';
 const MAX_RECENT = 5;
-const PCT_KEYS = new Set(['FG_PCT', 'FG3_PCT', 'FT_PCT']);
 
 function migrateDeck(deck) {
-  if (!deck.columns) return deck;
+  if (!deck.data?.length) return deck;
+  const columns = deriveColumns(deck.data);
+  const validKeys = new Set(columns.map(c => c.key));
   return {
     ...deck,
-    columns: deck.columns.map(c =>
-      PCT_KEYS.has(c.key) ? { ...c, type: 'pct' } : c
-    ),
+    columns,
+    frontFields: (deck.frontFields ?? []).filter(k => validKeys.has(k)),
+    backFields: (deck.backFields ?? []).filter(k => validKeys.has(k)),
   };
 }
 
