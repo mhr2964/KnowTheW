@@ -404,7 +404,7 @@ body {
 .card-subgroup + .card-subgroup { margin-top: 0.4rem; }
 .card-subgroup-vert-label {
   position: absolute;
-  left: -2.5rem; top: 0; bottom: 0;
+  left: -2.2rem; top: 0; bottom: 0;
   width: 1rem;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
