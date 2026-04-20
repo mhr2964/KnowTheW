@@ -78,16 +78,18 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
   const [studyConfig, setStudyConfig] = useState(null);
 
   useEffect(() => {
+    const controller = new AbortController();
     setLoading(true);
     setError(null);
-    fetch(`/api/players/${playerId}/detailed-stats`)
+    fetch(`/api/players/${playerId}/detailed-stats`, { signal: controller.signal })
       .then(r => {
         if (r.status === 404) { const e = new Error('not_found'); e.status = 404; throw e; }
         if (!r.ok) throw new Error('error');
         return r.json();
       })
       .then(d => { setData(d); setLoading(false); })
-      .catch(err => { setError(err.message); setLoading(false); });
+      .catch(err => { if (err.name !== 'AbortError') { setError(err.message); setLoading(false); } });
+    return () => controller.abort();
   }, [playerId]);
 
   if (loading) return <p className="status-msg" style={{ padding: '2rem 0' }}>Loading career stats…</p>;

@@ -6,7 +6,7 @@ export default function PlayerPage({ player, onBack, onSaveDeck }) {
     player.height && { label: 'Height', value: player.height },
     player.weight && { label: 'Weight', value: player.weight },
     player.age && { label: 'Age', value: player.age },
-    player.experience !== null && player.experience !== undefined && {
+    player.experience != null && {
       label: 'Experience',
       value: `${player.experience} yr${player.experience !== 1 ? 's' : ''}`,
     },

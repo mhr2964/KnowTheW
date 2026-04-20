@@ -503,27 +503,6 @@ body {
 .player-bio-label { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
 .player-bio-value { font-size: 0.88rem; font-weight: 600; }
 
-/* ── Stats Table ── */
-.stats-table {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); overflow: hidden; margin-bottom: 2.5rem;
-}
-.stats-table-head,
-.stats-table-row {
-  display: grid;
-  grid-template-columns: 140px repeat(12, 1fr);
-  padding: 0.6rem 1rem; font-size: 0.8rem;
-  border-bottom: 1px solid var(--border);
-  align-items: center;
-}
-.stats-table-head {
-  background: var(--surface-2);
-  font-size: 0.7rem; font-weight: 700; color: var(--text-muted);
-  text-transform: uppercase; letter-spacing: 0.06em;
-}
-.stats-table-row:last-child { border-bottom: none; }
-.stats-season-col { font-weight: 600; color: var(--text-muted); font-size: 0.8rem; }
-.stats-career { font-weight: 700; color: var(--accent); }
 
 /* ── Detailed Stats ── */
 .detailed-stats { margin-bottom: 2.5rem; }
@@ -639,14 +618,6 @@ body {
 }
 .career-row td:first-child { color: var(--text-muted); }
 
-.stats-source-note {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-top: none;
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  padding: 0.4rem 1rem;
-}
 
 .stats-na {
   color: var(--text-muted);
@@ -676,8 +647,7 @@ body {
   .player-hero { flex-direction: column; align-items: center; text-align: center; gap: 1rem; }
   .player-bio-grid { justify-content: center; }
   .player-hero-meta { justify-content: center; }
-  .stats-table-head,
-  .stats-table-row { grid-template-columns: 100px repeat(12, 1fr); font-size: 0.72rem; padding: 0.5rem 0.75rem; }
+
   .stat-type-tabs { padding: 0.5rem 0.5rem 0; gap: 0.15rem; }
   .stat-type-tab { font-size: 0.7rem; padding: 0.32rem 0.55rem 0.42rem; }
   .bref-table { font-size: 0.7rem; }
