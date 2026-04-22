@@ -626,6 +626,9 @@ body {
   font-size: 0.85rem;
 }
 
+.gl-win  { color: #4ade80; }
+.gl-loss { color: #f87171; }
+
 /* ── Footer ── */
 .footer {
   border-top: 1px solid var(--border); padding: 1.25rem 2rem;

@@ -289,6 +289,46 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
   }
 });
 
+router.get('/players/:id/gamelog', async (req, res) => {
+  try {
+    const player = playerById[req.params.id];
+    if (!player) return res.status(404).json({ error: 'player not found' });
+
+    const raw = await fetch(`${ESPN_WEB}/athletes/${req.params.id}/gamelog`);
+    if (!raw.ok) return res.status(404).json({ error: 'no gamelog available' });
+    const data = await raw.json();
+
+    const names = data.names || [];
+    const eventMeta = data.events || {};
+
+    const games = [];
+    (data.seasonTypes || []).forEach(st => {
+      (st.categories || []).forEach(cat => {
+        (cat.events || []).forEach(evt => {
+          const meta = eventMeta[evt.eventId];
+          if (!meta || !evt.stats) return;
+          const isHome = meta.atVs === 'vs';
+          games.push({
+            date: meta.gameDate,
+            opponent: meta.opponent?.abbreviation || '?',
+            atVs: meta.atVs || 'vs',
+            result: meta.gameResult || '?',
+            teamScore: isHome ? parseInt(meta.homeTeamScore) : parseInt(meta.awayTeamScore),
+            oppScore: isHome ? parseInt(meta.awayTeamScore) : parseInt(meta.homeTeamScore),
+            stats: evt.stats,
+          });
+        });
+      });
+    });
+
+    games.sort((a, b) => new Date(a.date) - new Date(b.date));
+    res.json({ names, games });
+  } catch (err) {
+    console.error('gamelog:', err.message);
+    res.status(500).json({ error: 'failed to load gamelog' });
+  }
+});
+
 router.get('/status', (req, res) => {
   res.json({
     status: 'ok',
