@@ -629,6 +629,30 @@ body {
 .gl-win  { color: #4ade80; }
 .gl-loss { color: #f87171; }
 
+.gl-controls {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.5rem 0 0.75rem;
+}
+.gl-select {
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0.3rem 0.6rem; font-size: 0.82rem; cursor: pointer; outline: none;
+}
+.gl-select:focus { border-color: var(--accent); }
+.gl-game-count { font-size: 0.8rem; color: var(--text-muted); margin-left: auto; }
+.gl-pagination {
+  display: flex; align-items: center; gap: 0.6rem;
+  justify-content: center; padding: 0.65rem 0 0.25rem;
+}
+.gl-page-btn {
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0.28rem 0.75rem; font-size: 0.82rem; cursor: pointer;
+}
+.gl-page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.gl-page-btn:disabled { opacity: 0.35; cursor: default; }
+.gl-page-info { font-size: 0.82rem; color: var(--text-muted); min-width: 6rem; text-align: center; }
+
 /* ── Footer ── */
 .footer {
   border-top: 1px solid var(--border); padding: 1.25rem 2rem;

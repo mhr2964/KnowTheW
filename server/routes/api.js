@@ -294,7 +294,8 @@ router.get('/players/:id/gamelog', async (req, res) => {
     const player = playerById[req.params.id];
     if (!player) return res.status(404).json({ error: 'player not found' });
 
-    const raw = await fetch(`${ESPN_WEB}/athletes/${req.params.id}/gamelog`);
+    const seasonParam = req.query.season ? `?season=${req.query.season}` : '';
+    const raw = await fetch(`${ESPN_WEB}/athletes/${req.params.id}/gamelog${seasonParam}`);
     if (!raw.ok) return res.status(404).json({ error: 'no gamelog available' });
     const data = await raw.json();
 

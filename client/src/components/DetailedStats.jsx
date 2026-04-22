@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import StudyFlow from './StudyFlow';
-import { HIDDEN, LABELS, PCT_COLS, deriveColumns } from '../lib/statsColumns';
+import { HIDDEN, LABELS, PCT_COLS, PCT100_COLS, deriveColumns } from '../lib/statsColumns';
 
 const LEFT_COLS = new Set(['SEASON_ID', 'TEAM_ABBREVIATION']);
 
@@ -9,6 +9,10 @@ function fmt(key, val) {
   if (PCT_COLS.has(key)) {
     if (typeof val !== 'number') return '—';
     return val.toFixed(3).replace(/^0\./, '.');
+  }
+  if (PCT100_COLS.has(key)) {
+    if (typeof val !== 'number') return '—';
+    return (val * 100).toFixed(1);
   }
   if (typeof val === 'number' && !Number.isInteger(val)) return val.toFixed(1);
   return String(val);
@@ -78,9 +82,9 @@ function fmtGame(name, val) {
   return String(val);
 }
 
-function GameLogTable({ log }) {
-  if (!log?.games?.length) return <p className="stats-na">No games logged yet.</p>;
-  const { names, games } = log;
+function GameLogTable({ log, games }) {
+  if (!log?.names?.length || !games?.length) return <p className="stats-na">No games logged yet.</p>;
+  const { names } = log;
   return (
     <div className="bref-wrap">
       <table className="bref-table">
@@ -115,7 +119,7 @@ function GameLogTable({ log }) {
   );
 }
 
-const ADV_HEADERS = ['SEASON_ID', 'TEAM_ABBREVIATION', 'GP', 'TS_PCT', 'EFG_PCT', 'TPAr', 'FTr'];
+const ADV_HEADERS = ['SEASON_ID', 'TEAM_ABBREVIATION', 'GP', 'TS_PCT', 'EFG_PCT', 'TPAr', 'FTr', 'TOV_PCT'];
 
 function computeAdvanced(pgSource) {
   if (!pgSource?.regular?.headers) return null;
@@ -129,11 +133,14 @@ function computeAdvanced(pgSource) {
     const fg3a = row[I.FG3A] ?? 0;
     const fta  = row[I.FTA]  ?? 0;
     const pts  = row[I.PTS]  ?? 0;
-    const ts   = (fga + 0.44 * fta) > 0 ? pts / (2 * (fga + 0.44 * fta)) : null;
-    const efg  = fga > 0 ? (fgm + 0.5 * fg3m) / fga : null;
-    const tpar = fga > 0 ? fg3a / fga : null;
-    const ftr  = fga > 0 ? fta / fga : null;
-    return [row[I.SEASON_ID], row[I.TEAM_ABBREVIATION], row[I.GP], ts, efg, tpar, ftr];
+    const tov  = row[I.TOV]  ?? 0;
+    const ts     = (fga + 0.44 * fta) > 0 ? pts / (2 * (fga + 0.44 * fta)) : null;
+    const efg    = fga > 0 ? (fgm + 0.5 * fg3m) / fga : null;
+    const tpar   = fga > 0 ? fg3a / fga : null;
+    const ftr    = fga > 0 ? fta / fga : null;
+    const poss   = fga + 0.44 * fta + tov;
+    const tovPct = poss > 0 ? tov / poss : null;
+    return [row[I.SEASON_ID], row[I.TEAM_ABBREVIATION], row[I.GP], ts, efg, tpar, ftr, tovPct];
   }
 
   function toSplit(src) {
@@ -170,6 +177,8 @@ const SOURCE_ACTIVE = {
   espn: new Set(['perGame', 'totals', 'per36', 'advanced', 'gamelog']),
 };
 
+const GL_PAGE_SIZES = [10, 25, 50];
+
 export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -178,10 +187,14 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
   const [activeSeason, setActiveSeason] = useState('regular');
   const [studyConfig, setStudyConfig] = useState(null);
 
-  const [gameLog, setGameLog] = useState(null);
+  const [gameLogSeason, setGameLogSeason] = useState(null);
+  const [gameLogCache, setGameLogCache] = useState({});
   const [gameLogLoading, setGameLogLoading] = useState(false);
   const [gameLogError, setGameLogError] = useState(false);
+  const [glPage, setGlPage] = useState(1);
+  const [glPageSize, setGlPageSize] = useState(25);
   const gameLogAbortRef = useRef(null);
+  const gameLogFetchedRef = useRef(new Set());
 
   useEffect(() => {
     const controller = new AbortController();
@@ -202,21 +215,63 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
     return () => controller.abort();
   }, [playerId]);
 
+  const availableSeasons = useMemo(() => {
+    const rows = data?.perGame?.regular?.rows ?? [];
+    const seen = new Set();
+    const seasons = [];
+    for (const row of rows) {
+      const s = String(row[0]);
+      if (s && s !== 'undefined' && !seen.has(s)) { seen.add(s); seasons.push(s); }
+    }
+    return seasons.sort((a, b) => b.localeCompare(a));
+  }, [data]);
+
+  useEffect(() => {
+    if (activeType !== 'gamelog' || !gameLogSeason) return;
+    if (gameLogFetchedRef.current.has(gameLogSeason)) return;
+    gameLogFetchedRef.current.add(gameLogSeason);
+
+    gameLogAbortRef.current?.abort();
+    const controller = new AbortController();
+    gameLogAbortRef.current = controller;
+    setGameLogLoading(true);
+    setGameLogError(false);
+
+    fetch(`/api/players/${playerId}/gamelog?season=${gameLogSeason}`, { signal: controller.signal })
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(d => {
+        setGameLogCache(prev => ({ ...prev, [gameLogSeason]: d }));
+        setGameLogLoading(false);
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') {
+          gameLogFetchedRef.current.delete(gameLogSeason);
+          setGameLogError(true);
+          setGameLogLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [activeType, gameLogSeason, playerId]);
+
   useEffect(() => () => { gameLogAbortRef.current?.abort(); }, []);
 
   function handleTypeClick(key) {
     setActiveType(key);
-    if (key === 'gamelog' && !gameLog && !gameLogLoading) {
-      if (gameLogAbortRef.current) gameLogAbortRef.current.abort();
-      const controller = new AbortController();
-      gameLogAbortRef.current = controller;
-      setGameLogLoading(true);
-      setGameLogError(false);
-      fetch(`/api/players/${playerId}/gamelog`, { signal: controller.signal })
-        .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-        .then(d => { setGameLog(d); setGameLogLoading(false); })
-        .catch(err => { if (err.name !== 'AbortError') { setGameLogError(true); setGameLogLoading(false); } });
+    if (key === 'gamelog' && !gameLogSeason && availableSeasons.length > 0) {
+      setGameLogSeason(availableSeasons[0]);
     }
+  }
+
+  function handleSeasonChange(season) {
+    setGameLogSeason(season);
+    setGlPage(1);
+    setGameLogError(false);
+  }
+
+  function handlePageSizeChange(size) {
+    setGlPageSize(size);
+    setGlPage(1);
   }
 
   if (loading) return <p className="status-msg" style={{ padding: '2rem 0' }}>Loading career stats…</p>;
@@ -235,6 +290,12 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
   const curSeason = (!hasPlayoffs && activeSeason === 'playoffs') ? 'regular' : activeSeason;
   const regular = isGamelog ? null : (curSeason === 'regular' ? tableData?.regular : tableData?.playoffs);
   const career  = isGamelog ? null : (curSeason === 'regular' ? tableData?.regularCareer : tableData?.playoffCareer);
+
+  const currentLog = gameLogCache[gameLogSeason] ?? null;
+  const allGames = currentLog?.games ?? [];
+  const totalPages = Math.max(1, Math.ceil(allGames.length / glPageSize));
+  const safePage = Math.min(glPage, totalPages);
+  const pagedGames = allGames.slice((safePage - 1) * glPageSize, safePage * glPageSize);
 
   function openStudy() {
     if (!regular) return;
@@ -273,9 +334,59 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
 
         {isGamelog ? (
           <>
+            <div className="gl-controls">
+              {availableSeasons.length > 1 && (
+                <select
+                  className="gl-select"
+                  value={gameLogSeason ?? ''}
+                  onChange={e => handleSeasonChange(e.target.value)}
+                >
+                  {availableSeasons.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              )}
+              <select
+                className="gl-select"
+                value={glPageSize}
+                onChange={e => handlePageSizeChange(Number(e.target.value))}
+              >
+                {GL_PAGE_SIZES.map(n => (
+                  <option key={n} value={n}>{n} per page</option>
+                ))}
+              </select>
+              {allGames.length > 0 && (
+                <span className="gl-game-count">{allGames.length} games</span>
+              )}
+            </div>
             {gameLogLoading && <p className="status-msg" style={{ padding: '1rem 0' }}>Loading game log…</p>}
             {gameLogError && <p className="status-msg error">Could not load game log.</p>}
-            {!gameLogLoading && !gameLogError && <GameLogTable log={gameLog} />}
+            {!gameLogLoading && !gameLogError && (
+              <>
+                <GameLogTable log={currentLog} games={pagedGames} />
+                {totalPages > 1 && (
+                  <div className="gl-pagination">
+                    <button
+                      type="button"
+                      className="gl-page-btn"
+                      onClick={() => setGlPage(p => Math.max(1, p - 1))}
+                      disabled={safePage <= 1}
+                    >
+                      ‹ Prev
+                    </button>
+                    <span className="gl-page-info">Page {safePage} of {totalPages}</span>
+                    <button
+                      type="button"
+                      className="gl-page-btn"
+                      onClick={() => setGlPage(p => Math.min(totalPages, p + 1))}
+                      disabled={safePage >= totalPages}
+                    >
+                      Next ›
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </>
         ) : (
           <>

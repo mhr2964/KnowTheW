@@ -1,5 +1,6 @@
 export const HIDDEN = new Set(['PLAYER_ID', 'LEAGUE_ID', 'TEAM_ID']);
 export const PCT_COLS = new Set(['FG_PCT', 'FG3_PCT', 'FT_PCT', 'TS_PCT', 'EFG_PCT']);
+export const PCT100_COLS = new Set(['TOV_PCT']);
 export const LABELS = {
   SEASON_ID: 'Season', TEAM_ABBREVIATION: 'Team', PLAYER_AGE: 'Age',
   GP: 'G', GS: 'GS', MIN: 'MP',
@@ -8,7 +9,7 @@ export const LABELS = {
   FTM: 'FT', FTA: 'FTA', FT_PCT: 'FT%',
   OREB: 'ORB', DREB: 'DRB', REB: 'TRB',
   AST: 'AST', STL: 'STL', BLK: 'BLK', TOV: 'TOV', PF: 'PF', PTS: 'PTS',
-  TS_PCT: 'TS%', EFG_PCT: 'eFG%', TPAr: '3PAr', FTr: 'FTr',
+  TS_PCT: 'TS%', EFG_PCT: 'eFG%', TPAr: '3PAr', FTr: 'FTr', TOV_PCT: 'TOV%',
 };
 
 export function deriveColumns(data) {
