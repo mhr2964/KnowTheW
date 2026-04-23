@@ -119,47 +119,6 @@ function GameLogTable({ log, games }) {
   );
 }
 
-const ADV_HEADERS = ['SEASON_ID', 'TEAM_ABBREVIATION', 'GP', 'TS_PCT', 'EFG_PCT', 'TPAr', 'FTr', 'TOV_PCT'];
-
-function computeAdvanced(pgSource) {
-  if (!pgSource?.regular?.headers) return null;
-  const { headers } = pgSource.regular;
-  const I = Object.fromEntries(headers.map((h, i) => [h, i]));
-
-  function advRow(row) {
-    const fga  = row[I.FGA]  ?? 0;
-    const fgm  = row[I.FGM]  ?? 0;
-    const fg3m = row[I.FG3M] ?? 0;
-    const fg3a = row[I.FG3A] ?? 0;
-    const fta  = row[I.FTA]  ?? 0;
-    const pts  = row[I.PTS]  ?? 0;
-    const tov  = row[I.TOV]  ?? 0;
-    const ts     = (fga + 0.44 * fta) > 0 ? pts / (2 * (fga + 0.44 * fta)) : null;
-    const efg    = fga > 0 ? (fgm + 0.5 * fg3m) / fga : null;
-    const tpar   = fga > 0 ? fg3a / fga : null;
-    const ftr    = fga > 0 ? fta / fga : null;
-    const poss   = fga + 0.44 * fta + tov;
-    const tovPct = poss > 0 ? tov / poss : null;
-    return [row[I.SEASON_ID], row[I.TEAM_ABBREVIATION], row[I.GP], ts, efg, tpar, ftr, tovPct];
-  }
-
-  function toSplit(src) {
-    if (!src?.rows) return null;
-    return { headers: ADV_HEADERS, rows: src.rows.map(advRow) };
-  }
-
-  function toCareer(src) {
-    if (!src?.rows?.[0]) return null;
-    return { headers: ADV_HEADERS, rows: [advRow(src.rows[0])] };
-  }
-
-  return {
-    regular:       toSplit(pgSource.regular),
-    regularCareer: toCareer(pgSource.regularCareer),
-    playoffs:      toSplit(pgSource.playoffs),
-    playoffCareer: toCareer(pgSource.playoffCareer),
-  };
-}
 
 const ALL_TABLE_TYPES = [
   { key: 'perGame',  label: 'Per Game' },
@@ -207,7 +166,6 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
         return r.json();
       })
       .then(d => {
-        d.advanced = computeAdvanced(d.perGame);
         setData(d);
         setLoading(false);
       })
