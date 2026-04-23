@@ -653,16 +653,10 @@ body {
 .gl-page-btn:disabled { opacity: 0.35; cursor: default; }
 .gl-page-info { font-size: 0.82rem; color: var(--text-muted); min-width: 6rem; text-align: center; }
 
-.adv-pbp-section { margin-bottom: 1.5rem; }
 .pbp-badge {
   font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em;
   background: var(--accent); color: #fff;
   padding: 0.15rem 0.5rem; border-radius: 4px; white-space: nowrap;
-}
-.adv-career-header {
-  font-size: 0.78rem; font-weight: 600; color: var(--text-muted);
-  text-transform: uppercase; letter-spacing: 0.05em;
-  border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 0.25rem; margin-bottom: 0.4rem;
 }
 
 /* ── Footer ── */

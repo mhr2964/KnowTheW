@@ -726,80 +726,87 @@ router.get('/players/:id/gamelog', async (req, res) => {
   }
 });
 
-router.get('/players/:id/advanced-pbp', async (req, res) => {
+const PBP_OC_KEYS = ['fga','fgm','fg3a','fta','ftm','orb','drb','tov','ast',
+                     'oFga','oFgm','oFg3a','oFta','oOrb','oDrb','oTov'];
+
+async function computeSeasonPBP(playerId, season, playerRow, I) {
+  const glData = await fetch(
+    `${ESPN_WEB}/athletes/${playerId}/gamelog?season=${season}&seasontype=2`
+  ).then(r => r.ok ? r.json() : null);
+  if (!glData) return null;
+
+  const eventIds = [];
+  (glData.seasonTypes || []).forEach(st => {
+    if (!st.displayName?.includes('Regular Season')) return;
+    (st.categories || []).forEach(cat => {
+      (cat.events || []).forEach(evt => { if (evt.eventId) eventIds.push(evt.eventId); });
+    });
+  });
+  if (!eventIds.length) return null;
+
+  const summaries = await Promise.all(eventIds.map(id => fetchGameSummary(id)));
+  const totOC = Object.fromEntries(PBP_OC_KEYS.map(k => [k, 0]));
+  let pbpGames = 0;
+  for (const summary of summaries) {
+    if (!summary) continue;
+    const oc = computeOnCourtStats(summary, playerId);
+    if (!oc) continue;
+    pbpGames++;
+    for (const k of PBP_OC_KEYS) totOC[k] += oc[k];
+  }
+  if (!pbpGames) return null;
+
+  const g = pbpGames;
+  const tmOC = {
+    fgaPg:   totOC.fga  / g, fgmPg:   totOC.fgm  / g,
+    fg3aPg:  totOC.fg3a / g, ftaPg:   totOC.fta  / g, ftmPg:  totOC.ftm / g,
+    orbPg:   totOC.orb  / g, drbPg:   totOC.drb  / g,
+    tovPg:   totOC.tov  / g, astPg:   totOC.ast  / g,
+    oFgaPg:  totOC.oFga  / g, oFgmPg: totOC.oFgm  / g,
+    oFg3aPg: totOC.oFg3a / g, oFtaPg: totOC.oFta  / g,
+    oOrbPg:  totOC.oOrb  / g, oDrbPg: totOC.oDrb  / g,
+    oTovPg:  totOC.oTov  / g,
+  };
+
+  const lg = WNBA_LG[season] ?? null;
+  return { row: advancedRow(playerRow, I, tmOC, lg), pbpGames };
+}
+
+router.get('/players/:id/advanced-pbp-all', async (req, res) => {
   try {
     const player = playerById[req.params.id];
     if (!player) return res.status(404).json({ error: 'player not found' });
 
-    const { season } = req.query;
-    if (!season) return res.status(400).json({ error: 'season param required' });
-
-    const [teams, statsData, glData] = await Promise.all([
+    const [teams, statsData] = await Promise.all([
       getTeams(),
       fetch(`${ESPN_WEB}/athletes/${req.params.id}/stats?seasontype=2`).then(r => r.ok ? r.json() : null),
-      fetch(`${ESPN_WEB}/athletes/${req.params.id}/gamelog?season=${season}&seasontype=2`).then(r => r.ok ? r.json() : null),
     ]);
 
-    if (!glData) return res.status(404).json({ error: 'no gamelog available' });
-
-    // Find the player's per-game row for the target season
     const teamsById = Object.fromEntries(teams.map(t => [t.id, t]));
     const parsed = parseESPNSeasonData(statsData, teamsById);
     const pgTable = parsed?.pg?.table;
     if (!pgTable) return res.status(404).json({ error: 'no stats for this player' });
     const I = Object.fromEntries(pgTable.headers.map((h, i) => [h, i]));
-    const playerRow = pgTable.rows.find(r => String(r[I.SEASON_ID]) === season);
-    if (!playerRow) return res.status(404).json({ error: 'no stats for this season' });
 
-    // Collect all event IDs from the gamelog
-    const eventIds = [];
-    (glData.seasonTypes || []).forEach(st => {
-      (st.categories || []).forEach(cat => {
-        (cat.events || []).forEach(evt => {
-          if (evt.eventId) eventIds.push(evt.eventId);
-        });
-      });
+    // All seasons that have both a player row and a WNBA_LG entry
+    const seasons = [...new Set(pgTable.rows.map(r => String(r[I.SEASON_ID])))]
+      .filter(s => WNBA_LG[s]);
+
+    const results = await Promise.all(seasons.map(async season => {
+      const playerRow = pgTable.rows.find(r => String(r[I.SEASON_ID]) === season);
+      if (!playerRow) return null;
+      const result = await computeSeasonPBP(req.params.id, season, playerRow, I);
+      return result ? { season, row: result.row, pbpGames: result.pbpGames } : null;
+    }));
+
+    const valid = results.filter(Boolean);
+    res.json({
+      headers: ADV_HEADERS_SRV,
+      rows: valid.map(r => r.row),
+      pbpGamesBySeason: Object.fromEntries(valid.map(r => [r.season, r.pbpGames])),
     });
-    if (!eventIds.length) return res.status(404).json({ error: 'no games found' });
-
-    // Fetch all game summaries (parallel, cached)
-    const summaries = await Promise.all(eventIds.map(id => fetchGameSummary(id)));
-
-    // Aggregate on-court team and opponent stats across all games
-    const keys = ['fga','fgm','fg3a','fta','ftm','orb','drb','tov','ast',
-                  'oFga','oFgm','oFg3a','oFta','oOrb','oDrb','oTov'];
-    const totOC = Object.fromEntries(keys.map(k => [k, 0]));
-    let pbpGames = 0;
-    for (const summary of summaries) {
-      if (!summary) continue;
-      const oc = computeOnCourtStats(summary, req.params.id);
-      if (!oc) continue;
-      pbpGames++;
-      for (const k of keys) totOC[k] += oc[k];
-    }
-
-    if (!pbpGames) return res.status(404).json({ error: 'no PBP data available' });
-
-    // Build per-game on-court team proxy (already in per-game form for advancedRow)
-    const g = pbpGames;
-    const tmOC = {
-      fgaPg:  totOC.fga  / g,  fgmPg:  totOC.fgm  / g,
-      fg3aPg: totOC.fg3a / g,  ftaPg:  totOC.fta  / g,  ftmPg: totOC.ftm / g,
-      orbPg:  totOC.orb  / g,  drbPg:  totOC.drb  / g,
-      tovPg:  totOC.tov  / g,  astPg:  totOC.ast  / g,
-      // Opponent on-court stats (signals PBP path in advancedRow)
-      oFgaPg: totOC.oFga  / g, oFgmPg: totOC.oFgm  / g,
-      oFg3aPg:totOC.oFg3a / g, oFtaPg: totOC.oFta  / g,
-      oOrbPg: totOC.oOrb  / g, oDrbPg: totOC.oDrb  / g,
-      oTovPg: totOC.oTov  / g,
-    };
-
-    const lg = WNBA_LG[season] ?? null;
-    const advRow = advancedRow(playerRow, I, tmOC, lg);
-
-    res.json({ headers: ADV_HEADERS_SRV, row: advRow, pbpGames });
   } catch (err) {
-    console.error('advanced-pbp:', err.message);
+    console.error('advanced-pbp-all:', err.message);
     res.status(500).json({ error: 'failed to compute advanced stats' });
   }
 });
