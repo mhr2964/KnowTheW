@@ -309,12 +309,14 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
                 : pbpAllData.regular;
               return (
                 <>
-                  {advHasPlayoffs && (
+                  <div className="stat-table-header">
                     <div className="stat-season-bar">
                       <button type="button" className={`stat-season-tab${advSeason === 'regular' ? ' active' : ''}`} onClick={() => setAdvSeason('regular')}>Regular Season</button>
-                      <button type="button" className={`stat-season-tab${advSeason === 'playoffs' ? ' active' : ''}`} onClick={() => setAdvSeason('playoffs')}>Playoffs</button>
+                      {advHasPlayoffs && (
+                        <button type="button" className={`stat-season-tab${advSeason === 'playoffs' ? ' active' : ''}`} onClick={() => setAdvSeason('playoffs')}>Playoffs</button>
+                      )}
                     </div>
-                  )}
+                  </div>
                   <BrefTable
                     regular={{ headers: pbpAllData.headers, rows: advSplit?.rows ?? [] }}
                     career={advSplit?.careerRow ? { headers: pbpAllData.headers, rows: [advSplit.careerRow] } : null}
