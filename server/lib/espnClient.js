@@ -104,7 +104,10 @@ async function fetchTeamPtsAllowed(teamId, year) {
     const data = await res.json();
     let sum = 0, count = 0;
     for (const event of data.events ?? []) {
-      if (event.seasonType?.type !== 2 && event.seasonType?.id !== '2') continue;
+      // ESPN schedule uses either event.seasonType or event.season for the type field
+      const stType = event.seasonType?.type ?? event.season?.type;
+      const stId   = event.seasonType?.id   ?? event.season?.id   ?? String(stType);
+      if (stType !== 2 && stId !== '2') continue;
       const comps = event.competitions?.[0]?.competitors ?? [];
       const tm  = comps.find(c => String(c.team?.id) === String(teamId));
       const opp = comps.find(c => String(c.team?.id) !== String(teamId));

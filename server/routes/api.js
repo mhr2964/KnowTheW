@@ -167,7 +167,7 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
     const db = getDb();
     if (db) {
       const advCached = await db.collection('advancedStats').findOne({ _id: req.params.id });
-      if (advCached?.gp === currentGP && advCached.data?.regular != null) return res.json(advCached.data);
+      if (advCached?.gp === currentGP && advCached.v === 2 && advCached.data?.regular != null) return res.json(advCached.data);
     }
 
     // Build totals-by-year maps for both splits
@@ -197,7 +197,10 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
       Promise.all(postSeasons.map(async season => {
         const playerRow = pgPostTable.rows.find(r => String(r[IPost.SEASON_ID]) === season);
         if (!playerRow) return null;
-        const result = await computeSeasonPBP(req.params.id, season, playerRow, IPost, postTidByYear[season] ?? null, totPostByYear[season] ?? null, 3);
+        // WS computation needs regular-season team stats; prefer regTidByYear so the team ID
+        // is always valid even if ESPN omits teamId from playoff stat entries.
+        const wsTeamId = regTidByYear[season] ?? postTidByYear[season] ?? null;
+        const result = await computeSeasonPBP(req.params.id, season, playerRow, IPost, wsTeamId, totPostByYear[season] ?? null, 3);
         return result ? { season, row: result.row, pbpGames: result.pbpGames } : null;
       })),
     ]);
@@ -241,7 +244,7 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
     };
 
     if (db) db.collection('advancedStats')
-      .replaceOne({ _id: req.params.id }, { _id: req.params.id, gp: currentGP, data: advResult }, { upsert: true })
+      .replaceOne({ _id: req.params.id }, { _id: req.params.id, gp: currentGP, v: 2, data: advResult }, { upsert: true })
       .catch(err => console.error('mongo write advancedStats:', err.message));
     res.json(advResult);
   } catch (err) {
