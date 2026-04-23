@@ -8,7 +8,6 @@ const rosterPromises = {};
 const rosterData = {};
 const playerById = {};
 const teamSeasonStatsCache = {};
-const gameSummaryCache = {};
 
 async function fetchTeams() {
   const res = await fetch(`${ESPN}/teams?limit=100`);
@@ -95,22 +94,21 @@ async function fetchTeamStats(teamId, year) {
 }
 
 async function fetchGameSummary(eventId) {
-  if (eventId in gameSummaryCache) return gameSummaryCache[eventId];
   const db = getDb();
   if (db) {
     const doc = await db.collection('gameSummaries').findOne({ _id: eventId });
-    if (doc) return (gameSummaryCache[eventId] = doc.data);
+    if (doc) return doc.data;
   }
   try {
     const res = await fetch(`${ESPN}/summary?event=${eventId}`);
-    if (!res.ok) return (gameSummaryCache[eventId] = null);
+    if (!res.ok) return null;
     const data = await res.json();
     if (db) db.collection('gameSummaries')
       .replaceOne({ _id: eventId }, { _id: eventId, data }, { upsert: true })
       .catch(err => console.error('mongo write gameSummaries:', err.message));
-    return (gameSummaryCache[eventId] = data);
+    return data;
   } catch {
-    return (gameSummaryCache[eventId] = null);
+    return null;
   }
 }
 
