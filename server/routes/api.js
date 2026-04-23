@@ -494,12 +494,12 @@ function computeWinShares(playerRow, I, tm, lg, ptsAllowedPg) {
 
 function advancedRow(row, I, tm, lg, totRow) {
   const fga = row[I.FGA] ?? 0,  fgm = row[I.FGM] ?? 0;
-  const fg3m = row[I.FG3M] ?? 0, fg3a = row[I.FG3A] ?? 0;
+  const fg3m = row[I.FG3M] ?? 0;
   const fta = row[I.FTA] ?? 0,  ftm = row[I.FTM] ?? 0;
   const orb = row[I.OREB] ?? 0, drb = row[I.DREB] ?? 0, trb = row[I.REB] ?? 0;
   const ast = row[I.AST] ?? 0,  stl = row[I.STL] ?? 0, blk = row[I.BLK] ?? 0;
   const tov = row[I.TOV] ?? 0,  pf  = row[I.PF]  ?? 0;
-  const pts = row[I.PTS] ?? 0,  mp  = row[I.MIN] ?? 0;
+  const mp  = row[I.MIN] ?? 0;
 
   // Use integer totals for ratio stats — matches BRef which computes from exact counts.
   // Fall back to per-game averages if totals not available.
