@@ -3,4 +3,3 @@ client/node_modules/
 client/build/
 client/dist/
 .env
-server/cache/
