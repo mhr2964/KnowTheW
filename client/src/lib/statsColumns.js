@@ -1,6 +1,7 @@
 export const HIDDEN = new Set(['PLAYER_ID', 'LEAGUE_ID', 'TEAM_ID']);
-export const PCT_COLS = new Set(['FG_PCT', 'FG3_PCT', 'FT_PCT', 'TS_PCT', 'EFG_PCT', 'TPAr', 'FTr']);
+export const PCT_COLS = new Set(['FG_PCT', 'FG3_PCT', 'FT_PCT', 'TS_PCT', 'EFG_PCT', 'TPAr', 'FTr', 'WS_PER48']);
 export const PCT100_COLS = new Set(['TOV_PCT', 'USG_PCT', 'AST_PCT', 'ORB_PCT', 'DRB_PCT', 'TRB_PCT', 'STL_PCT', 'BLK_PCT']);
+// Win Shares columns are plain decimals (one place), not percentages
 export const LABELS = {
   SEASON_ID: 'Season', TEAM_ABBREVIATION: 'Team', PLAYER_AGE: 'Age',
   GP: 'G', GS: 'GS', MIN: 'MP',
@@ -13,6 +14,7 @@ export const LABELS = {
   TOV_PCT: 'TOV%', USG_PCT: 'USG%', AST_PCT: 'AST%',
   ORB_PCT: 'ORB%', DRB_PCT: 'DRB%', TRB_PCT: 'TRB%',
   STL_PCT: 'STL%', BLK_PCT: 'BLK%', PER: 'PER',
+  OWS: 'OWS', DWS: 'DWS', WS: 'WS', WS_PER48: 'WS/48',
 };
 
 export function deriveColumns(data) {

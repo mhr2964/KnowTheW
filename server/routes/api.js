@@ -222,13 +222,16 @@ async function fetchTeamStats(teamId, year) {
     const def = cats.find(c => c.name === 'defensive');
     const g = (cat, name) => cat?.stats.find(s => s.name === name)?.value ?? null;
     return (teamSeasonStatsCache[key] = {
-      fgaPg: g(off, 'avgFieldGoalsAttempted'),
-      fgmPg: g(off, 'avgFieldGoalsMade'),
-      ftaPg: g(off, 'avgFreeThrowsAttempted'),
-      orbPg: g(off, 'avgOffensiveRebounds'),
-      drbPg: g(def, 'avgDefensiveRebounds'),
-      tovPg: g(off, 'avgTurnovers'),
-      astPg: g(off, 'avgAssists'),
+      fgaPg:   g(off, 'avgFieldGoalsAttempted'),
+      fgmPg:   g(off, 'avgFieldGoalsMade'),
+      fg3mPg:  g(off, 'avgThreePointFieldGoalsMade'),
+      ftaPg:   g(off, 'avgFreeThrowsAttempted'),
+      ftmPg:   g(off, 'avgFreeThrowsMade'),
+      ptsPg:   g(off, 'avgPoints'),
+      orbPg:   g(off, 'avgOffensiveRebounds'),
+      drbPg:   g(def, 'avgDefensiveRebounds'),
+      tovPg:   g(off, 'avgTurnovers'),
+      astPg:   g(off, 'avgAssists'),
     });
   } catch {
     return (teamSeasonStatsCache[key] = null);
@@ -293,10 +296,10 @@ function avgMapToRow(seasonId, teamAbbr, m) {
   ];
 }
 
-function totalsMapToRow(seasonId, teamAbbr, tm, gp, totalMin) {
+function totalsMapToRow(seasonId, teamAbbr, tm, gp, gs, totalMin) {
   return [
     seasonId, teamAbbr,
-    gp, null, totalMin !== null ? Math.round(totalMin) : null,
+    gp, gs ?? null, totalMin !== null ? Math.round(totalMin) : null,
     tm.fieldGoalsMade, tm.fieldGoalsAttempted, tm.fieldGoalPct,
     tm.threePointFieldGoalsMade, tm.threePointFieldGoalsAttempted, tm.threePointFieldGoalPct,
     tm.freeThrowsMade, tm.freeThrowsAttempted, tm.freeThrowPct,
@@ -305,11 +308,11 @@ function totalsMapToRow(seasonId, teamAbbr, tm, gp, totalMin) {
   ];
 }
 
-function per36MapToRow(seasonId, teamAbbr, tm, gp, totalMin) {
+function per36MapToRow(seasonId, teamAbbr, tm, gp, gs, totalMin) {
   const p = v => (v !== null && totalMin > 0) ? (v / totalMin) * 36 : null;
   return [
     seasonId, teamAbbr,
-    gp, null, 36,
+    gp, gs ?? null, totalMin !== null ? Math.round(totalMin) : null,
     p(tm.fieldGoalsMade), p(tm.fieldGoalsAttempted), tm.fieldGoalPct,
     p(tm.threePointFieldGoalsMade), p(tm.threePointFieldGoalsAttempted), tm.threePointFieldGoalPct,
     p(tm.freeThrowsMade), p(tm.freeThrowsAttempted), tm.freeThrowPct,
@@ -351,8 +354,8 @@ function parseESPNSeasonData(data, teamsById) {
     if (avg) pgRows.push(avgMapToRow(year, avg.teamAbbr, avg.map));
     if (avg && tot) {
       const totalMin = (avg.map.avgMinutes || 0) * (avg.map.gamesPlayed || 0);
-      totRows.push(totalsMapToRow(year, tot.teamAbbr, tot.map, avg.map.gamesPlayed, totalMin));
-      p36Rows.push(per36MapToRow(year, tot.teamAbbr, tot.map, avg.map.gamesPlayed, totalMin));
+      totRows.push(totalsMapToRow(year, tot.teamAbbr, tot.map, avg.map.gamesPlayed, avg.map.gamesStarted, totalMin));
+      p36Rows.push(per36MapToRow(year, tot.teamAbbr, tot.map, avg.map.gamesPlayed, avg.map.gamesStarted, totalMin));
     }
   });
 
@@ -368,8 +371,8 @@ function parseESPNSeasonData(data, teamsById) {
 
   return {
     pg:  { table: makeTable(pgRows),  career: makeCareer(avgMapToRow('Career', '', avgCareer)) },
-    tot: { table: makeTable(totRows), career: makeCareer(totalsMapToRow('Career', '', totCareer, careerGp, careerTotalMin)) },
-    p36: { table: makeTable(p36Rows), career: makeCareer(per36MapToRow('Career', '', totCareer, careerGp, careerTotalMin)) },
+    tot: { table: makeTable(totRows), career: makeCareer(totalsMapToRow('Career', '', totCareer, careerGp, avgCareer.gamesStarted, careerTotalMin)) },
+    p36: { table: makeTable(p36Rows), career: makeCareer(per36MapToRow('Career', '', totCareer, careerGp, avgCareer.gamesStarted, careerTotalMin)) },
   };
 }
 
@@ -399,9 +402,97 @@ const ADV_HEADERS_SRV = [
   'ORB_PCT', 'DRB_PCT', 'TRB_PCT',
   'STL_PCT', 'BLK_PCT',
   'PER',
+  'OWS', 'DWS', 'WS', 'WS_PER48',
 ];
 
-function advancedRow(row, I, tm, lg) {
+// BRef Win Shares (Oliver methodology).
+// tm must be season-average team stats (from fetchTeamStats, including ptsPg/fg3mPg/ftmPg).
+// ptsAllowedPg is the team's average opponent score for regular-season games.
+function computeWinShares(playerRow, I, tm, lg, ptsAllowedPg) {
+  const fga = playerRow[I.FGA] ?? 0, fgm = playerRow[I.FGM] ?? 0;
+  const fg3m = playerRow[I.FG3M] ?? 0;
+  const fta  = playerRow[I.FTA] ?? 0, ftm = playerRow[I.FTM] ?? 0;
+  const orb  = playerRow[I.OREB] ?? 0;
+  const ast  = playerRow[I.AST] ?? 0;
+  const tov  = playerRow[I.TOV] ?? 0;
+  const pts  = playerRow[I.PTS] ?? 0, mp = playerRow[I.MIN] ?? 0;
+  const gp   = playerRow[I.GP]  ?? 0;
+
+  if (mp <= 0 || gp <= 0 || !tm || !lg || ptsAllowedPg == null) return [null, null, null, null];
+
+  const M      = 40;
+  const VOP    = lg.pts / (lg.fga - lg.orb + lg.tov + 0.44*lg.fta);
+  const lgPace = lg.fga - lg.orb + lg.tov + 0.44*lg.fta;
+  const tmPace = (tm.fgaPg ?? 0) - (tm.orbPg ?? 0) + (tm.tovPg ?? 0) + 0.44*(tm.ftaPg ?? 0);
+  const lgORtg = 100 * lg.pts / lgPace;
+  if (tmPace <= 0) return [null, null, null, null];
+
+  // Marginal points per win (pace-adjusted)
+  const ptsPerWin = 0.32 * lg.pts * (tmPace / lgPace);
+
+  // qAST: estimated fraction of player's FGM that were assisted by a teammate
+  const perMp    = mp / M;
+  const denomFgm = (tm.fgmPg ?? 0) * perMp - fgm;
+  let qAST = 0;
+  if ((tm.fgmPg ?? 0) > 0.01) {
+    const t1 = perMp * 1.14 * (((tm.astPg ?? 0) - ast) / tm.fgmPg);
+    const t2 = Math.abs(denomFgm) > 0.01
+      ? (((tm.astPg ?? 0) * perMp - ast) / denomFgm) * (1 - perMp) : 0;
+    qAST = Math.max(0, Math.min(1, t1 + t2));
+  }
+
+  // PProd_FG: player's own field goal production (credit reduced when heavily assisted)
+  const PProd_FG = fga > 0
+    ? 2 * (fgm + 0.5*fg3m) * (1 - 0.5 * ((pts - ftm) / (2*fga)) * qAST)
+    : 0;
+
+  // PProd_AST: points produced via assists (BRef formula)
+  // Assister receives partial credit for each teammate FGM they set up.
+  const tmFGM_excl  = (tm.fgmPg  ?? 0) - fgm;
+  const tmFGA_excl  = (tm.fgaPg  ?? 0) - fga;
+  const tmFG3M_excl = (tm.fg3mPg ?? 0) - fg3m;
+  const tmFGpts_excl = ((tm.ptsPg ?? 0) - (tm.ftmPg ?? 0)) - (pts - ftm);
+  let PProd_AST = 0;
+  if (tmFGM_excl > 0.01 && tmFGA_excl > 0.01) {
+    PProd_AST = 2 * ((tmFGM_excl + 0.5*tmFG3M_excl) / tmFGM_excl)
+      * 0.5 * (tmFGpts_excl / (2 * tmFGA_excl))
+      * ast;
+  }
+
+  // PProd_ORB: value added by offensive rebounds (extend possession)
+  const orbDenom = 5 * (tm.orbPg ?? 0) - orb;
+  const PProd_ORB = orbDenom > 0.01
+    ? orb * 0.5 * (0.5 * (((tm.orbPg ?? 0) + lg.drb) / orbDenom))
+    : 0;
+
+  // PProd_FT: free throw production (BRef: adjusted for team assist rate)
+  const tmRatio = (tm.fgmPg ?? 0) > 0 ? (tm.astPg ?? 0) / tm.fgmPg : 0;
+  const PProd_FT = ftm * (1 - 0.25 * tmRatio);
+
+  // Total Points Produced (positive contributions only; negatives handled in MargOff)
+  const PProd = PProd_FG + PProd_AST + PProd_ORB + PProd_FT;
+
+  // Offensive possessions used
+  const Poss = fga + 0.44*fta + tov;
+
+  // Marginal Offense: PProd vs replacement-level production for same possessions
+  const margOff = PProd - 0.92 * VOP * Poss;
+  const ows = ptsPerWin > 0 ? (margOff * gp) / ptsPerWin : null;
+
+  // Defensive Win Shares: player's minutes share × team defensive savings vs replacement
+  const tmDRtg  = 100 * ptsAllowedPg / tmPace;
+  const margDef = (mp / (5 * M)) * tmPace * (1.08 * (lgORtg/100) - (tmDRtg/100)) * gp;
+  const dws = ptsPerWin > 0 ? Math.max(0, margDef) / ptsPerWin : null;
+
+  const ws      = (ows ?? 0) + (dws ?? 0);
+  const totalMin = mp * gp;
+  // BRef labels this WS/48 even for WNBA (40-min games)
+  const wsPer48 = totalMin > 0 ? ws / (totalMin / 48) : null;
+
+  return [ows, dws, ws, wsPer48];
+}
+
+function advancedRow(row, I, tm, lg, totRow) {
   const fga = row[I.FGA] ?? 0,  fgm = row[I.FGM] ?? 0;
   const fg3m = row[I.FG3M] ?? 0, fg3a = row[I.FG3A] ?? 0;
   const fta = row[I.FTA] ?? 0,  ftm = row[I.FTM] ?? 0;
@@ -410,13 +501,19 @@ function advancedRow(row, I, tm, lg) {
   const tov = row[I.TOV] ?? 0,  pf  = row[I.PF]  ?? 0;
   const pts = row[I.PTS] ?? 0,  mp  = row[I.MIN] ?? 0;
 
-  // Player-only stats (always computable)
-  const ts     = (fga + 0.44*fta) > 0 ? pts / (2*(fga + 0.44*fta)) : null;
-  const efg    = fga > 0 ? (fgm + 0.5*fg3m) / fga : null;
-  const tpar   = fga > 0 ? fg3a / fga : null;
-  const ftr    = fga > 0 ? fta / fga : null;
-  const poss   = fga + 0.44*fta + tov;
-  const tovPct = poss > 0 ? tov / poss : null;
+  // Use integer totals for ratio stats — matches BRef which computes from exact counts.
+  // Fall back to per-game averages if totals not available.
+  const t    = totRow ?? row;
+  const tFga = t[I.FGA] ?? 0, tFgm = t[I.FGM] ?? 0;
+  const tFg3m = t[I.FG3M] ?? 0, tFg3a = t[I.FG3A] ?? 0;
+  const tFta  = t[I.FTA] ?? 0, tTov = t[I.TOV] ?? 0, tPts = t[I.PTS] ?? 0;
+
+  const ts     = (tFga + 0.44*tFta) > 0 ? tPts / (2*(tFga + 0.44*tFta)) : null;
+  const efg    = tFga > 0 ? (tFgm + 0.5*tFg3m) / tFga : null;
+  const tpar   = tFga > 0 ? tFg3a / tFga : null;
+  const ftr    = tFga > 0 ? tFta / tFga : null;
+  const poss   = tFga + 0.44*tFta + tTov;
+  const tovPct = poss > 0 ? tTov / poss : null;
 
   let usgPct=null, astPct=null, orbPct=null, drbPct=null, trbPct=null;
   let stlPct=null, blkPct=null, per=null;
@@ -564,29 +661,35 @@ function advancedRow(row, I, tm, lg) {
     row[I.SEASON_ID], row[I.TEAM_ABBREVIATION], row[I.GP],
     ts, efg, tpar, ftr, tovPct,
     usgPct, astPct, orbPct, drbPct, trbPct, stlPct, blkPct, per,
+    null, null, null, null, // OWS, DWS, WS, WS_PER48 — only populated in advanced-pbp-all
   ];
 }
 
-function buildAdvancedSplit(src, teamIdByYear, cache) {
+function buildAdvancedSplit(src, teamIdByYear, cache, totSrc) {
   if (!src?.rows) return null;
   const I = Object.fromEntries(src.headers.map((h, i) => [h, i]));
+  const totByYear = {};
+  if (totSrc?.rows) {
+    for (const r of totSrc.rows) totByYear[String(r[I.SEASON_ID])] = r;
+  }
   const rows = src.rows.map(row => {
     const year = String(row[I.SEASON_ID]);
     const tid  = teamIdByYear[year];
     const tm   = tid ? (cache[`${tid}-${year}`] ?? null) : null;
     const lg   = WNBA_LG[year] ?? null;
-    return advancedRow(row, I, tm, lg);
+    return advancedRow(row, I, tm, lg, totByYear[year] ?? null);
   });
   return { headers: ADV_HEADERS_SRV, rows };
 }
 
-function buildAdvancedCareer(src) {
-  if (!src?.rows?.[0]) return null;
-  const I = Object.fromEntries(src.headers.map((h, i) => [h, i]));
-  const row = src.rows[0];
-  const fga = row[I.FGA] ?? 0, fgm = row[I.FGM] ?? 0;
-  const fg3m = row[I.FG3M] ?? 0, fg3a = row[I.FG3A] ?? 0;
-  const fta = row[I.FTA] ?? 0, pts = row[I.PTS] ?? 0, tov = row[I.TOV] ?? 0;
+function buildAdvancedCareer(pgSrc, totSrc) {
+  if (!pgSrc?.rows?.[0]) return null;
+  const I = Object.fromEntries(pgSrc.headers.map((h, i) => [h, i]));
+  const row = pgSrc.rows[0];
+  const t   = totSrc?.rows?.[0] ?? row;
+  const fga = t[I.FGA] ?? 0, fgm = t[I.FGM] ?? 0;
+  const fg3m = t[I.FG3M] ?? 0, fg3a = t[I.FG3A] ?? 0;
+  const fta = t[I.FTA] ?? 0, pts = t[I.PTS] ?? 0, tov = t[I.TOV] ?? 0;
   const ts     = (fga + 0.44*fta) > 0 ? pts / (2*(fga + 0.44*fta)) : null;
   const efg    = fga > 0 ? (fgm + 0.5*fg3m) / fga : null;
   const tpar   = fga > 0 ? fg3a / fga : null;
@@ -596,7 +699,8 @@ function buildAdvancedCareer(src) {
   return { headers: ADV_HEADERS_SRV, rows: [
     [row[I.SEASON_ID], row[I.TEAM_ABBREVIATION], row[I.GP],
      ts, efg, tpar, ftr, tovPct,
-     null, null, null, null, null, null, null, null],
+     null, null, null, null, null, null, null, null,
+     null, null, null, null],
   ]};
 }
 
@@ -682,10 +786,10 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
     await Promise.all([...allPairs.values()].map(({ t, y }) => fetchTeamStats(t, y)));
 
     result.advanced = {
-      regular:       buildAdvancedSplit(result.perGame.regular,      regTidByYear,  teamSeasonStatsCache),
-      regularCareer: buildAdvancedCareer(result.perGame.regularCareer),
-      playoffs:      buildAdvancedSplit(result.perGame.playoffs,     postTidByYear, teamSeasonStatsCache),
-      playoffCareer: buildAdvancedCareer(result.perGame.playoffCareer),
+      regular:       buildAdvancedSplit(result.perGame.regular,      regTidByYear,  teamSeasonStatsCache, result.totals.regular),
+      regularCareer: buildAdvancedCareer(result.perGame.regularCareer, result.totals.regularCareer),
+      playoffs:      buildAdvancedSplit(result.perGame.playoffs,     postTidByYear, teamSeasonStatsCache, result.totals.playoffs),
+      playoffCareer: buildAdvancedCareer(result.perGame.playoffCareer, result.totals.playoffCareer),
     };
 
     res.json(result);
@@ -739,17 +843,27 @@ router.get('/players/:id/gamelog', async (req, res) => {
 const PBP_OC_KEYS = ['fga','fgm','fg3a','fta','ftm','orb','drb','tov','ast',
                      'oFga','oFgm','oFg3a','oFta','oOrb','oDrb','oTov'];
 
-async function computeSeasonPBP(playerId, season, playerRow, I) {
+async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow) {
   const glData = await fetch(
     `${ESPN_WEB}/athletes/${playerId}/gamelog?season=${season}&seasontype=2`
   ).then(r => r.ok ? r.json() : null);
   if (!glData) return null;
 
   const eventIds = [];
+  let ptsAllowedSum = 0, ptsAllowedCount = 0;
   (glData.seasonTypes || []).forEach(st => {
     if (!st.displayName?.includes('Regular Season')) return;
     (st.categories || []).forEach(cat => {
-      (cat.events || []).forEach(evt => { if (evt.eventId) eventIds.push(evt.eventId); });
+      (cat.events || []).forEach(evt => {
+        if (evt.eventId) eventIds.push(evt.eventId);
+        // Derive pts allowed from gamelog event metadata (no extra fetch needed)
+        const meta = glData.events?.[evt.eventId];
+        if (meta?.homeTeamScore != null && meta?.awayTeamScore != null) {
+          const isHome = meta.atVs === 'vs';
+          const opp = isHome ? parseInt(meta.awayTeamScore) : parseInt(meta.homeTeamScore);
+          if (!isNaN(opp)) { ptsAllowedSum += opp; ptsAllowedCount++; }
+        }
+      });
     });
   });
   if (!eventIds.length) return null;
@@ -779,7 +893,21 @@ async function computeSeasonPBP(playerId, season, playerRow, I) {
   };
 
   const lg = WNBA_LG[season] ?? null;
-  return { row: advancedRow(playerRow, I, tmOC, lg), pbpGames };
+  const advRow = advancedRow(playerRow, I, tmOC, lg, totRow);
+
+  // Win Shares: use season-avg team stats (not on-court) + pts allowed from gamelog
+  const [tmStats] = await Promise.all([
+    teamId ? fetchTeamStats(teamId, season) : Promise.resolve(null),
+  ]);
+  const ptsAllowedPg = ptsAllowedCount > 0 ? ptsAllowedSum / ptsAllowedCount : null;
+  const wsVals = (tmStats && ptsAllowedPg != null && lg)
+    ? computeWinShares(playerRow, I, tmStats, lg, ptsAllowedPg)
+    : [null, null, null, null];
+
+  // Replace the null WS placeholders at the end of advRow with computed values
+  const row = [...advRow.slice(0, 16), ...wsVals];
+
+  return { row, pbpGames };
 }
 
 router.get('/players/:id/advanced-pbp-all', async (req, res) => {
@@ -798,14 +926,23 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
     if (!pgTable) return res.status(404).json({ error: 'no stats for this player' });
     const I = Object.fromEntries(pgTable.headers.map((h, i) => [h, i]));
 
+    const totTable = parsed?.tot?.table;
+    const totByYear = {};
+    if (totTable?.rows) {
+      for (const r of totTable.rows) totByYear[String(r[I.SEASON_ID])] = r;
+    }
+
     // All seasons that have both a player row and a WNBA_LG entry
+    const regTidByYear = extractTeamIdByYear(statsData);
     const seasons = [...new Set(pgTable.rows.map(r => String(r[I.SEASON_ID])))]
       .filter(s => WNBA_LG[s]);
 
     const results = await Promise.all(seasons.map(async season => {
       const playerRow = pgTable.rows.find(r => String(r[I.SEASON_ID]) === season);
       if (!playerRow) return null;
-      const result = await computeSeasonPBP(req.params.id, season, playerRow, I);
+      const teamId = regTidByYear[season] ?? null;
+      const totRow  = totByYear[season] ?? null;
+      const result = await computeSeasonPBP(req.params.id, season, playerRow, I, teamId, totRow);
       return result ? { season, row: result.row, pbpGames: result.pbpGames } : null;
     }));
 
