@@ -109,6 +109,8 @@ const teamSeasonStatsCache = {};
 // ── Game summary cache (for PBP lineup reconstruction) ───────────────────────
 const gameSummaryCache = {};
 
+const GAME_MINUTES = 40;
+
 async function fetchGameSummary(eventId) {
   if (eventId in gameSummaryCache) return gameSummaryCache[eventId];
   try {
@@ -420,7 +422,6 @@ function computeWinShares(playerRow, I, tm, lg, ptsAllowedPg) {
 
   if (mp <= 0 || gp <= 0 || !tm || !lg || ptsAllowedPg == null) return [null, null, null, null];
 
-  const M      = 40;
   const VOP    = lg.pts / (lg.fga - lg.orb + lg.tov + 0.44*lg.fta);
   const lgPace = lg.fga - lg.orb + lg.tov + 0.44*lg.fta;
   const tmPace = (tm.fgaPg ?? 0) - (tm.orbPg ?? 0) + (tm.tovPg ?? 0) + 0.44*(tm.ftaPg ?? 0);
@@ -431,7 +432,7 @@ function computeWinShares(playerRow, I, tm, lg, ptsAllowedPg) {
   const ptsPerWin = 0.32 * lg.pts * (tmPace / lgPace);
 
   // qAST: estimated fraction of player's FGM that were assisted by a teammate
-  const perMp    = mp / M;
+  const perMp    = mp / GAME_MINUTES;
   const denomFgm = (tm.fgmPg ?? 0) * perMp - fgm;
   let qAST = 0;
   if ((tm.fgmPg ?? 0) > 0.01) {
@@ -481,7 +482,7 @@ function computeWinShares(playerRow, I, tm, lg, ptsAllowedPg) {
 
   // Defensive Win Shares: player's minutes share × team defensive savings vs replacement
   const tmDRtg  = 100 * ptsAllowedPg / tmPace;
-  const margDef = (mp / (5 * M)) * tmPace * (1.08 * (lgORtg/100) - (tmDRtg/100)) * gp;
+  const margDef = (mp / (5 * GAME_MINUTES)) * tmPace * (1.08 * (lgORtg/100) - (tmDRtg/100)) * gp;
   const dws = ptsPerWin > 0 ? Math.max(0, margDef) / ptsPerWin : null;
 
   const ws      = (ows ?? 0) + (dws ?? 0);
@@ -490,6 +491,36 @@ function computeWinShares(playerRow, I, tm, lg, ptsAllowedPg) {
   const wsPer48 = totalMin > 0 ? ws / (totalMin / 48) : null;
 
   return [ows, dws, ws, wsPer48];
+}
+
+function computePER(mp, fga, fgm, fg3m, fta, ftm, orb, trb, stl, blk, tov, ast, pf, tmRatio, tmPace, lg) {
+  const VOP   = lg.pts / (lg.fga - lg.orb + lg.tov + 0.44*lg.fta);
+  const DRBP  = lg.drb / lg.trb;
+  const factor = (2/3) - (0.5 * lg.ast/lg.fgm) / (2 * lg.fgm/lg.ftm);
+  const uPER = (1/mp) * (
+    fg3m + (2/3)*ast + (2 - factor*tmRatio)*fgm
+    + ftm * 0.5 * (1 + (1-tmRatio) + (2/3)*tmRatio)
+    - VOP*tov - VOP*DRBP*(fga-fgm)
+    - VOP*0.44*(0.44+0.56*DRBP)*(fta-ftm)
+    + VOP*(1-DRBP)*(trb-orb) + VOP*DRBP*orb
+    + VOP*stl + VOP*DRBP*blk
+    - pf*(lg.ftm/lg.pf - 0.44*(lg.fta/lg.pf)*VOP)
+  );
+  const lgPace = lg.fga - lg.orb + lg.tov + 0.44*lg.fta;
+  const aPER   = tmPace > 0 ? (lgPace / tmPace) * uPER : uPER;
+  const lgTmR  = lg.ast / lg.fgm;
+  const lgFact = (2/3) - (0.5*lgTmR) / (2*lg.fgm/lg.ftm);
+  const s = n => n / 5;
+  const lgUPER = (1/GAME_MINUTES) * (
+    s(lg.fg3m) + (2/3)*s(lg.ast) + (2-lgFact*lgTmR)*s(lg.fgm)
+    + s(lg.ftm)*0.5*(1+(1-lgTmR)+(2/3)*lgTmR)
+    - VOP*s(lg.tov) - VOP*DRBP*(s(lg.fga)-s(lg.fgm))
+    - VOP*0.44*(0.44+0.56*DRBP)*(s(lg.fta)-s(lg.ftm))
+    + VOP*(1-DRBP)*s(lg.drb) + VOP*DRBP*s(lg.orb)
+    + VOP*s(lg.stl) + VOP*DRBP*s(lg.blk)
+    - s(lg.pf)*(lg.ftm/lg.pf - 0.44*(lg.fta/lg.pf)*VOP)
+  );
+  return lgUPER > 0 ? (15 / lgUPER) * aPER : null;
 }
 
 function advancedRow(row, I, tm, lg, totRow) {
@@ -519,10 +550,8 @@ function advancedRow(row, I, tm, lg, totRow) {
   let stlPct=null, blkPct=null, per=null;
 
   if (tm && lg && mp > 0) {
-    const M = 40; // WNBA regulation minutes per game
-
     // tm.oFgaPg is set only when PBP on-court data is available.
-    // On-court stats are already scaled to the player's playing time, so the M/mp
+    // On-court stats are already scaled to the player's playing time, so the GAME_MINUTES/mp
     // factor that appears in approximation formulas cancels out.
     const hasPBP = tm.oFgaPg !== undefined;
 
@@ -531,7 +560,7 @@ function advancedRow(row, I, tm, lg, totRow) {
       // tm.* = team on-court per-game stats while player was on floor
       // tm.o* = opponent on-court per-game stats while player was on floor
 
-      // USG%: player poss / on-court team poss (M/mp cancels since both scaled to player's time)
+      // USG%: player poss / on-court team poss (GAME_MINUTES/mp cancels since both scaled to player's time)
       const tmPoss = tm.fgaPg + 0.44*tm.ftaPg + tm.tovPg;
       if (tmPoss > 0) usgPct = (fga + 0.44*fta + tov) / tmPoss;
 
@@ -553,107 +582,53 @@ function advancedRow(row, I, tm, lg, totRow) {
       const trbD = tm.orbPg + tm.drbPg + tm.oOrbPg + tm.oDrbPg;
       if (trbD > 0) trbPct = trb / trbD;
 
-      // STL%: player STL / on-court opp possessions (M/mp cancels)
+      // STL%: player STL / on-court opp possessions (GAME_MINUTES/mp cancels)
       const oppPoss = tm.oFgaPg + 0.44*tm.oFtaPg + tm.oTovPg - tm.oOrbPg;
       if (oppPoss > 0) stlPct = stl / oppPoss;
 
-      // BLK%: player BLK / on-court opp 2PA (M/mp cancels)
+      // BLK%: player BLK / on-court opp 2PA (GAME_MINUTES/mp cancels)
       const opp2PA = tm.oFgaPg - tm.oFg3aPg;
       if (opp2PA > 0) blkPct = blk / opp2PA;
 
-      // PER: use on-court tm ratio and pace for better accuracy
       const tmRatio = tm.fgmPg > 0 ? tm.astPg / tm.fgmPg : 0;
-      const factor  = (2/3) - (0.5 * lg.ast/lg.fgm) / (2 * lg.fgm/lg.ftm);
-      const VOP     = lg.pts / (lg.fga - lg.orb + lg.tov + 0.44*lg.fta);
-      const DRBP    = lg.drb / lg.trb;
-      const uPER = (1/mp) * (
-        fg3m + (2/3)*ast + (2 - factor*tmRatio)*fgm
-        + ftm * 0.5 * (1 + (1-tmRatio) + (2/3)*tmRatio)
-        - VOP*tov - VOP*DRBP*(fga-fgm)
-        - VOP*0.44*(0.44+0.56*DRBP)*(fta-ftm)
-        + VOP*(1-DRBP)*(trb-orb) + VOP*DRBP*orb
-        + VOP*stl + VOP*DRBP*blk
-        - pf*(lg.ftm/lg.pf - 0.44*(lg.fta/lg.pf)*VOP)
-      );
-      const lgPace  = lg.fga - lg.orb + lg.tov + 0.44*lg.fta;
       // tmPace is on-court pace per game-played (player's playing time, not 40 min).
       // Normalize to per-40-min so it's on the same scale as lgPace before taking the ratio.
-      const tmPace  = (tm.fgaPg - tm.orbPg + tm.tovPg + 0.44*tm.ftaPg) * (M / mp);
-      const aPER    = tmPace > 0 ? (lgPace / tmPace) * uPER : uPER;
-      const lgTmR   = lg.ast / lg.fgm;
-      const lgFact  = (2/3) - (0.5*lgTmR) / (2*lg.fgm/lg.ftm);
-      const s = n => n / 5;
-      const lgUPER  = (1/M) * (
-        s(lg.fg3m) + (2/3)*s(lg.ast) + (2-lgFact*lgTmR)*s(lg.fgm)
-        + s(lg.ftm)*0.5*(1+(1-lgTmR)+(2/3)*lgTmR)
-        - VOP*s(lg.tov) - VOP*DRBP*(s(lg.fga)-s(lg.fgm))
-        - VOP*0.44*(0.44+0.56*DRBP)*(s(lg.fta)-s(lg.ftm))
-        + VOP*(1-DRBP)*s(lg.drb) + VOP*DRBP*s(lg.orb)
-        + VOP*s(lg.stl) + VOP*DRBP*s(lg.blk)
-        - s(lg.pf)*(lg.ftm/lg.pf - 0.44*(lg.fta/lg.pf)*VOP)
-      );
-      if (lgUPER > 0) per = (15 / lgUPER) * aPER;
+      const tmPace  = (tm.fgaPg - tm.orbPg + tm.tovPg + 0.44*tm.ftaPg) * (GAME_MINUTES / mp);
+      per = computePER(mp, fga, fgm, fg3m, fta, ftm, orb, trb, stl, blk, tov, ast, pf, tmRatio, tmPace, lg);
 
     } else {
       // ── Approximation path (season-average team stats) ───────────────────────
       // tm.* = full-season per-game team averages (not on-court specific)
 
       const tmPoss = tm.fgaPg + 0.44*tm.ftaPg + tm.tovPg;
-      if (tmPoss > 0) usgPct = (fga + 0.44*fta + tov) * M / (mp * tmPoss);
+      if (tmPoss > 0) usgPct = (fga + 0.44*fta + tov) * GAME_MINUTES / (mp * tmPoss);
 
-      const onFloorFgm = (mp / M) * tm.fgmPg;
+      const onFloorFgm = (mp / GAME_MINUTES) * tm.fgmPg;
       if (onFloorFgm > fgm) astPct = ast / (onFloorFgm - fgm);
 
       // ORB%: OppDRB ≈ TmFGA - TmFGM
       const tmMissed = tm.fgaPg - tm.fgmPg;
-      if (tmMissed > 0) orbPct = orb * M / (mp * tmMissed);
+      if (tmMissed > 0) orbPct = orb * GAME_MINUTES / (mp * tmMissed);
 
       // DRB%: OppORB ≈ lgORB
       const drbD = tm.drbPg + lg.orb;
-      if (drbD > 0) drbPct = drb * M / (mp * drbD);
+      if (drbD > 0) drbPct = drb * GAME_MINUTES / (mp * drbD);
 
       // TRB%: TmMissedFG + lgMissedFG
       const trbD = tmMissed + (lg.fga - lg.fgm);
-      if (trbD > 0) trbPct = trb * M / (mp * trbD);
+      if (trbD > 0) trbPct = trb * GAME_MINUTES / (mp * trbD);
 
       // STL%: OppPoss ≈ league average
       const lgPoss = lg.fga + 0.44*lg.fta + lg.tov - lg.orb;
-      if (lgPoss > 0) stlPct = stl * M / (mp * lgPoss);
+      if (lgPoss > 0) stlPct = stl * GAME_MINUTES / (mp * lgPoss);
 
       // BLK%: Opp2PA ≈ lgFGA - lg3PA
       const lg2PA = lg.fga - lg.fg3a;
-      if (lg2PA > 0) blkPct = blk * M / (mp * lg2PA);
+      if (lg2PA > 0) blkPct = blk * GAME_MINUTES / (mp * lg2PA);
 
-      // PER (Hollinger)
-      const tmRatio = tm.astPg / tm.fgmPg;
-      const factor  = (2/3) - (0.5 * lg.ast/lg.fgm) / (2 * lg.fgm/lg.ftm);
-      const VOP     = lg.pts / (lg.fga - lg.orb + lg.tov + 0.44*lg.fta);
-      const DRBP    = lg.drb / lg.trb;
-      const uPER = (1/mp) * (
-        fg3m + (2/3)*ast + (2 - factor*tmRatio)*fgm
-        + ftm * 0.5 * (1 + (1-tmRatio) + (2/3)*tmRatio)
-        - VOP*tov - VOP*DRBP*(fga-fgm)
-        - VOP*0.44*(0.44+0.56*DRBP)*(fta-ftm)
-        + VOP*(1-DRBP)*(trb-orb) + VOP*DRBP*orb
-        + VOP*stl + VOP*DRBP*blk
-        - pf*(lg.ftm/lg.pf - 0.44*(lg.fta/lg.pf)*VOP)
-      );
-      const lgPace = lg.fga - lg.orb + lg.tov + 0.44*lg.fta;
-      const tmPace = tm.fgaPg - tm.orbPg + tm.tovPg + 0.44*tm.ftaPg;
-      const aPER   = (lgPace / tmPace) * uPER;
-      const lgTmR  = lg.ast / lg.fgm;
-      const lgFact = (2/3) - (0.5*lgTmR) / (2*lg.fgm/lg.ftm);
-      const s = n => n / 5;
-      const lgUPER = (1/M) * (
-        s(lg.fg3m) + (2/3)*s(lg.ast) + (2-lgFact*lgTmR)*s(lg.fgm)
-        + s(lg.ftm)*0.5*(1+(1-lgTmR)+(2/3)*lgTmR)
-        - VOP*s(lg.tov) - VOP*DRBP*(s(lg.fga)-s(lg.fgm))
-        - VOP*0.44*(0.44+0.56*DRBP)*(s(lg.fta)-s(lg.ftm))
-        + VOP*(1-DRBP)*s(lg.drb) + VOP*DRBP*s(lg.orb)
-        + VOP*s(lg.stl) + VOP*DRBP*s(lg.blk)
-        - s(lg.pf)*(lg.ftm/lg.pf - 0.44*(lg.fta/lg.pf)*VOP)
-      );
-      if (lgUPER > 0) per = (15 / lgUPER) * aPER;
+      const tmRatio = (tm.fgmPg ?? 0) > 0 ? (tm.astPg ?? 0) / tm.fgmPg : 0;
+      const tmPace  = (tm.fgaPg ?? 0) - (tm.orbPg ?? 0) + (tm.tovPg ?? 0) + 0.44*(tm.ftaPg ?? 0);
+      per = computePER(mp, fga, fgm, fg3m, fta, ftm, orb, trb, stl, blk, tov, ast, pf, tmRatio, tmPace, lg);
     }
   }
 
@@ -896,9 +871,7 @@ async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow) 
   const advRow = advancedRow(playerRow, I, tmOC, lg, totRow);
 
   // Win Shares: use season-avg team stats (not on-court) + pts allowed from gamelog
-  const [tmStats] = await Promise.all([
-    teamId ? fetchTeamStats(teamId, season) : Promise.resolve(null),
-  ]);
+  const tmStats = teamId ? await fetchTeamStats(teamId, season) : null;
   const ptsAllowedPg = ptsAllowedCount > 0 ? ptsAllowedSum / ptsAllowedCount : null;
   const wsVals = (tmStats && ptsAllowedPg != null && lg)
     ? computeWinShares(playerRow, I, tmStats, lg, ptsAllowedPg)
