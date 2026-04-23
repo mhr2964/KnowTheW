@@ -155,6 +155,13 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
   const gameLogAbortRef = useRef(null);
   const gameLogFetchedRef = useRef(new Set());
 
+  const [pbpSeason, setPbpSeason] = useState(null);
+  const [pbpCache, setPbpCache] = useState({});
+  const [pbpLoading, setPbpLoading] = useState(false);
+  const [pbpError, setPbpError] = useState(false);
+  const pbpAbortRef = useRef(null);
+  const pbpFetchedRef = useRef(new Set());
+
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
@@ -214,10 +221,43 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
 
   useEffect(() => () => { gameLogAbortRef.current?.abort(); }, []);
 
+  useEffect(() => {
+    if (activeType !== 'advanced' || !pbpSeason) return;
+    if (pbpFetchedRef.current.has(pbpSeason)) return;
+    pbpFetchedRef.current.add(pbpSeason);
+
+    pbpAbortRef.current?.abort();
+    const controller = new AbortController();
+    pbpAbortRef.current = controller;
+    setPbpLoading(true);
+    setPbpError(false);
+
+    fetch(`/api/players/${playerId}/advanced-pbp?season=${pbpSeason}`, { signal: controller.signal })
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(d => {
+        setPbpCache(prev => ({ ...prev, [pbpSeason]: d }));
+        setPbpLoading(false);
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') {
+          pbpFetchedRef.current.delete(pbpSeason);
+          setPbpError(true);
+          setPbpLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [activeType, pbpSeason, playerId]);
+
+  useEffect(() => () => { pbpAbortRef.current?.abort(); }, []);
+
   function handleTypeClick(key) {
     setActiveType(key);
     if (key === 'gamelog' && !gameLogSeason && availableSeasons.length > 0) {
       setGameLogSeason(availableSeasons[0]);
+    }
+    if (key === 'advanced' && !pbpSeason && availableSeasons.length > 0) {
+      setPbpSeason(availableSeasons[0]);
     }
   }
 
@@ -225,6 +265,11 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
     setGameLogSeason(season);
     setGlPage(1);
     setGameLogError(false);
+  }
+
+  function handlePbpSeasonChange(season) {
+    setPbpSeason(season);
+    setPbpError(false);
   }
 
   function handlePageSizeChange(size) {
@@ -242,12 +287,17 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
   const disabledTypes = ALL_TABLE_TYPES.filter(t => !activeKeys.has(t.key));
   const safeType = activeKeys.has(activeType) ? activeType : 'perGame';
 
-  const isGamelog = safeType === 'gamelog';
-  const tableData = isGamelog ? null : data[safeType];
-  const hasPlayoffs = isGamelog ? false : !!tableData?.playoffs?.rows?.length;
+  const isGamelog  = safeType === 'gamelog';
+  const isAdvanced = safeType === 'advanced';
+  const tableData  = (isGamelog || isAdvanced) ? null : data[safeType];
+  const hasPlayoffs = (isGamelog || isAdvanced) ? false : !!tableData?.playoffs?.rows?.length;
   const curSeason = (!hasPlayoffs && activeSeason === 'playoffs') ? 'regular' : activeSeason;
-  const regular = isGamelog ? null : (curSeason === 'regular' ? tableData?.regular : tableData?.playoffs);
-  const career  = isGamelog ? null : (curSeason === 'regular' ? tableData?.regularCareer : tableData?.playoffCareer);
+  const regular = (isGamelog || isAdvanced) ? null : (curSeason === 'regular' ? tableData?.regular : tableData?.playoffs);
+  const career  = (isGamelog || isAdvanced) ? null : (curSeason === 'regular' ? tableData?.regularCareer : tableData?.playoffCareer);
+
+  const advCareerTable = isAdvanced ? (curSeason === 'regular' ? data.advanced?.regular : data.advanced?.playoffs) : null;
+  const advCareerRow   = isAdvanced ? (curSeason === 'regular' ? data.advanced?.regularCareer : data.advanced?.playoffCareer) : null;
+  const pbpData = pbpCache[pbpSeason] ?? null;
 
   const currentLog = gameLogCache[gameLogSeason] ?? null;
   const allGames = currentLog?.games ?? [];
@@ -290,7 +340,42 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
           ))}
         </div>
 
-        {isGamelog ? (
+        {isAdvanced ? (
+          <>
+            <div className="adv-pbp-section">
+              <div className="gl-controls">
+                <span className="pbp-badge">PBP-Enhanced</span>
+                {availableSeasons.length > 0 && (
+                  <select
+                    className="gl-select"
+                    value={pbpSeason ?? ''}
+                    onChange={e => handlePbpSeasonChange(e.target.value)}
+                  >
+                    {availableSeasons.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                )}
+                {pbpData && (
+                  <span className="gl-game-count">{pbpData.pbpGames} games</span>
+                )}
+              </div>
+              {pbpLoading && <p className="status-msg" style={{ padding: '0.75rem 0' }}>Loading PBP stats…</p>}
+              {pbpError && <p className="status-msg error">Could not load PBP stats.</p>}
+              {!pbpLoading && !pbpError && pbpData && (
+                <BrefTable
+                  regular={{ headers: pbpData.headers, rows: [pbpData.row] }}
+                  career={null}
+                />
+              )}
+              {!pbpLoading && !pbpError && !pbpData && pbpSeason && (
+                <p className="stats-na">No PBP data available for this season.</p>
+              )}
+            </div>
+            <div className="adv-career-header">Career (season averages)</div>
+            <BrefTable regular={advCareerTable} career={advCareerRow} />
+          </>
+        ) : isGamelog ? (
           <>
             <div className="gl-controls">
               {availableSeasons.length > 1 && (
