@@ -132,7 +132,7 @@ async function fetchGameSummary(eventId) {
     const data = await res.json();
     if (db) db.collection('gameSummaries')
       .replaceOne({ _id: eventId }, { _id: eventId, data }, { upsert: true })
-      .catch(() => {});
+      .catch(err => console.error('mongo write gameSummaries:', err.message));
     return (gameSummaryCache[eventId] = data);
   } catch {
     return (gameSummaryCache[eventId] = null);
@@ -951,7 +951,7 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
     };
     if (db) db.collection('advancedStats')
       .replaceOne({ _id: req.params.id }, { _id: req.params.id, gp: currentGP, data: advResult }, { upsert: true })
-      .catch(() => {});
+      .catch(err => console.error('mongo write advancedStats:', err.message));
     res.json(advResult);
   } catch (err) {
     console.error('advanced-pbp-all:', err.message);
