@@ -182,19 +182,27 @@ function computeOnCourtStats(summary, targetPlayerId) {
     const sv    = play.scoreValue ?? 0;
     const is3   = isFGA && (sv === 3 || play.text?.toLowerCase().includes('three point'));
 
+    // Team rebounds (no participants = deadball, shot-clock, OOB) are not
+    // contested by individuals — exclude them from all rebound tallies.
+    const isPlayerRebound = parts.length > 0;
+
     if (playTeam === targetTeamId) {
       if (isFGA) { oc.fga++; if (is3) oc.fg3a++; if (made) oc.fgm++; }
       else if (isFT) { oc.fta++; if (made) oc.ftm++; }
-      if (play.type?.text === 'Offensive Rebound')      oc.orb++;
-      else if (play.type?.text === 'Defensive Rebound') oc.drb++;
-      if (play.type?.text?.includes('Turnover'))        oc.tov++;
-      if (isFGA && made && parts.length >= 2)           oc.ast++;
+      if (isPlayerRebound) {
+        if (play.type?.text === 'Offensive Rebound')      oc.orb++;
+        else if (play.type?.text === 'Defensive Rebound') oc.drb++;
+      }
+      if (play.type?.text?.includes('Turnover'))          oc.tov++;
+      if (isFGA && made && parts.length >= 2)             oc.ast++;
     } else {
       if (isFGA) { oc.oFga++; if (is3) oc.oFg3a++; if (made) oc.oFgm++; }
       else if (isFT) oc.oFta++;
-      if (play.type?.text === 'Offensive Rebound')      oc.oOrb++;
-      else if (play.type?.text === 'Defensive Rebound') oc.oDrb++;
-      if (play.type?.text?.includes('Turnover'))        oc.oTov++;
+      if (isPlayerRebound) {
+        if (play.type?.text === 'Offensive Rebound')      oc.oOrb++;
+        else if (play.type?.text === 'Defensive Rebound') oc.oDrb++;
+      }
+      if (play.type?.text?.includes('Turnover'))          oc.oTov++;
     }
   }
 
