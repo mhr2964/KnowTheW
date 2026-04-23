@@ -112,7 +112,7 @@ async function fetchTeamPtsAllowed(teamId, year) {
       const tm  = comps.find(c => String(c.team?.id) === String(teamId));
       const opp = comps.find(c => String(c.team?.id) !== String(teamId));
       if (tm && opp && opp.score != null) {
-        const pts = parseInt(opp.score);
+        const pts = parseFloat(opp.score?.value ?? opp.score);
         if (!isNaN(pts) && pts > 0) { sum += pts; count++; }
       }
     }
