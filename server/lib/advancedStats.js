@@ -122,6 +122,16 @@ function computePER(mp, fga, fgm, fg3m, fta, ftm, orb, trb, stl, blk, tov, ast, 
   return lgUPER > 0 ? (15 / lgUPER) * aPER : null;
 }
 
+function computeBasicRatioStats(fga, fgm, fg3m, fg3a, fta, pts, tov) {
+  const ts     = (fga + 0.44*fta) > 0 ? pts / (2*(fga + 0.44*fta)) : null;
+  const efg    = fga > 0 ? (fgm + 0.5*fg3m) / fga : null;
+  const tpar   = fga > 0 ? fg3a / fga : null;
+  const ftr    = fga > 0 ? fta / fga : null;
+  const poss   = fga + 0.44*fta + tov;
+  const tovPct = poss > 0 ? tov / poss : null;
+  return { ts, efg, tpar, ftr, tovPct };
+}
+
 // Walk ESPN PBP to accumulate team and opponent stats while target player is on court.
 // Returns { fga, fgm, fg3a, ftm, fta, orb, drb, tov, ast,
 //           oFga, oFgm, oFg3a, oFta, oOrb, oDrb, oTov } or null if player not found.
@@ -224,12 +234,7 @@ function advancedRow(row, I, tm, lg, totRow) {
   const tFg3m = t[I.FG3M] ?? 0, tFg3a = t[I.FG3A] ?? 0;
   const tFta  = t[I.FTA] ?? 0, tTov = t[I.TOV] ?? 0, tPts = t[I.PTS] ?? 0;
 
-  const ts     = (tFga + 0.44*tFta) > 0 ? tPts / (2*(tFga + 0.44*tFta)) : null;
-  const efg    = tFga > 0 ? (tFgm + 0.5*tFg3m) / tFga : null;
-  const tpar   = tFga > 0 ? tFg3a / tFga : null;
-  const ftr    = tFga > 0 ? tFta / tFga : null;
-  const poss   = tFga + 0.44*tFta + tTov;
-  const tovPct = poss > 0 ? tTov / poss : null;
+  const { ts, efg, tpar, ftr, tovPct } = computeBasicRatioStats(tFga, tFgm, tFg3m, tFg3a, tFta, tPts, tTov);
 
   let usgPct=null, astPct=null, orbPct=null, drbPct=null, trbPct=null;
   let stlPct=null, blkPct=null, per=null;
@@ -330,12 +335,7 @@ function buildAdvancedCareer(pgSrc, totSrc) {
   const fga = t[I.FGA] ?? 0, fgm = t[I.FGM] ?? 0;
   const fg3m = t[I.FG3M] ?? 0, fg3a = t[I.FG3A] ?? 0;
   const fta = t[I.FTA] ?? 0, pts = t[I.PTS] ?? 0, tov = t[I.TOV] ?? 0;
-  const ts     = (fga + 0.44*fta) > 0 ? pts / (2*(fga + 0.44*fta)) : null;
-  const efg    = fga > 0 ? (fgm + 0.5*fg3m) / fga : null;
-  const tpar   = fga > 0 ? fg3a / fga : null;
-  const ftr    = fga > 0 ? fta / fga : null;
-  const poss   = fga + 0.44*fta + tov;
-  const tovPct = poss > 0 ? tov / poss : null;
+  const { ts, efg, tpar, ftr, tovPct } = computeBasicRatioStats(fga, fgm, fg3m, fg3a, fta, pts, tov);
   return { headers: ADV_HEADERS_SRV, rows: [
     [row[I.SEASON_ID], row[I.TEAM_ABBREVIATION], row[I.GP],
      ts, efg, tpar, ftr, tovPct,
@@ -408,6 +408,6 @@ async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow) 
 
 module.exports = {
   ADV_HEADERS_SRV, PBP_OC_KEYS,
-  computePER, computeWinShares, computeOnCourtStats,
+  computeBasicRatioStats, computePER, computeWinShares, computeOnCourtStats,
   advancedRow, buildAdvancedSplit, buildAdvancedCareer, computeSeasonPBP,
 };
