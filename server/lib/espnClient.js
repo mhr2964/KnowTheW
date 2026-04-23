@@ -8,6 +8,7 @@ const rosterPromises = {};
 const rosterData = {};
 const playerById = {};
 const teamSeasonStatsCache = {};
+const teamScheduleCache = {};
 
 async function fetchTeams() {
   const res = await fetch(`${ESPN}/teams?limit=100`);
@@ -93,6 +94,31 @@ async function fetchTeamStats(teamId, year) {
   }
 }
 
+// Returns average points allowed per regular-season game (full team schedule, not player gamelog).
+async function fetchTeamPtsAllowed(teamId, year) {
+  const key = `${teamId}-${year}`;
+  if (key in teamScheduleCache) return teamScheduleCache[key];
+  try {
+    const res = await fetch(`${ESPN}/teams/${teamId}/schedule?season=${year}`);
+    if (!res.ok) return (teamScheduleCache[key] = null);
+    const data = await res.json();
+    let sum = 0, count = 0;
+    for (const event of data.events ?? []) {
+      if (event.seasonType?.type !== 2 && event.seasonType?.id !== '2') continue;
+      const comps = event.competitions?.[0]?.competitors ?? [];
+      const tm  = comps.find(c => String(c.team?.id) === String(teamId));
+      const opp = comps.find(c => String(c.team?.id) !== String(teamId));
+      if (tm && opp && opp.score != null) {
+        const pts = parseInt(opp.score);
+        if (!isNaN(pts) && pts > 0) { sum += pts; count++; }
+      }
+    }
+    return (teamScheduleCache[key] = count > 0 ? sum / count : null);
+  } catch {
+    return (teamScheduleCache[key] = null);
+  }
+}
+
 async function fetchGameSummary(eventId) {
   const db = getDb();
   if (db) {
@@ -121,6 +147,6 @@ getTeams()
 
 module.exports = {
   ESPN_WEB,
-  getTeams, getRoster, fetchTeamStats, fetchGameSummary,
+  getTeams, getRoster, fetchTeamStats, fetchTeamPtsAllowed, fetchGameSummary,
   rosterData, playerById, teamSeasonStatsCache,
 };

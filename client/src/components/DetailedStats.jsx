@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import StudyFlow from './StudyFlow';
+import useLazyFetch from '../hooks/useLazyFetch';
 import { HIDDEN, LABELS, PCT_COLS, PCT100_COLS, deriveColumns } from '../lib/statsColumns';
 
 const LEFT_COLS = new Set(['SEASON_ID', 'TEAM_ABBREVIATION']);
@@ -144,6 +145,7 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
   const [error, setError] = useState(null);
   const [activeType, setActiveType] = useState('perGame');
   const [activeSeason, setActiveSeason] = useState('regular');
+  const [advSeason, setAdvSeason] = useState('regular');
   const [studyConfig, setStudyConfig] = useState(null);
 
   const [gameLogSeason, setGameLogSeason] = useState(null);
@@ -155,11 +157,10 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
   const gameLogAbortRef = useRef(null);
   const gameLogFetchedRef = useRef(new Set());
 
-  const [pbpAllData, setPbpAllData] = useState(null);
-  const [pbpAllLoading, setPbpAllLoading] = useState(false);
-  const [pbpAllError, setPbpAllError] = useState(false);
-  const pbpAllAbortRef = useRef(null);
-  const pbpAllFetchedRef = useRef(false);
+  const { data: pbpAllData, loading: pbpAllLoading, error: pbpAllError } = useLazyFetch(
+    `/api/players/${playerId}/advanced-pbp-all`,
+    activeType === 'advanced'
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -219,33 +220,6 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
   }, [activeType, gameLogSeason, playerId]);
 
   useEffect(() => () => { gameLogAbortRef.current?.abort(); }, []);
-
-  useEffect(() => {
-    if (activeType !== 'advanced') return;
-    if (pbpAllFetchedRef.current) return;
-    pbpAllFetchedRef.current = true;
-
-    pbpAllAbortRef.current?.abort();
-    const controller = new AbortController();
-    pbpAllAbortRef.current = controller;
-    setPbpAllLoading(true);
-    setPbpAllError(false);
-
-    fetch(`/api/players/${playerId}/advanced-pbp-all`, { signal: controller.signal })
-      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(d => { setPbpAllData(d); setPbpAllLoading(false); })
-      .catch(err => {
-        if (err.name !== 'AbortError') {
-          pbpAllFetchedRef.current = false;
-          setPbpAllError(true);
-          setPbpAllLoading(false);
-        }
-      });
-
-    return () => controller.abort();
-  }, [activeType, playerId]);
-
-  useEffect(() => () => { pbpAllAbortRef.current?.abort(); }, []);
 
   function handleTypeClick(key) {
     setActiveType(key);
@@ -326,17 +300,28 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
 
         {isAdvanced ? (
           <>
-            <div className="gl-controls">
-              <span className="pbp-badge">PBP-Enhanced</span>
-            </div>
             {pbpAllLoading && <p className="status-msg" style={{ padding: '1rem 0' }}>Loading advanced stats… (fetching play-by-play for all seasons)</p>}
             {pbpAllError && <p className="status-msg error">Could not load advanced stats.</p>}
-            {!pbpAllLoading && !pbpAllError && pbpAllData && (
-              <BrefTable
-                regular={{ headers: pbpAllData.headers, rows: pbpAllData.rows }}
-                career={null}
-              />
-            )}
+            {!pbpAllLoading && !pbpAllError && pbpAllData && (() => {
+              const advHasPlayoffs = !!pbpAllData.playoffs;
+              const advSplit = (advSeason === 'playoffs' && advHasPlayoffs)
+                ? pbpAllData.playoffs
+                : pbpAllData.regular;
+              return (
+                <>
+                  {advHasPlayoffs && (
+                    <div className="stat-season-bar">
+                      <button type="button" className={`stat-season-tab${advSeason === 'regular' ? ' active' : ''}`} onClick={() => setAdvSeason('regular')}>Regular Season</button>
+                      <button type="button" className={`stat-season-tab${advSeason === 'playoffs' ? ' active' : ''}`} onClick={() => setAdvSeason('playoffs')}>Playoffs</button>
+                    </div>
+                  )}
+                  <BrefTable
+                    regular={{ headers: pbpAllData.headers, rows: advSplit?.rows ?? [] }}
+                    career={advSplit?.careerRow ? { headers: pbpAllData.headers, rows: [advSplit.careerRow] } : null}
+                  />
+                </>
+              );
+            })()}
           </>
         ) : isGamelog ? (
           <>

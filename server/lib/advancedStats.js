@@ -1,5 +1,5 @@
 const { GAME_MINUTES, WNBA_LG } = require('../constants/leagueAverages');
-const { ESPN_WEB, fetchGameSummary, fetchTeamStats } = require('./espnClient');
+const { ESPN_WEB, fetchGameSummary, fetchTeamStats, fetchTeamPtsAllowed } = require('./espnClient');
 
 const ADV_HEADERS_SRV = [
   'SEASON_ID', 'TEAM_ABBREVIATION', 'GP',
@@ -53,22 +53,19 @@ function computeWinShares(playerRow, I, tm, lg, ptsAllowedPg) {
     ? 2 * (fgm + 0.5*fg3m) * (1 - 0.5 * ((pts - ftm) / (2*fga)) * qAST)
     : 0;
 
-  // PProd_AST: points produced via assists (BRef formula)
-  const tmFGM_excl  = (tm.fgmPg  ?? 0) - fgm;
-  const tmFGA_excl  = (tm.fgaPg  ?? 0) - fga;
-  const tmFG3M_excl = (tm.fg3mPg ?? 0) - fg3m;
+  // PProd_AST: points produced via assists.
+  // BRef formula: 2 × AST_Part = (teammates' eFG%) × AST
+  const tmFGA_excl   = (tm.fgaPg  ?? 0) - fga;
   const tmFGpts_excl = ((tm.ptsPg ?? 0) - (tm.ftmPg ?? 0)) - (pts - ftm);
-  let PProd_AST = 0;
-  if (tmFGM_excl > 0.01 && tmFGA_excl > 0.01) {
-    PProd_AST = 2 * ((tmFGM_excl + 0.5*tmFG3M_excl) / tmFGM_excl)
-      * 0.5 * (tmFGpts_excl / (2 * tmFGA_excl))
-      * ast;
-  }
+  const PProd_AST = (tmFGpts_excl > 0 && tmFGA_excl > 0.01)
+    ? (tmFGpts_excl / (2 * tmFGA_excl)) * ast
+    : 0;
 
-  // PProd_ORB: value added by offensive rebounds (extend possession)
-  const orbDenom = 5 * (tm.orbPg ?? 0) - orb;
+  // PProd_ORB: value added by offensive rebounds.
+  // Denominator = 5 × TmORB + LgDRB (total available ORBs scaled to 5 positions)
+  const orbDenom = 5 * (tm.orbPg ?? 0) + (lg.drb ?? 0);
   const PProd_ORB = orbDenom > 0.01
-    ? orb * 0.5 * (0.5 * (((tm.orbPg ?? 0) + lg.drb) / orbDenom))
+    ? orb * 0.5 * (0.5 * (((tm.orbPg ?? 0) + (lg.drb ?? 0)) / orbDenom))
     : 0;
 
   // PProd_FT: free throw production (BRef: adjusted for team assist rate)
@@ -344,25 +341,20 @@ function buildAdvancedCareer(pgSrc, totSrc) {
   ]};
 }
 
-async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow) {
+async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, seasontype = 2) {
   const glData = await fetch(
-    `${ESPN_WEB}/athletes/${playerId}/gamelog?season=${season}&seasontype=2`
+    `${ESPN_WEB}/athletes/${playerId}/gamelog?season=${season}&seasontype=${seasontype}`
   ).then(r => r.ok ? r.json() : null);
   if (!glData) return null;
 
+  // ESPN returns all season types regardless of the seasontype param — filter to the right one.
+  const stFilter = seasontype === 2 ? 'Regular Season' : 'Postseason';
   const eventIds = [];
-  let ptsAllowedSum = 0, ptsAllowedCount = 0;
   (glData.seasonTypes || []).forEach(st => {
-    if (!st.displayName?.includes('Regular Season')) return;
+    if (!st.displayName?.includes(stFilter)) return;
     (st.categories || []).forEach(cat => {
       (cat.events || []).forEach(evt => {
         if (evt.eventId) eventIds.push(evt.eventId);
-        const meta = glData.events?.[evt.eventId];
-        if (meta?.homeTeamScore != null && meta?.awayTeamScore != null) {
-          const isHome = meta.atVs === 'vs';
-          const opp = isHome ? parseInt(meta.awayTeamScore) : parseInt(meta.homeTeamScore);
-          if (!isNaN(opp)) { ptsAllowedSum += opp; ptsAllowedCount++; }
-        }
       });
     });
   });
@@ -395,9 +387,10 @@ async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow) 
   const lg = WNBA_LG[season] ?? null;
   const advRow = advancedRow(playerRow, I, tmOC, lg, totRow);
 
-  // Win Shares: use season-avg team stats (not on-court) + pts allowed from gamelog
-  const tmStats = teamId ? await fetchTeamStats(teamId, season) : null;
-  const ptsAllowedPg = ptsAllowedCount > 0 ? ptsAllowedSum / ptsAllowedCount : null;
+  // Win Shares: use season-avg team stats + full-season ptsAllowed (all team games, not just player's)
+  const [tmStats, ptsAllowedPg] = teamId
+    ? await Promise.all([fetchTeamStats(teamId, season), fetchTeamPtsAllowed(teamId, season)])
+    : [null, null];
   const wsVals = (tmStats && ptsAllowedPg != null && lg)
     ? computeWinShares(playerRow, I, tmStats, lg, ptsAllowedPg)
     : [null, null, null, null];

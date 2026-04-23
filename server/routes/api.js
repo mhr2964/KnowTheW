@@ -142,50 +142,104 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
     const player = playerById[req.params.id];
     if (!player) return res.status(404).json({ error: 'player not found' });
 
-    const [teams, statsData] = await Promise.all([
+    const [teams, regData, postData] = await Promise.all([
       getTeams(),
       fetch(`${ESPN_WEB}/athletes/${req.params.id}/stats?seasontype=2`).then(r => r.ok ? r.json() : null),
+      fetch(`${ESPN_WEB}/athletes/${req.params.id}/stats?seasontype=3`).then(r => r.ok ? r.json() : null),
     ]);
 
-    const teamsById = Object.fromEntries(teams.map(t => [t.id, t]));
-    const parsed = parseESPNSeasonData(statsData, teamsById);
-    const pgTable = parsed?.pg?.table;
+    const teamsById  = Object.fromEntries(teams.map(t => [t.id, t]));
+    const regParsed  = parseESPNSeasonData(regData,  teamsById);
+    const postParsed = parseESPNSeasonData(postData, teamsById);
+    const pgTable = regParsed?.pg?.table;
     if (!pgTable) return res.status(404).json({ error: 'no stats for this player' });
     const I = Object.fromEntries(pgTable.headers.map((h, i) => [h, i]));
 
-    // Serve from MongoDB cache if GP hasn't changed since last computation.
-    const currentGP = pgTable.rows.reduce((s, r) => s + (r[I.GP] ?? 0), 0);
+    const pgPostTable = postParsed?.pg?.table;
+    const IPost = pgPostTable
+      ? Object.fromEntries(pgPostTable.headers.map((h, i) => [h, i]))
+      : I;
+
+    // Cache: invalidate when regular or playoff GP changes, or when format is old (no .regular key)
+    const regGP  = pgTable.rows.reduce((s, r) => s + (r[I.GP] ?? 0), 0);
+    const postGP = (pgPostTable?.rows ?? []).reduce((s, r) => s + (r[IPost.GP] ?? 0), 0);
+    const currentGP = regGP + postGP;
     const db = getDb();
     if (db) {
       const advCached = await db.collection('advancedStats').findOne({ _id: req.params.id });
-      if (advCached?.gp === currentGP) return res.json(advCached.data);
+      if (advCached?.gp === currentGP && advCached.data?.regular != null) return res.json(advCached.data);
     }
 
-    const totTable = parsed?.tot?.table;
+    // Build totals-by-year maps for both splits
     const totByYear = {};
-    if (totTable?.rows) {
-      for (const r of totTable.rows) totByYear[String(r[I.SEASON_ID])] = r;
+    const totTable = regParsed?.tot?.table;
+    if (totTable?.rows) for (const r of totTable.rows) totByYear[String(r[I.SEASON_ID])] = r;
+
+    const totPostByYear = {};
+    const totPostTable = postParsed?.tot?.table;
+    if (totPostTable?.rows) for (const r of totPostTable.rows) totPostByYear[String(r[IPost.SEASON_ID])] = r;
+
+    const regTidByYear  = extractTeamIdByYear(regData);
+    const postTidByYear = extractTeamIdByYear(postData);
+
+    const regSeasons  = [...new Set(pgTable.rows.map(r => String(r[I.SEASON_ID])))].filter(s => WNBA_LG[s]);
+    const postSeasons = pgPostTable
+      ? [...new Set(pgPostTable.rows.map(r => String(r[IPost.SEASON_ID])))].filter(s => WNBA_LG[s])
+      : [];
+
+    const [regResults, postResults] = await Promise.all([
+      Promise.all(regSeasons.map(async season => {
+        const playerRow = pgTable.rows.find(r => String(r[I.SEASON_ID]) === season);
+        if (!playerRow) return null;
+        const result = await computeSeasonPBP(req.params.id, season, playerRow, I, regTidByYear[season] ?? null, totByYear[season] ?? null, 2);
+        return result ? { season, row: result.row, pbpGames: result.pbpGames } : null;
+      })),
+      Promise.all(postSeasons.map(async season => {
+        const playerRow = pgPostTable.rows.find(r => String(r[IPost.SEASON_ID]) === season);
+        if (!playerRow) return null;
+        const result = await computeSeasonPBP(req.params.id, season, playerRow, IPost, postTidByYear[season] ?? null, totPostByYear[season] ?? null, 3);
+        return result ? { season, row: result.row, pbpGames: result.pbpGames } : null;
+      })),
+    ]);
+
+    const ADV_I = Object.fromEntries(ADV_HEADERS_SRV.map((h, idx) => [h, idx]));
+
+    function buildSplit(valid, pgRows, rowI) {
+      const seasonMins = Object.fromEntries(
+        (pgRows ?? []).map(r => [String(r[rowI.SEASON_ID]), (r[rowI.MIN] ?? 0) * (r[rowI.GP] ?? 0)])
+      );
+      const careerOWS  = valid.reduce((s, r) => s + (r.row[ADV_I.OWS] ?? 0), 0);
+      const careerDWS  = valid.reduce((s, r) => s + (r.row[ADV_I.DWS] ?? 0), 0);
+      const careerWS   = careerOWS + careerDWS;
+      const careerGP   = valid.reduce((s, r) => s + (r.row[ADV_I.GP]  ?? 0), 0);
+      const careerMin  = valid.reduce((s, r) => s + (seasonMins[r.season] ?? 0), 0);
+      const careerWS48 = careerMin > 0 ? careerWS / (careerMin / 48) : null;
+      const careerRow  = ADV_HEADERS_SRV.map(h => {
+        if (h === 'SEASON_ID') return 'Career';
+        if (h === 'TEAM_ABBREVIATION') return '';
+        if (h === 'GP')       return careerGP;
+        if (h === 'OWS')      return careerOWS;
+        if (h === 'DWS')      return careerDWS;
+        if (h === 'WS')       return careerWS;
+        if (h === 'WS_PER48') return careerWS48;
+        return null;
+      });
+      return { rows: valid.map(r => r.row), careerRow };
     }
 
-    const regTidByYear = extractTeamIdByYear(statsData);
-    const seasons = [...new Set(pgTable.rows.map(r => String(r[I.SEASON_ID])))]
-      .filter(s => WNBA_LG[s]);
+    const validReg  = regResults.filter(Boolean);
+    const validPost = postResults.filter(Boolean);
 
-    const results = await Promise.all(seasons.map(async season => {
-      const playerRow = pgTable.rows.find(r => String(r[I.SEASON_ID]) === season);
-      if (!playerRow) return null;
-      const teamId = regTidByYear[season] ?? null;
-      const totRow  = totByYear[season] ?? null;
-      const result = await computeSeasonPBP(req.params.id, season, playerRow, I, teamId, totRow);
-      return result ? { season, row: result.row, pbpGames: result.pbpGames } : null;
-    }));
-
-    const valid = results.filter(Boolean);
     const advResult = {
-      headers: ADV_HEADERS_SRV,
-      rows: valid.map(r => r.row),
-      pbpGamesBySeason: Object.fromEntries(valid.map(r => [r.season, r.pbpGames])),
+      headers:  ADV_HEADERS_SRV,
+      regular:  buildSplit(validReg,  pgTable.rows,      I),
+      playoffs: validPost.length ? buildSplit(validPost, pgPostTable?.rows ?? [], IPost) : null,
+      pbpGamesBySeason: Object.fromEntries([
+        ...validReg.map(r => [r.season, r.pbpGames]),
+        ...validPost.map(r => [`post-${r.season}`, r.pbpGames]),
+      ]),
     };
+
     if (db) db.collection('advancedStats')
       .replaceOne({ _id: req.params.id }, { _id: req.params.id, gp: currentGP, data: advResult }, { upsert: true })
       .catch(err => console.error('mongo write advancedStats:', err.message));
