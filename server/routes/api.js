@@ -1,8 +1,30 @@
 const express = require('express');
-const router = express.Router();
+const router  = express.Router();
+const fs      = require('fs');
+const path    = require('path');
 
-const ESPN = 'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba';
+const ESPN     = 'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba';
 const ESPN_WEB = 'https://site.web.api.espn.com/apis/common/v3/sports/basketball/wnba';
+
+// ── Disk cache ────────────────────────────────────────────────────────────────
+const CACHE_DIR = path.join(__dirname, '../cache');
+const GS_DIR    = path.join(CACHE_DIR, 'gs');   // game summaries (immutable)
+const ADV_DIR   = path.join(CACHE_DIR, 'adv');  // computed advanced stats per player
+[CACHE_DIR, GS_DIR, ADV_DIR].forEach(d => fs.mkdirSync(d, { recursive: true }));
+
+function cacheRead(dir, key) {
+  if (!/^[\w-]+$/.test(String(key))) return null;
+  try {
+    const p = path.join(dir, `${key}.json`);
+    return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null;
+  } catch { return null; }
+}
+
+function cacheWrite(dir, key, data) {
+  if (!/^[\w-]+$/.test(String(key))) return;
+  try { fs.writeFileSync(path.join(dir, `${key}.json`), JSON.stringify(data)); }
+  catch (err) { console.error(`cache write ${key}:`, err.message); }
+}
 
 // ── Caches ───────────────────────────────────────────────────────────────────
 let teamsPromise = null;
@@ -113,10 +135,14 @@ const GAME_MINUTES = 40;
 
 async function fetchGameSummary(eventId) {
   if (eventId in gameSummaryCache) return gameSummaryCache[eventId];
+  const disk = cacheRead(GS_DIR, eventId);
+  if (disk !== null) return (gameSummaryCache[eventId] = disk);
   try {
     const res = await fetch(`${ESPN}/summary?event=${eventId}`);
     if (!res.ok) return (gameSummaryCache[eventId] = null);
-    return (gameSummaryCache[eventId] = await res.json());
+    const data = await res.json();
+    cacheWrite(GS_DIR, eventId, data);
+    return (gameSummaryCache[eventId] = data);
   } catch {
     return (gameSummaryCache[eventId] = null);
   }
@@ -899,6 +925,11 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
     if (!pgTable) return res.status(404).json({ error: 'no stats for this player' });
     const I = Object.fromEntries(pgTable.headers.map((h, i) => [h, i]));
 
+    // Serve from disk cache if GP hasn't changed since last computation.
+    const currentGP = pgTable.rows.reduce((s, r) => s + (r[I.GP] ?? 0), 0);
+    const advCached = cacheRead(ADV_DIR, req.params.id);
+    if (advCached?.gp === currentGP) return res.json(advCached.data);
+
     const totTable = parsed?.tot?.table;
     const totByYear = {};
     if (totTable?.rows) {
@@ -920,11 +951,13 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
     }));
 
     const valid = results.filter(Boolean);
-    res.json({
+    const advResult = {
       headers: ADV_HEADERS_SRV,
       rows: valid.map(r => r.row),
       pbpGamesBySeason: Object.fromEntries(valid.map(r => [r.season, r.pbpGames])),
-    });
+    };
+    cacheWrite(ADV_DIR, req.params.id, { gp: currentGP, data: advResult });
+    res.json(advResult);
   } catch (err) {
     console.error('advanced-pbp-all:', err.message);
     res.status(500).json({ error: 'failed to compute advanced stats' });
