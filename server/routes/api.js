@@ -471,7 +471,9 @@ function advancedRow(row, I, tm, lg) {
         - pf*(lg.ftm/lg.pf - 0.44*(lg.fta/lg.pf)*VOP)
       );
       const lgPace  = lg.fga - lg.orb + lg.tov + 0.44*lg.fta;
-      const tmPace  = tm.fgaPg - tm.orbPg + tm.tovPg + 0.44*tm.ftaPg;
+      // tmPace is on-court pace per game-played (player's playing time, not 40 min).
+      // Normalize to per-40-min so it's on the same scale as lgPace before taking the ratio.
+      const tmPace  = (tm.fgaPg - tm.orbPg + tm.tovPg + 0.44*tm.ftaPg) * (M / mp);
       const aPER    = tmPace > 0 ? (lgPace / tmPace) * uPER : uPER;
       const lgTmR   = lg.ast / lg.fgm;
       const lgFact  = (2/3) - (0.5*lgTmR) / (2*lg.fgm/lg.ftm);
