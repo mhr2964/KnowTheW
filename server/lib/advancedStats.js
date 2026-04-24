@@ -68,7 +68,14 @@ function computeWinShares(playerRow, I, tm, lg, ptsAllowedPg) {
   // PProd_FT: free throws made are the full credit (no assist adjustment — FTs can't be assisted)
   const PProd_FT = ftm;
 
-  const PProd = PProd_FG + PProd_AST + PProd_ORB + PProd_FT;
+  // Floor% normalization: ORB credit would otherwise double-count value (the rebounder
+  // AND the eventual scorer both get credit for the same possession). Scaling the FG-related
+  // components by TmFGpts / (TmFGpts + TmORBcredit) ensures the team sum equals TmPts.
+  const tmFGpts    = (tm.ptsPg ?? 0) - (tm.ftmPg ?? 0);
+  const tmORBcredit = (tm.orbPg ?? 0) * VOP * lgORBpct;
+  const floorPct   = (tmFGpts + tmORBcredit) > 0 ? tmFGpts / (tmFGpts + tmORBcredit) : 1;
+
+  const PProd = floorPct * (PProd_FG + PProd_AST + PProd_ORB) + PProd_FT;
   // ORBs extend the current possession rather than using a new one
   const Poss  = fga + 0.44*fta + tov - orb;
   const margOff = PProd - 0.92 * VOP * Poss;
