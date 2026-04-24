@@ -328,15 +328,18 @@ function advancedRow(row, I, tm, lg, totRow, officialTm = null) {
         : tm.fgmPg;
       if (effOnFloorFgm > fgm) astPct = ast / (effOnFloorFgm - fgm);
 
-      // ORB/DRB/TRB/STL/BLK: PBP on-court data is already accurate for these
-      const orbD = tm.orbPg + tm.oDrbPg;
-      if (orbD > 0) orbPct = orb / orbD;
-
-      const drbD = tm.drbPg + tm.oOrbPg;
-      if (drbD > 0) drbPct = drb / drbD;
-
-      const trbD = tm.orbPg + tm.drbPg + tm.oOrbPg + tm.oDrbPg;
-      if (trbD > 0) trbPct = trb / trbD;
+      // ORB%/DRB%/TRB%: mirror BRef's season-average minutes-scaled formula.
+      // Structure is symmetric: team rebound total + league-avg opponent rebound total.
+      // Not using missed-FGA as denominator — unreboundable misses (blocked OOB, etc.)
+      // make it larger than actual (Tm_ORB + Opp_DRB), causing systematic underestimate.
+      const effTmOrb = officialTm ? (officialTm.orbPg ?? 0) : tm.orbPg;
+      const effTmDrb = officialTm ? (officialTm.drbPg ?? 0) : tm.drbPg;
+      const orbDenom = effTmOrb + lg.drb;
+      const drbDenom = effTmDrb + lg.orb;
+      const trbDenom = effTmOrb + effTmDrb + lg.trb;
+      if (orbDenom > 0) orbPct = orb * GAME_MINUTES / (mp * orbDenom);
+      if (drbDenom > 0) drbPct = drb * GAME_MINUTES / (mp * drbDenom);
+      if (trbDenom > 0) trbPct = trb * GAME_MINUTES / (mp * trbDenom);
 
       const oppPoss = tm.oFgaPg + 0.44*tm.oFtaPg + tm.oTovPg - tm.oOrbPg;
       if (oppPoss > 0) stlPct = stl / oppPoss;
@@ -344,8 +347,11 @@ function advancedRow(row, I, tm, lg, totRow, officialTm = null) {
       const opp2PA = tm.oFgaPg - tm.oFg3aPg;
       if (opp2PA > 0) blkPct = blk / opp2PA;
 
-      // PER: use official pace — on-court pace is too low when PBP misses missed shots
-      const tmRatio = tm.fgmPg > 0 ? tm.astPg / tm.fgmPg : 0;
+      // PER: use official team stats for both pace and AST/FGM ratio.
+      // On-court ratio differs from season-level (interior players suppress team AST% when on court).
+      const tmRatio = (officialTm && (officialTm.fgmPg ?? 0) > 0)
+        ? (officialTm.astPg ?? 0) / officialTm.fgmPg
+        : (tm.fgmPg > 0 ? tm.astPg / tm.fgmPg : 0);
       const effTmPace = officialTm
         ? (officialTm.fgaPg ?? 0) - (officialTm.orbPg ?? 0) + (officialTm.tovPg ?? 0) + 0.44*(officialTm.ftaPg ?? 0)
         : (tm.fgaPg - tm.orbPg + tm.tovPg + 0.44*tm.ftaPg) * (GAME_MINUTES / mp);
@@ -514,8 +520,13 @@ async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, 
   const officialPace = tmOfficial
     ? (tmOfficial.fgaPg ?? 0) - (tmOfficial.orbPg ?? 0) + (tmOfficial.tovPg ?? 0) + 0.44*(tmOfficial.ftaPg ?? 0)
     : null;
-  const wsVals = (tmForWS && lg && ptsAllowedPg != null)
-    ? computeWinShares(playerRow, I, tmForWS, lg, ptsAllowedPg, officialPace)
+  // Use official team stats for OWS computation. officialTm is more consistent than
+  // PBP-derived tmForWS because PBP quality varies by team and season — older seasons
+  // with incomplete PBP inflate PProd_AST (undercounted team FGA raises eFG% denominator).
+  // Sample mismatch for games player missed is accepted since players appear in >90% of games.
+  const tmForOWS = tmOfficial ?? tmForWS;
+  const wsVals = (tmForOWS && lg && ptsAllowedPg != null)
+    ? computeWinShares(playerRow, I, tmForOWS, lg, ptsAllowedPg, officialPace)
     : [null, null, null, null];
 
   const row = [...advRow.slice(0, 16), ...wsVals];
