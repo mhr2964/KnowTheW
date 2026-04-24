@@ -61,19 +61,16 @@ function computeWinShares(playerRow, I, tm, lg, ptsAllowedPg) {
     ? (tmFGpts_excl / (2 * tmFGA_excl)) * ast
     : 0;
 
-  // PProd_ORB: value added by offensive rebounds.
-  // Denominator = 5 × TmORB + LgDRB (total available ORBs scaled to 5 positions)
-  const orbDenom = 5 * (tm.orbPg ?? 0) + (lg.drb ?? 0);
-  const PProd_ORB = orbDenom > 0.01
-    ? orb * 0.5 * (0.5 * (((tm.orbPg ?? 0) + (lg.drb ?? 0)) / orbDenom))
-    : 0;
+  // PProd_ORB: value added by offensive rebounds (Oliver/BRef: ORB × VOP × LgORB%)
+  const lgORBpct = (lg.drb + lg.orb) > 0 ? lg.orb / (lg.drb + lg.orb) : 0;
+  const PProd_ORB = orb * VOP * lgORBpct;
 
-  // PProd_FT: free throw production (BRef: adjusted for team assist rate)
-  const tmRatio = (tm.fgmPg ?? 0) > 0 ? (tm.astPg ?? 0) / tm.fgmPg : 0;
-  const PProd_FT = ftm * (1 - 0.25 * tmRatio);
+  // PProd_FT: free throws made are the full credit (no assist adjustment — FTs can't be assisted)
+  const PProd_FT = ftm;
 
   const PProd = PProd_FG + PProd_AST + PProd_ORB + PProd_FT;
-  const Poss  = fga + 0.44*fta + tov;
+  // ORBs extend the current possession rather than using a new one
+  const Poss  = fga + 0.44*fta + tov - orb;
   const margOff = PProd - 0.92 * VOP * Poss;
   const ows = ptsPerWin > 0 ? (margOff * gp) / ptsPerWin : null;
 
