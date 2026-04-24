@@ -53,29 +53,35 @@ function computeWinShares(playerRow, I, tm, lg, ptsAllowedPg) {
     ? 2 * (fgm + 0.5*fg3m) * (1 - 0.5 * ((pts - ftm) / (2*fga)) * qAST)
     : 0;
 
-  // PProd_AST: points produced via assists.
-  // BRef formula: 2 × AST_Part = (teammates' eFG%) × AST
+  // PProd_AST: BRef/Oliver exact formula — 3PM-adjusted teammates' eFG% × AST
+  // Source: basketball-reference.com/about/ratings.html
   const tmFGA_excl   = (tm.fgaPg  ?? 0) - fga;
+  const tmFGM_excl   = (tm.fgmPg  ?? 0) - fgm;
+  const tmFG3M_excl  = (tm.fg3mPg ?? 0) - fg3m;
   const tmFGpts_excl = ((tm.ptsPg ?? 0) - (tm.ftmPg ?? 0)) - (pts - ftm);
-  const PProd_AST = (tmFGpts_excl > 0 && tmFGA_excl > 0.01)
-    ? (tmFGpts_excl / (2 * tmFGA_excl)) * ast
+  const PProd_AST = (tmFGpts_excl > 0 && tmFGA_excl > 0.01 && tmFGM_excl > 0.01)
+    ? ((tmFGM_excl + 0.5 * tmFG3M_excl) / tmFGM_excl) * (tmFGpts_excl / (2 * tmFGA_excl)) * ast
     : 0;
 
-  // PProd_ORB: value added by offensive rebounds (Oliver/BRef: ORB × VOP × LgORB%)
-  const lgORBpct = (lg.drb + lg.orb) > 0 ? lg.orb / (lg.drb + lg.orb) : 0;
-  const PProd_ORB = orb * VOP * lgORBpct;
+  // Oliver team coefficients — Team_Scoring_Poss, TePl%, TeOR%, TeORW, coeff_a
+  const tmFT_pct  = (tm.ftaPg ?? 0) > 0 ? (tm.ftmPg ?? 0) / tm.ftaPg : 0;
+  const tmScPoss  = (tm.fgmPg ?? 0) + (1 - (1 - tmFT_pct) ** 2) * 0.4 * (tm.ftaPg ?? 0);
+  const tmTotPoss = (tm.fgaPg ?? 0) + 0.4 * (tm.ftaPg ?? 0) + (tm.tovPg ?? 0);
+  const tePl      = tmTotPoss > 0 ? tmScPoss / tmTotPoss : 0;
+  const tmMissed  = (tm.fgaPg ?? 0) - (tm.fgmPg ?? 0);
+  const teOrPct   = tmMissed > 0 ? (tm.orbPg ?? 0) / tmMissed : 0;
+  const teOrW_n   = (1 - teOrPct) * tePl;
+  const teOrW_d   = teOrW_n + (1 - tePl) * teOrPct;
+  const teOrW     = teOrW_d > 0 ? teOrW_n / teOrW_d : 0;
+  // coeff_a applies to (PProd_FG + PProd_AST + FTM); PProd_ORB is added outside
+  const coeff_a   = tmScPoss > 0 ? 1 - ((tm.orbPg ?? 0) / tmScPoss) * teOrW * tePl : 1;
 
-  // PProd_FT: free throws made are the full credit (no assist adjustment — FTs can't be assisted)
-  const PProd_FT = ftm;
+  // PProd_ORB: Oliver formula (outside coeff_a)
+  const tmPtsPerScPoss = tmScPoss > 0 ? (tm.ptsPg ?? 0) / tmScPoss : 0;
+  const PProd_ORB = orb * teOrW * tePl * tmPtsPerScPoss;
 
-  // Floor% normalization: ORB credit would otherwise double-count value (the rebounder
-  // AND the eventual scorer both get credit for the same possession). Scaling the FG-related
-  // components by TmFGpts / (TmFGpts + TmORBcredit) ensures the team sum equals TmPts.
-  const tmFGpts    = (tm.ptsPg ?? 0) - (tm.ftmPg ?? 0);
-  const tmORBcredit = (tm.orbPg ?? 0) * VOP * lgORBpct;
-  const floorPct   = (tmFGpts + tmORBcredit) > 0 ? tmFGpts / (tmFGpts + tmORBcredit) : 1;
-
-  const PProd = floorPct * (PProd_FG + PProd_AST + PProd_ORB) + PProd_FT;
+  // PProd_FT: full credit (can't be assisted), inside coeff_a
+  const PProd = coeff_a * (PProd_FG + PProd_AST + ftm) + PProd_ORB;
   // ORBs extend the current possession rather than using a new one
   const Poss  = fga + 0.44*fta + tov - orb;
   const margOff = PProd - 0.92 * VOP * Poss;
