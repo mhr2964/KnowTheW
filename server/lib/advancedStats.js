@@ -1,5 +1,5 @@
 const { GAME_MINUTES, WNBA_LG } = require('../constants/leagueAverages');
-const { ESPN_WEB, fetchGameSummary, fetchTeamStats, fetchTeamPtsAllowed } = require('./espnClient');
+const { ESPN_WEB, fetchGameSummary, fetchTeamStats, fetchTeamPtsAllowed, getTeams } = require('./espnClient');
 
 const ADV_HEADERS_SRV = [
   'SEASON_ID', 'TEAM_ABBREVIATION', 'GP',
@@ -15,9 +15,11 @@ const PBP_OC_KEYS = ['fga','fgm','fg3a','fta','ftm','orb','drb','tov','ast',
                      'oFga','oFgm','oFg3a','oFta','oOrb','oDrb','oTov'];
 
 // BRef Win Shares (Oliver methodology).
-// tm must be season-average team stats (from fetchTeamStats, including ptsPg/fg3mPg/ftmPg).
-// ptsAllowedPg is the team's average opponent score for regular-season games.
-function computeWinShares(playerRow, I, tm, lg, ptsAllowedPg) {
+// tm: team stats used for OWS (PProd, coefficients). Should be aligned to player games.
+// ptsAllowedPg: average opponent pts (official, all team games) for DWS.
+// officialPace: optional override for tmPace used in ptsPerWin and DWS. Pass when tm is
+//   PBP-derived (which can underestimate pace in older seasons with incomplete play data).
+function computeWinShares(playerRow, I, tm, lg, ptsAllowedPg, officialPace = null) {
   const fga = playerRow[I.FGA] ?? 0, fgm = playerRow[I.FGM] ?? 0;
   const fg3m = playerRow[I.FG3M] ?? 0;
   const fta  = playerRow[I.FTA] ?? 0, ftm = playerRow[I.FTM] ?? 0;
@@ -31,7 +33,10 @@ function computeWinShares(playerRow, I, tm, lg, ptsAllowedPg) {
 
   const VOP    = lg.pts / (lg.fga - lg.orb + lg.tov + 0.44*lg.fta);
   const lgPace = lg.fga - lg.orb + lg.tov + 0.44*lg.fta;
-  const tmPace = (tm.fgaPg ?? 0) - (tm.orbPg ?? 0) + (tm.tovPg ?? 0) + 0.44*(tm.ftaPg ?? 0);
+  // Use official pace override when available — PBP-derived pace can be too low in older
+  // seasons where non-scoring plays (missed shots, missed FTs) are incompletely recorded.
+  const pbpPace = (tm.fgaPg ?? 0) - (tm.orbPg ?? 0) + (tm.tovPg ?? 0) + 0.44*(tm.ftaPg ?? 0);
+  const tmPace  = (officialPace != null && officialPace > 0) ? officialPace : pbpPace;
   const lgORtg = 100 * lg.pts / lgPace;
   if (tmPace <= 0) return [null, null, null, null];
 
@@ -225,7 +230,59 @@ function computeOnCourtStats(summary, targetPlayerId) {
   return oc;
 }
 
-function advancedRow(row, I, tm, lg, totRow) {
+// Walk all plays in a game summary to get full-game team and opponent stats.
+// Unlike computeOnCourtStats, this has no on-court filter — counts the entire game.
+// Used to build team context for Win Shares restricted to the player's games.
+// PBP-derived stats empirically outperform official boxscore stats for OWS accuracy,
+// likely because BRef also derives team context from PBP rather than official box scores.
+function extractFullGameTeamStats(summary, targetPlayerId) {
+  const pid = String(targetPlayerId);
+
+  let targetTeamId = null;
+  for (const teamData of summary.boxscore?.players ?? []) {
+    for (const sg of teamData.statistics ?? []) {
+      if (sg.athletes?.some(a => String(a.athlete.id) === pid)) {
+        targetTeamId = String(teamData.team.id);
+        break;
+      }
+    }
+    if (targetTeamId) break;
+  }
+  if (!targetTeamId) return null;
+
+  const tm  = { fga: 0, fgm: 0, fg3m: 0, fta: 0, ftm: 0, orb: 0, drb: 0, tov: 0, ast: 0 };
+  const opp = { fgm: 0, fg3m: 0, ftm: 0 };
+
+  for (const play of summary.plays ?? []) {
+    const playTeam = String(play.team?.id ?? '');
+    if (!playTeam) continue;
+    const isFT  = play.pointsAttempted === 1;
+    const isFGA = play.shootingPlay && !isFT;
+    const made  = play.scoringPlay;
+    const sv    = play.scoreValue ?? 0;
+    const is3   = isFGA && (sv === 3 || play.text?.toLowerCase().includes('three point'));
+    const parts = play.participants ?? [];
+
+    if (playTeam === targetTeamId) {
+      if (isFGA) { tm.fga++; if (made) { tm.fgm++; if (is3) tm.fg3m++; } }
+      else if (isFT) { tm.fta++; if (made) tm.ftm++; }
+      if (play.type?.text === 'Offensive Rebound')      tm.orb++;
+      else if (play.type?.text === 'Defensive Rebound') tm.drb++;
+      if (play.type?.text?.includes('Turnover'))        tm.tov++;
+      if (isFGA && made && parts.length >= 2)           tm.ast++;
+    } else {
+      if (isFGA && made) { opp.fgm++; if (is3) opp.fg3m++; }
+      else if (isFT && made) opp.ftm++;
+    }
+  }
+
+  // Derive pts: ftm + 2-pt fgm×2 + 3-pt fgm×3 = ftm + 2*fgm + fg3m
+  const tmPts  = tm.ftm  + 2 * tm.fgm  + tm.fg3m;
+  const oppPts = opp.ftm + 2 * opp.fgm + opp.fg3m;
+  return { tm: { ...tm, pts: tmPts }, oppPts };
+}
+
+function advancedRow(row, I, tm, lg, totRow, officialTm = null) {
   const fga = row[I.FGA] ?? 0,  fgm = row[I.FGM] ?? 0;
   const fg3m = row[I.FG3M] ?? 0;
   const fta = row[I.FTA] ?? 0,  ftm = row[I.FTM] ?? 0;
@@ -254,12 +311,24 @@ function advancedRow(row, I, tm, lg, totRow) {
 
     if (hasPBP) {
       // ── PBP-exact path ───────────────────────────────────────────────────────
-      const tmPoss = tm.fgaPg + 0.44*tm.ftaPg + tm.tovPg;
-      if (tmPoss > 0) usgPct = (fga + 0.44*fta + tov) / tmPoss;
+      // USG%, AST%, PER: use official season-average team stats (officialTm) when available.
+      // On-court PBP understates team possessions/pace in older seasons where non-scoring
+      // plays are incompletely recorded, inflating these three stats. ORB/DRB/TRB/STL/BLK
+      // use ratios immune to this issue and stay on PBP on-court data.
 
-      const tmFgmAdj = tm.fgmPg - fgm;
-      if (tmFgmAdj > 0) astPct = ast / tmFgmAdj;
+      // USG%: (player poss) / (time-scaled team poss) — matches BRef methodology
+      const effTmPoss = officialTm
+        ? (officialTm.fgaPg ?? 0) + 0.44*(officialTm.ftaPg ?? 0) + (officialTm.tovPg ?? 0)
+        : tm.fgaPg + 0.44*tm.ftaPg + tm.tovPg;
+      if (effTmPoss > 0) usgPct = (fga + 0.44*fta + tov) * GAME_MINUTES / (mp * effTmPoss);
 
+      // AST%: ast / (time-scaled Tm FGM - player FGM) — matches BRef methodology
+      const effOnFloorFgm = officialTm
+        ? (mp / GAME_MINUTES) * (officialTm.fgmPg ?? 0)
+        : tm.fgmPg;
+      if (effOnFloorFgm > fgm) astPct = ast / (effOnFloorFgm - fgm);
+
+      // ORB/DRB/TRB/STL/BLK: PBP on-court data is already accurate for these
       const orbD = tm.orbPg + tm.oDrbPg;
       if (orbD > 0) orbPct = orb / orbD;
 
@@ -275,10 +344,12 @@ function advancedRow(row, I, tm, lg, totRow) {
       const opp2PA = tm.oFgaPg - tm.oFg3aPg;
       if (opp2PA > 0) blkPct = blk / opp2PA;
 
+      // PER: use official pace — on-court pace is too low when PBP misses missed shots
       const tmRatio = tm.fgmPg > 0 ? tm.astPg / tm.fgmPg : 0;
-      // Normalize on-court pace to per-40-min so it's on the same scale as lgPace
-      const tmPace  = (tm.fgaPg - tm.orbPg + tm.tovPg + 0.44*tm.ftaPg) * (GAME_MINUTES / mp);
-      per = computePER(mp, fga, fgm, fg3m, fta, ftm, orb, trb, stl, blk, tov, ast, pf, tmRatio, tmPace, lg);
+      const effTmPace = officialTm
+        ? (officialTm.fgaPg ?? 0) - (officialTm.orbPg ?? 0) + (officialTm.tovPg ?? 0) + 0.44*(officialTm.ftaPg ?? 0)
+        : (tm.fgaPg - tm.orbPg + tm.tovPg + 0.44*tm.ftaPg) * (GAME_MINUTES / mp);
+      per = computePER(mp, fga, fgm, fg3m, fta, ftm, orb, trb, stl, blk, tov, ast, pf, tmRatio, effTmPace, lg);
 
     } else {
       // ── Approximation path (season-average team stats) ───────────────────────
@@ -358,13 +429,23 @@ async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, 
   if (!glData) return null;
 
   // ESPN returns all season types regardless of the seasontype param — filter to the right one.
+  // Also exclude All-Star/exhibition events: they appear under "Regular Season" but involve
+  // non-franchise teams. Commissioner's Cup games have eventNote too — keep those (real games).
+  // Use the live franchise list so future expansion team IDs (e.g. 129689) are not excluded.
   const stFilter = seasontype === 2 ? 'Regular Season' : 'Postseason';
+  const eventMeta = glData.events || {};
+  const franchiseIds = new Set((await getTeams()).map(t => String(t.id)));
   const eventIds = [];
   (glData.seasonTypes || []).forEach(st => {
     if (!st.displayName?.includes(stFilter)) return;
     (st.categories || []).forEach(cat => {
       (cat.events || []).forEach(evt => {
-        if (evt.eventId) eventIds.push(evt.eventId);
+        if (!evt.eventId) return;
+        const meta = eventMeta[evt.eventId];
+        if (meta?.eventNote?.toLowerCase().includes('all-star')) return;   // All-Star game
+        const oppId = String(meta?.opponent?.id ?? '');
+        if (oppId && !franchiseIds.has(oppId)) return;                     // synthetic team
+        eventIds.push(evt.eventId);
       });
     });
   });
@@ -372,13 +453,22 @@ async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, 
 
   const summaries = await Promise.all(eventIds.map(id => fetchGameSummary(id)));
   const totOC = Object.fromEntries(PBP_OC_KEYS.map(k => [k, 0]));
-  let pbpGames = 0;
+  const totTm = { fga: 0, fgm: 0, fg3m: 0, fta: 0, ftm: 0, pts: 0, orb: 0, drb: 0, tov: 0, ast: 0 };
+  let pbpGames = 0, wsGames = 0;
+
   for (const summary of summaries) {
     if (!summary) continue;
     const oc = computeOnCourtStats(summary, playerId);
     if (!oc) continue;
     pbpGames++;
     for (const k of PBP_OC_KEYS) totOC[k] += oc[k];
+
+    // Full-game PBP team stats for Win Shares sample alignment.
+    const gs = extractFullGameTeamStats(summary, playerId);
+    if (gs) {
+      wsGames++;
+      for (const k of Object.keys(totTm)) totTm[k] += gs.tm[k] ?? 0;
+    }
   }
   if (!pbpGames) return null;
 
@@ -395,14 +485,37 @@ async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, 
   };
 
   const lg = WNBA_LG[season] ?? null;
-  const advRow = advancedRow(playerRow, I, tmOC, lg, totRow);
 
-  // Win Shares: use season-avg team stats + full-season ptsAllowed (all team games, not just player's)
-  const [tmStats, ptsAllowedPg] = teamId
+  // Fetch official team stats before advancedRow — used there for USG%, AST%, PER
+  // (PBP undercounts team possessions/pace in older seasons).
+  // Also needed for Win Shares (officialPace for DWS, ptsAllowedPg).
+  const [tmOfficial, ptsAllowedPg] = teamId
     ? await Promise.all([fetchTeamStats(teamId, season), fetchTeamPtsAllowed(teamId, season)])
     : [null, null];
-  const wsVals = (tmStats && ptsAllowedPg != null && lg)
-    ? computeWinShares(playerRow, I, tmStats, lg, ptsAllowedPg)
+
+  const advRow = advancedRow(playerRow, I, tmOC, lg, totRow, tmOfficial);
+
+  // OWS: use PBP-derived team stats restricted to the player's games (avoids sample mismatch
+  // when computing tmFGpts_excl, tmFGM_excl etc. for PProd_AST).
+  // DWS: use official ESPN team stats (fetchTeamStats/fetchTeamPtsAllowed) for tmPace and
+  // ptsAllowed — PBP undercounts non-scoring plays in older seasons, breaking pace calculation.
+  const tmForWS = wsGames > 0 ? {
+    fgaPg:  totTm.fga  / wsGames,
+    fgmPg:  totTm.fgm  / wsGames,
+    fg3mPg: totTm.fg3m / wsGames,
+    ftaPg:  totTm.fta  / wsGames,
+    ftmPg:  totTm.ftm  / wsGames,
+    ptsPg:  totTm.pts  / wsGames,
+    orbPg:  totTm.orb  / wsGames,
+    drbPg:  totTm.drb  / wsGames,
+    tovPg:  totTm.tov  / wsGames,
+    astPg:  totTm.ast  / wsGames,
+  } : null;
+  const officialPace = tmOfficial
+    ? (tmOfficial.fgaPg ?? 0) - (tmOfficial.orbPg ?? 0) + (tmOfficial.tovPg ?? 0) + 0.44*(tmOfficial.ftaPg ?? 0)
+    : null;
+  const wsVals = (tmForWS && lg && ptsAllowedPg != null)
+    ? computeWinShares(playerRow, I, tmForWS, lg, ptsAllowedPg, officialPace)
     : [null, null, null, null];
 
   const row = [...advRow.slice(0, 16), ...wsVals];
