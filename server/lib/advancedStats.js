@@ -230,12 +230,10 @@ function computeOnCourtStats(summary, targetPlayerId) {
   return oc;
 }
 
-// Walk all plays in a game summary to get full-game team and opponent stats.
-// Unlike computeOnCourtStats, this has no on-court filter — counts the entire game.
-// Used to build team context for Win Shares restricted to the player's games.
-// PBP-derived stats empirically outperform official boxscore stats for OWS accuracy,
-// likely because BRef also derives team context from PBP rather than official box scores.
-function extractFullGameTeamStats(summary, targetPlayerId) {
+// Extract team and opponent stats from the official ESPN boxscore (not PBP).
+// Unlike the old PBP-based approach, boxscore data is complete regardless of play-log quality.
+// Returns { tm: {fgm,fga,fg3m,ftm,fta,orb,drb,tov,ast,pts}, oppPts } or null.
+function extractBoxscoreTeamStats(summary, targetPlayerId) {
   const pid = String(targetPlayerId);
 
   let targetTeamId = null;
@@ -250,36 +248,52 @@ function extractFullGameTeamStats(summary, targetPlayerId) {
   }
   if (!targetTeamId) return null;
 
-  const tm  = { fga: 0, fgm: 0, fg3m: 0, fta: 0, ftm: 0, orb: 0, drb: 0, tov: 0, ast: 0 };
-  const opp = { fgm: 0, fg3m: 0, ftm: 0 };
+  const boxTeams = summary.boxscore?.teams ?? [];
+  const tmBox  = boxTeams.find(t => String(t.team.id) === targetTeamId);
+  const oppBox = boxTeams.find(t => String(t.team.id) !== targetTeamId);
+  if (!tmBox) return null;
 
-  for (const play of summary.plays ?? []) {
-    const playTeam = String(play.team?.id ?? '');
-    if (!playTeam) continue;
-    const isFT  = play.pointsAttempted === 1;
-    const isFGA = play.shootingPlay && !isFT;
-    const made  = play.scoringPlay;
-    const sv    = play.scoreValue ?? 0;
-    const is3   = isFGA && (sv === 3 || play.text?.toLowerCase().includes('three point'));
-    const parts = play.participants ?? [];
+  function readTeamBox(teamBox) {
+    const byName = Object.fromEntries((teamBox.statistics ?? []).map(s => [s.name, s]));
 
-    if (playTeam === targetTeamId) {
-      if (isFGA) { tm.fga++; if (made) { tm.fgm++; if (is3) tm.fg3m++; } }
-      else if (isFT) { tm.fta++; if (made) tm.ftm++; }
-      if (play.type?.text === 'Offensive Rebound')      tm.orb++;
-      else if (play.type?.text === 'Defensive Rebound') tm.drb++;
-      if (play.type?.text?.includes('Turnover'))        tm.tov++;
-      if (isFGA && made && parts.length >= 2)           tm.ast++;
-    } else {
-      if (isFGA && made) { opp.fgm++; if (is3) opp.fg3m++; }
-      else if (isFT && made) opp.ftm++;
+    function getMadeAtt(name) {
+      const s = byName[name];
+      if (!s) return null;
+      const dv = String(s.displayValue ?? s.value ?? '');
+      if (dv.includes('-')) {
+        const [m, a] = dv.split('-').map(Number);
+        if (!isNaN(m) && !isNaN(a)) return { made: m, att: a };
+      }
+      return null;
     }
+    function getNum(name) {
+      const s = byName[name];
+      return s != null ? (parseFloat(s.displayValue ?? s.value) || 0) : 0;
+    }
+
+    const fg  = getMadeAtt('fieldGoalsMade-fieldGoalsAttempted');
+    const fg3 = getMadeAtt('threePointFieldGoalsMade-threePointFieldGoalsAttempted');
+    const ft  = getMadeAtt('freeThrowsMade-freeThrowsAttempted');
+    if (!fg) return null;
+
+    const fgm = fg.made, fga = fg.att;
+    const fg3m = fg3?.made ?? 0;
+    const ftm = ft?.made ?? 0, fta = ft?.att ?? 0;
+    const orb = getNum('offensiveRebounds');
+    const drb = getNum('defensiveRebounds');
+    // totalTurnovers includes team turnovers; fall back to turnovers if absent
+    const tov = getNum('totalTurnovers') || getNum('turnovers');
+    const ast = getNum('assists');
+    const pts = 2 * fgm + fg3m + ftm;
+
+    return { fgm, fga, fg3m, ftm, fta, orb, drb, tov, ast, pts };
   }
 
-  // Derive pts: ftm + 2-pt fgm×2 + 3-pt fgm×3 = ftm + 2*fgm + fg3m
-  const tmPts  = tm.ftm  + 2 * tm.fgm  + tm.fg3m;
-  const oppPts = opp.ftm + 2 * opp.fgm + opp.fg3m;
-  return { tm: { ...tm, pts: tmPts }, oppPts };
+  const tm = readTeamBox(tmBox);
+  if (!tm) return null;
+  const opp = oppBox ? readTeamBox(oppBox) : null;
+
+  return { tm, oppPts: opp?.pts ?? null };
 }
 
 function advancedRow(row, I, tm, lg, totRow, officialTm = null) {
@@ -460,6 +474,7 @@ async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, 
   const summaries = await Promise.all(eventIds.map(id => fetchGameSummary(id)));
   const totOC = Object.fromEntries(PBP_OC_KEYS.map(k => [k, 0]));
   const totTm = { fga: 0, fgm: 0, fg3m: 0, fta: 0, ftm: 0, pts: 0, orb: 0, drb: 0, tov: 0, ast: 0 };
+  let totOppPts = 0;
   let pbpGames = 0, wsGames = 0;
 
   for (const summary of summaries) {
@@ -469,11 +484,12 @@ async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, 
     pbpGames++;
     for (const k of PBP_OC_KEYS) totOC[k] += oc[k];
 
-    // Full-game PBP team stats for Win Shares sample alignment.
-    const gs = extractFullGameTeamStats(summary, playerId);
+    // Official boxscore team stats restricted to player's games — matches BRef's sample.
+    const gs = extractBoxscoreTeamStats(summary, playerId);
     if (gs) {
       wsGames++;
       for (const k of Object.keys(totTm)) totTm[k] += gs.tm[k] ?? 0;
+      if (gs.oppPts != null) totOppPts += gs.oppPts;
     }
   }
   if (!pbpGames) return null;
@@ -520,10 +536,9 @@ async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, 
   const officialPace = tmOfficial
     ? (tmOfficial.fgaPg ?? 0) - (tmOfficial.orbPg ?? 0) + (tmOfficial.tovPg ?? 0) + 0.44*(tmOfficial.ftaPg ?? 0)
     : null;
-  // Use official team stats for OWS computation. officialTm is more consistent than
-  // PBP-derived tmForWS because PBP quality varies by team and season — older seasons
-  // with incomplete PBP inflate PProd_AST (undercounted team FGA raises eFG% denominator).
-  // Sample mismatch for games player missed is accepted since players appear in >90% of games.
+  // Use official team stats for OWS — more consistent across seasons than boxscore-derived stats.
+  // Boxscore approach is conceptually correct (player-game restriction) but doesn't improve
+  // accuracy because the root issue is ESPN vs BRef source data divergence, not sampling.
   const tmForOWS = tmOfficial ?? tmForWS;
   const wsVals = (tmForOWS && lg && ptsAllowedPg != null)
     ? computeWinShares(playerRow, I, tmForOWS, lg, ptsAllowedPg, officialPace)

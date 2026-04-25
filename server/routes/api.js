@@ -167,7 +167,7 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
     const db = getDb();
     if (db) {
       const advCached = await db.collection('advancedStats').findOne({ _id: req.params.id });
-      if (advCached?.gp === currentGP && advCached.v === 21 && advCached.data?.regular != null) return res.json(advCached.data);
+      if (advCached?.gp === currentGP && advCached.v === 25 && advCached.data?.regular != null) return res.json(advCached.data);
     }
 
     // Build totals-by-year maps for both splits
@@ -244,7 +244,7 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
     };
 
     if (db) db.collection('advancedStats')
-      .replaceOne({ _id: req.params.id }, { _id: req.params.id, gp: currentGP, v: 21, data: advResult }, { upsert: true })
+      .replaceOne({ _id: req.params.id }, { _id: req.params.id, gp: currentGP, v: 25, data: advResult }, { upsert: true })
       .catch(err => console.error('mongo write advancedStats:', err.message));
     res.json(advResult);
   } catch (err) {
