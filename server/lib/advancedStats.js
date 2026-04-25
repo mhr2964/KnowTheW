@@ -474,7 +474,6 @@ async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, 
   const summaries = await Promise.all(eventIds.map(id => fetchGameSummary(id)));
   const totOC = Object.fromEntries(PBP_OC_KEYS.map(k => [k, 0]));
   const totTm = { fga: 0, fgm: 0, fg3m: 0, fta: 0, ftm: 0, pts: 0, orb: 0, drb: 0, tov: 0, ast: 0 };
-  let totOppPts = 0;
   let pbpGames = 0, wsGames = 0;
 
   for (const summary of summaries) {
@@ -489,7 +488,7 @@ async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, 
     if (gs) {
       wsGames++;
       for (const k of Object.keys(totTm)) totTm[k] += gs.tm[k] ?? 0;
-      if (gs.oppPts != null) totOppPts += gs.oppPts;
+
     }
   }
   if (!pbpGames) return null;
