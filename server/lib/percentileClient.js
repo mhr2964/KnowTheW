@@ -58,12 +58,19 @@ async function buildLeagueDistribution(season) {
   console.log(`[perc] season ${season}: ${playerIds === null ? 'null' : playerIds.length} athlete IDs`);
   if (!playerIds?.length) return null;
 
+  let peeked = false;
   const allEntries = await Promise.all(
     playerIds.map(async id => {
       try {
         const r = await fetch(`${ESPN_WEB}/athletes/${id}/stats?seasontype=2`);
         if (!r.ok) return null;
-        const stats = extractSeasonAvg(await r.json(), season);
+        const data = await r.json();
+        if (!peeked) {
+          peeked = true;
+          console.log('[perc] stats response top-level keys:', Object.keys(data));
+          console.log('[perc] stats response athlete field:', JSON.stringify(data.athlete));
+        }
+        const stats = extractSeasonAvg(data, season);
         return stats ?? null;
       } catch {
         return null;
