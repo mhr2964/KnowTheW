@@ -1,4 +1,4 @@
-const { ESPN_WEB, playerById } = require('./espnClient');
+const { ESPN_WEB } = require('./espnClient');
 const { parseStatMap } = require('./statsParser');
 
 const ESPN_CORE = 'https://sports.core.api.espn.com/v2/sports/basketball/leagues/wnba';
@@ -10,12 +10,6 @@ const PERCENTILE_STATS = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FG_PCT', 'FG3_PCT'
 const INVERTED_STATS = new Set(['TOV', 'PF']);
 
 const distributionCache = {};
-
-// Normalize multi-position strings to primary: 'G/F' → 'G', 'F/C' → 'F'
-function primaryPosition(pos) {
-  if (!pos) return '';
-  return pos.split('/')[0].trim().toUpperCase();
-}
 
 function extractSeasonAvg(data, targetYear) {
   if (!data?.categories) return null;
@@ -46,9 +40,6 @@ function extractSeasonAvg(data, targetYear) {
   };
 }
 
-// Returns all athlete IDs who appear in ESPN's records for a given season.
-// Retired players are included because this queries the Core API season roster,
-// not the current team roster endpoint (which ignores ?season= for WNBA).
 async function fetchSeasonPlayerIds(season) {
   const res = await fetch(`${ESPN_CORE}/seasons/${season}/athletes?limit=1000`);
   if (!res.ok) return null;
@@ -61,8 +52,7 @@ async function fetchSeasonPlayerIds(season) {
     .filter(Boolean);
 }
 
-// Returns { G: { PTS: [...sorted], ... }, F: {...}, C: {...}, all: {...} }
-// Uses ESPN Core API season athlete list so retired players are included.
+// Returns { PTS: [...sorted], REB: [...sorted], ... } for the full league that season.
 async function buildLeagueDistribution(season) {
   const playerIds = await fetchSeasonPlayerIds(season);
   console.log(`[perc] season ${season}: ${playerIds === null ? 'null' : playerIds.length} athlete IDs`);
@@ -70,13 +60,11 @@ async function buildLeagueDistribution(season) {
 
   const allEntries = await Promise.all(
     playerIds.map(async id => {
-      // Current players have a known position; retired players fall into 'all'
-      const pos = primaryPosition(playerById[id]?.position || '');
       try {
         const r = await fetch(`${ESPN_WEB}/athletes/${id}/stats?seasontype=2`);
         if (!r.ok) return null;
         const stats = extractSeasonAvg(await r.json(), season);
-        return stats ? { pos, ...stats } : null;
+        return stats ?? null;
       } catch {
         return null;
       }
@@ -86,22 +74,12 @@ async function buildLeagueDistribution(season) {
   const qualified = allEntries.filter(Boolean);
   console.log(`[perc] season ${season}: ${qualified.length} qualified players`);
 
-  const groups = { all: qualified };
-  for (const entry of qualified) {
-    if (entry.pos) {
-      (groups[entry.pos] ??= []).push(entry);
-    }
-  }
-
   const distribution = {};
-  for (const [grp, players] of Object.entries(groups)) {
-    distribution[grp] = {};
-    for (const stat of PERCENTILE_STATS) {
-      distribution[grp][stat] = players
-        .filter(p => p[stat] !== null && p[stat] !== undefined)
-        .map(p => p[stat])
-        .sort((a, b) => a - b);
-    }
+  for (const stat of PERCENTILE_STATS) {
+    distribution[stat] = qualified
+      .filter(p => p[stat] !== null && p[stat] !== undefined)
+      .map(p => p[stat])
+      .sort((a, b) => a - b);
   }
   return distribution;
 }
@@ -116,8 +94,6 @@ function computePercentile(sortedAsc, value, inverted) {
 
 // Returns { "2025": { PTS: 98, REB: 96, ... }, "2024": { ... }, ... }
 async function getPlayerPercentiles(playerId) {
-  const playerPos = primaryPosition(playerById[playerId]?.position || '');
-
   const r = await fetch(`${ESPN_WEB}/athletes/${playerId}/stats?seasontype=2`);
   if (!r.ok) return null;
   const data = await r.json();
@@ -132,26 +108,17 @@ async function getPlayerPercentiles(playerId) {
 
   const result = {};
   for (const season of seasons) {
-    // Build sequentially to avoid ESPN rate-limiting from simultaneous distribution builds.
-    // Only cache successful results so transient failures can be retried.
     if (!distributionCache[season]) {
       const dist = await buildLeagueDistribution(season);
       if (dist) distributionCache[season] = dist;
     }
-    const fullDist = distributionCache[season];
-    if (!fullDist) continue;
-
-    // Position-specific buckets are only meaningful when well-populated.
-    // For historical seasons, retired players have no position in playerById,
-    // so those buckets contain only a handful of current veterans — too small to be fair.
-    const posPool = fullDist[playerPos]?.PTS?.length ?? 0;
-    const dist = posPool >= 20 ? fullDist[playerPos] : fullDist['all'];
-    if (!dist) continue;
-    console.log(`[perc] player ${playerId} season ${season}: pool=${fullDist.all?.PTS?.length ?? 0} pos=${playerPos}(${posPool}) using=${dist === fullDist[playerPos] ? 'pos' : 'all'}`);
+    const dist = distributionCache[season];
+    if (!dist) { console.log(`[perc] player ${playerId} season ${season}: no distribution`); continue; }
 
     const playerStats = extractSeasonAvg(data, season);
     if (!playerStats) { console.log(`[perc] player ${playerId} season ${season}: no qualifying stats`); continue; }
 
+    console.log(`[perc] player ${playerId} season ${season}: pool=${dist.PTS?.length ?? 0}`);
     result[season] = {};
     for (const stat of PERCENTILE_STATS) {
       result[season][stat] = computePercentile(dist[stat], playerStats[stat], INVERTED_STATS.has(stat));
