@@ -141,9 +141,13 @@ async function getPlayerPercentiles(playerId) {
     const fullDist = distributionCache[season];
     if (!fullDist) continue;
 
-    const dist = fullDist[playerPos] ?? fullDist['all'];
+    // Position-specific buckets are only meaningful when well-populated.
+    // For historical seasons, retired players have no position in playerById,
+    // so those buckets contain only a handful of current veterans — too small to be fair.
+    const posPool = fullDist[playerPos]?.PTS?.length ?? 0;
+    const dist = posPool >= 20 ? fullDist[playerPos] : fullDist['all'];
     if (!dist) continue;
-    console.log(`[perc] player ${playerId} season ${season}: pool=${fullDist.all?.PTS?.length ?? 0} (pos ${playerPos}: ${dist?.PTS?.length ?? 0})`);
+    console.log(`[perc] player ${playerId} season ${season}: pool=${fullDist.all?.PTS?.length ?? 0} pos=${playerPos}(${posPool}) using=${dist === fullDist[playerPos] ? 'pos' : 'all'}`);
 
     const playerStats = extractSeasonAvg(data, season);
     if (!playerStats) { console.log(`[perc] player ${playerId} season ${season}: no qualifying stats`); continue; }
