@@ -1,7 +1,6 @@
 const { ESPN_WEB, playerById } = require('./espnClient');
 const { parseStatMap } = require('./statsParser');
 
-const ESPN_CORE  = 'https://sports.core.api.espn.com/v2/sports/basketball/leagues/wnba';
 const WNBA_STATS = 'https://stats.wnba.com/stats';
 const WNBA_HEADERS = {
   'User-Agent':          'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:72.0) Gecko/20100101 Firefox/72.0',
@@ -174,31 +173,6 @@ async function wnbaStatsProvider(season) {
   } catch {
     return [];
   }
-}
-
-async function espnProvider(season) {
-  const res = await fetch(`${ESPN_CORE}/seasons/${season}/athletes?limit=1000`);
-  if (!res.ok) return [];
-  const data = await res.json();
-  const playerIds = (data.items || [])
-    .map(item => { const m = item.$ref?.match(/\/athletes\/(\d+)/); return m ? m[1] : null; })
-    .filter(Boolean);
-  if (!playerIds.length) return [];
-
-  const entries = await Promise.all(
-    playerIds.map(async id => {
-      const pos = primaryPosition(playerById[id]?.position || '');
-      try {
-        const r = await fetch(`${ESPN_WEB}/athletes/${id}/stats?seasontype=2`);
-        if (!r.ok) return null;
-        const stats = extractSeasonAvg(await r.json(), season);
-        return stats ? { pos, ...stats } : null;
-      } catch {
-        return null;
-      }
-    })
-  );
-  return entries.filter(Boolean);
 }
 
 const PROVIDERS = [wnbaStatsProvider];
