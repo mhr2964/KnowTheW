@@ -255,6 +255,7 @@ export default function App() {
                               {player.jersey && player.position ? ' · ' : ''}
                               {player.position}
                               {player.teamName ? ` · ${player.teamName}` : ''}
+                              {player.retired ? ' · Retired' : ''}
                             </span>
                           </div>
                         </button>

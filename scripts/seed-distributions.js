@@ -1,6 +1,6 @@
 require('dotenv').config();
 const { whenConnected } = require('../server/db');
-const { warmDistributionCache } = require('../server/lib/percentileClient');
+const { warmDistributionCache, buildPlayerIndex } = require('../server/lib/percentileClient');
 
 (async () => {
   console.log('Waiting for MongoDB...');
@@ -12,5 +12,8 @@ const { warmDistributionCache } = require('../server/lib/percentileClient');
   console.log('Seeding league distribution cache...');
   await warmDistributionCache();
   console.log('Distribution cache seeded.');
+  console.log('Building player index...');
+  await buildPlayerIndex();
+  console.log('Player index built.');
   process.exit(0);
 })();

@@ -47,10 +47,25 @@ router.get('/search', async (req, res) => {
     const matchedTeams = allTeams.filter(
       t => t.name.toLowerCase().includes(q) || t.abbreviation.toLowerCase().includes(q)
     );
-    const matchedPlayers = Object.values(rosterData)
+
+    const activePlayers = Object.values(rosterData)
       .flat()
-      .filter(p => p.name.toLowerCase().includes(q))
-      .slice(0, 30);
+      .filter(p => p.name.toLowerCase().includes(q));
+    const activeIds = new Set(activePlayers.map(p => p.id));
+
+    let retiredPlayers = [];
+    const db = getDb();
+    if (db) {
+      const docs = await db.collection('playerIndex')
+        .find({ name: { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } })
+        .limit(20)
+        .toArray();
+      retiredPlayers = docs
+        .filter(d => !activeIds.has(d.id))
+        .map(d => ({ id: d.id, name: d.name, position: d.position, headshot: d.headshot, retired: true }));
+    }
+
+    const matchedPlayers = [...activePlayers, ...retiredPlayers].slice(0, 30);
     res.json({ teams: matchedTeams, players: matchedPlayers });
   } catch {
     res.status(500).json({ error: 'search failed' });
@@ -60,8 +75,31 @@ router.get('/search', async (req, res) => {
 router.get('/players/:id', async (req, res) => {
   try {
     const player = playerById[req.params.id];
-    if (!player) return res.status(404).json({ error: 'player not found — load their team roster first' });
-    res.json({ player });
+    if (player) return res.json({ player });
+
+    // Not in active roster — try ESPN on-demand (retired player)
+    const r = await fetch(`${ESPN_WEB}/athletes/${req.params.id}`);
+    if (!r.ok) return res.status(404).json({ error: 'player not found' });
+    const data = await r.json();
+    const a = data.athlete;
+    if (!a) return res.status(404).json({ error: 'player not found' });
+    res.json({ player: {
+      id:           String(a.id),
+      name:         a.displayName,
+      position:     a.position?.abbreviation ?? '',
+      positionName: a.position?.displayName  ?? '',
+      jersey:       a.jersey ?? null,
+      headshot:     a.headshot?.href ?? null,
+      height:       a.height ?? null,
+      weight:       a.weight ?? null,
+      age:          a.age    ?? null,
+      college:      a.college?.name ?? null,
+      birthPlace:   null,
+      experience:   a.experience?.years ?? null,
+      teamId:       null,
+      teamName:     null,
+      retired:      true,
+    }});
   } catch {
     res.status(500).json({ error: 'failed to load player' });
   }

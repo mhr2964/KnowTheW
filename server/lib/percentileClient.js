@@ -448,4 +448,39 @@ async function warmDistributionCache() {
   );
 }
 
-module.exports = { getPlayerPercentiles, PERCENTILE_STATS, warmDistributionCache };
+async function buildPlayerIndex() {
+  const db = getDb();
+  if (!db) return;
+
+  const currentYear = new Date().getFullYear();
+  const seasons = [];
+  for (let y = 2011; y <= currentYear; y++) seasons.push(String(y));
+
+  const seen = new Set();
+  const upserts = [];
+
+  for (const season of seasons) {
+    const athletes = await fetchEspnLeagueStats(season);
+    for (const a of athletes) {
+      const id = a.athlete?.id;
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      upserts.push({
+        updateOne: {
+          filter: { id },
+          update: { $set: {
+            id,
+            name:     a.athlete.displayName,
+            position: primaryPosition(a.athlete?.position?.abbreviation ?? ''),
+            headshot: a.athlete?.headshot?.href ?? null,
+          }},
+          upsert: true,
+        },
+      });
+    }
+  }
+
+  if (upserts.length) await db.collection('playerIndex').bulkWrite(upserts);
+}
+
+module.exports = { getPlayerPercentiles, PERCENTILE_STATS, warmDistributionCache, buildPlayerIndex };
