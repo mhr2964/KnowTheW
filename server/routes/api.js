@@ -107,8 +107,6 @@ router.get('/players/:id', async (req, res) => {
 
 router.get('/players/:id/detailed-stats', async (req, res) => {
   try {
-    const player = playerById[req.params.id];
-    if (!player) return res.status(404).json({ error: 'player not found' });
 
     const { regData, postData, teamsById } = await fetchPlayerSeasonData(req.params.id);
     const result = buildDetailedStats(regData, postData, teamsById);
@@ -139,8 +137,6 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
 
 router.get('/players/:id/gamelog', async (req, res) => {
   try {
-    const player = playerById[req.params.id];
-    if (!player) return res.status(404).json({ error: 'player not found' });
 
     const glUrl = new URL(`${ESPN_WEB}/athletes/${req.params.id}/gamelog`);
     if (req.query.season) glUrl.searchParams.set('season', req.query.season);
@@ -181,8 +177,6 @@ router.get('/players/:id/gamelog', async (req, res) => {
 
 router.get('/players/:id/advanced-pbp-all', async (req, res) => {
   try {
-    const player = playerById[req.params.id];
-    if (!player) return res.status(404).json({ error: 'player not found' });
 
     const { regData, postData, teamsById } = await fetchPlayerSeasonData(req.params.id);
     const regParsed  = parseESPNSeasonData(regData,  teamsById);
@@ -265,8 +259,6 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
 });
 
 router.get('/players/:id/percentiles', async (req, res) => {
-  const player = playerById[req.params.id];
-  if (!player) return res.status(404).json({ error: 'player not found' });
   try {
     const result = await getPlayerPercentiles(req.params.id);
     if (!result) return res.status(404).json({ error: 'no stats found for this player' });
