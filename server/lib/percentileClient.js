@@ -8,7 +8,7 @@ const PERCENTILE_MIN_MPG  = 10;
 const DISTRIBUTION_MIN    = 30;
 const POSITION_MIN_BUCKET = 20;
 
-const PERCENTILE_STATS = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FG_PCT', 'FG3_PCT', 'FT_PCT', 'TOV', 'PF', 'OREB', 'DREB'];
+const PERCENTILE_STATS = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FG_PCT', 'FG3_PCT', 'FT_PCT', 'TOV', 'PF', 'OREB', 'DREB', 'FGM', 'FGA', 'FG3M', 'FG3A', 'FTM', 'FTA', 'MIN'];
 const INVERTED_STATS = new Set(['TOV', 'PF']);
 
 const distributionCache = {};
@@ -47,10 +47,17 @@ function extractSeasonAvg(data, targetYear) {
     FG_PCT:  m.fieldGoalPct           ?? null,
     FG3_PCT: m.threePointFieldGoalPct ?? null,
     FT_PCT:  m.freeThrowPct           ?? null,
-    TOV:     m.avgTurnovers           ?? null,
-    PF:      m.avgFouls               ?? null,
-    OREB:    m.avgOffensiveRebounds   ?? null,
-    DREB:    m.avgDefensiveRebounds   ?? null,
+    TOV:     m.avgTurnovers                     ?? null,
+    PF:      m.avgFouls                         ?? null,
+    OREB:    m.avgOffensiveRebounds             ?? null,
+    DREB:    m.avgDefensiveRebounds             ?? null,
+    FGM:     m.avgFieldGoalsMade                ?? null,
+    FGA:     m.avgFieldGoalsAttempted           ?? null,
+    FG3M:    m.avgThreePointFieldGoalsMade      ?? null,
+    FG3A:    m.avgThreePointFieldGoalsAttempted ?? null,
+    FTM:     m.avgFreeThrowsMade                ?? null,
+    FTA:     m.avgFreeThrowsAttempted           ?? null,
+    MIN:     m.avgMinutes                       ?? null,
   };
 }
 
