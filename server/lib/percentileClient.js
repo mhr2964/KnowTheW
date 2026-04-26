@@ -294,4 +294,11 @@ async function getPlayerPercentiles(playerId) {
   return Object.keys(result).length ? result : null;
 }
 
-module.exports = { getPlayerPercentiles, PERCENTILE_STATS };
+async function warmDistributionCache() {
+  const currentYear = new Date().getFullYear();
+  const seasons = [];
+  for (let y = 2011; y <= currentYear; y++) seasons.push(String(y));
+  await Promise.all(seasons.map(season => getOrBuildDistribution(season).catch(() => null)));
+}
+
+module.exports = { getPlayerPercentiles, PERCENTILE_STATS, warmDistributionCache };
