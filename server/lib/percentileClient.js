@@ -1,11 +1,10 @@
-const { ESPN_WEB, withCache, getTeams, getRoster, playerById } = require('./espnClient');
+const { ESPN_WEB, withCache, getTeams, fetchHistoricalRoster, playerById } = require('./espnClient');
 const { parseStatMap } = require('./statsParser');
 
 const PERCENTILE_MIN_GP  = 10;
 const PERCENTILE_MIN_MPG = 10;
 
-const PERCENTILE_STATS = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FG_PCT', 'FG3_PCT', 'FT_PCT'];
-// Lower is better — percentile inverts so 98th = fewest (v2 when TOV/PF added to PERCENTILE_STATS)
+const PERCENTILE_STATS = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FG_PCT', 'FG3_PCT', 'FT_PCT', 'TOV', 'PF', 'OREB', 'DREB'];
 const INVERTED_STATS = new Set(['TOV', 'PF']);
 
 const distributionCache = {};
@@ -38,18 +37,33 @@ function extractSeasonAvg(data, targetYear) {
     FG_PCT:  m.fieldGoalPct           ?? null,
     FG3_PCT: m.threePointFieldGoalPct ?? null,
     FT_PCT:  m.freeThrowPct           ?? null,
+    TOV:     m.avgTurnovers           ?? null,
+    PF:      m.avgFouls               ?? null,
+    OREB:    m.avgOffensiveRebounds   ?? null,
+    DREB:    m.avgDefensiveRebounds   ?? null,
   };
 }
 
 // Returns { G: { PTS: [...sorted], ... }, F: {...}, C: {...}, all: {...} }
-// NOTE: built from current rosters — pre-2019 seasons may have incomplete pools.
+// Uses historical rosters for the given season so retired players are included.
 async function buildLeagueDistribution(season) {
   const teams = await getTeams();
-  await Promise.all(teams.map(t => getRoster(t.id, t.name)));
+
+  const rosterArrays = await Promise.all(
+    teams.map(t => fetchHistoricalRoster(t.id, season))
+  );
+
+  // Deduplicate players (mid-season trades can put a player on two rosters)
+  const playerMap = new Map();
+  for (const roster of rosterArrays) {
+    for (const p of roster) {
+      if (!playerMap.has(p.id)) playerMap.set(p.id, p);
+    }
+  }
 
   const allEntries = await Promise.all(
-    Object.keys(playerById).map(async id => {
-      const pos = primaryPosition(playerById[id]?.position || '');
+    [...playerMap.values()].map(async ({ id, position }) => {
+      const pos = primaryPosition(position);
       try {
         const r = await fetch(`${ESPN_WEB}/athletes/${id}/stats?seasontype=2`);
         if (!r.ok) return null;
@@ -63,7 +77,6 @@ async function buildLeagueDistribution(season) {
 
   const qualified = allEntries.filter(Boolean);
 
-  // Group by primary position, plus an 'all' fallback bucket
   const groups = { all: qualified };
   for (const entry of qualified) {
     if (entry.pos) {
@@ -117,7 +130,6 @@ async function getPlayerPercentiles(playerId) {
     const fullDist = distributions[i];
     if (!fullDist) return;
 
-    // Position-specific distribution, fall back to full league if position unknown
     const dist = fullDist[playerPos] ?? fullDist['all'];
     if (!dist) return;
 

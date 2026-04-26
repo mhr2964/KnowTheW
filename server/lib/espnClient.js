@@ -122,6 +122,16 @@ function fetchTeamPtsAllowed(teamId, year) {
   });
 }
 
+async function fetchHistoricalRoster(teamId, season) {
+  const res = await fetch(`${ESPN}/teams/${teamId}/roster?season=${season}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.athletes || []).map(p => ({
+    id: String(p.id),
+    position: p.position?.abbreviation || '',
+  }));
+}
+
 async function fetchGameSummary(eventId) {
   const db = getDb();
   if (db) {
@@ -149,7 +159,7 @@ getTeams()
   .catch(err => console.error('Startup prefetch failed:', err.message));
 
 module.exports = {
-  ESPN_WEB, withCache,
-  getTeams, getRoster, fetchTeamStats, fetchTeamPtsAllowed, fetchGameSummary,
+  ESPN, ESPN_WEB, withCache,
+  getTeams, getRoster, fetchHistoricalRoster, fetchTeamStats, fetchTeamPtsAllowed, fetchGameSummary,
   rosterData, playerById, teamSeasonStatsCache,
 };
