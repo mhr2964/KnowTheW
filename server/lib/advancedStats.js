@@ -13,6 +13,8 @@ const ADV_HEADERS_SRV = [
   'OWS', 'DWS', 'WS', 'WS_PER48',
 ];
 
+const ADV_I = Object.fromEntries(ADV_HEADERS_SRV.map((h, idx) => [h, idx]));
+
 function advancedRow(row, I, tm, lg, totRow, officialTm = null) {
   const fga = row[I.FGA] ?? 0,  fgm = row[I.FGM] ?? 0;
   const fg3m = row[I.FG3M] ?? 0;
@@ -256,8 +258,30 @@ async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, 
   return { row, pbpGames };
 }
 
+function buildPbpSplit(valid, pgRows, rowI) {
+  const seasonMins = Object.fromEntries(
+    (pgRows ?? []).map(r => [String(r[rowI.SEASON_ID]), (r[rowI.MIN] ?? 0) * (r[rowI.GP] ?? 0)])
+  );
+  const careerOWS  = valid.reduce((s, r) => s + (r.row[ADV_I.OWS] ?? 0), 0);
+  const careerDWS  = valid.reduce((s, r) => s + (r.row[ADV_I.DWS] ?? 0), 0);
+  const careerWS   = careerOWS + careerDWS;
+  const careerGP   = valid.reduce((s, r) => s + (r.row[ADV_I.GP]  ?? 0), 0);
+  const careerMin  = valid.reduce((s, r) => s + (seasonMins[r.season] ?? 0), 0);
+  const careerWS48 = careerMin > 0 ? careerWS / (careerMin / 48) : null;
+  const careerRow  = ADV_HEADERS_SRV.map(h => {
+    if (h === 'SEASON_ID') return 'Career';
+    if (h === 'TEAM_ABBREVIATION') return '';
+    if (h === 'GP')       return careerGP;
+    if (h === 'OWS')      return careerOWS;
+    if (h === 'DWS')      return careerDWS;
+    if (h === 'WS')       return careerWS;
+    if (h === 'WS_PER48') return careerWS48;
+    return null;
+  });
+  return { rows: valid.map(r => r.row), careerRow };
+}
+
 module.exports = {
-  ADV_HEADERS_SRV, PBP_OC_KEYS,
-  computeBasicRatioStats, computePER, computeWinShares, computeOnCourtStats,
-  advancedRow, buildAdvancedSplit, buildAdvancedCareer, computeSeasonPBP,
+  ADV_HEADERS_SRV, ADV_I,
+  advancedRow, buildAdvancedSplit, buildAdvancedCareer, computeSeasonPBP, buildPbpSplit,
 };

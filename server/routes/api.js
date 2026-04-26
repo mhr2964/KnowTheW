@@ -7,11 +7,17 @@ const { ESPN_WEB, getTeams, getRoster, fetchTeamStats,
         rosterData, playerById, teamSeasonStatsCache }                   = require('../lib/espnClient');
 const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats }   = require('../lib/statsParser');
 const { ADV_HEADERS_SRV, buildAdvancedSplit, buildAdvancedCareer,
-        computeSeasonPBP }                                               = require('../lib/advancedStats');
+        computeSeasonPBP, buildPbpSplit }                                = require('../lib/advancedStats');
 const { getPlayerPercentiles }                                           = require('../lib/percentileClient');
 
-// Index into ADV_HEADERS_SRV by stat name — built once at startup, reused across all requests.
-const ADV_I = Object.fromEntries(ADV_HEADERS_SRV.map((h, idx) => [h, idx]));
+async function fetchPlayerSeasonData(playerId) {
+  const [teams, regData, postData] = await Promise.all([
+    getTeams(),
+    fetch(`${ESPN_WEB}/athletes/${playerId}/stats?seasontype=2`).then(r => r.ok ? r.json() : null),
+    fetch(`${ESPN_WEB}/athletes/${playerId}/stats?seasontype=3`).then(r => r.ok ? r.json() : null),
+  ]);
+  return { teams, regData, postData, teamsById: Object.fromEntries(teams.map(t => [t.id, t])) };
+}
 
 router.get('/teams', async (req, res) => {
   try {
@@ -66,13 +72,7 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
     const player = playerById[req.params.id];
     if (!player) return res.status(404).json({ error: 'player not found' });
 
-    const [teams, regData, postData] = await Promise.all([
-      getTeams(),
-      fetch(`${ESPN_WEB}/athletes/${req.params.id}/stats?seasontype=2`).then(r => r.ok ? r.json() : null),
-      fetch(`${ESPN_WEB}/athletes/${req.params.id}/stats?seasontype=3`).then(r => r.ok ? r.json() : null),
-    ]);
-
-    const teamsById = Object.fromEntries(teams.map(t => [t.id, t]));
+    const { regData, postData, teamsById } = await fetchPlayerSeasonData(req.params.id);
     const result = buildDetailedStats(regData, postData, teamsById);
 
     if (!result.perGame.regular) return res.status(404).json({ error: 'no stats available for this player' });
@@ -146,13 +146,7 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
     const player = playerById[req.params.id];
     if (!player) return res.status(404).json({ error: 'player not found' });
 
-    const [teams, regData, postData] = await Promise.all([
-      getTeams(),
-      fetch(`${ESPN_WEB}/athletes/${req.params.id}/stats?seasontype=2`).then(r => r.ok ? r.json() : null),
-      fetch(`${ESPN_WEB}/athletes/${req.params.id}/stats?seasontype=3`).then(r => r.ok ? r.json() : null),
-    ]);
-
-    const teamsById  = Object.fromEntries(teams.map(t => [t.id, t]));
+    const { regData, postData, teamsById } = await fetchPlayerSeasonData(req.params.id);
     const regParsed  = parseESPNSeasonData(regData,  teamsById);
     const postParsed = parseESPNSeasonData(postData, teamsById);
     const pgTable = regParsed?.pg?.table;
@@ -209,36 +203,13 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
       })),
     ]);
 
-    function buildSplit(valid, pgRows, rowI) {
-      const seasonMins = Object.fromEntries(
-        (pgRows ?? []).map(r => [String(r[rowI.SEASON_ID]), (r[rowI.MIN] ?? 0) * (r[rowI.GP] ?? 0)])
-      );
-      const careerOWS  = valid.reduce((s, r) => s + (r.row[ADV_I.OWS] ?? 0), 0);
-      const careerDWS  = valid.reduce((s, r) => s + (r.row[ADV_I.DWS] ?? 0), 0);
-      const careerWS   = careerOWS + careerDWS;
-      const careerGP   = valid.reduce((s, r) => s + (r.row[ADV_I.GP]  ?? 0), 0);
-      const careerMin  = valid.reduce((s, r) => s + (seasonMins[r.season] ?? 0), 0);
-      const careerWS48 = careerMin > 0 ? careerWS / (careerMin / 48) : null;
-      const careerRow  = ADV_HEADERS_SRV.map(h => {
-        if (h === 'SEASON_ID') return 'Career';
-        if (h === 'TEAM_ABBREVIATION') return '';
-        if (h === 'GP')       return careerGP;
-        if (h === 'OWS')      return careerOWS;
-        if (h === 'DWS')      return careerDWS;
-        if (h === 'WS')       return careerWS;
-        if (h === 'WS_PER48') return careerWS48;
-        return null;
-      });
-      return { rows: valid.map(r => r.row), careerRow };
-    }
-
     const validReg  = regResults.filter(Boolean);
     const validPost = postResults.filter(Boolean);
 
     const advResult = {
       headers:  ADV_HEADERS_SRV,
-      regular:  buildSplit(validReg,  pgTable.rows,      I),
-      playoffs: validPost.length ? buildSplit(validPost, pgPostTable?.rows ?? [], IPost) : null,
+      regular:  buildPbpSplit(validReg,  pgTable.rows,      I),
+      playoffs: validPost.length ? buildPbpSplit(validPost, pgPostTable?.rows ?? [], IPost) : null,
       pbpGamesBySeason: Object.fromEntries([
         ...validReg.map(r => [r.season, r.pbpGames]),
         ...validPost.map(r => [`post-${r.season}`, r.pbpGames]),

@@ -121,19 +121,8 @@ async function getPlayerPercentiles(playerId) {
     const dist = fullDist[playerPos] ?? fullDist['all'];
     if (!dist) return;
 
-    const entry = avgCat.statistics.find(e => String(e.season?.year) === season);
-    if (!entry) return;
-
-    const m   = parseStatMap(avgCat.names, entry.stats);
-    const gp  = m.gamesPlayed ?? 0;
-    const mpg = m.avgMinutes  ?? 0;
-    if (gp < PERCENTILE_MIN_GP || mpg < PERCENTILE_MIN_MPG) return;
-
-    const playerStats = {
-      PTS: m.avgPoints, REB: m.avgRebounds, AST: m.avgAssists,
-      STL: m.avgSteals, BLK: m.avgBlocks,
-      FG_PCT: m.fieldGoalPct, FG3_PCT: m.threePointFieldGoalPct, FT_PCT: m.freeThrowPct,
-    };
+    const playerStats = extractSeasonAvg(data, season);
+    if (!playerStats) return;
 
     result[season] = {};
     for (const stat of PERCENTILE_STATS) {

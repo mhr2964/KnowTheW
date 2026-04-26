@@ -4,8 +4,9 @@
 const API = 'http://localhost:5000/api';
 
 const PLAYERS = [
-  { id: '981',  name: 'Vandersloot' },
-  { id: '1068', name: 'Ogwumike' },
+  { id: '981',    name: 'Vandersloot' },
+  { id: '1068',   name: 'Ogwumike' },
+  { id: '3142191', name: 'Mitchell' },
 ];
 
 // BRef reference data — keyed by [name][year]
@@ -43,6 +44,16 @@ const BREF = {
     2023: { per: 25.3, ts: .587, efg: .532, tpar: .120, ftr: .312, orbPct: 6.2,  drbPct: 28.7, trbPct: 17.1, astPct: 18.4, stlPct: 2.8, blkPct: 2.2, tovPct: 12.0, usgPct: 27.3, ows: 3.1,  dws: 2.5,  ws: 5.6,  wsPer48: .241  },
     2024: { per: 22.6, ts: .578, efg: .542, tpar: .150, ftr: .197, orbPct: 6.6,  drbPct: 20.7, trbPct: 13.5, astPct: 13.1, stlPct: 3.0, blkPct: 1.5, tovPct: 8.4,  usgPct: 21.8, ows: 3.7,  dws: 2.7,  ws: 6.4,  wsPer48: .261  },
     2025: { per: 21.8, ts: .600, efg: .572, tpar: .292, ftr: .191, orbPct: 5.1,  drbPct: 22.8, trbPct: 13.7, astPct: 13.5, stlPct: 1.9, blkPct: 1.2, tovPct: 11.3, usgPct: 25.4, ows: 3.3,  dws: 2.4,  ws: 5.7,  wsPer48: .201  },
+  },
+  Mitchell: {
+    2018: { per: 11.7, ts: .477, efg: .432, tpar: .510, ftr: .237, orbPct: 1.2,  drbPct: 7.6,  trbPct: 4.2,  astPct: 20.6, stlPct: 1.4, blkPct: 0.4, tovPct: 12.7, usgPct: 28.4, ows: -0.6, dws: 0.2,  ws: -0.5, wsPer48: -.026 },
+    2019: { per: 15.1, ts: .506, efg: .478, tpar: .488, ftr: .141, orbPct: 0.6,  drbPct: 6.8,  trbPct: 3.8,  astPct: 20.2, stlPct: 0.9, blkPct: 0.4, tovPct: 11.0, usgPct: 27.3, ows: 1.2,  dws: -0.1, ws: 1.1,  wsPer48: .062  },
+    2020: { per: 15.0, ts: .579, efg: .539, tpar: .468, ftr: .237, orbPct: 1.0,  drbPct: 7.2,  trbPct: 4.1,  astPct: 16.2, stlPct: 1.0, blkPct: 0.2, tovPct: 13.7, usgPct: 24.7, ows: 1.4,  dws: -0.5, ws: 0.9,  wsPer48: .058  },
+    2021: { per: 16.4, ts: .537, efg: .502, tpar: .425, ftr: .173, orbPct: 2.3,  drbPct: 7.3,  trbPct: 4.7,  astPct: 14.8, stlPct: 1.7, blkPct: 0.6, tovPct: 10.9, usgPct: 25.1, ows: 2.0,  dws: -0.4, ws: 1.6,  wsPer48: .074  },
+    2022: { per: 17.6, ts: .568, efg: .519, tpar: .394, ftr: .273, orbPct: 1.5,  drbPct: 5.7,  trbPct: 3.5,  astPct: 25.0, stlPct: 1.4, blkPct: 0.6, tovPct: 12.7, usgPct: 24.6, ows: 2.6,  dws: -0.4, ws: 2.2,  wsPer48: .106  },
+    2023: { per: 16.6, ts: .580, efg: .533, tpar: .461, ftr: .297, orbPct: 1.1,  drbPct: 4.8,  trbPct: 2.9,  astPct: 16.4, stlPct: 1.4, blkPct: 0.1, tovPct: 12.8, usgPct: 23.9, ows: 3.4,  dws: -0.1, ws: 3.3,  wsPer48: .118  },
+    2024: { per: 18.2, ts: .588, efg: .559, tpar: .450, ftr: .188, orbPct: 2.5,  drbPct: 6.5,  trbPct: 4.5,  astPct: 9.9,  stlPct: 1.1, blkPct: 0.5, tovPct: 8.9,  usgPct: 24.9, ows: 3.7,  dws: -0.5, ws: 3.2,  wsPer48: .122  },
+    2025: { per: 19.9, ts: .574, efg: .536, tpar: .408, ftr: .275, orbPct: 1.6,  drbPct: 5.3,  trbPct: 3.4,  astPct: 19.6, stlPct: 1.4, blkPct: 0.5, tovPct: 9.1,  usgPct: 27.7, ows: 4.5,  dws: 1.0,  ws: 5.6,  wsPer48: .193  },
   },
 };
 
