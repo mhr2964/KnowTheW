@@ -1,13 +1,8 @@
-const { ESPN_WEB, playerById } = require('./espnClient');
+const { ESPN_WEB, getTeams, fetchHistoricalRoster, playerById } = require('./espnClient');
 const { parseStatMap } = require('./statsParser');
-
-const ESPN_CORE = 'https://sports.core.api.espn.com/v2/sports/basketball/leagues/wnba';
 
 const PERCENTILE_MIN_GP   = 10;
 const PERCENTILE_MIN_MPG  = 10;
-// ESPN Core API returns current athletes regardless of season year; old seasons
-// have tiny pools because few current players have records that far back.
-// Below this threshold the distribution is too small to be meaningful.
 const DISTRIBUTION_MIN    = 30;
 // Minimum players in a position bucket before falling back to league-wide.
 const POSITION_MIN_BUCKET = 20;
@@ -51,27 +46,24 @@ function extractSeasonAvg(data, targetYear) {
   };
 }
 
-async function fetchSeasonPlayerIds(season) {
-  const res = await fetch(`${ESPN_CORE}/seasons/${season}/athletes?limit=1000`);
-  if (!res.ok) return null;
-  const data = await res.json();
-  return (data.items || [])
-    .map(item => {
-      const m = item.$ref?.match(/\/athletes\/(\d+)/);
-      return m ? m[1] : null;
-    })
-    .filter(Boolean);
-}
-
 // Returns { all: {...}, G: {...}, F: {...}, C: {...} } keyed by sorted stat arrays,
 // or null if the pool is too small to produce meaningful percentiles.
 async function buildLeagueDistribution(season) {
-  const playerIds = await fetchSeasonPlayerIds(season);
-  if (!playerIds?.length) return null;
+  const teams = await getTeams();
+  const rosterArrays = await Promise.all(teams.map(t => fetchHistoricalRoster(t.id, season)));
+
+  // Deduplicate — a traded player can appear on two team rosters
+  const playerMap = new Map();
+  for (const roster of rosterArrays) {
+    for (const p of roster) {
+      if (!playerMap.has(p.id)) playerMap.set(p.id, p);
+    }
+  }
+  console.log(`[perc] season ${season}: ${playerMap.size} unique players from rosters`);
 
   const allEntries = await Promise.all(
-    playerIds.map(async id => {
-      const pos = primaryPosition(playerById[id]?.position || '');
+    [...playerMap.values()].map(async ({ id, position }) => {
+      const pos = primaryPosition(position);
       try {
         const r = await fetch(`${ESPN_WEB}/athletes/${id}/stats?seasontype=2`);
         if (!r.ok) return null;

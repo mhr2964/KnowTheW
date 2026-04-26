@@ -124,9 +124,28 @@ function fetchTeamPtsAllowed(teamId, year) {
 
 async function fetchHistoricalRoster(teamId, season) {
   const res = await fetch(`${ESPN}/teams/${teamId}/roster?season=${season}`);
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.log(`[roster] team ${teamId} season ${season}: HTTP ${res.status}`);
+    return [];
+  }
   const data = await res.json();
-  return (data.athletes || []).map(p => ({
+  const raw = data.athletes || [];
+
+  // ESPN returns two formats depending on endpoint version:
+  // Flat:    [{ id, position: { abbreviation } }]
+  // Grouped: [{ position: "Guards", items: [{ id, position: { abbreviation } }] }]
+  const isGrouped = raw.length > 0 && Array.isArray(raw[0].items);
+  console.log(`[roster] team ${teamId} season ${season}: ${isGrouped ? 'grouped' : 'flat'}, ${raw.length} entries`);
+
+  if (isGrouped) {
+    return raw.flatMap(group =>
+      (group.items || []).map(p => ({
+        id: String(p.id),
+        position: p.position?.abbreviation || '',
+      }))
+    );
+  }
+  return raw.map(p => ({
     id: String(p.id),
     position: p.position?.abbreviation || '',
   }));
