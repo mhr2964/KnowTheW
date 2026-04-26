@@ -113,6 +113,12 @@ function extractSeasonAvg(data, targetYear) {
   };
 }
 
+function fetchWithTimeout(url, options = {}, ms = 12000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...options, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
 // ── Stat providers ──────────────────────────────────────────────────────────
 // A provider is: (season: string) => Promise<NormalizedEntry[]>
 // Each is self-contained — owns its own ID system, fetch logic, and parsing.
@@ -134,7 +140,7 @@ async function fetchWnbaPosById() {
   if (wnbaPosByIdPromise) return wnbaPosByIdPromise;
   wnbaPosByIdPromise = (async () => {
     try {
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         `${WNBA_STATS}/playerindex?LeagueID=10&Historical=1`,
         { headers: WNBA_HEADERS }
       );
@@ -179,7 +185,7 @@ async function wnbaStatsProvider(season) {
   url.searchParams.set('Rank', 'N');
 
   try {
-    const res = await fetch(url.toString(), { headers: WNBA_HEADERS });
+    const res = await fetchWithTimeout(url.toString(), { headers: WNBA_HEADERS });
     if (!res.ok) return [];
     const data = await res.json();
     const rs = data.resultSets?.[0];
