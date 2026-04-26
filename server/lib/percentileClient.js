@@ -171,7 +171,7 @@ function extractPer36Stats(data, targetYear) {
     FG3A:    p(tot.FG3A),
     FTM:     p(tot.FTM),
     FTA:     p(tot.FTA),
-    MIN:     36,
+    MIN:     null,  // always 36 in per-36 mode — not a meaningful percentile
   };
 }
 
@@ -273,7 +273,7 @@ async function espnByAthleteProvider(season, mode = 'PerGame') {
       FG_PCT: fgPct, FG3_PCT: fg3Pct, FT_PCT: ftPct, TOV: p36(pgTOV),
       PF: null, OREB: null, DREB: null,
       FGM: p36(pgFGM), FGA: p36(pgFGA), FG3M: p36(pgFG3M), FG3A: p36(pgFG3A), FTM: p36(pgFTM), FTA: p36(pgFTA),
-      MIN: 36,
+      MIN: null,  // always 36 in per-36 mode — not a meaningful percentile
     }];
   });
 }
