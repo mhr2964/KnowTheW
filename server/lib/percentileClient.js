@@ -143,6 +143,7 @@ async function getPlayerPercentiles(playerId) {
 
     const dist = fullDist[playerPos] ?? fullDist['all'];
     if (!dist) continue;
+    console.log(`[perc] player ${playerId} season ${season}: pool=${fullDist.all?.PTS?.length ?? 0} (pos ${playerPos}: ${dist?.PTS?.length ?? 0})`);
 
     const playerStats = extractSeasonAvg(data, season);
     if (!playerStats) { console.log(`[perc] player ${playerId} season ${season}: no qualifying stats`); continue; }
