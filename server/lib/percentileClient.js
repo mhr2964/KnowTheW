@@ -1,7 +1,19 @@
 const { ESPN_WEB, playerById } = require('./espnClient');
 const { parseStatMap } = require('./statsParser');
 
-const ESPN_CORE = 'https://sports.core.api.espn.com/v2/sports/basketball/leagues/wnba';
+const ESPN_CORE  = 'https://sports.core.api.espn.com/v2/sports/basketball/leagues/wnba';
+const WNBA_STATS = 'https://stats.wnba.com/stats';
+const WNBA_HEADERS = {
+  'User-Agent':          'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:72.0) Gecko/20100101 Firefox/72.0',
+  'Accept':              'application/json, text/plain, */*',
+  'Accept-Language':     'en-US,en;q=0.5',
+  'x-nba-stats-origin':  'stats',
+  'x-nba-stats-token':   'true',
+  'Origin':              'https://stats.wnba.com',
+  'Referer':             'https://www.wnba.com/',
+  'Pragma':              'no-cache',
+  'Cache-Control':       'no-cache',
+};
 
 const PERCENTILE_MIN_GP   = 10;
 const PERCENTILE_MIN_MPG  = 10;
@@ -68,6 +80,102 @@ function extractSeasonAvg(data, targetYear) {
 // Outputs are merged before building the distribution; no ID coordination needed.
 // ───────────────────────────────────────────────────────────────────────────
 
+// ── WNBA Stats provider ─────────────────────────────────────────────────────
+// Hits stats.wnba.com — returns ALL players who appeared in a given season,
+// including retired players. One request per season covers the entire league.
+// posById is loaded once via playerindex?Historical=1 and cached in memory.
+// ───────────────────────────────────────────────────────────────────────────
+
+let wnbaPosById        = null;
+let wnbaPosByIdPromise = null;
+
+async function fetchWnbaPosById() {
+  if (wnbaPosById) return wnbaPosById;
+  if (wnbaPosByIdPromise) return wnbaPosByIdPromise;
+  wnbaPosByIdPromise = (async () => {
+    try {
+      const res = await fetch(
+        `${WNBA_STATS}/playerindex?LeagueID=10&Historical=1`,
+        { headers: WNBA_HEADERS }
+      );
+      if (!res.ok) return {};
+      const data = await res.json();
+      const rs = data.resultSets?.[0];
+      if (!rs) return {};
+      const idIdx  = rs.headers.indexOf('PERSON_ID');
+      const posIdx = rs.headers.indexOf('POSITION');
+      const map = {};
+      for (const row of rs.rowSet) {
+        map[row[idIdx]] = primaryPosition(row[posIdx] || '');
+      }
+      wnbaPosById = map;
+      return map;
+    } catch {
+      return {};
+    }
+  })();
+  return wnbaPosByIdPromise;
+}
+
+function wnbaSeasonParam(year) {
+  return `${year}-${String(Number(year) + 1).slice(-2).padStart(2, '0')}`;
+}
+
+async function wnbaStatsProvider(season) {
+  const posById = await fetchWnbaPosById();
+
+  const url = new URL(`${WNBA_STATS}/leaguedashplayerstats`);
+  url.searchParams.set('LeagueID', '10');
+  url.searchParams.set('Season', wnbaSeasonParam(season));
+  url.searchParams.set('SeasonType', 'Regular Season');
+  url.searchParams.set('PerMode', 'PerGame');
+  url.searchParams.set('MeasureType', 'Base');
+  url.searchParams.set('LastNGames', '0');
+  url.searchParams.set('Month', '0');
+  url.searchParams.set('OpponentTeamID', '0');
+  url.searchParams.set('PaceAdjust', 'N');
+  url.searchParams.set('Period', '0');
+  url.searchParams.set('PlusMinus', 'N');
+  url.searchParams.set('Rank', 'N');
+
+  try {
+    const res = await fetch(url.toString(), { headers: WNBA_HEADERS });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const rs = data.resultSets?.[0];
+    if (!rs) return [];
+
+    const idx = Object.fromEntries(rs.headers.map((h, i) => [h, i]));
+
+    return rs.rowSet
+      .filter(row => (row[idx.GP] ?? 0) >= PERCENTILE_MIN_GP && (row[idx.MIN] ?? 0) >= PERCENTILE_MIN_MPG)
+      .map(row => ({
+        pos:     posById[row[idx.PLAYER_ID]] ?? '',
+        PTS:     row[idx.PTS]     ?? null,
+        REB:     row[idx.REB]     ?? null,
+        AST:     row[idx.AST]     ?? null,
+        STL:     row[idx.STL]     ?? null,
+        BLK:     row[idx.BLK]     ?? null,
+        FG_PCT:  row[idx.FG_PCT]  ?? null,
+        FG3_PCT: row[idx.FG3_PCT] ?? null,
+        FT_PCT:  row[idx.FT_PCT]  ?? null,
+        TOV:     row[idx.TOV]     ?? null,
+        PF:      row[idx.PF]      ?? null,
+        OREB:    row[idx.OREB]    ?? null,
+        DREB:    row[idx.DREB]    ?? null,
+        FGM:     row[idx.FGM]     ?? null,
+        FGA:     row[idx.FGA]     ?? null,
+        FG3M:    row[idx.FG3M]    ?? null,
+        FG3A:    row[idx.FG3A]    ?? null,
+        FTM:     row[idx.FTM]     ?? null,
+        FTA:     row[idx.FTA]     ?? null,
+        MIN:     row[idx.MIN]     ?? null,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 async function espnProvider(season) {
   const res = await fetch(`${ESPN_CORE}/seasons/${season}/athletes?limit=1000`);
   if (!res.ok) return [];
@@ -93,9 +201,7 @@ async function espnProvider(season) {
   return entries.filter(Boolean);
 }
 
-// Add additional providers here when a new data source is available, e.g.:
-// const PROVIDERS = [espnProvider, brefProvider];
-const PROVIDERS = [espnProvider];
+const PROVIDERS = [wnbaStatsProvider];
 
 // ── Distribution builder ────────────────────────────────────────────────────
 
