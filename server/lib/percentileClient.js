@@ -1,5 +1,7 @@
-const { ESPN_WEB, withCache, getTeams, fetchHistoricalRoster, playerById } = require('./espnClient');
+const { ESPN_WEB, withCache, playerById } = require('./espnClient');
 const { parseStatMap } = require('./statsParser');
+
+const ESPN_CORE = 'https://sports.core.api.espn.com/v2/sports/basketball/leagues/wnba';
 
 const PERCENTILE_MIN_GP  = 10;
 const PERCENTILE_MIN_MPG = 10;
@@ -44,26 +46,31 @@ function extractSeasonAvg(data, targetYear) {
   };
 }
 
+// Returns all athlete IDs who appear in ESPN's records for a given season.
+// Retired players are included because this queries the Core API season roster,
+// not the current team roster endpoint (which ignores ?season= for WNBA).
+async function fetchSeasonPlayerIds(season) {
+  const res = await fetch(`${ESPN_CORE}/seasons/${season}/athletes?limit=1000`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  return (data.items || [])
+    .map(item => {
+      const m = item.$ref?.match(/\/athletes\/(\d+)/);
+      return m ? m[1] : null;
+    })
+    .filter(Boolean);
+}
+
 // Returns { G: { PTS: [...sorted], ... }, F: {...}, C: {...}, all: {...} }
-// Uses historical rosters for the given season so retired players are included.
+// Uses ESPN Core API season athlete list so retired players are included.
 async function buildLeagueDistribution(season) {
-  const teams = await getTeams();
-
-  const rosterArrays = await Promise.all(
-    teams.map(t => fetchHistoricalRoster(t.id, season))
-  );
-
-  // Deduplicate players (mid-season trades can put a player on two rosters)
-  const playerMap = new Map();
-  for (const roster of rosterArrays) {
-    for (const p of roster) {
-      if (!playerMap.has(p.id)) playerMap.set(p.id, p);
-    }
-  }
+  const playerIds = await fetchSeasonPlayerIds(season);
+  if (!playerIds?.length) return null;
 
   const allEntries = await Promise.all(
-    [...playerMap.values()].map(async ({ id, position }) => {
-      const pos = primaryPosition(position);
+    playerIds.map(async id => {
+      // Current players have a known position; retired players fall into 'all'
+      const pos = primaryPosition(playerById[id]?.position || '');
       try {
         const r = await fetch(`${ESPN_WEB}/athletes/${id}/stats?seasontype=2`);
         if (!r.ok) return null;
