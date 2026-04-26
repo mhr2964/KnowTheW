@@ -5,18 +5,7 @@ const { getDb } = require('../db');
 const DIST_CACHE_COLLECTION = 'distributionCache';
 const DIST_TTL_MS = 24 * 60 * 60 * 1000;
 
-const WNBA_STATS = 'https://stats.wnba.com/stats';
-const WNBA_HEADERS = {
-  'User-Agent':          'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:72.0) Gecko/20100101 Firefox/72.0',
-  'Accept':              'application/json, text/plain, */*',
-  'Accept-Language':     'en-US,en;q=0.5',
-  'x-nba-stats-origin':  'stats',
-  'x-nba-stats-token':   'true',
-  'Origin':              'https://stats.wnba.com',
-  'Referer':             'https://www.wnba.com/',
-  'Pragma':              'no-cache',
-  'Cache-Control':       'no-cache',
-};
+const ESPN_BYATHLETE = 'https://site.api.espn.com/apis/common/v3/sports/basketball/wnba/statistics/byathlete';
 
 const PERCENTILE_MIN_GP   = 10;
 const PERCENTILE_MIN_MPG  = 10;
@@ -186,109 +175,109 @@ function extractPer36Stats(data, targetYear) {
 }
 
 // ── Stat providers ──────────────────────────────────────────────────────────
-// A provider is: (season: string) => Promise<NormalizedEntry[]>
-// Each is self-contained — owns its own ID system, fetch logic, and parsing.
-// Add new sources by writing a provider function and appending it to PROVIDERS.
-// Outputs are merged before building the distribution; no ID coordination needed.
+// A provider is: (season: string, mode: string) => Promise<NormalizedEntry[]>
 // ───────────────────────────────────────────────────────────────────────────
 
-// ── WNBA Stats provider ─────────────────────────────────────────────────────
-// Hits stats.wnba.com — returns ALL players who appeared in a given season,
-// including retired players. One request per season covers the entire league.
-// posById is loaded once via playerindex?Historical=1 and cached in memory.
-// ───────────────────────────────────────────────────────────────────────────
+// ── ESPN byathlete provider ──────────────────────────────────────────────────
+// Hits ESPN's public byathlete endpoint — no auth, no rate-limiting, works from
+// Heroku. Returns per-game stats; Totals/Per36 are computed from the same data.
+// One fetch per season (shared across all modes via espnRawCache).
+// Note: PF, OREB, DREB are not available from this endpoint (null in distribution).
+// ────────────────────────────────────────────────────────────────────────────
 
-let wnbaPosById        = null;
-let wnbaPosByIdPromise = null;
+const espnRawCache    = {};
+const espnRawInFlight = {};
 
-async function fetchWnbaPosById() {
-  if (wnbaPosById) return wnbaPosById;
-  if (wnbaPosByIdPromise) return wnbaPosByIdPromise;
-  wnbaPosByIdPromise = (async () => {
-    try {
-      const res = await fetchWithTimeout(
-        `${WNBA_STATS}/playerindex?LeagueID=10&Historical=1`,
-        { headers: WNBA_HEADERS }
-      );
-      if (!res.ok) return {};
-      const data = await res.json();
-      const rs = data.resultSets?.[0];
-      if (!rs) return {};
-      const idIdx  = rs.headers.indexOf('PERSON_ID');
-      const posIdx = rs.headers.indexOf('POSITION');
-      const map = {};
-      for (const row of rs.rowSet) {
-        map[row[idIdx]] = primaryPosition(row[posIdx] || '');
-      }
-      wnbaPosById = map;
-      return map;
-    } catch {
-      return {};
+async function fetchEspnLeagueStats(season) {
+  if (espnRawCache[season]) return espnRawCache[season];
+  if (espnRawInFlight[season]) return espnRawInFlight[season];
+
+  espnRawInFlight[season] = (async () => {
+    const athletes = [];
+    let page = 1;
+    while (true) {
+      try {
+        const url = `${ESPN_BYATHLETE}?season=${season}&seasontype=2&limit=200&page=${page}`;
+        const res = await fetchWithTimeout(url);
+        if (!res.ok) break;
+        const data = await res.json();
+        athletes.push(...(data.athletes ?? []));
+        if (page >= (data.pagination?.pages ?? 1)) break;
+        page++;
+      } catch { break; }
     }
-  })();
-  return wnbaPosByIdPromise;
+    espnRawCache[season] = athletes;
+    return athletes;
+  })().finally(() => { delete espnRawInFlight[season]; });
+
+  return espnRawInFlight[season];
 }
 
-function wnbaSeasonParam(year) {
-  return `${year}-${String(Number(year) + 1).slice(-2).padStart(2, '0')}`;
+async function espnByAthleteProvider(season, mode = 'PerGame') {
+  const athletes = await fetchEspnLeagueStats(season);
+
+  return athletes.flatMap(a => {
+    const gen = a.categories[0]?.values ?? [];
+    const off = a.categories[1]?.values ?? [];
+    const def = a.categories[2]?.values ?? [];
+
+    const pos = primaryPosition(a.athlete?.position?.abbreviation ?? '');
+    const gp  = gen[0] ?? 0;
+    const mpg = gen[1] ?? 0;
+
+    if (gp < PERCENTILE_MIN_GP || mpg < PERCENTILE_MIN_MPG) return [];
+
+    const pgPTS  = off[1]  ?? null;
+    const pgREB  = gen[5]  ?? null;
+    const pgAST  = off[11] ?? null;
+    const pgSTL  = def[0]  ?? null;
+    const pgBLK  = def[1]  ?? null;
+    const pgTOV  = off[12] ?? null;
+    const pgFGM  = off[2]  ?? null;
+    const pgFGA  = off[3]  ?? null;
+    const pgFG3M = off[5]  ?? null;
+    const pgFG3A = off[6]  ?? null;
+    const pgFTM  = off[8]  ?? null;
+    const pgFTA  = off[9]  ?? null;
+    const fgPct  = off[4]  != null ? off[4]  / 100 : null;
+    const fg3Pct = off[7]  != null ? off[7]  / 100 : null;
+    const ftPct  = off[10] != null ? off[10] / 100 : null;
+
+    if (mode === 'PerGame') {
+      return [{ pos,
+        PTS: pgPTS, REB: pgREB, AST: pgAST, STL: pgSTL, BLK: pgBLK,
+        FG_PCT: fgPct, FG3_PCT: fg3Pct, FT_PCT: ftPct, TOV: pgTOV,
+        PF: null, OREB: null, DREB: null,
+        FGM: pgFGM, FGA: pgFGA, FG3M: pgFG3M, FG3A: pgFG3A, FTM: pgFTM, FTA: pgFTA, MIN: mpg,
+      }];
+    }
+
+    if (mode === 'Totals') {
+      const t = v => (v !== null && v !== undefined) ? v * gp : null;
+      return [{ pos,
+        PTS: off[0] ?? null, REB: t(pgREB), AST: t(pgAST), STL: t(pgSTL), BLK: t(pgBLK),
+        FG_PCT: fgPct, FG3_PCT: fg3Pct, FT_PCT: ftPct, TOV: t(pgTOV),
+        PF: null, OREB: null, DREB: null,
+        FGM: t(pgFGM), FGA: t(pgFGA), FG3M: t(pgFG3M), FG3A: t(pgFG3A), FTM: t(pgFTM), FTA: t(pgFTA),
+        MIN: mpg > 0 ? Math.round(mpg * gp) : null,
+      }];
+    }
+
+    // Per36
+    if (mpg <= 0) return [];
+    const scale = 36 / mpg;
+    const p36 = v => (v !== null && v !== undefined) ? v * scale : null;
+    return [{ pos,
+      PTS: p36(pgPTS), REB: p36(pgREB), AST: p36(pgAST), STL: p36(pgSTL), BLK: p36(pgBLK),
+      FG_PCT: fgPct, FG3_PCT: fg3Pct, FT_PCT: ftPct, TOV: p36(pgTOV),
+      PF: null, OREB: null, DREB: null,
+      FGM: p36(pgFGM), FGA: p36(pgFGA), FG3M: p36(pgFG3M), FG3A: p36(pgFG3A), FTM: p36(pgFTM), FTA: p36(pgFTA),
+      MIN: 36,
+    }];
+  });
 }
 
-async function wnbaStatsProvider(season, mode = 'PerGame') {
-  const posById = await fetchWnbaPosById();
-
-  const url = new URL(`${WNBA_STATS}/leaguedashplayerstats`);
-  url.searchParams.set('LeagueID', '10');
-  url.searchParams.set('Season', wnbaSeasonParam(season));
-  url.searchParams.set('SeasonType', 'Regular Season');
-  url.searchParams.set('PerMode', mode);
-  url.searchParams.set('MeasureType', 'Base');
-  url.searchParams.set('LastNGames', '0');
-  url.searchParams.set('Month', '0');
-  url.searchParams.set('OpponentTeamID', '0');
-  url.searchParams.set('PaceAdjust', 'N');
-  url.searchParams.set('Period', '0');
-  url.searchParams.set('PlusMinus', 'N');
-  url.searchParams.set('Rank', 'N');
-
-  try {
-    const res = await fetchWithTimeout(url.toString(), { headers: WNBA_HEADERS });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const rs = data.resultSets?.[0];
-    if (!rs) return [];
-
-    const idx = Object.fromEntries(rs.headers.map((h, i) => [h, i]));
-
-    return rs.rowSet
-      .filter(row => (row[idx.GP] ?? 0) >= PERCENTILE_MIN_GP && (row[idx.MIN] ?? 0) >= PERCENTILE_MIN_MPG)
-      .map(row => ({
-        pos:     posById[row[idx.PLAYER_ID]] ?? '',
-        PTS:     row[idx.PTS]     ?? null,
-        REB:     row[idx.REB]     ?? null,
-        AST:     row[idx.AST]     ?? null,
-        STL:     row[idx.STL]     ?? null,
-        BLK:     row[idx.BLK]     ?? null,
-        FG_PCT:  row[idx.FG_PCT]  ?? null,
-        FG3_PCT: row[idx.FG3_PCT] ?? null,
-        FT_PCT:  row[idx.FT_PCT]  ?? null,
-        TOV:     row[idx.TOV]     ?? null,
-        PF:      row[idx.PF]      ?? null,
-        OREB:    row[idx.OREB]    ?? null,
-        DREB:    row[idx.DREB]    ?? null,
-        FGM:     row[idx.FGM]     ?? null,
-        FGA:     row[idx.FGA]     ?? null,
-        FG3M:    row[idx.FG3M]    ?? null,
-        FG3A:    row[idx.FG3A]    ?? null,
-        FTM:     row[idx.FTM]     ?? null,
-        FTA:     row[idx.FTA]     ?? null,
-        MIN:     row[idx.MIN]     ?? null,
-      }));
-  } catch {
-    return [];
-  }
-}
-
-const PROVIDERS = [wnbaStatsProvider];
+const PROVIDERS = [espnByAthleteProvider];
 
 // ── Distribution builder ────────────────────────────────────────────────────
 
