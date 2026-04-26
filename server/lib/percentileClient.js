@@ -145,7 +145,7 @@ async function getPlayerPercentiles(playerId) {
     if (!dist) continue;
 
     const playerStats = extractSeasonAvg(data, season);
-    if (!playerStats) continue;
+    if (!playerStats) { console.log(`[perc] player ${playerId} season ${season}: no qualifying stats`); continue; }
 
     result[season] = {};
     for (const stat of PERCENTILE_STATS) {
