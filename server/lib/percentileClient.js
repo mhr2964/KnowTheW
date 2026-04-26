@@ -1,4 +1,4 @@
-const { ESPN_WEB, withCache, playerById } = require('./espnClient');
+const { ESPN_WEB, playerById } = require('./espnClient');
 const { parseStatMap } = require('./statsParser');
 
 const ESPN_CORE = 'https://sports.core.api.espn.com/v2/sports/basketball/leagues/wnba';
@@ -65,6 +65,7 @@ async function fetchSeasonPlayerIds(season) {
 // Uses ESPN Core API season athlete list so retired players are included.
 async function buildLeagueDistribution(season) {
   const playerIds = await fetchSeasonPlayerIds(season);
+  console.log(`[perc] season ${season}: ${playerIds === null ? 'null' : playerIds.length} athlete IDs`);
   if (!playerIds?.length) return null;
 
   const allEntries = await Promise.all(
@@ -83,6 +84,7 @@ async function buildLeagueDistribution(season) {
   );
 
   const qualified = allEntries.filter(Boolean);
+  console.log(`[perc] season ${season}: ${qualified.length} qualified players`);
 
   const groups = { all: qualified };
   for (const entry of qualified) {
@@ -128,26 +130,28 @@ async function getPlayerPercentiles(playerId) {
   )];
   if (!seasons.length) return null;
 
-  const distributions = await Promise.all(
-    seasons.map(season => withCache(distributionCache, season, () => buildLeagueDistribution(season)))
-  );
-
   const result = {};
-  seasons.forEach((season, i) => {
-    const fullDist = distributions[i];
-    if (!fullDist) return;
+  for (const season of seasons) {
+    // Build sequentially to avoid ESPN rate-limiting from simultaneous distribution builds.
+    // Only cache successful results so transient failures can be retried.
+    if (!distributionCache[season]) {
+      const dist = await buildLeagueDistribution(season);
+      if (dist) distributionCache[season] = dist;
+    }
+    const fullDist = distributionCache[season];
+    if (!fullDist) continue;
 
     const dist = fullDist[playerPos] ?? fullDist['all'];
-    if (!dist) return;
+    if (!dist) continue;
 
     const playerStats = extractSeasonAvg(data, season);
-    if (!playerStats) return;
+    if (!playerStats) continue;
 
     result[season] = {};
     for (const stat of PERCENTILE_STATS) {
       result[season][stat] = computePercentile(dist[stat], playerStats[stat], INVERTED_STATS.has(stat));
     }
-  });
+  }
 
   return Object.keys(result).length ? result : null;
 }
