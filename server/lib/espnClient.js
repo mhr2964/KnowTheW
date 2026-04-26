@@ -149,7 +149,7 @@ getTeams()
   .catch(err => console.error('Startup prefetch failed:', err.message));
 
 module.exports = {
-  ESPN_WEB,
+  ESPN_WEB, withCache,
   getTeams, getRoster, fetchTeamStats, fetchTeamPtsAllowed, fetchGameSummary,
   rosterData, playerById, teamSeasonStatsCache,
 };

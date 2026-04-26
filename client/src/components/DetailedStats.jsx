@@ -19,7 +19,22 @@ function fmt(key, val) {
   return String(val);
 }
 
-function BrefTable({ regular, career }) {
+function ordinal(n) {
+  if (n === null || n === undefined) return null;
+  const v = n % 100;
+  const suffix = (v >= 11 && v <= 13) ? 'th' : (['th','st','nd','rd'][n % 10] || 'th');
+  return `${n}${suffix}`;
+}
+
+function percColor(p) {
+  if (p === null || p === undefined) return undefined;
+  const alpha = (Math.abs(p - 50) / 50) * 0.5;
+  if (p > 50) return `rgba(34,197,94,${alpha.toFixed(3)})`;
+  if (p < 50) return `rgba(239,68,68,${alpha.toFixed(3)})`;
+  return undefined;
+}
+
+function BrefTable({ regular, career, percentiles }) {
   if (!regular) return <p className="stats-na">No data available.</p>;
   const { headers, rows } = regular;
   const cols = headers
@@ -34,15 +49,27 @@ function BrefTable({ regular, career }) {
           <tr>{cols.map(c => <th key={c.key}>{c.label}</th>)}</tr>
         </thead>
         <tbody>
-          {rows.map((row, ri) => (
-            <tr key={ri}>
-              {cols.map(c => (
-                <td key={c.key} className={LEFT_COLS.has(c.key) ? 'td-l' : ''}>
-                  {fmt(c.key, row[c.idx])}
-                </td>
-              ))}
-            </tr>
-          ))}
+          {rows.map((row, ri) => {
+            const seasonPerc = percentiles?.[String(row[0])];
+            return (
+              <tr key={ri}>
+                {cols.map(c => {
+                  const raw  = row[c.idx];
+                  const perc = seasonPerc?.[c.key];
+                  return (
+                    <td
+                      key={c.key}
+                      className={LEFT_COLS.has(c.key) ? 'td-l' : ''}
+                      style={{ backgroundColor: percColor(perc) }}
+                      title={perc !== null && perc !== undefined ? `${ordinal(perc)} percentile` : undefined}
+                    >
+                      {fmt(c.key, raw)}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
           {careerRow && (
             <tr className="career-row">
               {cols.map(c => (
@@ -157,6 +184,12 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
   const gameLogAbortRef = useRef(null);
   const gameLogFetchedRef = useRef(new Set());
 
+  const [showPercentiles, setShowPercentiles] = useState(false);
+  const [percData, setPercData] = useState(null);
+  const [percLoading, setPercLoading] = useState(false);
+  const percAbortRef = useRef(null);
+  const percFetchedRef = useRef(false);
+
   const { data: pbpAllData, loading: pbpAllLoading, error: pbpAllError } = useLazyFetch(
     `/api/players/${playerId}/advanced-pbp-all`,
     activeType === 'advanced'
@@ -220,6 +253,33 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
   }, [activeType, gameLogSeason, playerId]);
 
   useEffect(() => () => { gameLogAbortRef.current?.abort(); }, []);
+
+  useEffect(() => {
+    setShowPercentiles(false);
+    setPercData(null);
+    setPercLoading(false);
+    percFetchedRef.current = false;
+    percAbortRef.current?.abort();
+  }, [playerId]);
+
+  useEffect(() => {
+    if (!showPercentiles || percFetchedRef.current) return;
+    percFetchedRef.current = true;
+
+    percAbortRef.current?.abort();
+    const controller = new AbortController();
+    percAbortRef.current = controller;
+    setPercLoading(true);
+
+    fetch(`/api/players/${playerId}/percentiles`, { signal: controller.signal })
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(d => { setPercData(d); setPercLoading(false); })
+      .catch(err => { if (err.name !== 'AbortError') setPercLoading(false); });
+
+    return () => controller.abort();
+  }, [showPercentiles, playerId]);
+
+  useEffect(() => () => { percAbortRef.current?.abort(); }, []);
 
   function handleTypeClick(key) {
     setActiveType(key);
@@ -402,13 +462,26 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
                   </button>
                 )}
               </div>
+              <label className="perc-toggle">
+                <input
+                  type="checkbox"
+                  checked={showPercentiles}
+                  onChange={() => setShowPercentiles(v => !v)}
+                />
+                <span className="perc-toggle-track"><span className="perc-toggle-thumb" /></span>
+                <span className="perc-toggle-label">{percLoading ? 'Loading…' : 'Percentiles'}</span>
+              </label>
               {regular && (
                 <button type="button" className="study-trigger-btn" onClick={openStudy}>
                   Study this table
                 </button>
               )}
             </div>
-            <BrefTable regular={regular} career={career} />
+            <BrefTable
+              regular={regular}
+              career={career}
+              percentiles={showPercentiles && !percLoading ? percData : null}
+            />
           </>
         )}
       </div>

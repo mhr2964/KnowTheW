@@ -111,6 +111,34 @@ body {
 }
 .table-toolbar .section-title { margin-bottom: 0; }
 
+.perc-toggle {
+  display: flex; align-items: center; gap: 0.45rem;
+  cursor: pointer; user-select: none;
+}
+.perc-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+.perc-toggle-track {
+  position: relative; width: 36px; height: 20px; flex-shrink: 0;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; transition: background 0.2s, border-color 0.2s;
+}
+.perc-toggle input:checked ~ .perc-toggle-track {
+  background: var(--accent); border-color: var(--accent);
+}
+.perc-toggle-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: 14px; height: 14px;
+  background: #fff; border-radius: 50%;
+  transition: transform 0.2s;
+}
+.perc-toggle input:checked ~ .perc-toggle-track .perc-toggle-thumb {
+  transform: translateX(16px);
+}
+.perc-toggle-label {
+  font-size: 0.73rem; font-weight: 600; color: var(--text-muted);
+  transition: color 0.15s;
+}
+.perc-toggle input:checked ~ .perc-toggle-label { color: var(--text); }
+
 .study-trigger-btn {
   background: var(--surface-2); border: 1px solid var(--border);
   border-radius: var(--radius); color: var(--accent);

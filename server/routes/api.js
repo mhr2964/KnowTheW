@@ -8,6 +8,7 @@ const { ESPN_WEB, getTeams, getRoster, fetchTeamStats,
 const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats }   = require('../lib/statsParser');
 const { ADV_HEADERS_SRV, buildAdvancedSplit, buildAdvancedCareer,
         computeSeasonPBP }                                               = require('../lib/advancedStats');
+const { getPlayerPercentiles }                                           = require('../lib/percentileClient');
 
 // Index into ADV_HEADERS_SRV by stat name — built once at startup, reused across all requests.
 const ADV_I = Object.fromEntries(ADV_HEADERS_SRV.map((h, idx) => [h, idx]));
@@ -251,6 +252,19 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
   } catch (err) {
     console.error('advanced-pbp-all:', err.message);
     res.status(500).json({ error: 'failed to compute advanced stats' });
+  }
+});
+
+router.get('/players/:id/percentiles', async (req, res) => {
+  const player = playerById[req.params.id];
+  if (!player) return res.status(404).json({ error: 'player not found' });
+  try {
+    const result = await getPlayerPercentiles(req.params.id);
+    if (!result) return res.status(404).json({ error: 'no stats found for this player' });
+    res.json(result);
+  } catch (err) {
+    console.error('percentiles:', err.message);
+    res.status(500).json({ error: 'failed to compute percentiles' });
   }
 });
 
