@@ -1,5 +1,9 @@
 const { ESPN_WEB, playerById } = require('./espnClient');
 const { parseStatMap } = require('./statsParser');
+const { getDb } = require('../db');
+
+const DIST_CACHE_COLLECTION = 'distributionCache';
+const DIST_TTL_MS = 24 * 60 * 60 * 1000;
 
 const WNBA_STATS = 'https://stats.wnba.com/stats';
 const WNBA_HEADERS = {
@@ -22,7 +26,44 @@ const POSITION_MIN_BUCKET = 20;
 const PERCENTILE_STATS = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FG_PCT', 'FG3_PCT', 'FT_PCT', 'TOV', 'PF', 'OREB', 'DREB', 'FGM', 'FGA', 'FG3M', 'FG3A', 'FTM', 'FTA', 'MIN'];
 const INVERTED_STATS = new Set(['TOV', 'PF']);
 
-const distributionCache = {};
+const distributionCache   = {};
+const distributionInFlight = {};
+
+async function getOrBuildDistribution(season) {
+  if (distributionCache[season]) return distributionCache[season];
+  if (distributionInFlight[season]) return distributionInFlight[season];
+
+  distributionInFlight[season] = (async () => {
+    const dbRead = getDb();
+    if (dbRead) {
+      const doc = await dbRead.collection(DIST_CACHE_COLLECTION).findOne({ season });
+      if (doc) {
+        const currentYear = new Date().getFullYear();
+        const isRecent = Number(season) >= currentYear - 1;
+        if (!isRecent || Date.now() - doc.cachedAt < DIST_TTL_MS) {
+          distributionCache[season] = doc.distribution;
+          return doc.distribution;
+        }
+      }
+    }
+
+    const dist = await buildLeagueDistribution(season);
+    if (dist) {
+      distributionCache[season] = dist;
+      const dbWrite = getDb();
+      if (dbWrite) {
+        await dbWrite.collection(DIST_CACHE_COLLECTION).updateOne(
+          { season },
+          { $set: { distribution: dist, cachedAt: Date.now() } },
+          { upsert: true }
+        );
+      }
+    }
+    return dist ?? null;
+  })().finally(() => { delete distributionInFlight[season]; });
+
+  return distributionInFlight[season];
+}
 
 function primaryPosition(pos) {
   if (!pos) return '';
@@ -230,13 +271,11 @@ async function getPlayerPercentiles(playerId) {
   )];
   if (!seasons.length) return null;
 
+  await Promise.all(seasons.map(season => getOrBuildDistribution(season)));
+
   const result = {};
   for (const season of seasons) {
-    if (!distributionCache[season]) {
-      const dist = await buildLeagueDistribution(season);
-      if (dist) distributionCache[season] = dist;
-    }
-    const fullDist = distributionCache[season];
+    const fullDist = distributionCache[season] ?? null;
     if (!fullDist) continue;
 
     const posPool = fullDist[playerPos]?.PTS?.length ?? 0;
