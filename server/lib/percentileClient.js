@@ -7,6 +7,7 @@ const DIST_TTL_MS = 24 * 60 * 60 * 1000;
 
 const ESPN_BYATHLETE = 'https://site.api.espn.com/apis/common/v3/sports/basketball/wnba/statistics/byathlete';
 
+
 const PERCENTILE_MIN_GP   = 10;
 const PERCENTILE_MIN_MPG  = 10;
 const DISTRIBUTION_MIN    = 30;
@@ -134,7 +135,7 @@ function extractTotalsStats(data, targetYear) {
     FG3_PCT: tot.threePointFieldGoalPct          ?? null,
     FT_PCT:  tot.freeThrowPct                    ?? null,
     TOV:     tot.turnovers                       ?? null,
-    PF:      tot.personalFouls                   ?? null,
+    PF:      tot.fouls                           ?? null,
     OREB:    tot.offensiveRebounds               ?? null,
     DREB:    tot.defensiveRebounds               ?? null,
     FGM:     tot.fieldGoalsMade                  ?? null,
@@ -279,6 +280,69 @@ async function espnByAthleteProvider(season, mode = 'PerGame') {
 
 const PROVIDERS = [espnByAthleteProvider];
 
+// ── ESPN individual stats cache — shared across all modes for the same season ─
+const espnIndividualCache    = {};
+const espnIndividualInFlight = {};
+
+async function fetchEspnIndividualSeasonStats(season, athletes) {
+  if (espnIndividualCache[season]) return espnIndividualCache[season];
+  if (espnIndividualInFlight[season]) return espnIndividualInFlight[season];
+
+  // Build id → position map from byathlete data
+  const posById = {};
+  for (const a of athletes) {
+    if (a.athlete?.id) posById[a.athlete.id] = primaryPosition(a.athlete?.position?.abbreviation ?? '');
+  }
+
+  espnIndividualInFlight[season] = (async () => {
+    const entries = await Promise.all(athletes.map(async a => {
+      const id = a.athlete?.id;
+      if (!id) return null;
+      try {
+        const r = await fetchWithTimeout(`${ESPN_WEB}/athletes/${id}/stats?seasontype=2`);
+        if (!r.ok) return null;
+        const data = await r.json();
+        const avgCat = data?.categories?.find(c => c.name === 'averages');
+        const entry  = avgCat?.statistics?.find(e => String(e.season?.year) === String(season));
+        if (!entry) return null;
+        const m   = parseStatMap(avgCat.names, entry.stats);
+        const gp  = m.gamesPlayed ?? 0;
+        const mpg = m.avgMinutes  ?? 0;
+        if (gp < PERCENTILE_MIN_GP || mpg < PERCENTILE_MIN_MPG) return null;
+        return { id, pos: posById[id] ?? '', gp, mpg, OREB: m.avgOffensiveRebounds ?? null, DREB: m.avgDefensiveRebounds ?? null, PF: m.avgFouls ?? null };
+      } catch { return null; }
+    }));
+    const result = entries.filter(Boolean);
+    espnIndividualCache[season] = result;
+    return result;
+  })().finally(() => { delete espnIndividualInFlight[season]; });
+
+  return espnIndividualInFlight[season];
+}
+
+async function enrichWithIndividualStats(distribution, season, mode, athletes) {
+  const entries = await fetchEspnIndividualSeasonStats(season, athletes);
+  if (entries.length < DISTRIBUTION_MIN) return;
+
+  const groups = { all: entries };
+  for (const entry of entries) {
+    if (entry.pos) (groups[entry.pos] ??= []).push(entry);
+  }
+
+  for (const [grp, grpEntries] of Object.entries(groups)) {
+    if (!distribution[grp]) continue;
+    for (const stat of ['OREB', 'DREB', 'PF']) {
+      distribution[grp][stat] = grpEntries.map(e => {
+        const pg = e[stat];
+        if (pg === null || pg === undefined) return null;
+        if (mode === 'PerGame') return pg;
+        if (mode === 'Totals')  return pg * e.gp;
+        return e.mpg > 0 ? (pg / e.mpg) * 36 : null;
+      }).filter(v => v !== null).sort((a, b) => a - b);
+    }
+  }
+}
+
 // ── Distribution builder ────────────────────────────────────────────────────
 
 async function buildLeagueDistribution(season, mode = 'PerGame') {
@@ -302,6 +366,10 @@ async function buildLeagueDistribution(season, mode = 'PerGame') {
         .sort((a, b) => a - b);
     }
   }
+
+  const athletes = await fetchEspnLeagueStats(season);
+  await enrichWithIndividualStats(distribution, season, mode, athletes);
+
   return distribution;
 }
 
