@@ -34,7 +34,7 @@ function percColor(p) {
   return undefined;
 }
 
-function BrefTable({ regular, career, percentiles }) {
+function BrefTable({ regular, career, percentiles, viewMode = 'perGame' }) {
   if (!regular) return <p className="stats-na">No data available.</p>;
   const { headers, rows } = regular;
   const cols = headers
@@ -50,7 +50,7 @@ function BrefTable({ regular, career, percentiles }) {
         </thead>
         <tbody>
           {rows.map((row, ri) => {
-            const seasonPerc = percentiles?.[String(row[0])];
+            const seasonPerc = percentiles?.[String(row[0])]?.[viewMode];
             return (
               <tr key={ri}>
                 {cols.map(c => {
@@ -481,6 +481,7 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
               regular={regular}
               career={career}
               percentiles={showPercentiles && !percLoading ? percData : null}
+              viewMode={safeType}
             />
           </>
         )}

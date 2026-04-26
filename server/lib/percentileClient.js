@@ -29,40 +29,41 @@ const INVERTED_STATS = new Set(['TOV', 'PF']);
 const distributionCache   = {};
 const distributionInFlight = {};
 
-async function getOrBuildDistribution(season) {
-  if (distributionCache[season]) return distributionCache[season];
-  if (distributionInFlight[season]) return distributionInFlight[season];
+async function getOrBuildDistribution(season, mode = 'PerGame') {
+  const key = `${season}:${mode}`;
+  if (distributionCache[key]) return distributionCache[key];
+  if (distributionInFlight[key]) return distributionInFlight[key];
 
-  distributionInFlight[season] = (async () => {
+  distributionInFlight[key] = (async () => {
     const dbRead = getDb();
     if (dbRead) {
-      const doc = await dbRead.collection(DIST_CACHE_COLLECTION).findOne({ season });
+      const doc = await dbRead.collection(DIST_CACHE_COLLECTION).findOne({ season, mode });
       if (doc) {
         const currentYear = new Date().getFullYear();
         const isRecent = Number(season) >= currentYear - 1;
         if (!isRecent || Date.now() - doc.cachedAt < DIST_TTL_MS) {
-          distributionCache[season] = doc.distribution;
+          distributionCache[key] = doc.distribution;
           return doc.distribution;
         }
       }
     }
 
-    const dist = await buildLeagueDistribution(season);
+    const dist = await buildLeagueDistribution(season, mode);
     if (dist) {
-      distributionCache[season] = dist;
+      distributionCache[key] = dist;
       const dbWrite = getDb();
       if (dbWrite) {
         await dbWrite.collection(DIST_CACHE_COLLECTION).updateOne(
-          { season },
+          { season, mode },
           { $set: { distribution: dist, cachedAt: Date.now() } },
           { upsert: true }
         );
       }
     }
     return dist ?? null;
-  })().finally(() => { delete distributionInFlight[season]; });
+  })().finally(() => { delete distributionInFlight[key]; });
 
-  return distributionInFlight[season];
+  return distributionInFlight[key];
 }
 
 function primaryPosition(pos) {
@@ -119,6 +120,71 @@ function fetchWithTimeout(url, options = {}, ms = 12000) {
   return fetch(url, { ...options, signal: ctrl.signal }).finally(() => clearTimeout(timer));
 }
 
+function extractTotalsStats(data, targetYear) {
+  if (!data?.categories) return null;
+  const avgCat = data.categories.find(c => c.name === 'averages');
+  const totCat = data.categories.find(c => c.name === 'totals');
+  if (!avgCat || !totCat) return null;
+
+  const avgEntry = avgCat.statistics?.find(e => String(e.season?.year) === String(targetYear));
+  const totEntry = totCat.statistics?.find(e => String(e.season?.year) === String(targetYear));
+  if (!avgEntry || !totEntry) return null;
+
+  const avg = parseStatMap(avgCat.names, avgEntry.stats);
+  const tot = parseStatMap(totCat.names, totEntry.stats);
+
+  if ((avg.gamesPlayed ?? 0) < PERCENTILE_MIN_GP || (avg.avgMinutes ?? 0) < PERCENTILE_MIN_MPG) return null;
+
+  return {
+    PTS:     tot.points                          ?? null,
+    REB:     tot.totalRebounds                   ?? null,
+    AST:     tot.assists                         ?? null,
+    STL:     tot.steals                          ?? null,
+    BLK:     tot.blocks                          ?? null,
+    FG_PCT:  tot.fieldGoalPct                    ?? null,
+    FG3_PCT: tot.threePointFieldGoalPct          ?? null,
+    FT_PCT:  tot.freeThrowPct                    ?? null,
+    TOV:     tot.turnovers                       ?? null,
+    PF:      tot.personalFouls                   ?? null,
+    OREB:    tot.offensiveRebounds               ?? null,
+    DREB:    tot.defensiveRebounds               ?? null,
+    FGM:     tot.fieldGoalsMade                  ?? null,
+    FGA:     tot.fieldGoalsAttempted             ?? null,
+    FG3M:    tot.threePointFieldGoalsMade        ?? null,
+    FG3A:    tot.threePointFieldGoalsAttempted   ?? null,
+    FTM:     tot.freeThrowsMade                  ?? null,
+    FTA:     tot.freeThrowsAttempted             ?? null,
+    MIN:     Math.round((avg.avgMinutes ?? 0) * (avg.gamesPlayed ?? 0)) || null,
+  };
+}
+
+function extractPer36Stats(data, targetYear) {
+  const tot = extractTotalsStats(data, targetYear);
+  if (!tot || !tot.MIN || tot.MIN <= 0) return null;
+  const p = v => (v !== null && v !== undefined) ? (v / tot.MIN) * 36 : null;
+  return {
+    PTS:     p(tot.PTS),
+    REB:     p(tot.REB),
+    AST:     p(tot.AST),
+    STL:     p(tot.STL),
+    BLK:     p(tot.BLK),
+    FG_PCT:  tot.FG_PCT,
+    FG3_PCT: tot.FG3_PCT,
+    FT_PCT:  tot.FT_PCT,
+    TOV:     p(tot.TOV),
+    PF:      p(tot.PF),
+    OREB:    p(tot.OREB),
+    DREB:    p(tot.DREB),
+    FGM:     p(tot.FGM),
+    FGA:     p(tot.FGA),
+    FG3M:    p(tot.FG3M),
+    FG3A:    p(tot.FG3A),
+    FTM:     p(tot.FTM),
+    FTA:     p(tot.FTA),
+    MIN:     36,
+  };
+}
+
 // ── Stat providers ──────────────────────────────────────────────────────────
 // A provider is: (season: string) => Promise<NormalizedEntry[]>
 // Each is self-contained — owns its own ID system, fetch logic, and parsing.
@@ -167,14 +233,14 @@ function wnbaSeasonParam(year) {
   return `${year}-${String(Number(year) + 1).slice(-2).padStart(2, '0')}`;
 }
 
-async function wnbaStatsProvider(season) {
+async function wnbaStatsProvider(season, mode = 'PerGame') {
   const posById = await fetchWnbaPosById();
 
   const url = new URL(`${WNBA_STATS}/leaguedashplayerstats`);
   url.searchParams.set('LeagueID', '10');
   url.searchParams.set('Season', wnbaSeasonParam(season));
   url.searchParams.set('SeasonType', 'Regular Season');
-  url.searchParams.set('PerMode', 'PerGame');
+  url.searchParams.set('PerMode', mode);
   url.searchParams.set('MeasureType', 'Base');
   url.searchParams.set('LastNGames', '0');
   url.searchParams.set('Month', '0');
@@ -226,8 +292,8 @@ const PROVIDERS = [wnbaStatsProvider];
 
 // ── Distribution builder ────────────────────────────────────────────────────
 
-async function buildLeagueDistribution(season) {
-  const providerResults = await Promise.all(PROVIDERS.map(p => p(season)));
+async function buildLeagueDistribution(season, mode = 'PerGame') {
+  const providerResults = await Promise.all(PROVIDERS.map(p => p(season, mode)));
   const qualified = providerResults.flat();
 
   if (qualified.length < DISTRIBUTION_MIN) return null;
@@ -260,8 +326,29 @@ function computePercentile(sortedAsc, value, inverted) {
   return Math.round((below / sortedAsc.length) * 100);
 }
 
-// Returns { "2025": { PTS: 98, ... }, "2024": { ... }, ... }
-// Seasons where no provider returns enough players are omitted entirely.
+const DIST_MODES = ['PerGame', 'Per36', 'Totals'];
+const MODE_KEY   = { PerGame: 'perGame', Per36: 'per36', Totals: 'totals' };
+
+function computeSeasonMode(data, season, mode, fullDist, playerPos) {
+  if (!fullDist) return null;
+  const posPool = fullDist[playerPos]?.PTS?.length ?? 0;
+  const dist = posPool >= POSITION_MIN_BUCKET ? fullDist[playerPos] : fullDist['all'];
+  if (!dist) return null;
+
+  const playerStats =
+    mode === 'PerGame' ? extractSeasonAvg(data, season) :
+    mode === 'Totals'  ? extractTotalsStats(data, season) :
+                         extractPer36Stats(data, season);
+  if (!playerStats) return null;
+
+  const out = {};
+  for (const stat of PERCENTILE_STATS) {
+    out[stat] = computePercentile(dist[stat], playerStats[stat], INVERTED_STATS.has(stat));
+  }
+  return out;
+}
+
+// Returns { "2025": { perGame: { PTS: 98, ... }, per36: { ... }, totals: { ... } }, ... }
 async function getPlayerPercentiles(playerId) {
   const playerPos = primaryPosition(playerById[playerId]?.position || '');
 
@@ -277,24 +364,19 @@ async function getPlayerPercentiles(playerId) {
   )];
   if (!seasons.length) return null;
 
-  await Promise.all(seasons.map(season => getOrBuildDistribution(season)));
+  await Promise.all(
+    seasons.flatMap(season => DIST_MODES.map(mode => getOrBuildDistribution(season, mode)))
+  );
 
   const result = {};
   for (const season of seasons) {
-    const fullDist = distributionCache[season] ?? null;
-    if (!fullDist) continue;
-
-    const posPool = fullDist[playerPos]?.PTS?.length ?? 0;
-    const dist = posPool >= POSITION_MIN_BUCKET ? fullDist[playerPos] : fullDist['all'];
-    if (!dist) continue;
-
-    const playerStats = extractSeasonAvg(data, season);
-    if (!playerStats) continue;
-
-    result[season] = {};
-    for (const stat of PERCENTILE_STATS) {
-      result[season][stat] = computePercentile(dist[stat], playerStats[stat], INVERTED_STATS.has(stat));
+    const seasonResult = {};
+    for (const mode of DIST_MODES) {
+      const fullDist = distributionCache[`${season}:${mode}`] ?? null;
+      const computed = computeSeasonMode(data, season, mode, fullDist, playerPos);
+      if (computed) seasonResult[MODE_KEY[mode]] = computed;
     }
+    if (Object.keys(seasonResult).length) result[season] = seasonResult;
   }
 
   return Object.keys(result).length ? result : null;
@@ -304,7 +386,9 @@ async function warmDistributionCache() {
   const currentYear = new Date().getFullYear();
   const seasons = [];
   for (let y = 2011; y <= currentYear; y++) seasons.push(String(y));
-  await Promise.all(seasons.map(season => getOrBuildDistribution(season).catch(() => null)));
+  await Promise.all(
+    seasons.flatMap(season => DIST_MODES.map(mode => getOrBuildDistribution(season, mode).catch(() => null)))
+  );
 }
 
 module.exports = { getPlayerPercentiles, PERCENTILE_STATS, warmDistributionCache };
