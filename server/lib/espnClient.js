@@ -8,7 +8,15 @@ const rosterPromises = {};
 const rosterData = {};
 const playerById = {};
 const teamSeasonStatsCache = {};
-const teamScheduleCache = {};
+const teamPtsAllowedCache  = {};
+
+// Generic cache wrapper: returns cached value if present, else calls fn() and caches the result.
+// Caches null on network error so a flaky upstream doesn't keep hammering on retries.
+async function withCache(cache, key, fn) {
+  if (key in cache) return cache[key];
+  try { return (cache[key] = await fn()); }
+  catch { return (cache[key] = null); }
+}
 
 async function fetchTeams() {
   const res = await fetch(`${ESPN}/teams?limit=100`);
@@ -65,19 +73,17 @@ function getRoster(teamId, teamName) {
   return rosterPromises[teamId];
 }
 
-async function fetchTeamStats(teamId, year) {
-  const key = `${teamId}-${year}`;
-  if (key in teamSeasonStatsCache) return teamSeasonStatsCache[key];
-  try {
+function fetchTeamStats(teamId, year) {
+  return withCache(teamSeasonStatsCache, `${teamId}-${year}`, async () => {
     const res = await fetch(`${ESPN}/teams/${teamId}/statistics?season=${year}&seasontype=2`);
-    if (!res.ok) return (teamSeasonStatsCache[key] = null);
+    if (!res.ok) return null;
     const data = await res.json();
     const cats = data.results?.stats?.categories;
-    if (!cats) return (teamSeasonStatsCache[key] = null);
+    if (!cats) return null;
     const off = cats.find(c => c.name === 'offensive');
     const def = cats.find(c => c.name === 'defensive');
     const g = (cat, name) => cat?.stats.find(s => s.name === name)?.value ?? null;
-    return (teamSeasonStatsCache[key] = {
+    return {
       fgaPg:   g(off, 'avgFieldGoalsAttempted'),
       fgmPg:   g(off, 'avgFieldGoalsMade'),
       fg3mPg:  g(off, 'avgThreePointFieldGoalsMade'),
@@ -88,19 +94,15 @@ async function fetchTeamStats(teamId, year) {
       drbPg:   g(def, 'avgDefensiveRebounds'),
       tovPg:   g(off, 'avgTurnovers'),
       astPg:   g(off, 'avgAssists'),
-    });
-  } catch {
-    return (teamSeasonStatsCache[key] = null);
-  }
+    };
+  });
 }
 
 // Returns average points allowed per regular-season game (full team schedule, not player gamelog).
-async function fetchTeamPtsAllowed(teamId, year) {
-  const key = `${teamId}-${year}`;
-  if (key in teamScheduleCache) return teamScheduleCache[key];
-  try {
+function fetchTeamPtsAllowed(teamId, year) {
+  return withCache(teamPtsAllowedCache, `${teamId}-${year}`, async () => {
     const res = await fetch(`${ESPN}/teams/${teamId}/schedule?season=${year}`);
-    if (!res.ok) return (teamScheduleCache[key] = null);
+    if (!res.ok) return null;
     const data = await res.json();
     let sum = 0, count = 0;
     for (const event of data.events ?? []) {
@@ -116,10 +118,8 @@ async function fetchTeamPtsAllowed(teamId, year) {
         if (!isNaN(pts) && pts > 0) { sum += pts; count++; }
       }
     }
-    return (teamScheduleCache[key] = count > 0 ? sum / count : null);
-  } catch {
-    return (teamScheduleCache[key] = null);
-  }
+    return count > 0 ? sum / count : null;
+  });
 }
 
 async function fetchGameSummary(eventId) {

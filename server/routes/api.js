@@ -9,6 +9,9 @@ const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats }   = requi
 const { ADV_HEADERS_SRV, buildAdvancedSplit, buildAdvancedCareer,
         computeSeasonPBP }                                               = require('../lib/advancedStats');
 
+// Index into ADV_HEADERS_SRV by stat name — built once at startup, reused across all requests.
+const ADV_I = Object.fromEntries(ADV_HEADERS_SRV.map((h, idx) => [h, idx]));
+
 router.get('/teams', async (req, res) => {
   try {
     res.json(await getTeams());
@@ -204,8 +207,6 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
         return result ? { season, row: result.row, pbpGames: result.pbpGames } : null;
       })),
     ]);
-
-    const ADV_I = Object.fromEntries(ADV_HEADERS_SRV.map((h, idx) => [h, idx]));
 
     function buildSplit(valid, pgRows, rowI) {
       const seasonMins = Object.fromEntries(
