@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useRecentDecks } from './hooks/useRecentDecks';
 import StudyFlow from './components/StudyFlow';
 import HomePage from './pages/HomePage';
 import TeamPage from './pages/TeamPage';
+import TeamDashboard from './pages/TeamDashboard';
+import TeamRosterPage from './pages/TeamRosterPage';
+import TeamStatsPage from './pages/TeamStatsPage';
+import TeamHistoryPage from './pages/TeamHistoryPage';
 import PlayerRoutePage from './pages/PlayerRoutePage';
 import SearchPage from './pages/SearchPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -104,10 +108,17 @@ export default function App() {
               <TeamPage
                 teams={teams}
                 teamsLoading={teamsLoading}
+                teamsError={teamsError}
                 onSaveDeck={saveDeck}
               />
             }
-          />
+          >
+            <Route index element={<TeamDashboard />} />
+            <Route path="roster" element={<TeamRosterPage />} />
+            <Route path="stats" element={<TeamStatsPage />} />
+            <Route path="history" element={<TeamHistoryPage />} />
+            <Route path="*" element={<Navigate to=".." replace />} />
+          </Route>
           <Route
             path="/player/:id"
             element={<PlayerRoutePage onSaveDeck={saveDeck} />}

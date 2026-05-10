@@ -744,6 +744,203 @@ body {
   text-align: center; color: var(--text-muted); font-size: 0.75rem;
 }
 
+/* ── Team Spoke Nav ── */
+.team-spoke-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 0.65rem 0.65rem 0;
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.team-spoke-tab {
+  background: none;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 5px 5px 0 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.4rem 0.85rem 0.5rem;
+  transition: color 0.12s, background 0.12s;
+  position: relative;
+  bottom: -1px;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.team-spoke-tab:hover { color: var(--text); background: var(--surface-2); }
+.team-spoke-tab.active {
+  background: var(--bg);
+  border-color: var(--border);
+  border-bottom-color: var(--bg);
+  color: var(--accent);
+}
+
+/* Container that sits flush under the nav tabs */
+.team-dashboard-grid,
+.team-coming-soon,
+.team-spoke-content {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 1.5rem;
+}
+
+/* ── Team Dashboard ── */
+.team-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.team-dashboard-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.team-dashboard-card-headline {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.team-dashboard-badge {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.1rem 0.45rem;
+  text-transform: uppercase;
+}
+
+.team-dashboard-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.team-dashboard-player-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.team-dashboard-headshot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.team-dashboard-headshot-placeholder {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.72rem;
+}
+
+.team-dashboard-player-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-dashboard-player-pos {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.team-dashboard-placeholder {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.team-dashboard-coming-soon {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.team-dashboard-coming-text {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.team-dashboard-card-link {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  margin-top: auto;
+}
+.team-dashboard-card-link:hover { color: var(--accent-light); }
+
+/* ── Team Coming Soon ── */
+.team-coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 200px;
+  text-align: center;
+}
+
+.team-coming-soon-heading {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.team-coming-soon-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.2rem 0.7rem;
+}
+
+.team-coming-soon-desc {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  max-width: 380px;
+  line-height: 1.5;
+}
+
 /* ── Responsive ── */
 @media (max-width: 600px) {
   .header { padding: 0.75rem 1rem; gap: 0.75rem; }
@@ -766,4 +963,8 @@ body {
   .stat-type-tab { font-size: 0.7rem; padding: 0.32rem 0.55rem 0.42rem; }
   .bref-table { font-size: 0.7rem; }
   .bref-table th, .bref-table td { padding: 0.3rem 0.45rem; }
+
+  .team-dashboard-grid { grid-template-columns: 1fr; }
+  .team-spoke-nav { padding: 0.5rem 0.5rem 0; gap: 0.15rem; flex-wrap: wrap; }
+  .team-spoke-tab { font-size: 0.7rem; padding: 0.875rem 0.55rem; }
 }

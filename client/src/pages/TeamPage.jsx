@@ -1,38 +1,19 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import RosterTable from '../components/RosterTable';
+import { useEffect } from 'react';
+import { useParams, useNavigate, NavLink, Outlet } from 'react-router-dom';
 
-export default function TeamPage({ teams, teamsLoading, onSaveDeck }) {
+export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }) {
   const { slug } = useParams();
   const navigate = useNavigate();
 
   const team = teams.find(t => t.slug === slug) ?? null;
 
-  const [roster, setRoster] = useState([]);
-  const [rosterLoading, setRosterLoading] = useState(false);
-  const [rosterError, setRosterError] = useState(false);
-
-  const teamId = team?.id ?? null;
-
   useEffect(() => {
-    if (!teamId) return;
-    const controller = new AbortController();
-    setRoster([]);
-    setRosterError(false);
-    setRosterLoading(true);
-    fetch(`/api/teams/${teamId}/roster`, { signal: controller.signal })
-      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(data => { setRoster(data.players); setRosterLoading(false); })
-      .catch(err => {
-        if (err.name !== 'AbortError') {
-          setRosterError(true);
-          setRosterLoading(false);
-        }
-      });
-    return () => controller.abort();
-  }, [teamId]);
+    if (team) document.title = `${team.name} — KnowTheW`;
+    return () => { document.title = 'KnowTheW'; };
+  }, [team]);
 
   if (teamsLoading) return <p className="status-msg">Loading teams...</p>;
+  if (teamsError) return <p className="status-msg error">{teamsError}</p>;
   if (!team) return <p className="status-msg">Team not found.</p>;
 
   const seedAndConf = [team.seedLabel && `${team.seedLabel} in`, team.conference]
@@ -51,21 +32,13 @@ export default function TeamPage({ teams, teamsLoading, onSaveDeck }) {
           {segs.length > 0 && <p className="team-header-meta">{segs.join(' · ')}</p>}
         </div>
       </div>
-      {rosterLoading && <p className="status-msg">Loading roster...</p>}
-      {!rosterLoading && rosterError && (
-        <p className="status-msg error">Could not load roster — try again.</p>
-      )}
-      {!rosterLoading && !rosterError && roster.length > 0 && (
-        <RosterTable
-          players={roster}
-          teamName={team.name}
-          onSaveDeck={onSaveDeck}
-          onPlayerClick={(id) => navigate(`/player/${id}`)}
-        />
-      )}
-      {!rosterLoading && !rosterError && roster.length === 0 && (
-        <p className="status-msg">No roster data available.</p>
-      )}
+      <nav className="team-spoke-nav">
+        <NavLink to={`/team/${slug}`} end className={({ isActive }) => isActive ? 'team-spoke-tab active' : 'team-spoke-tab'}>Dashboard</NavLink>
+        <NavLink to={`/team/${slug}/roster`} className={({ isActive }) => isActive ? 'team-spoke-tab active' : 'team-spoke-tab'}>Roster</NavLink>
+        <NavLink to={`/team/${slug}/stats`} className={({ isActive }) => isActive ? 'team-spoke-tab active' : 'team-spoke-tab'}>Stats</NavLink>
+        <NavLink to={`/team/${slug}/history`} className={({ isActive }) => isActive ? 'team-spoke-tab active' : 'team-spoke-tab'}>History</NavLink>
+      </nav>
+      <Outlet context={{ team, onSaveDeck }} />
     </>
   );
 }

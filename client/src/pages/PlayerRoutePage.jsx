@@ -22,6 +22,11 @@ export default function PlayerRoutePage({ onSaveDeck }) {
     return () => controller.abort();
   }, [id]);
 
+  useEffect(() => {
+    if (playerData?.player?.name) document.title = `${playerData.player.name} — KnowTheW`;
+    return () => { document.title = 'KnowTheW'; };
+  }, [playerData]);
+
   // Redirect invalid :tab so URL and UI stay in sync — hooks must come first
   if (tab && !VALID_TABS.has(tab)) {
     return <Navigate to={`/player/${id}`} replace />;
