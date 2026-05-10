@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import StudyFlow from './StudyFlow';
+import { initialsOf } from '../lib/initials';
 
 const ROSTER_COLUMNS = [
   { key: 'headshot', label: 'Photo', type: 'image' },
@@ -36,7 +37,7 @@ export default function RosterTable({ players, teamName, onSaveDeck, onPlayerCli
           >
             {player.headshot
               ? <img src={player.headshot} alt={player.name} className="table-headshot" />
-              : <div className="table-headshot placeholder" />
+              : <div className="table-headshot placeholder">{initialsOf(player.name)}</div>
             }
             <span>{player.name}</span>
             <span className="muted">{player.jersey || '—'}</span>

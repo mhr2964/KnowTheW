@@ -4,13 +4,13 @@ import RosterTable from './components/RosterTable';
 import RecentDecks from './components/RecentDecks';
 import StudyFlow from './components/StudyFlow';
 import PlayerPage from './components/PlayerPage';
+import { initialsOf } from './lib/initials';
 import './App.css';
 
-function SearchBar({ onSearch }) {
-  const [input, setInput] = useState('');
+function SearchBar({ value, onChange, onSearch }) {
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (input.trim()) onSearch(input.trim());
+    if (value.trim()) onSearch(value.trim());
   };
   return (
     <form className="search-form" onSubmit={handleSubmit}>
@@ -18,8 +18,8 @@ function SearchBar({ onSearch }) {
         className="search-input"
         type="text"
         placeholder="Search players or teams..."
-        value={input}
-        onChange={e => setInput(e.target.value)}
+        value={value}
+        onChange={e => onChange(e.target.value)}
       />
       <button type="submit" className="search-btn">Search</button>
     </form>
@@ -43,6 +43,14 @@ function TeamCard({ team, onClick }) {
 
 function PremiumBanner() {
   const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    if (!showModal) return;
+    const handler = (e) => { if (e.key === 'Escape') setShowModal(false); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [showModal]);
+
   return (
     <>
       <div className="premium-banner">
@@ -62,11 +70,7 @@ function PremiumBanner() {
         <div className="modal-backdrop" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <h3>KnowTheW Premium</h3>
-            <p>Stripe checkout — test mode</p>
-            <div className="modal-stripe-placeholder">
-              <span>Stripe payment form loads here</span>
-              <span className="modal-note">VITE_STRIPE_PUBLISHABLE_KEY not yet configured</span>
-            </div>
+            <p className="premium-soon">Coming soon — checkout is not yet wired up.</p>
             <button type="button" className="modal-close" onClick={() => setShowModal(false)}>Close</button>
           </div>
         </div>
@@ -89,6 +93,7 @@ export default function App() {
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [playerLoading, setPlayerLoading] = useState(false);
   const [prevView, setPrevView] = useState('home');
+  const [searchInput, setSearchInput] = useState('');
 
   const rosterAbortRef = useRef(null);
   const searchAbortRef = useRef(null);
@@ -163,7 +168,10 @@ export default function App() {
     });
   }, []);
 
-  const goHome = () => { setView('home'); setSelectedTeam(null); setSearchResults(null); setSelectedPlayer(null); };
+  const goHome = () => {
+    setView('home'); setSelectedTeam(null); setSearchResults(null); setSelectedPlayer(null);
+    setSearchInput('');
+  };
   const goBack = () => { setView(prevView); setSelectedPlayer(null); };
 
   return (
@@ -173,7 +181,7 @@ export default function App() {
           <span className="logo-text">KnowTheW</span>
           <span className="logo-sub">WNBA</span>
         </button>
-        <SearchBar onSearch={handleSearch} />
+        <SearchBar value={searchInput} onChange={setSearchInput} onSearch={handleSearch} />
       </header>
 
       <main className="main">
@@ -246,7 +254,7 @@ export default function App() {
                         >
                           {player.headshot
                             ? <img src={player.headshot} alt={player.name} className="player-headshot" />
-                            : <div className="player-headshot placeholder" />
+                            : <div className="player-headshot placeholder">{initialsOf(player.name)}</div>
                           }
                           <div className="player-info">
                             <span className="player-name">{player.name}</span>

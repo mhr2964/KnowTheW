@@ -34,8 +34,8 @@ function percColor(p) {
   return undefined;
 }
 
-function BrefTable({ regular, career, percentiles, viewMode = 'perGame' }) {
-  if (!regular) return <p className="stats-na">No data available.</p>;
+function BrefTable({ regular, career, percentiles, viewMode = 'perGame', emptyMessage }) {
+  if (!regular) return <p className="stats-na">{emptyMessage ?? 'No data available.'}</p>;
   const { headers, rows } = regular;
   const cols = headers
     .map((h, i) => ({ key: h, idx: i, label: LABELS[h] ?? h }))
@@ -200,11 +200,7 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
     setLoading(true);
     setError(null);
     fetch(`/api/players/${playerId}/detailed-stats`, { signal: controller.signal })
-      .then(r => {
-        if (r.status === 404) { const e = new Error('not_found'); e.status = 404; throw e; }
-        if (!r.ok) throw new Error('error');
-        return r.json();
-      })
+      .then(r => { if (!r.ok) throw new Error('error'); return r.json(); })
       .then(d => {
         setData(d);
         setLoading(false);
@@ -300,9 +296,9 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
   }
 
   if (loading) return <p className="status-msg" style={{ padding: '2rem 0' }}>Loading career stats…</p>;
-  if (error === 'not_found') return <p className="status-msg">No career stats found for this player.</p>;
   if (error) return <p className="status-msg error">Could not load career stats.</p>;
   if (!data) return null;
+  const isEmpty = data.empty === true;
 
   const activeKeys = SOURCE_ACTIVE[data.source] ?? new Set(['perGame']);
   const enabledTypes = ALL_TABLE_TYPES.filter(t => activeKeys.has(t.key));
@@ -462,15 +458,17 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
                   </button>
                 )}
               </div>
-              <label className="perc-toggle">
-                <input
-                  type="checkbox"
-                  checked={showPercentiles}
-                  onChange={() => setShowPercentiles(v => !v)}
-                />
-                <span className="perc-toggle-track"><span className="perc-toggle-thumb" /></span>
-                <span className="perc-toggle-label">{percLoading ? 'Loading…' : 'Percentiles'}</span>
-              </label>
+              {!isEmpty && (
+                <label className="perc-toggle">
+                  <input
+                    type="checkbox"
+                    checked={showPercentiles}
+                    onChange={() => setShowPercentiles(v => !v)}
+                  />
+                  <span className="perc-toggle-track"><span className="perc-toggle-thumb" /></span>
+                  <span className="perc-toggle-label">{percLoading ? 'Loading…' : 'Percentiles'}</span>
+                </label>
+              )}
               {regular && (
                 <button type="button" className="study-trigger-btn" onClick={openStudy}>
                   Study this table
@@ -482,6 +480,7 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
               career={career}
               percentiles={showPercentiles && !percLoading ? percData : null}
               viewMode={safeType}
+              emptyMessage={isEmpty ? "Hasn't played WNBA games yet." : undefined}
             />
           </>
         )}

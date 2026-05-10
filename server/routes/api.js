@@ -111,7 +111,9 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
     const { regData, postData, teamsById } = await fetchPlayerSeasonData(req.params.id);
     const result = buildDetailedStats(regData, postData, teamsById);
 
-    if (!result.perGame.regular) return res.status(404).json({ error: 'no stats available for this player' });
+    // Players with no WNBA games yet (rookies pre-season, etc.) get an empty payload instead of 404
+    // so the page renders the normal stat-tab strip with a friendly empty state inside.
+    if (!result.perGame.regular) return res.json({ ...result, empty: true });
 
     const regTidByYear  = extractTeamIdByYear(regData);
     const postTidByYear = extractTeamIdByYear(postData);

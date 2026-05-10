@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { initialsOf } from '../lib/initials';
 
 function FieldToggle({ col, side, active, onToggle }) {
   return (
@@ -51,15 +52,6 @@ function fmtVal(col, val) {
     return Number.isInteger(val) ? String(val) : val.toFixed(1);
   }
   return String(val);
-}
-
-function initialsOf(name) {
-  if (!name) return '?';
-  const parts = String(name).trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return '?';
-  const first = parts[0][0] || '';
-  const last = parts.length > 1 ? parts[parts.length - 1][0] : '';
-  return (first + last).toUpperCase();
 }
 
 function ImageOrFallback({ src, name }) {
@@ -145,11 +137,15 @@ function CardSide({ card, fields, columns }) {
 }
 
 export default function StudyFlow({ data, columns, deckName, onClose, onSave, initialFrontFields, initialBackFields }) {
-  const [phase, setPhase] = useState('picker');
+  // Restudy from a Recent Deck card skips the picker and lands directly in the card flow,
+  // so it feels like jumping into the deck rather than reopening a config modal.
+  const isRestudy = !!(initialFrontFields?.length && initialBackFields?.length);
+  const [phase, setPhase] = useState(isRestudy ? 'cards' : 'picker');
   const [frontFields, setFrontFields] = useState(initialFrontFields || []);
   const [backFields, setBackFields] = useState(initialBackFields || []);
   const [cardIndex, setCardIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const flashcardRef = useRef(null);
 
   const toggle = (key, side) => {
     const setter = side === 'front' ? setFrontFields : setBackFields;
@@ -184,15 +180,19 @@ export default function StudyFlow({ data, columns, deckName, onClose, onSave, in
 
   useEffect(() => {
     const handler = (e) => {
+      if (e.key === 'Escape') { onClose(); return; }
       if (phase !== 'cards') return;
       if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); setFlipped(f => !f); }
       if (e.key === 'ArrowRight') next();
       if (e.key === 'ArrowLeft') prev();
-      if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [phase, next, prev, onClose]);
+
+  useEffect(() => {
+    if (phase === 'cards') flashcardRef.current?.focus();
+  }, [phase]);
 
   if (phase === 'picker') {
     const canStart = frontFields.length > 0 && backFields.length > 0;
@@ -270,7 +270,12 @@ export default function StudyFlow({ data, columns, deckName, onClose, onSave, in
           </div>
 
           <div className="card-area">
-            <div className={`flashcard ${flipped ? 'flipped' : ''}`} onClick={() => setFlipped(f => !f)}>
+            <div
+              ref={flashcardRef}
+              tabIndex={0}
+              className={`flashcard ${flipped ? 'flipped' : ''}`}
+              onClick={() => setFlipped(f => !f)}
+            >
               <div className="flashcard-inner">
                 <div className="flashcard-face flashcard-front">
                   <CardSide card={card} fields={frontFields} columns={columns} />

@@ -1,4 +1,5 @@
 import DetailedStats from './DetailedStats';
+import { initialsOf } from '../lib/initials';
 
 export default function PlayerPage({ player, onBack, onSaveDeck }) {
   const bioItems = [
@@ -21,7 +22,7 @@ export default function PlayerPage({ player, onBack, onSaveDeck }) {
       <div className="player-hero">
         {player.headshot
           ? <img src={player.headshot} alt={player.name} className="player-hero-img" />
-          : <div className="player-hero-img placeholder" />
+          : <div className="player-hero-img placeholder">{initialsOf(player.name)}</div>
         }
         <div className="player-hero-info">
           <div className="player-hero-meta">
