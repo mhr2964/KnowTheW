@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import StudyFlow from './StudyFlow';
+import HeaderTooltip from './HeaderTooltip';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { HIDDEN, LABELS, PCT_COLS, PCT100_COLS, deriveColumns } from '../lib/statsColumns';
+import { STAT_DEFINITIONS } from '../lib/statDefinitions';
 
 const LEFT_COLS = new Set(['SEASON_ID', 'TEAM_ABBREVIATION']);
 
@@ -46,7 +48,11 @@ function BrefTable({ regular, career, percentiles, viewMode = 'perGame', emptyMe
     <div className="bref-wrap">
       <table className="bref-table">
         <thead>
-          <tr>{cols.map(c => <th key={c.key}>{c.label}</th>)}</tr>
+          <tr>{cols.map(c => (
+            <th key={c.key}>
+              <HeaderTooltip label={c.label} definition={STAT_DEFINITIONS[c.key]} />
+            </th>
+          ))}</tr>
         </thead>
         <tbody>
           {rows.map((row, ri) => {
@@ -121,7 +127,11 @@ function GameLogTable({ log, games }) {
             <th>Date</th>
             <th>Opp</th>
             <th>Result</th>
-            {names.map(n => <th key={n}>{GAMELOG_LABELS[n] ?? n}</th>)}
+            {names.map(n => (
+              <th key={n}>
+                <HeaderTooltip label={GAMELOG_LABELS[n] ?? n} definition={STAT_DEFINITIONS[n]} />
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>

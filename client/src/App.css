@@ -639,6 +639,29 @@ body {
 .bref-table th:first-child { text-align: left; border-left: none; }
 .bref-table th:last-child { border-right: none; }
 
+/* Header tooltip — "?" mark next to advanced-stat labels with a hover/tap definition popover */
+.stat-help { position: relative; display: inline-flex; align-items: baseline; gap: 0.25em; }
+.stat-help-mark {
+  background: none; border: none; padding: 0; margin: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.1em; height: 1.1em; line-height: 1;
+  font: inherit; font-weight: 700; font-size: 0.85em;
+  color: var(--text-muted); cursor: help; border-radius: 50%;
+}
+.stat-help-mark:hover, .stat-help-mark:focus-visible { color: var(--accent); outline: none; }
+/* Popover is rendered via portal to body; positioned with inline style from JS so it
+   isn't clipped by the table's overflow-x scroll container. */
+.stat-help-pop {
+  position: fixed; z-index: 100;
+  width: max-content; max-width: 220px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text);
+  font-size: 0.78rem; font-weight: 400;
+  letter-spacing: normal; text-transform: none; text-align: left;
+  line-height: 1.35; padding: 0.5rem 0.7rem; white-space: normal;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
 /* Sticky leading two columns so Season + Team stay visible when the wide stat table scrolls horizontally */
 .bref-table th:nth-child(-n+2),
 .bref-table td:nth-child(-n+2) {
