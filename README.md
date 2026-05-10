@@ -15,7 +15,7 @@ npm run install-all
 npm run dev
 ```
 
-Client runs on `http://localhost:5173`, server on `http://localhost:5000`.
+Client runs on `http://localhost:3051`, server on `http://localhost:5051`. (See `System/ports.md` for the workspace port registry.)
 
 ## Scripts
 

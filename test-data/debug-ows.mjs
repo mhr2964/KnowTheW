@@ -2,7 +2,7 @@
 // Compares against what BRef implies from the known OWS value.
 import { WNBA_LG, GAME_MINUTES } from '../server/constants/leagueAverages.js';
 
-const API = 'http://localhost:5000/api';
+const API = 'http://localhost:5051/api';
 
 // Ogwumike seasons with big OWS error — what does the raw team context look like?
 // We'll fetch the advanced-pbp-all response and then re-derive what tmForWS must be

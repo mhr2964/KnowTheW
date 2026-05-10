@@ -1,7 +1,7 @@
 // Compares computed advanced stats from local API against BRef reference data.
 // Usage: node test-data/compare-stats.mjs
 
-const API = 'http://localhost:5000/api';
+const API = 'http://localhost:5051/api';
 
 const PLAYERS = [
   { id: '981',    name: 'Vandersloot' },
