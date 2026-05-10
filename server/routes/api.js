@@ -3,7 +3,7 @@ const router  = express.Router();
 
 const { getDb }                                                          = require('../db');
 const { WNBA_LG }                                                        = require('../constants/leagueAverages');
-const { ESPN_WEB, getTeams, getRoster, fetchTeamStats,
+const { ESPN_WEB, getTeams, getRoster, fetchTeamStats, fetchTeamPtsAllowed,
         rosterData, playerById, teamSeasonStatsCache }                   = require('../lib/espnClient');
 const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats }   = require('../lib/statsParser');
 const { ADV_HEADERS_SRV, buildAdvancedSplit, buildAdvancedCareer,
@@ -36,6 +36,51 @@ router.get('/teams/:id/roster', async (req, res) => {
     res.json({ team, players });
   } catch {
     res.status(500).json({ error: 'failed to load roster' });
+  }
+});
+
+router.get('/teams/:id/stats', async (req, res) => {
+  // Validate :id — ESPN team IDs are integers; reject anything non-numeric.
+  if (!/^\d+$/.test(req.params.id)) {
+    return res.status(400).json({ error: 'team id must be a numeric string' });
+  }
+  const teamId = req.params.id;
+
+  // season param: default to current calendar year; reject non-numeric / non-4-digit values.
+  let season;
+  if (req.query.season === undefined || req.query.season === '') {
+    season = new Date().getFullYear();
+  } else if (/^\d{4}$/.test(req.query.season)) {
+    season = parseInt(req.query.season, 10);
+  } else {
+    return res.status(400).json({ error: 'season must be a 4-digit year (e.g. 2026)' });
+  }
+
+  try {
+    // Run both upstream fetches in parallel; espnClient wraps each in withCache internally.
+    // fetchTeamPtsAllowed is a best-effort enrichment — if it rejects, preserve rawStats and
+    // omit oppPpg rather than dropping the whole response.
+    const [rawStats, oppPpg] = await Promise.all([
+      fetchTeamStats(teamId, season),
+      fetchTeamPtsAllowed(teamId, season).catch(err => {
+        console.warn(`teams/${teamId}/stats: oppPpg unavailable (season=${season}):`, err.message);
+        return null;
+      }),
+    ]);
+
+    // ESPN returned no stat data for this team/season combination.
+    if (!rawStats) {
+      return res.json({ empty: true, season, teamId });
+    }
+
+    // Merge oppPpg into the stats object only when we have a value — do not emit null fields.
+    const stats = { ...rawStats };
+    if (oppPpg != null) stats.oppPpg = oppPpg;
+
+    res.json({ season, teamId, stats });
+  } catch (err) {
+    console.error(`teams/${teamId}/stats season=${season}:`, err.message);
+    res.status(502).json({ error: 'upstream error fetching team stats' });
   }
 });
 

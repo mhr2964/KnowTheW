@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
+import { formatStatValue } from '../lib/statFormatters';
 
 export default function TeamDashboard() {
   const { team } = useOutletContext() ?? {};
@@ -8,6 +9,8 @@ export default function TeamDashboard() {
   const [rosterCount, setRosterCount] = useState(null);
   const [rosterLoading, setRosterLoading] = useState(false);
   const [rosterError, setRosterError] = useState(false);
+
+  const [statsPreview, setStatsPreview] = useState(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -27,6 +30,20 @@ export default function TeamDashboard() {
           setRosterLoading(false);
         }
       });
+    return () => controller.abort();
+  }, [team.id]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`/api/teams/${team.id}/stats`, { signal: controller.signal })
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(data => {
+        const s = data?.stats ?? {};
+        const ppg = s.ptsPg ?? null;
+        const opp = s.oppPpg ?? null;
+        if (ppg !== null || opp !== null) setStatsPreview({ ppg, opp });
+      })
+      .catch(() => {});
     return () => controller.abort();
   }, [team.id]);
 
@@ -64,8 +81,20 @@ export default function TeamDashboard() {
       <div className="team-dashboard-card">
         <div className="team-dashboard-card-headline">Team Stats</div>
         <div className="team-dashboard-card-body">
-          <p className="team-dashboard-coming-soon">Stats available soon</p>
-          <p className="team-dashboard-coming-text">Points per game, opponent points, three-point pace and more — coming soon.</p>
+          {statsPreview ? (
+            <>
+              <div className="team-dashboard-player-row">
+                <span className="team-dashboard-player-name">PPG</span>
+                <span className="team-dashboard-player-pos">{formatStatValue('ptsPg', statsPreview.ppg)}</span>
+              </div>
+              <div className="team-dashboard-player-row">
+                <span className="team-dashboard-player-name">Opp PPG</span>
+                <span className="team-dashboard-player-pos">{formatStatValue('oppPpg', statsPreview.opp)}</span>
+              </div>
+            </>
+          ) : (
+            <p className="team-dashboard-placeholder">Stats preview unavailable.</p>
+          )}
         </div>
         <Link to={`/team/${team.slug}/stats`} className="team-dashboard-card-link">View Stats →</Link>
       </div>
