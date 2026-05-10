@@ -103,7 +103,9 @@ body {
   border-radius: var(--radius); margin-bottom: 1.75rem;
 }
 .team-header-logo { width: 68px; height: 68px; object-fit: contain; }
+.team-header-text { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
 .team-header-name { font-size: 1.75rem; font-weight: 800; }
+.team-header-meta { font-size: 0.85rem; font-weight: 500; color: var(--text-muted); line-height: 1.4; }
 
 /* ── Data Table ── */
 .table-toolbar {
@@ -730,6 +732,7 @@ body {
   .premium-cta { align-items: flex-start; }
   .team-header { padding: 1rem; }
   .team-header-name { font-size: 1.3rem; }
+  .team-header-meta { font-size: 0.78rem; }
   .card-field-value { font-size: 1.2rem; }
   .study-fullscreen { padding: 1rem; }
   .player-hero { flex-direction: column; align-items: center; text-align: center; gap: 1rem; }

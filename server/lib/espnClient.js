@@ -1,9 +1,14 @@
 const { getDb } = require('../db');
 
-const ESPN     = 'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba';
-const ESPN_WEB = 'https://site.web.api.espn.com/apis/common/v3/sports/basketball/wnba';
+const ESPN      = 'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba';
+const ESPN_WEB  = 'https://site.web.api.espn.com/apis/common/v3/sports/basketball/wnba';
+const STANDINGS = 'https://site.api.espn.com/apis/v2/sports/basketball/wnba/standings';
 
-let teamsPromise = null;
+const TEAMS_TTL_MS = 6 * 60 * 60 * 1000;
+let teamsCache = null;
+let teamsFetchedAt = 0;
+let teamsRefreshing = null;
+
 const rosterPromises = {};
 const rosterData = {};
 const playerById = {};
@@ -19,12 +24,16 @@ async function withCache(cache, key, fn) {
 }
 
 async function fetchTeams() {
-  const res = await fetch(`${ESPN}/teams?limit=100`);
-  if (!res.ok) throw new Error(`ESPN teams ${res.status}`);
-  const data = await res.json();
+  const [teamsRes, standings] = await Promise.all([
+    fetch(`${ESPN}/teams?limit=100`),
+    fetchStandings(),
+  ]);
+  if (!teamsRes.ok) throw new Error(`ESPN teams ${teamsRes.status}`);
+  const data = await teamsRes.json();
   return data.sports[0].leagues[0].teams.map(({ team: t }) => {
     const logo = t.logos?.[0]?.href || null;
-    return {
+    const std  = standings?.[String(t.id)] ?? null;
+    const out  = {
       id: t.id,
       name: t.displayName,
       shortName: t.shortDisplayName,
@@ -34,13 +43,59 @@ async function fetchTeams() {
       color: t.color || '555555',
       logo,
       slug: t.slug,
+      location: t.location || null,
     };
+    if (std) {
+      const totalGames = (std.wins ?? 0) + (std.losses ?? 0);
+      // Preseason / 0-0 → omit both record and seed; only conference + location remain.
+      if (totalGames > 0) {
+        if (std.wins != null && std.losses != null) out.record = `${std.wins}-${std.losses}`;
+        const seedLabel = formatSeedLabel(std.seed);
+        if (seedLabel) out.seedLabel = seedLabel;
+      }
+      if (std.conference) out.conference = std.conference;
+    }
+    return out;
   });
 }
 
 function tricodeFromLogo(url) {
   const m = url && url.match(/\/teamlogos\/wnba\/\d+\/([a-z]{2,4})\.png/i);
   return m ? m[1].toUpperCase() : null;
+}
+
+async function fetchStandings() {
+  try {
+    const res = await fetch(STANDINGS);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const out = {};
+    for (const child of data.children ?? []) {
+      const conference = child.name;
+      for (const entry of child.standings?.entries ?? []) {
+        const teamId = String(entry.team?.id ?? '');
+        if (!teamId) continue;
+        const stat = (name) => (entry.stats ?? []).find(s => s.name === name)?.value;
+        const w = stat('wins'), l = stat('losses'), seed = stat('playoffSeed');
+        out[teamId] = {
+          conference,
+          wins:   typeof w === 'number' ? Math.round(w) : null,
+          losses: typeof l === 'number' ? Math.round(l) : null,
+          seed:   typeof seed === 'number' ? Math.round(seed) : null,
+        };
+      }
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+function formatSeedLabel(n) {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return null;
+  const v = n % 100;
+  const suffix = (v >= 11 && v <= 13) ? 'th' : (['th','st','nd','rd'][n % 10] || 'th');
+  return `${n}${suffix}`;
 }
 
 async function fetchRoster(teamId, teamName) {
@@ -67,9 +122,23 @@ async function fetchRoster(teamId, teamName) {
   }));
 }
 
-function getTeams() {
-  if (!teamsPromise) teamsPromise = fetchTeams();
-  return teamsPromise;
+async function getTeams() {
+  const now = Date.now();
+  const stale = teamsCache && now - teamsFetchedAt > TEAMS_TTL_MS;
+
+  if ((!teamsCache || stale) && !teamsRefreshing) {
+    teamsRefreshing = fetchTeams()
+      .then(fresh => { teamsCache = fresh; teamsFetchedAt = Date.now(); return fresh; })
+      .catch(err => {
+        console.error('fetchTeams failed:', err.message);
+        if (teamsCache) return teamsCache;
+        throw err;
+      })
+      .finally(() => { teamsRefreshing = null; });
+  }
+
+  if (teamsCache) return teamsCache;
+  return teamsRefreshing;
 }
 
 function getRoster(teamId, teamName) {

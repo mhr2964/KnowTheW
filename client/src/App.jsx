@@ -208,7 +208,17 @@ export default function App() {
               {selectedTeam.logo && (
                 <img src={selectedTeam.logo} alt={selectedTeam.name} className="team-header-logo" />
               )}
-              <h2 className="team-header-name">{selectedTeam.name}</h2>
+              <div className="team-header-text">
+                <h2 className="team-header-name">{selectedTeam.name}</h2>
+                {(() => {
+                  const seedAndConf = [selectedTeam.seedLabel && `${selectedTeam.seedLabel} in`, selectedTeam.conference]
+                    .filter(Boolean).join(' ');
+                  const segs = [selectedTeam.record, seedAndConf, selectedTeam.location].filter(Boolean);
+                  return segs.length > 0
+                    ? <p className="team-header-meta">{segs.join(' · ')}</p>
+                    : null;
+                })()}
+              </div>
             </div>
             {rosterLoading && <p className="status-msg">Loading roster...</p>}
             {!rosterLoading && roster.length > 0 && (
