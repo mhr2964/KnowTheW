@@ -4,7 +4,9 @@ const router  = express.Router();
 const { getDb }                                                          = require('../db');
 const { WNBA_LG }                                                        = require('../constants/leagueAverages');
 const { ESPN_WEB, getTeams, getRoster, fetchTeamStats, fetchTeamPtsAllowed,
+        fetchTeamSchedule,
         rosterData, playerById, teamSeasonStatsCache }                   = require('../lib/espnClient');
+const { buildHistory }                                                   = require('../lib/historyAggregator');
 const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats }   = require('../lib/statsParser');
 const { ADV_HEADERS_SRV, buildAdvancedSplit, buildAdvancedCareer,
         computeSeasonPBP, buildPbpSplit }                                = require('../lib/advancedStats');
@@ -81,6 +83,66 @@ router.get('/teams/:id/stats', async (req, res) => {
   } catch (err) {
     console.error(`teams/${teamId}/stats season=${season}:`, err.message);
     res.status(502).json({ error: 'upstream error fetching team stats' });
+  }
+});
+
+router.get('/teams/:id/history', async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) {
+    return res.status(400).json({ error: 'team id must be a numeric string' });
+  }
+  const teamId = req.params.id;
+
+  try {
+    const allTeams = await getTeams();
+    const team = allTeams.find(t => String(t.id) === teamId);
+    if (!team) return res.status(404).json({ error: 'team not found' });
+
+    const result = await buildHistory(team);
+    res.json(result);
+  } catch (err) {
+    console.error(`teams/${teamId}/history:`, err.message);
+    res.status(502).json({ error: 'upstream error building team history' });
+  }
+});
+
+router.get('/teams/:id/schedule', async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) {
+    return res.status(400).json({ error: 'team id must be a numeric string' });
+  }
+  const teamId = req.params.id;
+
+  // season: required, 4-digit year, 1997 or later
+  const seasonRaw = req.query.season;
+  if (!seasonRaw || !/^\d{4}$/.test(seasonRaw)) {
+    return res.status(400).json({ error: 'season must be a 4-digit year (e.g. 2024)' });
+  }
+  const season = parseInt(seasonRaw, 10);
+  if (season < 1997) {
+    return res.status(400).json({ error: 'season must be 1997 or later' });
+  }
+
+  // seasontype: must be 2 (regular) or 3 (playoffs); defaults to 2
+  const stRaw = req.query.seasontype;
+  let seasontype;
+  if (stRaw === undefined || stRaw === '') {
+    seasontype = 2;
+  } else if (stRaw === '2' || stRaw === '3') {
+    seasontype = parseInt(stRaw, 10);
+  } else {
+    return res.status(400).json({ error: 'seasontype must be 2 (regular) or 3 (playoffs)' });
+  }
+
+  try {
+    const allTeams = await getTeams();
+    const team = allTeams.find(t => String(t.id) === teamId);
+    if (!team) return res.status(404).json({ error: 'team not found' });
+
+    const events = await fetchTeamSchedule(teamId, season, seasontype);
+    if (!events || events.length === 0) return res.json({ empty: true, teamId, season, seasontype, events: [] });
+    res.json({ teamId, season, seasontype, events });
+  } catch (err) {
+    console.error(`teams/${teamId}/schedule season=${season} seasontype=${seasontype}:`, err.message);
+    res.status(502).json({ error: 'upstream error fetching team schedule' });
   }
 });
 

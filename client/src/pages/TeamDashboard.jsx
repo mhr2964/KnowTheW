@@ -11,6 +11,8 @@ export default function TeamDashboard() {
   const [rosterError, setRosterError] = useState(false);
 
   const [statsPreview, setStatsPreview] = useState(null);
+  const [historyPreview, setHistoryPreview] = useState(null);
+  const [historyError, setHistoryError] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -44,6 +46,25 @@ export default function TeamDashboard() {
         if (ppg !== null || opp !== null) setStatsPreview({ ppg, opp });
       })
       .catch(() => {});
+    return () => controller.abort();
+  }, [team.id]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setHistoryError(false);
+    fetch(`/api/teams/${team.id}/history`, { signal: controller.signal })
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(data => {
+        const founded = data?.founded ?? null;
+        const championships = data?.championships ?? [];
+        const seasons = data?.seasons ?? [];
+        // Only finished playoff appearances — exclude in-progress current season (seed set but no result yet).
+        const lastPlayoff = seasons.find(s => s.playoffResult != null);
+        setHistoryPreview({ founded, championships, lastPlayoff });
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') setHistoryError(true);
+      });
     return () => controller.abort();
   }, [team.id]);
 
@@ -102,8 +123,38 @@ export default function TeamDashboard() {
       <div className="team-dashboard-card">
         <div className="team-dashboard-card-headline">Franchise History</div>
         <div className="team-dashboard-card-body">
-          <p className="team-dashboard-coming-soon">History available soon</p>
-          <p className="team-dashboard-coming-text">Championships, playoff results, and season-by-season records — coming soon.</p>
+          {historyError ? (
+            <p className="team-dashboard-placeholder">History preview unavailable.</p>
+          ) : !historyPreview ? (
+            <p className="team-dashboard-placeholder">Loading history…</p>
+          ) : (
+            <>
+              <div className="team-dashboard-player-row">
+                <span className="team-dashboard-player-name">Championships</span>
+                <span className="team-dashboard-player-pos">
+                  {historyPreview.championships.length > 0
+                    ? `${historyPreview.championships.length} title${historyPreview.championships.length > 1 ? 's' : ''}`
+                    : 'No championships yet'}
+                </span>
+              </div>
+              {historyPreview.founded != null && (
+                <div className="team-dashboard-player-row">
+                  <span className="team-dashboard-player-name">Founded</span>
+                  <span className="team-dashboard-player-pos">Est. {historyPreview.founded}</span>
+                </div>
+              )}
+              {historyPreview.lastPlayoff != null && (
+                <div className="team-dashboard-player-row">
+                  <span className="team-dashboard-player-name">Last playoff</span>
+                  <span className="team-dashboard-player-pos">
+                    {historyPreview.lastPlayoff.playoffResult != null
+                      ? `${historyPreview.lastPlayoff.playoffResult} ${historyPreview.lastPlayoff.year}`
+                      : `Made playoffs ${historyPreview.lastPlayoff.year}`}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
         </div>
         <Link to={`/team/${team.slug}/history`} className="team-dashboard-card-link">View History →</Link>
       </div>

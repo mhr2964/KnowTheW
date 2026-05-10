@@ -783,7 +783,6 @@ body {
 
 /* Container that sits flush under the nav tabs */
 .team-dashboard-grid,
-.team-coming-soon,
 .team-spoke-content {
   background: var(--bg);
   border: 1px solid var(--border);
@@ -884,18 +883,6 @@ body {
   font-size: 0.85rem;
 }
 
-.team-dashboard-coming-soon {
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--text-muted);
-}
-
-.team-dashboard-coming-text {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  line-height: 1.4;
-}
-
 .team-dashboard-card-link {
   font-size: 0.8rem;
   font-weight: 600;
@@ -905,41 +892,6 @@ body {
 }
 .team-dashboard-card-link:hover { color: var(--accent-light); }
 
-/* ── Team Coming Soon ── */
-.team-coming-soon {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  min-height: 200px;
-  text-align: center;
-}
-
-.team-coming-soon-heading {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.team-coming-soon-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0.2rem 0.7rem;
-}
-
-.team-coming-soon-desc {
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  max-width: 380px;
-  line-height: 1.5;
-}
 
 /* ── Team Stats Page ── */
 .team-stats-header {
@@ -991,6 +943,120 @@ body {
   color: var(--text);
 }
 
+/* ── Team History Page ── */
+.team-history-page { display: flex; flex-direction: column; gap: 1.25rem; }
+
+.team-history-meta {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.82rem; font-weight: 600; color: var(--text-muted);
+}
+.team-history-meta-sep { color: var(--border); }
+
+.team-history-champs {
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+  background: linear-gradient(135deg, #1a1400 0%, #201800 100%);
+  border: 1px solid #3a2e00;
+  border-left: 4px solid #c8960c;
+  border-radius: var(--radius);
+  padding: 0.85rem 1.1rem;
+}
+.team-history-champs-icon { font-size: 1.2rem; flex-shrink: 0; }
+.team-history-champs-text {
+  font-size: 0.9rem; font-weight: 700; color: #e8c84a;
+}
+.team-history-champs-years {
+  font-size: 0.82rem; font-weight: 600; color: #b8a030;
+}
+
+.team-history-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.team-history-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.team-history-cell {
+  padding: 0.5rem 0.85rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.team-history-table tbody tr:last-child .team-history-cell { border-bottom: none; }
+
+.team-history-cell--head {
+  background: var(--surface-2);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.team-history-cell--muted { color: var(--text-muted); }
+
+.team-history-row:hover { background: var(--surface-2); }
+
+.team-history-champion-row {
+  background: rgba(200, 150, 12, 0.08);
+  border-left: 3px solid #c8960c;
+}
+.team-history-champion-row:hover { background: rgba(200, 150, 12, 0.13); }
+.team-history-champion-row .team-history-cell:first-child { font-weight: 700; color: #e8c84a; }
+
+.team-history-champ-badge {
+  display: inline-block;
+  background: #c8960c;
+  color: #000;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.45rem;
+  border-radius: 3px;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+.team-history-ai-placeholder {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.team-history-ai-placeholder-label {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.1rem 0.45rem;
+  align-self: flex-start;
+}
+.team-history-ai-placeholder-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 0.15rem;
+}
+.team-history-ai-placeholder-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
 /* ── Responsive ── */
 @media (max-width: 600px) {
   .header { padding: 0.75rem 1rem; gap: 0.75rem; }
@@ -1017,4 +1083,9 @@ body {
   .team-dashboard-grid { grid-template-columns: 1fr; }
   .team-spoke-nav { padding: 0.5rem 0.5rem 0; gap: 0.15rem; flex-wrap: wrap; }
   .team-spoke-tab { font-size: 0.7rem; padding: 0.875rem 0.55rem; min-width: 44px; }
+
+  .team-history-cell { padding: 0.4rem 0.55rem; font-size: 0.78rem; }
+  .team-history-cell--conf { display: none; }
+  .team-history-champs { gap: 0.5rem; }
+  .team-history-champs-text { font-size: 0.82rem; }
 }

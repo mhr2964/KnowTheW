@@ -201,6 +201,49 @@ function fetchTeamPtsAllowed(teamId, year) {
   });
 }
 
+// Fetches and normalizes a team's schedule for a given season and season type.
+// seasontype: 2 = regular season, 3 = playoffs.
+// Returns an array of normalized event objects. Returns [] on any upstream error so callers can
+// treat it as non-fatal. Each event includes roundLabel (populated only for seasontype=3 when
+// ESPN provides competition.type.text).
+//
+// Pagination note: verified on 2024 Connecticut Sun regular season — ESPN returns all 40 games
+// in a single response. No pagination keys appear in the response envelope. Accepted for v1.
+async function fetchTeamSchedule(teamId, season, seasontype = 2) {
+  try {
+    const res = await fetch(`${ESPN}/teams/${teamId}/schedule?season=${season}&seasontype=${seasontype}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.events ?? []).map(event => {
+      const comp  = event.competitions?.[0] ?? {};
+      const comps = comp.competitors ?? [];
+      const tm    = comps.find(c => String(c.team?.id) === String(teamId));
+      const opp   = comps.find(c => String(c.team?.id) !== String(teamId));
+      return {
+        id:         event.id,
+        date:       comp.date ?? event.date ?? null,
+        opponent:   opp  ? { id: String(opp.team?.id), abbreviation: opp.team?.abbreviation, logo: opp.team?.logos?.[0]?.href ?? null } : null,
+        atVs:       tm?.homeAway === 'home' ? 'vs' : '@',
+        result:     tm?.winner === true ? 'W' : (tm?.winner === false ? 'L' : null),
+        teamScore:  tm?.score?.value  ?? null,
+        oppScore:   opp?.score?.value ?? null,
+        winner:     tm?.winner ?? null,
+        // roundLabel populated only for playoff games where ESPN provides competition.type.text
+        roundLabel: seasontype === 3 ? (comp.type?.text ?? null) : undefined,
+      };
+    });
+  } catch (err) {
+    console.error(`fetchTeamSchedule teamId=${teamId} season=${season} seasontype=${seasontype}:`, err.message);
+    return [];
+  }
+}
+
+// Convenience wrapper: fetches only the playoff schedule (seasontype=3) for a given team/year.
+// Used by historyAggregator to derive playoffResult. Non-fatal — returns [] on error.
+function fetchPlayoffSchedule(teamId, season) {
+  return fetchTeamSchedule(teamId, season, 3);
+}
+
 async function fetchHistoricalRoster(teamId, season) {
   const res = await fetch(`${ESPN}/teams/${teamId}/roster?season=${season}`);
   if (!res.ok) return [];
@@ -242,7 +285,8 @@ getTeams()
   .catch(err => console.error('Startup prefetch failed:', err.message));
 
 module.exports = {
-  ESPN, ESPN_WEB, withCache,
+  ESPN, ESPN_WEB, STANDINGS, withCache,
   getTeams, getRoster, fetchHistoricalRoster, fetchTeamStats, fetchTeamPtsAllowed, fetchGameSummary,
+  fetchTeamSchedule, fetchPlayoffSchedule,
   rosterData, playerById, teamSeasonStatsCache,
 };
