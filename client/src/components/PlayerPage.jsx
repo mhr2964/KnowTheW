@@ -1,7 +1,7 @@
 import DetailedStats from './DetailedStats';
 import { initialsOf } from '../lib/initials';
 
-export default function PlayerPage({ player, onBack, onSaveDeck }) {
+export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onTabChange }) {
   const bioItems = [
     player.positionName && { label: 'Position', value: player.positionName },
     player.height && { label: 'Height', value: player.height },
@@ -47,6 +47,8 @@ export default function PlayerPage({ player, onBack, onSaveDeck }) {
         playerId={player.id}
         playerName={player.name}
         onSaveDeck={onSaveDeck}
+        initialTab={initialTab}
+        onTabChange={onTabChange}
       />
     </>
   );

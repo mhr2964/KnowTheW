@@ -10,6 +10,10 @@ export default function useLazyFetch(url, enabled) {
   const fetchedRef  = useRef(false);
 
   useEffect(() => {
+    fetchedRef.current = false;
+  }, [url]);
+
+  useEffect(() => {
     if (!enabled) return;
     if (fetchedRef.current) return;
     fetchedRef.current = true;

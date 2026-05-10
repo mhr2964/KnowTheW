@@ -176,11 +176,13 @@ const SOURCE_ACTIVE = {
 
 const GL_PAGE_SIZES = [10, 25, 50];
 
-export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
+export default function DetailedStats({ playerId, playerName, onSaveDeck, initialTab, onTabChange }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeType, setActiveType] = useState('perGame');
+  // initialTab seeds state once; subsequent changes come from handleTypeClick.
+  // PlayerRoutePage keys <PlayerPage> on playerId so this re-runs on player switch.
+  const [activeType, setActiveType] = useState(initialTab ?? 'perGame');
   const [activeSeason, setActiveSeason] = useState('regular');
   const [advSeason, setAdvSeason] = useState('regular');
   const [studyConfig, setStudyConfig] = useState(null);
@@ -229,6 +231,12 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
     }
     return seasons.sort((a, b) => b.localeCompare(a));
   }, [data]);
+
+  useEffect(() => {
+    if (activeType === 'gamelog' && !gameLogSeason && availableSeasons.length > 0) {
+      setGameLogSeason(availableSeasons[0]);
+    }
+  }, [activeType, gameLogSeason, availableSeasons]);
 
   useEffect(() => {
     if (activeType !== 'gamelog' || !gameLogSeason) return;
@@ -289,9 +297,7 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck }) {
 
   function handleTypeClick(key) {
     setActiveType(key);
-    if (key === 'gamelog' && !gameLogSeason && availableSeasons.length > 0) {
-      setGameLogSeason(availableSeasons[0]);
-    }
+    onTabChange?.(key);
   }
 
   function handleSeasonChange(season) {
