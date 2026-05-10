@@ -1024,37 +1024,133 @@ body {
   vertical-align: middle;
 }
 
-.team-history-ai-placeholder {
+.team-history-narrative-loading {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+  padding: 0.75rem 0;
+}
+
+.team-history-narrative-error {
+  font-size: 0.82rem;
+  color: var(--text-muted);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 1.25rem 1.5rem;
+  padding: 0.65rem 1rem;
+}
+
+.team-history-narrative {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 1.1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.25rem;
 }
-.team-history-ai-placeholder-label {
+
+.team-history-narrative-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.team-history-narrative-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.team-history-ai-label {
   font-size: 0.6rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   color: var(--text-muted);
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 3px;
-  padding: 0.1rem 0.45rem;
-  align-self: flex-start;
+  padding: 0.1rem 0.4rem;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
-.team-history-ai-placeholder-title {
-  font-size: 0.95rem;
+
+.team-history-narrative-summary,
+.team-history-narrative-identity {
+  font-size: 0.88rem;
+  color: var(--text);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.team-history-narrative-identity {
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.team-history-eras {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.team-history-era-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.team-history-era-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.team-history-era-label {
+  font-size: 0.9rem;
   font-weight: 700;
   color: var(--text);
-  margin-top: 0.15rem;
+  margin: 0;
 }
-.team-history-ai-placeholder-desc {
-  font-size: 0.82rem;
+
+.team-history-era-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.78rem;
   color: var(--text-muted);
-  line-height: 1.45;
+  font-weight: 600;
+}
+
+.team-history-era-record {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.05rem 0.4rem;
+}
+
+.team-history-era-narrative {
+  font-size: 0.84rem;
+  color: var(--text);
+  line-height: 1.58;
+  margin: 0;
+}
+
+.team-history-era-players {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.team-history-era-players-label {
+  font-weight: 700;
+  color: var(--text);
 }
 
 /* ── Responsive ── */

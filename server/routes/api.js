@@ -1,12 +1,14 @@
 const express = require('express');
 const router  = express.Router();
 
+const crypto                                                             = require('crypto');
 const { getDb }                                                          = require('../db');
 const { WNBA_LG }                                                        = require('../constants/leagueAverages');
 const { ESPN_WEB, getTeams, getRoster, fetchTeamStats, fetchTeamPtsAllowed,
         fetchTeamSchedule,
         rosterData, playerById, teamSeasonStatsCache }                   = require('../lib/espnClient');
 const { buildHistory }                                                   = require('../lib/historyAggregator');
+const narrativeClient                                                    = require('../lib/narrativeClient');
 const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats }   = require('../lib/statsParser');
 const { ADV_HEADERS_SRV, buildAdvancedSplit, buildAdvancedCareer,
         computeSeasonPBP, buildPbpSplit }                                = require('../lib/advancedStats');
@@ -375,6 +377,122 @@ router.get('/players/:id/percentiles', async (req, res) => {
   } catch (err) {
     console.error('percentiles:', err.message);
     res.status(500).json({ error: 'failed to compute percentiles' });
+  }
+});
+
+router.get('/teams/:id/narrative', async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) {
+    return res.status(400).json({ error: 'team id must be a numeric string' });
+  }
+  const teamId = req.params.id;
+
+  if (!narrativeClient.enabled) {
+    return res.status(503).json({ error: 'narrative service unavailable' });
+  }
+
+  try {
+    const allTeams = await getTeams();
+    const team = allTeams.find(t => String(t.id) === teamId);
+    if (!team) return res.status(404).json({ error: 'team not found' });
+
+    const history = await buildHistory(team);
+
+    // Deterministic source hash over the data Claude will receive.
+    // Includes teamName and current-record fields so a mid-season record update (wins/losses/seed
+    // on seasons[0]) invalidates the cache — the currentCtx line in the prompt depends on these.
+    // buildHistory() is itself MongoDB cache-aside via teamHistories collection — calling it before
+    // the narrative cache lookup costs one DB roundtrip on warm hits, not a full ESPN walk. The
+    // narrative cache is layered on top of the history cache.
+    const hashInput = JSON.stringify({
+      teamName:      team.name,
+      championships: [...(history.championships ?? [])].sort((a, b) => a - b),
+      currentRecord: {
+        wins:   history.seasons[0]?.wins   ?? null,
+        losses: history.seasons[0]?.losses ?? null,
+        seed:   history.seasons[0]?.seed   ?? null,
+      },
+      seasons: [...(history.seasons ?? [])]
+        .sort((a, b) => a.year - b.year)
+        .map(s => ({
+          year:          s.year,
+          wins:          s.wins,
+          losses:        s.losses,
+          seed:          s.seed,
+          playoffResult: s.playoffResult,
+          champion:      s.champion,
+        })),
+    });
+    const sourceHash = crypto.createHash('sha1').update(hashInput).digest('hex');
+
+    const db = getDb();
+
+    // Dev path: no MongoDB — skip cache lookup and call Claude directly.
+    // In production this would cause repeated Claude calls; document as acceptable dev-only behaviour.
+    if (!db) {
+      console.warn(`[narrative] MongoDB unavailable — calling Claude directly for teamId=${teamId}`);
+      const data = await narrativeClient.getNarrative({ team, history });
+      return res.json({ data, generatedAt: new Date().toISOString(), sourceHash });
+    }
+
+    const coll = db.collection('teamNarratives');
+
+    // Admin-gated manual refresh: ?refresh=1 + x-admin-token header must match ADMIN_TOKEN env var.
+    // If ADMIN_TOKEN is unset, the trigger is unavailable — fail-closed default.
+    //
+    // Timing-safe comparison is required here: a naive === leaks timing info that lets an attacker
+    // infer token length and content byte-by-byte, which would expose a cache-flush vector that
+    // also triggers a paid Claude call on each successful guess.
+    const adminToken   = process.env.ADMIN_TOKEN;
+    const headerToken  = req.headers['x-admin-token'];
+    let forceRefresh   = false;
+    if (req.query.refresh === '1' && adminToken && headerToken) {
+      // Different lengths → reject immediately (timingSafeEqual requires equal-length buffers).
+      const aBuf = Buffer.from(adminToken,  'utf8');
+      const bBuf = Buffer.from(headerToken, 'utf8');
+      if (aBuf.length === bBuf.length) {
+        forceRefresh = crypto.timingSafeEqual(aBuf, bBuf);
+      }
+    }
+
+    if (!forceRefresh) {
+      let cached;
+      try {
+        cached = await coll.findOne({ _id: teamId });
+      } catch (err) {
+        console.error(`[narrative] mongo read failed teamId=${teamId}:`, err.message);
+        cached = null;
+      }
+      if (cached && cached.sourceHash === sourceHash) {
+        return res.json({
+          data:        cached.data,
+          generatedAt: cached.generatedAt instanceof Date
+            ? cached.generatedAt.toISOString()
+            : cached.generatedAt,
+          sourceHash:  cached.sourceHash,
+        });
+      }
+    }
+
+    // Cache miss or forced refresh — call Claude.
+    const data        = await narrativeClient.getNarrative({ team, history });
+    const generatedAt = new Date();
+
+    try {
+      // If write fails after Claude succeeds, the next request will re-bill Claude.
+      // Acceptable risk at 12 teams + ~yearly regen frequency.
+      await coll.replaceOne(
+        { _id: teamId },
+        { _id: teamId, data, generatedAt, sourceHash },
+        { upsert: true },
+      );
+    } catch (err) {
+      console.error(`[narrative] mongo write failed teamId=${teamId}:`, err.message);
+    }
+
+    return res.json({ data, generatedAt: generatedAt.toISOString(), sourceHash });
+  } catch (err) {
+    console.error(`teams/${teamId}/narrative:`, err.message);
+    res.status(502).json({ error: 'upstream error generating narrative' });
   }
 });
 

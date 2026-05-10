@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
+const NARRATIVE_SUPPRESSED = 'suppressed';
+const NARRATIVE_ERROR = 'error';
+
 function ordinalSuffix(n) {
   const s = ['th', 'st', 'nd', 'rd'];
   const v = n % 100;
@@ -21,6 +24,10 @@ export default function TeamHistoryPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
+  const [narrative, setNarrative] = useState(null);
+  const [narrativeLoading, setNarrativeLoading] = useState(false);
+  const [narrativeState, setNarrativeState] = useState(null);
+
   useEffect(() => {
     if (!team?.id) return;
     const controller = new AbortController();
@@ -34,6 +41,36 @@ export default function TeamHistoryPage() {
         if (err.name !== 'AbortError') {
           setError(true);
           setLoading(false);
+        }
+      });
+    return () => controller.abort();
+  }, [team?.id]);
+
+  useEffect(() => {
+    if (!team?.id) return;
+    const controller = new AbortController();
+    setNarrative(null);
+    setNarrativeState(null);
+    setNarrativeLoading(true);
+    fetch(`/api/teams/${team.id}/narrative`, { signal: controller.signal })
+      .then(r => {
+        if (r.status === 503 || r.status === 404) {
+          setNarrativeState(NARRATIVE_SUPPRESSED);
+          setNarrativeLoading(false);
+          return null;
+        }
+        if (!r.ok) throw new Error(`${r.status}`);
+        return r.json();
+      })
+      .then(json => {
+        if (json === null) return;
+        setNarrative(json.data ?? null);
+        setNarrativeLoading(false);
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') {
+          setNarrativeState(NARRATIVE_ERROR);
+          setNarrativeLoading(false);
         }
       });
     return () => controller.abort();
@@ -138,13 +175,60 @@ export default function TeamHistoryPage() {
         </table>
       </div>
 
-      <div className="team-history-ai-placeholder" aria-label="AI franchise summary placeholder">
-        <span className="team-history-ai-placeholder-label">Coming soon</span>
-        <p className="team-history-ai-placeholder-title">AI Franchise Summary</p>
-        <p className="team-history-ai-placeholder-desc">
-          An AI-generated narrative covering franchise eras, key players, and coaching history — sourced from structured season data above.
-        </p>
-      </div>
+      {narrativeLoading && narrativeState === null && (
+        <div className="team-history-narrative-loading" aria-live="polite">
+          Loading franchise summary…
+        </div>
+      )}
+
+      {narrativeState === NARRATIVE_ERROR && (
+        <div className="team-history-narrative-error" role="alert">
+          Couldn&apos;t load AI summary.
+        </div>
+      )}
+
+      {narrative && narrativeState === null && (
+        <section className="team-history-narrative" aria-label="AI Franchise Summary">
+          <div className="team-history-narrative-header">
+            <h3 className="team-history-narrative-title">AI Franchise Summary</h3>
+            <span className="team-history-ai-label" aria-label="AI generated content">(AI summary)</span>
+          </div>
+
+          {narrative.summary && (
+            <p className="team-history-narrative-summary">{narrative.summary}</p>
+          )}
+
+          {narrative.eras?.length > 0 && (
+            <div className="team-history-eras">
+              {narrative.eras.map((era, i) => (
+                <div key={i} className="team-history-era-card">
+                  <div className="team-history-era-header">
+                    <h4 className="team-history-era-label">{era.label}</h4>
+                    <span className="team-history-ai-label" aria-hidden="true">(AI summary)</span>
+                  </div>
+                  <div className="team-history-era-meta">
+                    <span>{era.yearStart}–{era.yearEnd}</span>
+                    {era.record && <span className="team-history-era-record">{era.record}</span>}
+                  </div>
+                  {era.narrative && (
+                    <p className="team-history-era-narrative">{era.narrative}</p>
+                  )}
+                  {era.keyPlayers?.length > 0 && (
+                    <p className="team-history-era-players">
+                      <span className="team-history-era-players-label">Key players: </span>
+                      {era.keyPlayers.join(', ')}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {narrative.identity && (
+            <p className="team-history-narrative-identity">{narrative.identity}</p>
+          )}
+        </section>
+      )}
     </div>
   );
 }
