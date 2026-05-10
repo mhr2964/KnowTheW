@@ -53,6 +53,20 @@ function fmtVal(col, val) {
   return String(val);
 }
 
+function initialsOf(name) {
+  if (!name) return '?';
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  const first = parts[0][0] || '';
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : '';
+  return (first + last).toUpperCase();
+}
+
+function ImageOrFallback({ src, name }) {
+  if (src) return <img src={src} alt="" className="card-img" />;
+  return <div className="card-img card-img-placeholder">{initialsOf(name)}</div>;
+}
+
 function CardSide({ card, fields, columns }) {
   if (fields.length <= 2) {
     return (
@@ -60,7 +74,7 @@ function CardSide({ card, fields, columns }) {
         {fields.map(key => {
           const col = columns.find(c => c.key === key);
           const val = card[key];
-          if (col?.type === 'image' && val) return <img key={key} src={val} alt="" className="card-img" />;
+          if (col?.type === 'image') return <ImageOrFallback key={key} src={val} name={card.name} />;
           return (
             <div key={key} className="card-field">
               <span className="card-field-label">{col?.label}</span>
@@ -77,7 +91,7 @@ function CardSide({ card, fields, columns }) {
   function renderField(key) {
     const col = columns.find(c => c.key === key);
     const val = card[key];
-    if (col?.type === 'image' && val) return <img key={key} src={val} alt="" className="card-img" />;
+    if (col?.type === 'image') return <ImageOrFallback key={key} src={val} name={card.name} />;
     return (
       <div key={key} className="card-field">
         <span className="card-field-label">{col?.label}</span>

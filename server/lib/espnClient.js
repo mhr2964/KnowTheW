@@ -22,15 +22,25 @@ async function fetchTeams() {
   const res = await fetch(`${ESPN}/teams?limit=100`);
   if (!res.ok) throw new Error(`ESPN teams ${res.status}`);
   const data = await res.json();
-  return data.sports[0].leagues[0].teams.map(({ team: t }) => ({
-    id: t.id,
-    name: t.displayName,
-    shortName: t.shortDisplayName,
-    abbreviation: t.abbreviation,
-    color: t.color || '555555',
-    logo: t.logos?.[0]?.href || null,
-    slug: t.slug,
-  }));
+  return data.sports[0].leagues[0].teams.map(({ team: t }) => {
+    const logo = t.logos?.[0]?.href || null;
+    return {
+      id: t.id,
+      name: t.displayName,
+      shortName: t.shortDisplayName,
+      // ESPN's team.abbreviation is unreliable for WNBA (returns "CONNECTICU", "DALLAS").
+      // The logo filename is the canonical tricode, so derive from there and fall back if missing.
+      abbreviation: tricodeFromLogo(logo) || t.abbreviation,
+      color: t.color || '555555',
+      logo,
+      slug: t.slug,
+    };
+  });
+}
+
+function tricodeFromLogo(url) {
+  const m = url && url.match(/\/teamlogos\/wnba\/\d+\/([a-z]{2,4})\.png/i);
+  return m ? m[1].toUpperCase() : null;
 }
 
 async function fetchRoster(teamId, teamName) {
