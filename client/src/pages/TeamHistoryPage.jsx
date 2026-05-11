@@ -218,7 +218,7 @@ export default function TeamHistoryPage() {
 
           {narrative.eras?.length > 0 && (
             <div className="team-history-eras">
-              {narrative.eras.map((era, i) => (
+              {[...narrative.eras].reverse().map((era, i) => (
                 <div key={i} className="team-history-era-card">
                   <h4 className="team-history-era-label">{era.label}</h4>
                   {era.record && (
