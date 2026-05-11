@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 
 const NARRATIVE_SUPPRESSED = 'suppressed';
@@ -17,19 +17,6 @@ function conferenceShort(conf) {
   return conf;
 }
 
-// Build a map from season year → era index (into reversedEras).
-function buildYearToEraIndex(reversedEras) {
-  const map = {};
-  reversedEras.forEach((era, i) => {
-    if (era.yearStart == null || era.yearEnd == null) return;
-    for (let y = era.yearStart; y <= era.yearEnd; y++) {
-      // Only assign if not already claimed (first match wins — current eras are at lower indices)
-      if (!(y in map)) map[y] = i;
-    }
-  });
-  return map;
-}
-
 export default function TeamHistoryPage() {
   const { team } = useOutletContext() ?? {};
 
@@ -40,10 +27,6 @@ export default function TeamHistoryPage() {
   const [narrative, setNarrative] = useState(null);
   const [narrativeLoading, setNarrativeLoading] = useState(false);
   const [narrativeState, setNarrativeState] = useState(null);
-
-  // Controlled open state for era cards. -1 = none open (after manual close).
-  const [openEra, setOpenEra] = useState(0);
-  const eraRefs = useRef([]);
 
   useEffect(() => {
     if (!team?.id) return;
@@ -115,30 +98,6 @@ export default function TeamHistoryPage() {
     </div>
   );
 
-  // Era label column setup — only when narrative eras are available.
-  const reversedEras = narrative?.eras?.length > 0 ? [...narrative.eras].reverse() : [];
-  const yearToEraIdx = reversedEras.length > 0 ? buildYearToEraIndex(reversedEras) : {};
-  const hasEraLabels = reversedEras.length > 0;
-
-  // Pre-compute rowspan for each era: count how many consecutive rows from the top belong to it.
-  // We track, per era index, the index of the first season row that belongs to it.
-  const eraFirstRowIdx = {}; // eraIdx → first season row index
-  const eraRowCount = {}; // eraIdx → number of rows
-  seasons.forEach((season, rowIdx) => {
-    const eraIdx = yearToEraIdx[season.year];
-    if (eraIdx === undefined) return;
-    if (!(eraIdx in eraFirstRowIdx)) eraFirstRowIdx[eraIdx] = rowIdx;
-    eraRowCount[eraIdx] = (eraRowCount[eraIdx] ?? 0) + 1;
-  });
-
-  function handleEraLabelClick(eraIdx) {
-    setOpenEra(eraIdx);
-    // Scroll after state update settles — rAF ensures the details is open/visible.
-    requestAnimationFrame(() => {
-      eraRefs.current[eraIdx]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }
-
   return (
     <div className="team-spoke-content team-history-page">
       <h3 className="team-stats-season">Franchise History</h3>
@@ -171,9 +130,6 @@ export default function TeamHistoryPage() {
         <table className="team-history-table">
           <thead>
             <tr>
-              {hasEraLabels && (
-                <th className="team-history-cell team-history-cell--head team-history-cell--era" aria-label="Era" />
-              )}
               <th className="team-history-cell team-history-cell--head">Year</th>
               <th className="team-history-cell team-history-cell--head">Record</th>
               <th className="team-history-cell team-history-cell--head team-history-cell--conf">
@@ -187,8 +143,10 @@ export default function TeamHistoryPage() {
             </tr>
           </thead>
           <tbody>
-            {seasons.map((season, rowIdx) => {
+            {seasons.map(season => {
               const isChamp = season.champion === true;
+              // seed === 0 is an ESPN sentinel for "unknown/pre-2003" — render muted dash, not "0th in".
+              // "Missed playoffs" is only correct when seed is genuinely null AND not a champion year.
               let seedLabelFull;
               let seedLabelShort;
               if (season.seed != null && season.seed > 0) {
@@ -202,36 +160,14 @@ export default function TeamHistoryPage() {
                 seedLabelFull = 'Missed playoffs';
                 seedLabelShort = 'Missed';
               }
+              // Trophy emoji omitted on champion rows — the "Champions" pill below carries the signal.
               const resultLabel = season.playoffResult;
-              const eraIdx = yearToEraIdx[season.year];
-              const isFirstInEra = eraIdx !== undefined && eraFirstRowIdx[eraIdx] === rowIdx;
-              const rowSpan = isFirstInEra ? eraRowCount[eraIdx] : undefined;
 
               return (
                 <tr
                   key={season.year}
                   className={`team-history-row${isChamp ? ' team-history-champion-row' : ''}`}
                 >
-                  {hasEraLabels && isFirstInEra && (
-                    <td
-                      className="team-history-cell team-history-cell--era"
-                      rowSpan={rowSpan}
-                    >
-                      <button
-                        type="button"
-                        className={`team-history-era-nav-btn${openEra === eraIdx ? ' team-history-era-nav-btn--active' : ''}`}
-                        onClick={() => handleEraLabelClick(eraIdx)}
-                        title={`Jump to ${reversedEras[eraIdx].label} era summary`}
-                      >
-                        <span className="team-history-era-nav-label">
-                          {reversedEras[eraIdx].label}
-                        </span>
-                      </button>
-                    </td>
-                  )}
-                  {hasEraLabels && !isFirstInEra && eraIdx === undefined && (
-                    <td className="team-history-cell team-history-cell--era team-history-cell--era-gap" />
-                  )}
                   <td className="team-history-cell">{season.year}</td>
                   <td className="team-history-cell">
                     {season.wins != null && season.losses != null
@@ -279,20 +215,8 @@ export default function TeamHistoryPage() {
 
           {narrative.eras?.length > 0 && (
             <div className="team-history-eras">
-              {reversedEras.map((era, i) => (
-                <details
-                  key={i}
-                  ref={el => { eraRefs.current[i] = el; }}
-                  className="team-history-era-card"
-                  open={openEra === i}
-                  onToggle={e => {
-                    if (e.target.open) {
-                      setOpenEra(i);
-                    } else if (openEra === i) {
-                      setOpenEra(-1);
-                    }
-                  }}
-                >
+              {[...narrative.eras].reverse().map((era, i) => (
+                <details key={i} className="team-history-era-card" open={i === 0}>
                   <summary className="team-history-era-summary">
                     <span className="team-history-era-label">{era.label}</span>
                     {era.record && (
