@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
-import { useParams, useNavigate, NavLink, Outlet } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, NavLink, Outlet } from 'react-router-dom';
 
 export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }) {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const team = teams.find(t => t.slug === slug) ?? null;
 
@@ -20,9 +21,14 @@ export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }
     .filter(Boolean).join(' ');
   const segs = [team.record, seedAndConf, team.location].filter(Boolean);
 
+  // Sub-pages go back one level to the team Dashboard; the Dashboard itself goes back to All Teams.
+  const onDashboard = location.pathname === `/team/${slug}` || location.pathname === `/team/${slug}/`;
+  const backLabel = onDashboard ? '← All Teams' : `← ${team.name}`;
+  const backTarget = onDashboard ? '/' : `/team/${slug}`;
+
   return (
     <>
-      <button type="button" className="back-btn" onClick={() => navigate('/')}>← All Teams</button>
+      <button type="button" className="back-btn" onClick={() => navigate(backTarget)}>{backLabel}</button>
       <div className="team-header" style={{ '--team-color': `#${team.color}` }}>
         {team.logo && (
           <img src={team.logo} alt={team.name} className="team-header-logo" />
