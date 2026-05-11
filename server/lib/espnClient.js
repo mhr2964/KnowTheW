@@ -165,9 +165,12 @@ function fetchTeamStats(teamId, year) {
     return {
       fgaPg:   g(off, 'avgFieldGoalsAttempted'),
       fgmPg:   g(off, 'avgFieldGoalsMade'),
+      fgPct:   g(off, 'fieldGoalPct'),
       fg3mPg:  g(off, 'avgThreePointFieldGoalsMade'),
+      fg3Pct:  g(off, 'threePointPct'),
       ftaPg:   g(off, 'avgFreeThrowsAttempted'),
       ftmPg:   g(off, 'avgFreeThrowsMade'),
+      ftPct:   g(off, 'freeThrowPct'),
       ptsPg:   g(off, 'avgPoints'),
       orbPg:   g(off, 'avgOffensiveRebounds'),
       drbPg:   g(def, 'avgDefensiveRebounds'),

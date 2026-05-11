@@ -10,7 +10,7 @@ export function formatStatValue(key, val) {
   if (lower.includes('pergame') || lower.includes('pg') || lower.includes('average')) {
     const n = parseFloat(val);
     if (isNaN(n)) return '—';
-    return n.toFixed(1);
+    return Number(n.toFixed(1)).toString();
   }
   const n = Number(val);
   if (!isNaN(n) && typeof val === 'number') {

@@ -3,17 +3,20 @@ import { useOutletContext } from 'react-router-dom';
 import { formatStatValue } from '../lib/statFormatters';
 
 const STAT_LABELS = {
-  ptsPg:    'Points Per Game',
-  oppPpg:   'Opp. Points Per Game',
-  fg3mPg:   '3-Pointers Made/G',
-  fgmPg:    'FG Made/G',
-  fgaPg:    'FG Attempted/G',
-  ftmPg:    'FT Made/G',
-  ftaPg:    'FT Attempted/G',
-  orbPg:    'Off. Rebounds/G',
-  drbPg:    'Def. Rebounds/G',
-  tovPg:    'Turnovers/G',
-  astPg:    'Assists/G',
+  ptsPg:    'PPG',
+  oppPpg:   'Opp PPG',
+  fgmPg:    'FGM',
+  fgaPg:    'FGA',
+  fgPct:    'FG%',
+  fg3mPg:   '3PM',
+  fg3Pct:   '3P%',
+  ftmPg:    'FTM',
+  ftaPg:    'FTA',
+  ftPct:    'FT%',
+  orbPg:    'OREB',
+  drbPg:    'DREB',
+  astPg:    'AST',
+  tovPg:    'TOV',
 };
 
 const GROUPS = [
@@ -23,7 +26,7 @@ const GROUPS = [
   },
   {
     label: 'Shooting',
-    keys: ['fgmPg', 'fgaPg', 'fg3mPg', 'ftmPg', 'ftaPg'],
+    keys: ['fgmPg', 'fgaPg', 'fgPct', 'fg3mPg', 'fg3Pct', 'ftmPg', 'ftaPg', 'ftPct'],
   },
   {
     label: 'Rebounds & Possession',
