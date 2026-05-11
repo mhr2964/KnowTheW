@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
 import { useRecentDecks } from './hooks/useRecentDecks';
 import StudyFlow from './components/StudyFlow';
 import HomePage from './pages/HomePage';
@@ -11,8 +11,14 @@ import TeamHistoryPage from './pages/TeamHistoryPage';
 import TeamSchedulePage from './pages/TeamSchedulePage';
 import PlayerRoutePage from './pages/PlayerRoutePage';
 import SearchPage from './pages/SearchPage';
+import ComparePage from './pages/ComparePage';
 import NotFoundPage from './pages/NotFoundPage';
 import './App.css';
+
+function RedirectToPlayer() {
+  const { idA } = useParams();
+  return <Navigate to={`/player/${idA}`} replace />;
+}
 
 function SearchBar() {
   const navigate = useNavigate();
@@ -132,6 +138,14 @@ export default function App() {
           <Route
             path="/search"
             element={<SearchPage />}
+          />
+          <Route
+            path="/compare/:idA/:idB"
+            element={<ComparePage />}
+          />
+          <Route
+            path="/compare/:idA"
+            element={<RedirectToPlayer />}
           />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

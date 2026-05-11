@@ -1,7 +1,12 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DetailedStats from './DetailedStats';
+import ComparePickerModal from './ComparePickerModal';
 import { initialsOf } from '../lib/initials';
 
 export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onTabChange }) {
+  const navigate = useNavigate();
+  const [pickerOpen, setPickerOpen] = useState(false);
   const bioItems = [
     player.positionName && { label: 'Position', value: player.positionName },
     player.height && { label: 'Height', value: player.height },
@@ -40,6 +45,13 @@ export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onT
               ))}
             </div>
           )}
+          <button
+            type="button"
+            className="compare-trigger-btn"
+            onClick={() => setPickerOpen(true)}
+          >
+            Compare with...
+          </button>
         </div>
       </div>
 
@@ -50,6 +62,17 @@ export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onT
         initialTab={initialTab}
         onTabChange={onTabChange}
       />
+
+      {pickerOpen && (
+        <ComparePickerModal
+          currentPlayerId={player.id}
+          onPick={(otherId) => {
+            setPickerOpen(false);
+            navigate(`/compare/${player.id}/${otherId}`);
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </>
   );
 }
