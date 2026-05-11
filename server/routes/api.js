@@ -576,14 +576,16 @@ router.get('/players/:id/graded-report', async (req, res) => {
   // Deterministic source hash over all data Claude will receive.
   // Sorted ascending by year so insertion order doesn't matter.
   const hashInput = JSON.stringify({
-    promptVersion: gradedReportClient.PROMPT_VERSION,
+    promptVersion:  gradedReportClient.PROMPT_VERSION,
     playerId,
-    playerName:  inputs.player.name,
-    position:    inputs.player.position,
+    playerName:     inputs.player.name,
+    position:       inputs.player.position,
     mode,
-    seasonRows:  [...(inputs.seasonRows ?? [])].sort((a, b) => String(a.year).localeCompare(String(b.year))),
-    advancedRows: [...(inputs.advancedRows ?? [])].sort((a, b) => String(a.year).localeCompare(String(b.year))),
-    leagueByYear: Object.fromEntries(Object.entries(inputs.leagueByYear ?? {}).sort()),
+    seasonRows:     [...(inputs.seasonRows ?? [])].sort((a, b) => String(a.year).localeCompare(String(b.year))),
+    advancedRows:   [...(inputs.advancedRows ?? [])].sort((a, b) => String(a.year).localeCompare(String(b.year))),
+    leagueByYear:   Object.fromEntries(Object.entries(inputs.leagueByYear ?? {}).sort()),
+    championships:  [...(inputs.championships ?? [])].sort((a, b) => a - b),
+    accolades:      inputs.accolades ?? {},
   });
   const sourceHash = crypto.createHash('sha1').update(hashInput).digest('hex');
   const docId = `${playerId}-${mode}-${sourceHash.slice(0, 8)}`;

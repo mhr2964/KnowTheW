@@ -4,8 +4,14 @@
 // the existing ESPN-backed routes (reusing the same helpers api.js uses directly), then
 // slices to the rows relevant for the requested mode and attaches league-average context.
 //
-// Returns { player, mode, seasonRows, careerRow, leagueByYear }
+// Returns { player, mode, seasonRows, careerRow, leagueByYear, championships, accolades }
 // Returns { empty: true } when mode is 'playoffs' and the player has no playoff data.
+//
+// championships: array of years the player's team won the WNBA Championship.
+//   Derived from WNBA_CHAMPIONS + franchise alias lineage. Players on defunct franchises
+//   (Houston Comets, Sacramento Monarchs) may have incomplete results if their team ID is
+//   not resolvable via the current teams list — acceptable for v1.
+// accolades: { mvp, finalsMVP, dpoy, roy, sixth, allWnbaFirst } — from wnbaAccolades.js.
 
 'use strict';
 
@@ -13,6 +19,8 @@ const { ESPN_WEB, getTeams, fetchTeamStats, teamSeasonStatsCache } = require('./
 const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats } = require('./statsParser');
 const { ADV_HEADERS_SRV, buildAdvancedSplit, computeSeasonPBP, buildPbpSplit } = require('./advancedStats');
 const { WNBA_LG } = require('../constants/leagueAverages');
+const { isChampion } = require('./historyAggregator');
+const { getPlayerAccolades } = require('../constants/wnbaAccolades');
 
 // Resolve player basics — name, position — from ESPN.
 async function fetchPlayerBasics(playerId) {
@@ -32,27 +40,47 @@ async function fetchPlayerBasics(playerId) {
 function rowToObj(headers, row) {
   const I = Object.fromEntries(headers.map((h, i) => [h, i]));
   return {
-    year:   row[I.SEASON_ID],
-    gp:     row[I.GP],
-    min:    row[I.MIN],
-    pts:    row[I.PTS],
-    reb:    row[I.REB],
-    orb:    row[I.OREB],
-    drb:    row[I.DREB],
-    ast:    row[I.AST],
-    stl:    row[I.STL],
-    blk:    row[I.BLK],
-    tov:    row[I.TOV],
-    fgm:    row[I.FGM],
-    fga:    row[I.FGA],
-    fgPct:  row[I.FG_PCT],
-    fg3m:   row[I.FG3M],
-    fg3a:   row[I.FG3A],
-    fg3Pct: row[I.FG3_PCT],
-    ftm:    row[I.FTM],
-    fta:    row[I.FTA],
-    ftPct:  row[I.FT_PCT],
+    year:     row[I.SEASON_ID],
+    teamAbbr: row[I.TEAM_ABBREVIATION] || null,
+    gp:       row[I.GP],
+    min:      row[I.MIN],
+    pts:      row[I.PTS],
+    reb:      row[I.REB],
+    orb:      row[I.OREB],
+    drb:      row[I.DREB],
+    ast:      row[I.AST],
+    stl:      row[I.STL],
+    blk:      row[I.BLK],
+    tov:      row[I.TOV],
+    fgm:      row[I.FGM],
+    fga:      row[I.FGA],
+    fgPct:    row[I.FG_PCT],
+    fg3m:     row[I.FG3M],
+    fg3a:     row[I.FG3A],
+    fg3Pct:   row[I.FG3_PCT],
+    ftm:      row[I.FTM],
+    fta:      row[I.FTA],
+    ftPct:    row[I.FT_PCT],
   };
+}
+
+// Derive championship years from per-season rows.
+//
+// Uses isChampion(year, teamDisplayName) from historyAggregator, which resolves franchise
+// lineage aliases so Detroit Shock ↔ Dallas Wings and similar work correctly.
+//
+// teamNameByYear: map of seasonYear(string) → team display name, built from teamsById lookup.
+// Years where the team ID isn't in teamsById (defunct franchises: Comets, Monarchs) will have
+// no entry and are silently skipped — those championships are not attributable in v1.
+function getChampionshipsForPlayer(seasonRows, teamNameByYear) {
+  const years = [];
+  for (const row of seasonRows) {
+    const yr  = Number(row.year);
+    const teamName = teamNameByYear[String(yr)];
+    if (!teamName) continue;
+    if (isChampion(yr, teamName)) years.push(yr);
+  }
+  return years.sort((a, b) => a - b);
 }
 
 // Convert an advanced row (array aligned to ADV_HEADERS_SRV) into a labelled object.
@@ -83,11 +111,11 @@ function advRowToObj(headers, row) {
  *
  * @param {string} playerId  - ESPN athlete ID
  * @param {string} mode      - 'career' | 'peak' | 'playoffs'
- * @returns {Promise<{ player, mode, seasonRows, careerRow, leagueByYear } | { empty: true }>}
+ * @returns {Promise<{ player, mode, seasonRows, careerRow, leagueByYear, championships, accolades } | { empty: true }>}
  */
 async function buildInputs(playerId, mode) {
   const teams = await getTeams();
-  const teamsById = Object.fromEntries(teams.map(t => [t.id, t]));
+  const teamsById = Object.fromEntries(teams.map(t => [String(t.id), t]));
 
   const [player, regData, postData] = await Promise.all([
     fetchPlayerBasics(playerId),
@@ -119,6 +147,10 @@ async function buildInputs(playerId, mode) {
   const pgTable    = regParsed?.pg?.table;
   const pgPostTable = postParsed?.pg?.table;
 
+  // Hoist tid-by-year maps so they're accessible for championship computation below.
+  const regTidByYear  = extractTeamIdByYear(regData);
+  const postTidByYear = extractTeamIdByYear(postData);
+
   let advancedRows = [];
 
   if (pgTable) {
@@ -126,9 +158,6 @@ async function buildInputs(playerId, mode) {
     const IPost = pgPostTable
       ? Object.fromEntries(pgPostTable.headers.map((h, i) => [h, i]))
       : I;
-
-    const regTidByYear  = extractTeamIdByYear(regData);
-    const postTidByYear = extractTeamIdByYear(postData);
 
     // Seed the teamSeasonStatsCache entries we need
     const seasonsNeeded = isPlayoffs
@@ -204,7 +233,24 @@ async function buildInputs(playerId, mode) {
     if (WNBA_LG[yr]) leagueByYear[yr] = WNBA_LG[yr];
   }
 
-  return { player, mode, seasonRows, careerRow, leagueByYear, advancedRows };
+  // Championship years — resolved via WNBA_CHAMPIONS + franchise-lineage aliases.
+  // tidByYear prefers regular-season team assignment; falls back to post-season.
+  // Uses current team display name (teamsById lookup) so isChampion() + FRANCHISE_ALIASES works.
+  // Players on defunct franchises (Houston Comets etc.) whose team ID is absent from teamsById
+  // will have no team name resolved and those years are silently omitted.
+  const teamNameByYear = {};
+  for (const yr of touchedYears) {
+    const tid = regTidByYear[yr] ?? postTidByYear[yr];
+    if (tid && teamsById[String(tid)]) {
+      teamNameByYear[yr] = teamsById[String(tid)].name;
+    }
+  }
+  const championships = getChampionshipsForPlayer(seasonRows, teamNameByYear);
+
+  // Individual accolades — MVP, Finals MVP, DPOY, ROY, Sixth Player, All-WNBA First Team.
+  const accolades = getPlayerAccolades(player.name);
+
+  return { player, mode, seasonRows, careerRow, leagueByYear, advancedRows, championships, accolades };
 }
 
 module.exports = { buildInputs };

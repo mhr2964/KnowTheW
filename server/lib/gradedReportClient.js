@@ -109,12 +109,12 @@ const GRADED_REPORT_TOOL = {
 
 // Bumped whenever the system prompt, tool schema, or model changes — included in the
 // sourceHash so existing cached reports regenerate on the next request.
-const PROMPT_VERSION = 1;
+const PROMPT_VERSION = 2;
 
 // System prompt is static across all player calls so Anthropic can cache it.
 const SYSTEM_PROMPT_TEXT =
   'You are a WNBA stat analyst who assigns letter grades to player performance based on ' +
-  'box-score data and league context. ' +
+  'box-score data, league context, and provided awards/championship data. ' +
   'Grade scale: A+ down to F (A+, A, A-, B+, B, B-, C+, C, C-, D+, D, D-, F). ' +
   'Grade contextually against the population of WNBA players who have played at least ' +
   '200 career games. Reserve A+ for top-5 all-time territory in that category. ' +
@@ -129,18 +129,33 @@ const SYSTEM_PROMPT_TEXT =
   'Grade rebounding and defense with positional context when position is provided. ' +
   'Mode-specific weighting for Overall: for Career mode, weight Efficiency/Impact and Longevity ' +
   'most heavily. For Peak mode, weight Scoring and Efficiency. For Playoffs mode, weight ' +
-  'Efficiency and the sample of high-leverage games played. ' +
-  'Longevity rule: Longevity grade is explicitly tied to GP and seasons played. ' +
-  'A 5-year career with normal health caps at A-. A 10+ year career can reach A+. ' +
-  'Under 4 seasons caps at B. Under 100 GP career caps at B-. State the actual GP and seasons ' +
-  'in the Longevity stats string. ' +
-  'Hallucination guard: use only the numbers and league averages provided. Do not reference ' +
-  'championships, All-Star selections, awards, or coaching unless present in the input. ' +
-  'Do not invent statistics. If a stat is missing, omit it from the stats string. ' +
-  'Peak picker: when the user message specifies mode=peak, choose 3 to 5 consecutive seasons ' +
-  'that maximise combined scoring volume and efficiency from the season rows provided. ' +
-  'Return those years (integers) in peakSeasons ascending. Grade only that window. ' +
-  'If the player has played fewer than 3 seasons, all seasons are the peak window. ' +
+  'Efficiency and the sample of high-leverage games played — championship context matters here. ' +
+  'LONGEVITY GRADE FLOORS (Career and Playoffs modes only — not Peak mode): ' +
+  'A+: 18+ seasons AND 500+ GP (generational durability). ' +
+  'A: 15+ seasons OR 400+ GP (elite sustained career). ' +
+  'A-: 12+ seasons OR 320+ GP (long productive career). ' +
+  'B+: 9+ seasons OR 240+ GP (solid tenure). ' +
+  'B: 6+ seasons OR 160+ GP (established player). ' +
+  'C+: 4+ seasons OR 100+ GP (partial career). ' +
+  'C or lower: under 4 seasons or under 100 GP (limited sample). ' +
+  'These are FLOORS — a player can score lower if context warrants (e.g. 12 seasons but only ' +
+  '200 GP due to chronic injury). State the actual GP and seasons in the Longevity stats string. ' +
+  'PEAK MODE — LONGEVITY SPECIAL RULE: in peak mode, Longevity grades the peak window only ' +
+  '(not the full career). A 4-season peak window caps at A- regardless of full-career length. ' +
+  'A 3-season window caps at B+. State ONLY the peak-window GP and seasons in the stats string — ' +
+  'never cite career totals here. ' +
+  'PEAK MODE — CONSECUTIVE SEASONS RULE: the peak window MUST be 3 to 5 CONSECUTIVE seasons. ' +
+  'Do not pick a non-consecutive set. If a player has multiple distinct eras, pick the single ' +
+  'best consecutive window. Return those years ascending in peakSeasons. ' +
+  'AWARDS AND CHAMPIONSHIPS — MANDATORY USAGE: when the user message provides championships ' +
+  'and accolades data, you MUST incorporate those facts into the relevant context paragraphs ' +
+  'and overall summary. Do not ignore provided award data. A 4-time champion\'s Playoffs Overall ' +
+  'must reflect that championship context — per-game numbers alone do not capture legacy. ' +
+  'A player with multiple MVP awards or All-WNBA First Team selections has a higher floor for ' +
+  'the Overall grade than raw stats suggest. Cite the specific awards briefly in the summary. ' +
+  'Hallucination guard: use only the numbers, league averages, championships, and accolades ' +
+  'provided in the user message. Do not invent statistics or awards beyond what is provided. ' +
+  'If a stat is missing, omit it from the stats string. ' +
   'Playoffs note: if the user message specifies mode=playoffs and total GP is under 20, ' +
   'include a small-sample warning in the overall summary. ' +
   'Output discipline: output structured JSON via the graded_player_report tool only. ' +
@@ -218,6 +233,15 @@ function validateReportShape(input, mode) {
         throw new Error(`[gradedReportClient] peakSeasons contains invalid year: ${yr}`);
       }
     }
+    // Warn (don't throw) if seasons are not consecutive — the report is still cached, but
+    // the warning surfaces in server logs so non-consecutive picks can be investigated.
+    const sorted = [...input.peakSeasons].sort((a, b) => a - b);
+    const isConsecutive = sorted.every((yr, i) => i === 0 || yr === sorted[i - 1] + 1);
+    if (!isConsecutive) {
+      console.warn(
+        `[gradedReportClient] peakSeasons non-consecutive: [${sorted.join(', ')}] — prompt should enforce consecutive windows`
+      );
+    }
   }
 }
 
@@ -231,13 +255,30 @@ function fmt(n, decimals = 1) {
 }
 
 function buildUserMessage(inputs) {
-  const { player, mode, seasonRows, careerRow, leagueByYear, advancedRows } = inputs;
+  const { player, mode, seasonRows, careerRow, leagueByYear, advancedRows, championships, accolades } = inputs;
 
   const lines = [
     `Player: ${player.name}`,
     `Position: ${player.position || 'Unknown'}`,
     `Mode: ${mode}`,
   ];
+
+  // Championships and accolades — injected as fact so the model must use them.
+  if (championships && championships.length > 0) {
+    lines.push(`Championships: ${championships.join(', ')} (${championships.length}× WNBA Champion)`);
+  }
+  if (accolades) {
+    const accoladeParts = [];
+    if (accolades.mvp?.length)          accoladeParts.push(`MVP: ${accolades.mvp.join(', ')}`);
+    if (accolades.finalsMVP?.length)     accoladeParts.push(`Finals MVP: ${accolades.finalsMVP.join(', ')}`);
+    if (accolades.dpoy?.length)          accoladeParts.push(`DPOY: ${accolades.dpoy.join(', ')}`);
+    if (accolades.roy?.length)           accoladeParts.push(`ROY: ${accolades.roy.join(', ')}`);
+    if (accolades.sixth?.length)         accoladeParts.push(`Sixth Player: ${accolades.sixth.join(', ')}`);
+    if (accolades.allWnbaFirst?.length)  accoladeParts.push(`All-WNBA First Team: ${accolades.allWnbaFirst.join(', ')} (${accolades.allWnbaFirst.length}× selection)`);
+    if (accoladeParts.length > 0) {
+      lines.push(`Awards: ${accoladeParts.join(' | ')}`);
+    }
+  }
 
   // Merge advanced rows by year for inline display
   const advByYear = {};
