@@ -1,6 +1,8 @@
 # Changelog — KnowTheW
 
 ## 2026-05-11
+- **Team History layout now stays consistent across champion and no-championship teams, fits on 360px screens, and drops a redundant "Est." label** — Teams with zero championships (e.g. Connecticut Sun) now show a muted "Chasing their first championship" banner in the same position champion teams show the gold banner, so vertical rhythm matches across teams. On phones ≤480px, the season table headers abbreviate to "Seed" / "Result," seed cells read "1st W" instead of "1st in Western," and the redundant "Champions" pill on champion rows hides since the gold-bolded year cell + top banner already signal the title — eliminates the prior ~31px horizontal clip on 360px screens. The Dashboard Franchise History card "Founded" row drops the redundant "Est." prefix.
+  Files: client/src/pages/TeamHistoryPage.jsx, client/src/pages/TeamDashboard.jsx, client/src/App.css
 - **Tighten AI franchise narrative against fabricated player names and AI cliché phrasing** — Prompt now instructs Claude to omit player names when uncertain rather than guess (eliminates hallucinations like fictional players), forbids puns and parenthetical asides such as "(no pun intended)", and prevents eras from closing on the in-progress current season. The provenance label "(AI summary)" now appears once at the section header instead of repeating on every era card, and the redundant year-range pill is removed since the era heading already carries the range. A PROMPT_VERSION constant is now folded into the cache key so existing cached narratives regenerate automatically on the next request after any prompt change.
   Files: server/lib/narrativeClient.js, server/routes/api.js, client/src/pages/TeamHistoryPage.jsx, client/src/App.css
 
