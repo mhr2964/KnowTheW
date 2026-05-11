@@ -12,6 +12,8 @@ const { buildHistory }                                                   = requi
 const { buildSeasonInfo }                                                = require('../lib/seasonInfo');
 const { readOrFetch }                                                    = require('../lib/teamSeasonCache');
 const narrativeClient                                                    = require('../lib/narrativeClient');
+const gradedReportClient                                                 = require('../lib/gradedReportClient');
+const { buildInputs: buildReportInputs }                                 = require('../lib/gradedReportInputs');
 const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats }   = require('../lib/statsParser');
 const { ADV_HEADERS_SRV, buildAdvancedSplit, buildAdvancedCareer,
         computeSeasonPBP, buildPbpSplit }                                = require('../lib/advancedStats');
@@ -516,6 +518,167 @@ router.get('/players/:id/percentiles', async (req, res) => {
     console.error('percentiles:', err.message);
     res.status(500).json({ error: 'failed to compute percentiles' });
   }
+});
+
+// GET /api/players/:id/graded-report?mode=career|peak|playoffs
+//
+// Returns an AI-generated letter-grade report for a player scoped to the requested mode.
+// Reports are cached in MongoDB collection `playerGradedReports` keyed by
+// `"<playerId>-<mode>-<sourceHash[:8]>"` so stat corrections or prompt-version bumps write
+// a new document rather than overwriting the old one.
+//
+// 503 — no ANTHROPIC_API_KEY
+// 404 — player id not found in ESPN
+// 400 — invalid id or mode
+// 200 { empty: true } — mode=playoffs with zero playoff GP
+// 502 — Claude error or shape validation failure
+router.get('/players/:id/graded-report', async (req, res) => {
+  // Validate :id
+  if (!/^\d+$/.test(req.params.id)) {
+    return res.status(400).json({ error: 'player id must be a numeric string' });
+  }
+  const playerId = req.params.id;
+
+  // Validate mode (default 'career')
+  const modeRaw = req.query.mode;
+  const VALID_MODES = new Set(['career', 'peak', 'playoffs']);
+  let mode;
+  if (modeRaw === undefined || modeRaw === '') {
+    mode = 'career';
+  } else if (VALID_MODES.has(modeRaw)) {
+    mode = modeRaw;
+  } else {
+    return res.status(400).json({ error: 'mode must be one of: career, peak, playoffs' });
+  }
+
+  if (!gradedReportClient.enabled) {
+    return res.status(503).json({ error: 'Graded report unavailable' });
+  }
+
+  let inputs;
+  try {
+    inputs = await buildReportInputs(playerId, mode);
+  } catch (err) {
+    console.error(`[graded-report] buildInputs playerId=${playerId} mode=${mode}:`, err.message);
+    return res.status(502).json({ error: 'upstream error building report inputs' });
+  }
+
+  // Player not found
+  if (inputs === null) {
+    return res.status(404).json({ error: 'player not found' });
+  }
+
+  // Playoffs empty-state — player has no playoff data
+  if (inputs.empty) {
+    return res.json({ playerId, mode, empty: true });
+  }
+
+  // Deterministic source hash over all data Claude will receive.
+  // Sorted ascending by year so insertion order doesn't matter.
+  const hashInput = JSON.stringify({
+    promptVersion: gradedReportClient.PROMPT_VERSION,
+    playerId,
+    playerName:  inputs.player.name,
+    position:    inputs.player.position,
+    mode,
+    seasonRows:  [...(inputs.seasonRows ?? [])].sort((a, b) => String(a.year).localeCompare(String(b.year))),
+    advancedRows: [...(inputs.advancedRows ?? [])].sort((a, b) => String(a.year).localeCompare(String(b.year))),
+    leagueByYear: Object.fromEntries(Object.entries(inputs.leagueByYear ?? {}).sort()),
+  });
+  const sourceHash = crypto.createHash('sha1').update(hashInput).digest('hex');
+  const docId = `${playerId}-${mode}-${sourceHash.slice(0, 8)}`;
+
+  const db = getDb();
+
+  // Admin-gated manual refresh — mirrors narrative route exactly.
+  const adminToken  = process.env.ADMIN_TOKEN;
+  const headerToken = req.headers['x-admin-token'];
+  let forceRefresh  = false;
+  if (req.query.refresh === '1' && adminToken && headerToken) {
+    const aBuf = Buffer.from(adminToken,  'utf8');
+    const bBuf = Buffer.from(headerToken, 'utf8');
+    if (aBuf.length === bBuf.length) {
+      forceRefresh = crypto.timingSafeEqual(aBuf, bBuf);
+    }
+  }
+
+  // Cache lookup — skip when Mongo unavailable or forced refresh
+  if (db && !forceRefresh) {
+    let cached;
+    try {
+      cached = await db.collection('playerGradedReports').findOne({ _id: docId });
+    } catch (err) {
+      console.error(`[graded-report] mongo read failed _id=${docId}:`, err.message);
+      cached = null;
+    }
+    if (cached) {
+      const years = inputs.seasonRows?.map(r => Number(r.year)).filter(Boolean) ?? [];
+      const careerYearRange = years.length
+        ? [Math.min(...years), Math.max(...years)]
+        : null;
+      return res.json({
+        playerId,
+        playerName:  cached.data.playerName  ?? inputs.player.name,
+        mode,
+        ...(cached.data.peakSeasons ? { peakSeasons: cached.data.peakSeasons } : {}),
+        ...(careerYearRange ? { careerYearRange } : {}),
+        categories:  cached.data.categories,
+        overall:     cached.data.overall,
+        volume:      cached.data.volume,
+        generatedAt: cached.generatedAt instanceof Date
+          ? cached.generatedAt.toISOString()
+          : cached.generatedAt,
+        sourceHash:  cached.sourceHash,
+      });
+    }
+  } else if (!db) {
+    console.warn(`[graded-report] MongoDB unavailable — calling Claude directly for playerId=${playerId} mode=${mode}`);
+  }
+
+  // Cache miss (or no Mongo / forced refresh) — call Claude
+  let reportData;
+  try {
+    reportData = await gradedReportClient.callClaude({ inputs, mode, sourceHash });
+  } catch (err) {
+    console.error(`[graded-report] Claude error playerId=${playerId} mode=${mode}:`, err.message);
+    return res.status(502).json({ error: 'upstream error generating graded report' });
+  }
+
+  const generatedAt = new Date();
+
+  // Persist — fire-and-forget with hash key so corrections create a new doc
+  if (db) {
+    const doc = {
+      _id:           docId,
+      playerId,
+      mode,
+      data:          { playerName: inputs.player.name, ...reportData },
+      sourceHash,
+      generatedAt,
+      promptVersion: gradedReportClient.PROMPT_VERSION,
+    };
+    db.collection('playerGradedReports')
+      .replaceOne({ _id: docId }, doc, { upsert: true })
+      .catch(err => console.error(`[graded-report] mongo write failed _id=${docId}:`, err.message));
+  }
+
+  const years = inputs.seasonRows?.map(r => Number(r.year)).filter(Boolean) ?? [];
+  const careerYearRange = years.length
+    ? [Math.min(...years), Math.max(...years)]
+    : null;
+
+  return res.json({
+    playerId,
+    playerName: inputs.player.name,
+    mode,
+    ...(reportData.peakSeasons ? { peakSeasons: reportData.peakSeasons } : {}),
+    ...(careerYearRange ? { careerYearRange } : {}),
+    categories:  reportData.categories,
+    overall:     reportData.overall,
+    volume:      reportData.volume,
+    generatedAt: generatedAt.toISOString(),
+    sourceHash,
+  });
 });
 
 router.get('/teams/:id/narrative', async (req, res) => {

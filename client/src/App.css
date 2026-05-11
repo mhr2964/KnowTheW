@@ -1013,6 +1013,391 @@ body {
   justify-content: flex-end;
 }
 
+/* ── Grade Badge ── */
+.grade-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  padding: 0.18rem 0.55rem;
+  border-radius: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.grade-badge--top {
+  background: rgba(74, 222, 128, 0.18);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.35);
+}
+
+.grade-badge--high {
+  background: rgba(96, 165, 250, 0.18);
+  color: #60a5fa;
+  border: 1px solid rgba(96, 165, 250, 0.3);
+}
+
+.grade-badge--mid {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.grade-badge--low {
+  background: rgba(251, 146, 60, 0.15);
+  color: #fb923c;
+  border: 1px solid rgba(251, 146, 60, 0.3);
+}
+
+.grade-badge--bottom {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+.grade-badge--empty {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+/* ── Mode Toggle ── */
+.compare-mode-toggle-wrap {
+  margin-bottom: 1rem;
+}
+
+.compare-mode-toggle {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.4rem;
+}
+
+.compare-mode-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.35rem 0.85rem;
+  transition: all 0.12s;
+}
+.compare-mode-btn:hover { color: var(--text); border-color: var(--text-muted); }
+.compare-mode-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.compare-mode-peak-window {
+  font-size: 0.73rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+/* ── Compare Verdict ── */
+.compare-verdict {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.compare-verdict-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.compare-verdict-cats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+.compare-verdict-cats strong { color: var(--accent); }
+.compare-verdict-sep { color: var(--text-muted); }
+
+.compare-verdict-overall {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.compare-verdict-overall-label {
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-right: 0.15rem;
+}
+
+.compare-verdict-vs-arrow {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.compare-verdict-winner {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-left: 0.25rem;
+}
+
+.compare-verdict-margin {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.compare-verdict-volume {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+  margin-top: 0.1rem;
+}
+
+.compare-verdict--skeleton {
+  gap: 0.75rem;
+}
+.compare-verdict-skeleton-line {
+  height: 1rem;
+  border-radius: 4px;
+  background: var(--surface-2);
+  width: 70%;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.compare-verdict-skeleton-line--short { width: 45%; }
+
+/* ── Grade Cards ── */
+.compare-grade-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.compare-grade-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.compare-grade-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 1rem;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.compare-grade-card-category {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text);
+}
+
+.compare-grade-card-leader {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-left: auto;
+}
+
+.compare-grade-card-tie {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.compare-grade-card-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--border);
+}
+
+.compare-grade-panel {
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.compare-grade-panel:first-child {
+  border-right: 1px solid var(--border);
+}
+
+.compare-grade-panel--winner {
+  background: rgba(255, 107, 0, 0.04);
+}
+
+.compare-grade-panel-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.compare-grade-panel-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.compare-grade-panel-stats {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.compare-grade-panel-context {
+  font-size: 0.78rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.compare-grade-panel-unavailable {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.compare-grade-card-volume {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  padding: 0.5rem 1rem;
+}
+
+/* Grade card skeleton */
+.compare-grade-card--skeleton {
+  padding: 0;
+}
+.compare-grade-skeleton-header {
+  height: 2.5rem;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.compare-grade-skeleton-body {
+  height: 6rem;
+  background: var(--surface);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+/* ── Compare AI states ── */
+.compare-ai-unavailable {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin-bottom: 1.25rem;
+}
+
+.compare-loading-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.compare-loading-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.compare-verdict-short-peak {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.4rem;
+  font-style: italic;
+}
+
+.compare-playoffs-empty {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+}
+
+.compare-ai-disclaimer {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: 0.75rem 0 1.5rem;
+}
+
+/* ── Overall summaries ── */
+.compare-overall-summaries {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.compare-overall-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.compare-overall-summary-name {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.compare-overall-summary p {
+  font-size: 0.86rem;
+  color: var(--text);
+  line-height: 1.55;
+}
+
+/* Pulse animation for skeletons */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 /* ── Footer ── */
 .footer {
   border-top: 1px solid var(--border); padding: 1.25rem 2rem;
@@ -1755,6 +2140,21 @@ body {
 
   /* Hide Team column on merged compare table — low-value at extreme widths */
   .compare-team-col { display: none; }
+
+  /* Grade cards: stack panels vertically on narrow screens */
+  .compare-grade-card-panels {
+    grid-template-columns: 1fr;
+  }
+  .compare-grade-panel:first-child {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Mode toggle full-width */
+  .compare-mode-toggle { flex-wrap: wrap; }
+  .compare-mode-btn { flex: 1; text-align: center; }
+
+  /* Verdict stacks naturally — no override needed */
 
   /* Team header stacks: logo+name row → picker → meta row */
   .team-header {
