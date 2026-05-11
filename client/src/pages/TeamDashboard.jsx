@@ -100,7 +100,7 @@ export default function TeamDashboard() {
       </div>
 
       <div className="team-dashboard-card">
-        <div className="team-dashboard-card-headline">Team Stats</div>
+        <div className="team-dashboard-card-headline">Stats</div>
         <div className="team-dashboard-card-body">
           {statsPreview ? (
             <>
@@ -121,7 +121,7 @@ export default function TeamDashboard() {
       </div>
 
       <div className="team-dashboard-card">
-        <div className="team-dashboard-card-headline">Franchise History</div>
+        <div className="team-dashboard-card-headline">History</div>
         <div className="team-dashboard-card-body">
           {historyError ? (
             <p className="team-dashboard-placeholder">History preview unavailable.</p>
