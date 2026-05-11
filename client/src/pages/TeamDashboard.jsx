@@ -204,37 +204,45 @@ export default function TeamDashboard() {
           ) : (
             <>
               {schedulePreview.nextGame && (
-                <div className="team-dashboard-player-row">
-                  <span className="team-dashboard-player-name team-schedule-card-label">Next</span>
-                  <span className="team-schedule-card-atvs">{schedulePreview.nextGame.atVs}</span>
-                  {schedulePreview.nextGame.opponent?.logo && (
-                    <img
-                      src={schedulePreview.nextGame.opponent.logo}
-                      alt=""
-                      className="team-schedule-card-logo"
-                      aria-hidden="true"
-                    />
-                  )}
-                  <span className="team-dashboard-player-pos">{schedulePreview.nextGame.opponent?.abbreviation}</span>
-                  <span className="team-dashboard-player-pos">{fmtDateShort(schedulePreview.nextGame.date)}</span>
-                  <span className="team-dashboard-player-pos">{fmtTime(schedulePreview.nextGame.date)}</span>
+                <div className="team-schedule-card-entry">
+                  <div className="team-schedule-card-line">
+                    <span className="team-schedule-card-label">Next</span>
+                    <span className="team-schedule-card-atvs">{schedulePreview.nextGame.atVs}</span>
+                    {schedulePreview.nextGame.opponent?.logo && (
+                      <img
+                        src={schedulePreview.nextGame.opponent.logo}
+                        alt=""
+                        className="team-schedule-card-logo"
+                        aria-hidden="true"
+                      />
+                    )}
+                    <span className="team-schedule-card-opp">{schedulePreview.nextGame.opponent?.abbreviation}</span>
+                  </div>
+                  <div className="team-schedule-card-sub">
+                    {fmtDateShort(schedulePreview.nextGame.date)} · {fmtTime(schedulePreview.nextGame.date)}
+                  </div>
                 </div>
               )}
               {schedulePreview.lastGame && (
-                <div className="team-dashboard-player-row">
-                  <span className="team-dashboard-player-name team-schedule-card-label">Last</span>
-                  {schedulePreview.lastGame.result && (
-                    <span className={`team-schedule-result-pill team-schedule-result-pill--${schedulePreview.lastGame.result.toLowerCase()}`}>
-                      {schedulePreview.lastGame.result}
-                    </span>
-                  )}
-                  {schedulePreview.lastGame.teamScore != null && (
-                    <span className="team-dashboard-player-pos">
-                      {schedulePreview.lastGame.teamScore}–{schedulePreview.lastGame.oppScore}
-                    </span>
-                  )}
-                  <span className="team-dashboard-player-pos">{schedulePreview.lastGame.opponent?.abbreviation}</span>
-                  <span className="team-dashboard-player-pos">{fmtDateShort(schedulePreview.lastGame.date)}</span>
+                <div className="team-schedule-card-entry">
+                  <div className="team-schedule-card-line">
+                    <span className="team-schedule-card-label">Last</span>
+                    {schedulePreview.lastGame.result && (
+                      <span className={`team-schedule-result-pill team-schedule-result-pill--${schedulePreview.lastGame.result.toLowerCase()}`}>
+                        {schedulePreview.lastGame.result}
+                      </span>
+                    )}
+                    {schedulePreview.lastGame.teamScore != null && (
+                      <span className="team-schedule-card-score">
+                        {schedulePreview.lastGame.teamScore}–{schedulePreview.lastGame.oppScore}
+                      </span>
+                    )}
+                    <span className="team-schedule-card-atvs">{schedulePreview.lastGame.atVs}</span>
+                    <span className="team-schedule-card-opp">{schedulePreview.lastGame.opponent?.abbreviation}</span>
+                  </div>
+                  <div className="team-schedule-card-sub">
+                    {fmtDateShort(schedulePreview.lastGame.date)}
+                  </div>
                 </div>
               )}
               {!schedulePreview.nextGame && schedulePreview.lastGame && (

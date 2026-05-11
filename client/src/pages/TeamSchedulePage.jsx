@@ -82,26 +82,33 @@ export default function TeamSchedulePage() {
 
       {regularEvents.length === 0 && playoffEvents.length === 0 ? (
         <p className="status-msg">Schedule not yet available.</p>
-      ) : (
-        <>
-          <ScheduleTable
-            events={regularEvents}
-            todayIso={todayIso}
-            dividerRef={dividerRef}
-          />
+      ) : (() => {
+        // If the regular-season list has any future game, the divider belongs on the
+        // regular-season table. Otherwise (regular season empty or fully past), give the
+        // divider to the playoff table so "today" still scrolls into view.
+        const todayMs = Date.now();
+        const regularHasFuture = regularEvents.some(e => new Date(e.date).getTime() > todayMs);
+        return (
+          <>
+            <ScheduleTable
+              events={regularEvents}
+              todayIso={todayIso}
+              dividerRef={regularHasFuture ? dividerRef : null}
+            />
 
-          {playoffEvents.length > 0 && (
-            <>
-              <h4 className="team-schedule-subheader">Playoffs</h4>
-              <ScheduleTable
-                events={playoffEvents}
-                todayIso={todayIso}
-                dividerRef={null}
-              />
-            </>
-          )}
-        </>
-      )}
+            {playoffEvents.length > 0 && (
+              <>
+                <h4 className="team-schedule-subheader">Playoffs</h4>
+                <ScheduleTable
+                  events={playoffEvents}
+                  todayIso={todayIso}
+                  dividerRef={regularHasFuture ? null : dividerRef}
+                />
+              </>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 }
