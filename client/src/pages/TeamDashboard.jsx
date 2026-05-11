@@ -140,7 +140,7 @@ export default function TeamDashboard() {
               {historyPreview.founded != null && (
                 <div className="team-dashboard-player-row">
                   <span className="team-dashboard-player-name">Founded</span>
-                  <span className="team-dashboard-player-pos">Est. {historyPreview.founded}</span>
+                  <span className="team-dashboard-player-pos">{historyPreview.founded}</span>
                 </div>
               )}
               {historyPreview.lastPlayoff != null && (

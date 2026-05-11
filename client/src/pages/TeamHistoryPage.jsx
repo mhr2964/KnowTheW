@@ -108,7 +108,7 @@ export default function TeamHistoryPage() {
         <span>{seasons.length} seasons</span>
       </div>
 
-      {championships.length > 0 && (
+      {championships.length > 0 ? (
         <div className="team-history-champs" role="region" aria-label="Championships">
           <span className="team-history-champs-icon" aria-hidden="true">🏆</span>
           <span className="team-history-champs-text">
@@ -120,6 +120,10 @@ export default function TeamHistoryPage() {
             {championships.join(', ')}
           </span>
         </div>
+      ) : (
+        <div className="team-history-champs team-history-champs--none" role="region" aria-label="No championships yet">
+          <span className="team-history-champs-text">Chasing their first championship</span>
+        </div>
       )}
 
       <div className="team-history-table-wrap">
@@ -128,8 +132,14 @@ export default function TeamHistoryPage() {
             <tr>
               <th className="team-history-cell team-history-cell--head">Year</th>
               <th className="team-history-cell team-history-cell--head">Record</th>
-              <th className="team-history-cell team-history-cell--head team-history-cell--conf">Conference Seed</th>
-              <th className="team-history-cell team-history-cell--head">Playoff Result</th>
+              <th className="team-history-cell team-history-cell--head team-history-cell--conf">
+                <span className="th-full">Conference Seed</span>
+                <span className="th-short">Seed</span>
+              </th>
+              <th className="team-history-cell team-history-cell--head">
+                <span className="th-full">Playoff Result</span>
+                <span className="th-short">Result</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -137,13 +147,18 @@ export default function TeamHistoryPage() {
               const isChamp = season.champion === true;
               // seed === 0 is an ESPN sentinel for "unknown/pre-2003" — render muted dash, not "0th in".
               // "Missed playoffs" is only correct when seed is genuinely null AND not a champion year.
-              let seedLabel;
+              let seedLabelFull;
+              let seedLabelShort;
               if (season.seed != null && season.seed > 0) {
-                seedLabel = `${ordinalSuffix(season.seed)} in ${conferenceShort(season.conference)}`;
+                const conf = conferenceShort(season.conference);
+                seedLabelFull = `${ordinalSuffix(season.seed)} in ${conf}`;
+                seedLabelShort = `${ordinalSuffix(season.seed)} ${conf[0]}`;
               } else if (isChamp) {
-                seedLabel = '—';
+                seedLabelFull = '—';
+                seedLabelShort = '—';
               } else {
-                seedLabel = 'Missed playoffs';
+                seedLabelFull = 'Missed playoffs';
+                seedLabelShort = 'Missed';
               }
               // Trophy emoji omitted on champion rows — the "Champions" pill below carries the signal.
               const resultLabel = season.playoffResult;
@@ -159,7 +174,10 @@ export default function TeamHistoryPage() {
                       ? `${season.wins}–${season.losses}`
                       : '—'}
                   </td>
-                  <td className="team-history-cell team-history-cell--conf">{seedLabel}</td>
+                  <td className="team-history-cell team-history-cell--conf">
+                    <span className="th-full">{seedLabelFull}</span>
+                    <span className="th-short">{seedLabelShort}</span>
+                  </td>
                   <td className="team-history-cell">
                     {resultLabel ?? <span className="team-history-cell--muted">—</span>}
                     {isChamp && (

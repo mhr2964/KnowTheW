@@ -968,6 +968,17 @@ body {
   font-size: 0.82rem; font-weight: 600; color: #b8a030;
 }
 
+.team-history-champs--none {
+  background: var(--surface-2);
+  border-color: var(--border);
+  border-left-color: var(--text-muted);
+}
+.team-history-champs--none .team-history-champs-text {
+  font-weight: 600; color: var(--text-muted);
+}
+
+.th-short { display: none; }
+
 .team-history-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--border);
@@ -1177,4 +1188,11 @@ body {
   .team-history-cell--conf { display: none; }
   .team-history-champs { gap: 0.5rem; }
   .team-history-champs-text { font-size: 0.82rem; }
+}
+
+@media (max-width: 480px) {
+  .th-full { display: none; }
+  .th-short { display: inline; }
+  /* Row-level gold accent + top banner already signal championship; pill is redundant here. */
+  .team-history-champ-badge { display: none; }
 }
