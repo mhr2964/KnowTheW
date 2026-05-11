@@ -202,14 +202,12 @@ export default function TeamHistoryPage() {
             <div className="team-history-eras">
               {narrative.eras.map((era, i) => (
                 <div key={i} className="team-history-era-card">
-                  <div className="team-history-era-header">
-                    <h4 className="team-history-era-label">{era.label}</h4>
-                    <span className="team-history-ai-label" aria-hidden="true">(AI summary)</span>
-                  </div>
-                  <div className="team-history-era-meta">
-                    <span>{era.yearStart}–{era.yearEnd}</span>
-                    {era.record && <span className="team-history-era-record">{era.record}</span>}
-                  </div>
+                  <h4 className="team-history-era-label">{era.label}</h4>
+                  {era.record && (
+                    <div className="team-history-era-meta">
+                      <span className="team-history-era-record">{era.record}</span>
+                    </div>
+                  )}
                   {era.narrative && (
                     <p className="team-history-era-narrative">{era.narrative}</p>
                   )}

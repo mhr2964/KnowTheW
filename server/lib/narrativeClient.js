@@ -84,13 +84,23 @@ const FRANCHISE_NARRATIVE_TOOL = {
   },
 };
 
+// Bumped whenever the system prompt, tool schema, or model changes — included in the
+// route's sourceHash so existing cached narratives regenerate on the next request.
+const PROMPT_VERSION = 2;
+
 // System prompt is static across all teams so Anthropic can cache it.
 const SYSTEM_PROMPT_TEXT =
   'You write franchise histories for WNBA teams. ' +
   'You receive structured data — records, championships, playoff results — for a specific team. ' +
-  'You may name players and coaches from your training knowledge as commentary; ' +
-  'do not invent statistics or attribute specific numbers to any player or coach. ' +
+  'You may name players and coaches from your training knowledge as commentary, but ' +
+  'only name players you are highly confident played for this specific franchise; ' +
+  'if uncertain, omit the name rather than guess. ' +
+  'Do not invent statistics or attribute specific numbers to any player or coach. ' +
   'When you mention a player or coach, use qualitative descriptions only. ' +
+  'Write in a neutral, professional tone: no puns, no parenthetical asides like ' +
+  '"(no pun intended)", and no self-referential phrasing about being an AI or summary. ' +
+  'Treat the current in-progress season separately — never include the current season as ' +
+  'the closing year of an era. Era ranges must end on a completed season. ' +
   'Output structured JSON that exactly matches the provided tool schema.';
 
 // ---------------------------------------------------------------------------
@@ -224,4 +234,4 @@ async function getNarrative({ team, history }) {
   return toolUse.input;
 }
 
-module.exports = { getNarrative, get enabled() { return enabled; } };
+module.exports = { getNarrative, PROMPT_VERSION, get enabled() { return enabled; } };

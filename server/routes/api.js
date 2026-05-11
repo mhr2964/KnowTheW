@@ -404,6 +404,7 @@ router.get('/teams/:id/narrative', async (req, res) => {
     // the narrative cache lookup costs one DB roundtrip on warm hits, not a full ESPN walk. The
     // narrative cache is layered on top of the history cache.
     const hashInput = JSON.stringify({
+      promptVersion: narrativeClient.PROMPT_VERSION,
       teamName:      team.name,
       championships: [...(history.championships ?? [])].sort((a, b) => a - b),
       currentRecord: {

@@ -1,5 +1,9 @@
 # Changelog — KnowTheW
 
+## 2026-05-11
+- **Tighten AI franchise narrative against fabricated player names and AI cliché phrasing** — Prompt now instructs Claude to omit player names when uncertain rather than guess (eliminates hallucinations like fictional players), forbids puns and parenthetical asides such as "(no pun intended)", and prevents eras from closing on the in-progress current season. The provenance label "(AI summary)" now appears once at the section header instead of repeating on every era card, and the redundant year-range pill is removed since the era heading already carries the range. A PROMPT_VERSION constant is now folded into the cache key so existing cached narratives regenerate automatically on the next request after any prompt change.
+  Files: server/lib/narrativeClient.js, server/routes/api.js, client/src/pages/TeamHistoryPage.jsx, client/src/App.css
+
 ## 2026-05-10
 - **Team History now ends with an AI-generated franchise narrative covering era overviews, key players, and team identity** — The narrative summarizes the team's franchise story across eras, names key players from training data with "(AI summary)" labels for transparency, and concludes with an identity paragraph. Narrative regenerates only when the championships list or season records change (content-addressed SHA-1 cache, no TTL), so costs are bounded to roughly once yearly per team. Regeneration is admin-gated with constant-time token comparison and falls back silently to "no narrative available" if the API key is missing. The endpoint returns 503 if Claude API is unavailable and 404 if the team doesn't exist.
   Files: package.json, server/lib/narrativeClient.js, server/routes/api.js, client/src/pages/TeamHistoryPage.jsx, client/src/App.css
