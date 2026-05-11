@@ -219,13 +219,14 @@ export default function TeamHistoryPage() {
           {narrative.eras?.length > 0 && (
             <div className="team-history-eras">
               {[...narrative.eras].reverse().map((era, i) => (
-                <div key={i} className="team-history-era-card">
-                  <h4 className="team-history-era-label">{era.label}</h4>
-                  {era.record && (
-                    <div className="team-history-era-meta">
+                <details key={i} className="team-history-era-card" open={i === 0}>
+                  <summary className="team-history-era-summary">
+                    <span className="team-history-era-label">{era.label}</span>
+                    {era.record && (
                       <span className="team-history-era-record">{era.record}</span>
-                    </div>
-                  )}
+                    )}
+                    <span className="team-history-era-chevron" aria-hidden="true">›</span>
+                  </summary>
                   {era.narrative && (
                     <p className="team-history-era-narrative">{era.narrative}</p>
                   )}
@@ -235,7 +236,7 @@ export default function TeamHistoryPage() {
                       {era.keyPlayers.join(', ')}
                     </p>
                   )}
-                </div>
+                </details>
               ))}
             </div>
           )}

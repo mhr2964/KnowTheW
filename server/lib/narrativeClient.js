@@ -86,7 +86,7 @@ const FRANCHISE_NARRATIVE_TOOL = {
 
 // Bumped whenever the system prompt, tool schema, or model changes — included in the
 // route's sourceHash so existing cached narratives regenerate on the next request.
-const PROMPT_VERSION = 2;
+const PROMPT_VERSION = 3;
 
 // System prompt is static across all teams so Anthropic can cache it.
 const SYSTEM_PROMPT_TEXT =
@@ -101,6 +101,11 @@ const SYSTEM_PROMPT_TEXT =
   '"(no pun intended)", and no self-referential phrasing about being an AI or summary. ' +
   'Treat the current in-progress season separately — never include the current season as ' +
   'the closing year of an era. Era ranges must end on a completed season. ' +
+  'Vary the era labels — do not start every label with "The" and do not end every label ' +
+  'with "Era" or "Years." Mix naming styles across the eras you produce: descriptive phrases ' +
+  '("Inaugural seasons"), player-defined periods ("Bird and Jackson dynasty"), mood ' +
+  'descriptors ("Rebuild years"), or compact year-range labels. Repetitive formulaic labels ' +
+  'across all eras read as machine-generated and should be avoided. ' +
   'Output structured JSON that exactly matches the provided tool schema.';
 
 // ---------------------------------------------------------------------------
