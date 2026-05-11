@@ -28,10 +28,26 @@ export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }
   const selectedSeason = isValidSeason ? rawSeason : currentSeason;
   const isCurrentSeason = selectedSeason === currentSeason;
 
-  const { data: seasonInfoData, error: seasonInfoError } = useLazyFetch(
+  const { data: seasonInfoData, loading: seasonInfoLoading, error: seasonInfoError } = useLazyFetch(
     `/api/teams/${team?.id}/season-info?season=${selectedSeason}`,
     !!team && !isCurrentSeason && Number.isInteger(selectedSeason)
   );
+
+  // Strip or correct an invalid/garbage ?season= param so shared URLs reflect real content.
+  useEffect(() => {
+    const rawParam = searchParams.get('season');
+    if (!rawParam) return;
+    const parsedRaw = /^\d{4}$/.test(rawParam) ? parseInt(rawParam, 10) : null;
+    if (parsedRaw !== selectedSeason) {
+      const next = new URLSearchParams(searchParams);
+      if (selectedSeason === currentSeason) {
+        next.delete('season');
+      } else {
+        next.set('season', String(selectedSeason));
+      }
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, selectedSeason, currentSeason, setSearchParams]);
 
   if (teamsLoading) return <p className="status-msg">Loading teams...</p>;
   if (teamsError) return <p className="status-msg error">{teamsError}</p>;
@@ -89,7 +105,12 @@ export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }
         )}
         <div className="team-header-text">
           <h2 className="team-header-name">{displayName}</h2>
-          {segs.length > 0 && <p className="team-header-meta">{segs.join(' · ')}</p>}
+          {segs.length > 0
+            ? <p className="team-header-meta">{segs.join(' · ')}</p>
+            : seasonInfoLoading && !isCurrentSeason && !seasonInfoFailed
+              ? <p className="team-header-meta team-header-meta-loading">…</p>
+              : null
+          }
         </div>
         <SeasonPicker
           value={isHistoryTab ? currentSeason : selectedSeason}
