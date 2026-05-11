@@ -17,22 +17,12 @@ function conferenceShort(conf) {
   return conf;
 }
 
-// Parse "1999-2003" or "1999–2003" from era.record. Returns [startYear, endYear] or null.
-function parseEraYears(record) {
-  if (!record) return null;
-  const m = record.match(/(\d{4})\s*[-–—]\s*(\d{4})/);
-  if (!m) return null;
-  return [parseInt(m[1], 10), parseInt(m[2], 10)];
-}
-
 // Build a map from season year → era index (into reversedEras).
 function buildYearToEraIndex(reversedEras) {
   const map = {};
   reversedEras.forEach((era, i) => {
-    const range = parseEraYears(era.record);
-    if (!range) return;
-    const [start, end] = range;
-    for (let y = start; y <= end; y++) {
+    if (era.yearStart == null || era.yearEnd == null) return;
+    for (let y = era.yearStart; y <= era.yearEnd; y++) {
       // Only assign if not already claimed (first match wins — current eras are at lower indices)
       if (!(y in map)) map[y] = i;
     }
