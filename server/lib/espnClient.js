@@ -261,6 +261,54 @@ async function fetchHistoricalRoster(teamId, season) {
   return raw.map(p => ({ id: String(p.id), position: p.position?.abbreviation || '' }));
 }
 
+// Fetches a historical season roster from the ESPN Web API using the richer /common/v3/ endpoint.
+// The site.api.espn.com roster endpoint returns empty athletes[] for all historical seasons;
+// site.web.api.espn.com returns full player metadata under positionGroups[].athletes[].
+//
+// ESPN API limitation (verified 2026-05-11): the ?season= parameter is silently ignored by
+// ESPN's WNBA team roster endpoint — it always returns the current active roster regardless of
+// the season you request. There is no known ESPN endpoint that returns the actual players who
+// were on a team in a past season. This function returns what ESPN provides with the season
+// field in the response set to the requested year so the client can identify what was requested.
+//
+// Returns the same shape as fetchRoster() so the /api/teams/:id/roster route handler can use
+// one mapping path for both current and historical seasons. Fields missing from the ESPN response
+// serialize as null (not omitted) so client null-checks behave consistently.
+//
+// Non-fatal: returns [] if ESPN is unreachable, returns a non-200, or the body is malformed.
+async function fetchSeasonRoster(teamId, season, teamName) {
+  try {
+    const res = await fetch(`${ESPN_WEB}/teams/${teamId}/roster?season=${season}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    // positionGroups is the container; pick the "all" group or flatten all groups.
+    const groups = data.positionGroups ?? [];
+    const allGroup = groups.find(g => g.type === 'all') ?? groups[0];
+    const athletes = allGroup?.athletes ?? groups.flatMap(g => g.athletes ?? []);
+    return athletes.map(p => ({
+      id:           String(p.id),
+      name:         p.fullName || p.displayName || null,
+      position:     p.position?.abbreviation || '',
+      positionName: p.position?.displayName  || '',
+      jersey:       p.jersey   ?? null,
+      headshot:     p.headshot?.href         ?? null,
+      height:       p.displayHeight          ?? null,
+      weight:       p.displayWeight          ?? null,
+      age:          p.age                    ?? null,
+      college:      p.college?.name          ?? null,
+      birthPlace:   p.birthPlace
+        ? [p.birthPlace.city, p.birthPlace.state, p.birthPlace.country].filter(Boolean).join(', ')
+        : null,
+      experience:   p.experience?.years      ?? null,
+      teamId,
+      teamName: teamName ?? null,
+    }));
+  } catch (err) {
+    console.error(`fetchSeasonRoster teamId=${teamId} season=${season}:`, err.message);
+    return [];
+  }
+}
+
 async function fetchGameSummary(eventId) {
   const db = getDb();
   if (db) {
@@ -289,7 +337,8 @@ getTeams()
 
 module.exports = {
   ESPN, ESPN_WEB, STANDINGS, withCache,
-  getTeams, getRoster, fetchHistoricalRoster, fetchTeamStats, fetchTeamPtsAllowed, fetchGameSummary,
+  getTeams, getRoster, fetchHistoricalRoster, fetchSeasonRoster,
+  fetchTeamStats, fetchTeamPtsAllowed, fetchGameSummary,
   fetchTeamSchedule, fetchPlayoffSchedule,
   rosterData, playerById, teamSeasonStatsCache,
 };

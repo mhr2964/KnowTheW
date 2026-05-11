@@ -3,7 +3,7 @@ import { useOutletContext, useNavigate } from 'react-router-dom';
 import RosterTable from '../components/RosterTable';
 
 export default function TeamRosterPage() {
-  const { team, onSaveDeck } = useOutletContext() ?? {};
+  const { team, onSaveDeck, season, isCurrentSeason } = useOutletContext() ?? {};
   const navigate = useNavigate();
 
   const [roster, setRoster] = useState([]);
@@ -11,11 +11,13 @@ export default function TeamRosterPage() {
   const [rosterError, setRosterError] = useState(false);
 
   useEffect(() => {
+    if (!isCurrentSeason) return;
+
     const controller = new AbortController();
     setRoster([]);
     setRosterError(false);
     setRosterLoading(true);
-    fetch(`/api/teams/${team.id}/roster`, { signal: controller.signal })
+    fetch(`/api/teams/${team.id}/roster?season=${season}`, { signal: controller.signal })
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(data => { setRoster(data.players); setRosterLoading(false); })
       .catch(err => {
@@ -25,7 +27,16 @@ export default function TeamRosterPage() {
         }
       });
     return () => controller.abort();
-  }, [team.id]);
+  }, [team?.id, season, isCurrentSeason]);
+
+  if (!isCurrentSeason) {
+    return (
+      <div className="team-spoke-content">
+        <p className="status-msg">Historical rosters not available for the {season} season.</p>
+        <p className="status-msg muted">ESPN only exposes current rosters. Browse Schedule or Stats to see historical data for this season.</p>
+      </div>
+    );
+  }
 
   if (rosterLoading) return <div className="team-spoke-content"><p className="status-msg">Loading roster...</p></div>;
   if (rosterError) return <div className="team-spoke-content"><p className="status-msg error">Could not load roster — try again.</p></div>;

@@ -53,7 +53,7 @@ function StatGroup({ label, stats }) {
 }
 
 export default function TeamStatsPage() {
-  const { team } = useOutletContext() ?? {};
+  const { team, season } = useOutletContext() ?? {};
 
   const [statsData, setStatsData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -65,7 +65,7 @@ export default function TeamStatsPage() {
     setStatsData(null);
     setError(false);
     setLoading(true);
-    fetch(`/api/teams/${team.id}/stats`, { signal: controller.signal })
+    fetch(`/api/teams/${team.id}/stats?season=${season}`, { signal: controller.signal })
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(data => { setStatsData(data); setLoading(false); })
       .catch(err => {
@@ -75,7 +75,7 @@ export default function TeamStatsPage() {
         }
       });
     return () => controller.abort();
-  }, [team?.id]);
+  }, [team?.id, season]);
 
   if (loading) return (
     <div className="team-spoke-content">
@@ -91,13 +91,13 @@ export default function TeamStatsPage() {
 
   if (statsData?.empty) return (
     <div className="team-spoke-content">
-      <p className="status-msg">No stats available for this season yet.</p>
+      <p className="status-msg">No stats available for the {season} season.</p>
     </div>
   );
 
   if (!statsData) return null;
 
-  const { season, stats = {} } = statsData;
+  const { stats = {} } = statsData;
   const knownKeys = new Set(GROUPS.flatMap(g => g.keys));
   const unknownEntries = Object.entries(stats).filter(([k]) => !knownKeys.has(k));
 

@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import ScheduleTable from '../components/ScheduleTable';
 
 export default function TeamSchedulePage() {
-  const { team } = useOutletContext() ?? {};
+  const { team, season, isCurrentSeason } = useOutletContext() ?? {};
 
   const [regularEvents, setRegularEvents] = useState([]);
   const [playoffEvents, setPlayoffEvents] = useState([]);
@@ -12,9 +12,10 @@ export default function TeamSchedulePage() {
 
   const dividerRef = useRef(null);
   const todayIso = new Date().toISOString();
-  const currentYear = new Date().getFullYear();
 
+  // For past seasons the season is complete — always fetch playoffs to show full picture.
   const needsPlayoffs =
+    !isCurrentSeason ||
     (team?.seedLabel != null && team.seedLabel !== '') ||
     new Date().getMonth() >= 8;
 
@@ -28,7 +29,7 @@ export default function TeamSchedulePage() {
     setPlayoffEvents([]);
 
     const regularFetch = fetch(
-      `/api/teams/${team.id}/schedule?season=${currentYear}&seasontype=2`,
+      `/api/teams/${team.id}/schedule?season=${season}&seasontype=2`,
       { signal: controller.signal }
     ).then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); });
 
@@ -36,7 +37,7 @@ export default function TeamSchedulePage() {
       ? Promise.all([
           regularFetch,
           fetch(
-            `/api/teams/${team.id}/schedule?season=${currentYear}&seasontype=3`,
+            `/api/teams/${team.id}/schedule?season=${season}&seasontype=3`,
             { signal: controller.signal }
           ).then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); }),
         ])
@@ -56,13 +57,13 @@ export default function TeamSchedulePage() {
       });
 
     return () => controller.abort();
-  }, [team?.id, currentYear, needsPlayoffs]);
+  }, [team?.id, season, needsPlayoffs]);
 
   useEffect(() => {
-    if (!loading && dividerRef.current) {
+    if (!loading && isCurrentSeason && dividerRef.current) {
       dividerRef.current.scrollIntoView({ block: 'center', behavior: 'auto' });
     }
-  }, [loading]);
+  }, [loading, isCurrentSeason]);
 
   if (loading) return (
     <div className="team-spoke-content">
@@ -78,7 +79,7 @@ export default function TeamSchedulePage() {
 
   return (
     <div className="team-spoke-content team-schedule-page">
-      <h3 className="team-stats-season">{currentYear} Schedule</h3>
+      <h3 className="team-stats-season">{season} Schedule</h3>
 
       {regularEvents.length === 0 && playoffEvents.length === 0 ? (
         <p className="status-msg">Schedule not yet available.</p>
