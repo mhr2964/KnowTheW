@@ -609,7 +609,7 @@ body {
   transition: all 0.12s;
 }
 .stat-season-tab:hover { color: var(--text); border-color: var(--text-muted); }
-.stat-season-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.stat-season-tab.active { background: var(--bg); border-color: var(--border); color: var(--accent); }
 
 .bref-wrap {
   background: var(--surface);
@@ -741,28 +741,20 @@ body {
 /* ── Compare Page ── */
 .compare-hero-pair {
   display: flex;
-  align-items: stretch;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.compare-hero-side {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 1.25rem;
-  min-width: 0;
+  padding: 0.75rem 1rem;
 }
 
 .compare-hero-vs {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 800;
   color: var(--text-muted);
   letter-spacing: 0.1em;
@@ -771,10 +763,20 @@ body {
 }
 
 .compare-hero-player {
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.75rem;
   min-width: 0;
+}
+
+.compare-hero-player.compare-hero-side-b {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.compare-hero-player.compare-hero-side-b .compare-hero-info {
+  align-items: flex-end;
 }
 
 .compare-hero-error {
@@ -783,9 +785,19 @@ body {
   gap: 0.5rem;
 }
 
+.compare-hero-skeleton .compare-hero-img {
+  background: var(--surface-2);
+}
+.compare-hero-skeleton-name {
+  width: 8rem;
+  height: 1rem;
+  border-radius: 4px;
+  background: var(--surface-2);
+}
+
 .compare-hero-img {
-  width: 64px;
-  height: 64px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
@@ -797,25 +809,25 @@ body {
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 1.25rem;
+  font-size: 1rem;
   letter-spacing: 0.04em;
 }
 
 .compare-hero-info {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.15rem;
   min-width: 0;
 }
 
 .compare-hero-meta {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .compare-hero-name {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 800;
   line-height: 1.2;
   white-space: nowrap;
@@ -823,106 +835,96 @@ body {
   text-overflow: ellipsis;
 }
 
-.compare-change-btn {
+.compare-change-link {
   background: none;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border: none;
   color: var(--text-muted);
-  padding: 0.28rem 0.75rem;
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.12s, color 0.12s;
-  align-self: flex-start;
+  padding: 0;
+  transition: color 0.12s;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
-.compare-change-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-/* Career Summary */
-.compare-summary {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  margin-bottom: 1.5rem;
-}
-
-.compare-summary-header {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  padding: 0.45rem 1rem;
-  background: var(--surface-2);
-  border-bottom: 1px solid var(--border);
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.compare-summary-col-label-b { text-align: right; }
-.compare-summary-stat-label { text-align: center; }
-
-.compare-summary-row {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  padding: 0.42rem 1rem;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  font-size: 0.9rem;
-}
-.compare-summary-row:last-child { border-bottom: none; }
-.compare-summary-row:hover { background: rgba(255,107,0,0.03); }
-
-.compare-summary-cell-a { text-align: left; font-weight: 600; }
-.compare-summary-cell-b { text-align: right; font-weight: 600; }
-
-.compare-summary-indicator {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.1rem;
-  padding: 0 1rem;
-  min-width: 5rem;
-}
-
-.compare-summary-stat {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.compare-summary-arrow {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-}
-.compare-summary-arrow-active { color: var(--accent); }
+.compare-change-link:hover { color: var(--accent); }
 
 .compare-leader {
   font-weight: 800;
   color: var(--accent);
 }
 
-/* Side-by-side tables */
-.compare-tables {
+/* Season toggle row above merged table */
+.compare-season-header {
+  margin-bottom: 0.75rem;
+}
+
+/* Merged comparison table cells */
+.compare-cell-stack {
   display: flex;
-  gap: 1.5rem;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  line-height: 1.25;
 }
 
-.compare-table-wrap {
-  flex: 1;
-  min-width: 0;
+.compare-cell-a,
+.compare-cell-b {
+  display: block;
+  font-size: 0.78rem;
 }
 
-.compare-table-label {
-  font-size: 0.72rem;
-  font-weight: 700;
+.compare-cell-divider {
+  display: block;
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+  margin: 1px 0;
+  opacity: 0.5;
+}
+
+.compare-cell-single {
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+/* Sticky Season column on the merged table */
+.compare-merged-table th.compare-sticky-col,
+.compare-merged-table td.compare-sticky-col {
+  position: sticky;
+  left: 0;
+}
+.compare-merged-table th.compare-sticky-col {
+  background: var(--surface-2);
+  z-index: 2;
+}
+.compare-merged-table td.compare-sticky-col {
+  background: var(--bg);
+  z-index: 1;
+}
+.compare-merged-table tr:hover td.compare-sticky-col {
+  background: var(--surface);
+}
+
+/* Career row modifier (piggybacks on .career-row) */
+.compare-career-row td {
+  background: var(--surface);
+}
+
+/* Error banner above merged table */
+.compare-table-error-banner {
+  font-size: 0.8rem;
+  color: #e05555;
+  padding: 0.5rem 0;
+  margin-bottom: 0.5rem;
+}
+
+/* Skeleton state while both sides load */
+.compare-table-skeleton {
+  padding: 2rem 0;
+  text-align: center;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
 }
 
 /* Same-player empty state */
@@ -937,7 +939,7 @@ body {
 
 /* Compare tabs — extends existing .stat-type-tabs */
 .compare-tabs {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   border-radius: var(--radius);
   border-bottom: 1px solid var(--border);
 }
@@ -1682,13 +1684,32 @@ body {
   .bref-table { font-size: 0.7rem; }
   .bref-table th, .bref-table td { padding: 0.3rem 0.45rem; }
 
-  .compare-hero-pair { gap: 0.5rem; }
-  .compare-hero-side { padding: 0.85rem; }
+  /* Compare hero — stack vertically at narrow widths */
+  .compare-hero-pair {
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.65rem 0.85rem;
+  }
+  .compare-hero-vs {
+    width: auto;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 0.25rem 0;
+    font-size: 0.62rem;
+    text-align: center;
+  }
+  /* Both sides left-aligned in stacked layout */
+  .compare-hero-player.compare-hero-side-b {
+    flex-direction: row;
+    text-align: left;
+  }
+  .compare-hero-player.compare-hero-side-b .compare-hero-info {
+    align-items: flex-start;
+  }
   .compare-hero-name { font-size: 0.9rem; }
-  .compare-hero-img { width: 48px; height: 48px; }
-  .compare-hero-vs { width: 1.75rem; font-size: 0.65rem; }
-  .compare-tables { flex-direction: column; gap: 1rem; align-items: stretch; }
-  .compare-table-wrap { width: 100%; min-width: 0; }
+  .compare-hero-img { width: 36px; height: 36px; }
+  /* Cell value size reduction */
+  .compare-cell-a, .compare-cell-b, .compare-cell-single { font-size: 0.7rem; }
 
   .team-dashboard-grid { grid-template-columns: 1fr; }
   .team-spoke-nav { padding: 0.5rem 0.5rem 0; gap: 0.15rem; flex-wrap: wrap; }
@@ -1708,4 +1729,7 @@ body {
 
   .team-schedule-opp-logo { width: 20px; height: 20px; }
   .team-schedule-final { display: none; }
+
+  /* Hide Team column on merged compare table — low-value at extreme widths */
+  .compare-team-col { display: none; }
 }

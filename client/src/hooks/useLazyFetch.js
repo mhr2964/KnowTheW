@@ -18,6 +18,8 @@ export default function useLazyFetch(url, enabled) {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
 
+    let resolved = false;
+
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -26,16 +28,20 @@ export default function useLazyFetch(url, enabled) {
 
     fetch(url, { signal: controller.signal })
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(d => { setData(d); setLoading(false); })
+      .then(d => { resolved = true; setData(d); setLoading(false); })
       .catch(err => {
         if (err.name !== 'AbortError') {
+          resolved = true;
           fetchedRef.current = false;
           setError(true);
           setLoading(false);
         }
       });
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      if (!resolved) fetchedRef.current = false;
+    };
   }, [enabled, url]);
 
   useEffect(() => () => { abortRef.current?.abort(); }, []);
