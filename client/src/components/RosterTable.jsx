@@ -36,8 +36,8 @@ export default function RosterTable({ players, teamName, onSaveDeck, onPlayerCli
             onClick={() => onPlayerClick && onPlayerClick(player.id)}
           >
             {player.headshot
-              ? <img src={player.headshot} alt={player.name} className="table-headshot" />
-              : <div className="table-headshot placeholder">{initialsOf(player.name)}</div>
+              ? <img src={player.headshot} alt="" className="table-headshot" />
+              : <div className="table-headshot placeholder" aria-hidden="true">{initialsOf(player.name)}</div>
             }
             <span>{player.name}</span>
             <span className="muted">{player.jersey || '—'}</span>

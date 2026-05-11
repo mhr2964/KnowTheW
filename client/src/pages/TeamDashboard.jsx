@@ -88,8 +88,8 @@ export default function TeamDashboard() {
           {!rosterLoading && !rosterError && rosterPreview.map(player => (
             <div key={player.id} className="team-dashboard-player-row">
               {player.headshot
-                ? <img src={player.headshot} alt={player.name} className="team-dashboard-headshot" />
-                : <div className="team-dashboard-headshot team-dashboard-headshot-placeholder">{player.name?.[0] ?? '?'}</div>
+                ? <img src={player.headshot} alt="" className="team-dashboard-headshot" />
+                : <div className="team-dashboard-headshot team-dashboard-headshot-placeholder" aria-hidden="true">{player.name?.[0] ?? '?'}</div>
               }
               <span className="team-dashboard-player-name">{player.name}</span>
               <span className="team-dashboard-player-pos">{player.position}</span>
