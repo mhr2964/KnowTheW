@@ -2,7 +2,9 @@ import { useEffect } from 'react';
 import { useParams, useNavigate, useLocation, NavLink, Outlet, useSearchParams } from 'react-router-dom';
 import { getCurrentSeason } from '../lib/currentSeason';
 import { WNBA_FOUNDED_CLIENT } from '../constants/wnbaFoundedClient';
+import { nameForYear } from '../constants/wnbaFranchiseLineageClient';
 import SeasonPicker from '../components/SeasonPicker';
+import useLazyFetch from '../hooks/useLazyFetch';
 
 export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }) {
   const { slug } = useParams();
@@ -17,18 +19,23 @@ export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }
     return () => { document.title = 'KnowTheW'; };
   }, [team]);
 
-  if (teamsLoading) return <p className="status-msg">Loading teams...</p>;
-  if (teamsError) return <p className="status-msg error">{teamsError}</p>;
-  if (!team) return <p className="status-msg">Team not found.</p>;
-
   const currentSeason = getCurrentSeason();
-  const foundedYear = WNBA_FOUNDED_CLIENT[team.id] ?? 1997;
+  const foundedYear = team ? (WNBA_FOUNDED_CLIENT[team.id] ?? 1997) : 1997;
   const rawSeasonStr = searchParams.get('season');
   const isWellFormed = rawSeasonStr !== null && /^\d{4}$/.test(rawSeasonStr);
   const rawSeason = isWellFormed ? parseInt(rawSeasonStr, 10) : NaN;
   const isValidSeason = Number.isFinite(rawSeason) && rawSeason >= foundedYear && rawSeason <= currentSeason;
   const selectedSeason = isValidSeason ? rawSeason : currentSeason;
   const isCurrentSeason = selectedSeason === currentSeason;
+
+  const { data: seasonInfoData, error: seasonInfoError } = useLazyFetch(
+    `/api/teams/${team?.id}/season-info?season=${selectedSeason}`,
+    !!team && !isCurrentSeason && Number.isInteger(selectedSeason)
+  );
+
+  if (teamsLoading) return <p className="status-msg">Loading teams...</p>;
+  if (teamsError) return <p className="status-msg error">{teamsError}</p>;
+  if (!team) return <p className="status-msg">Team not found.</p>;
 
   const onPickerChange = (year) => {
     if (year === currentSeason) {
@@ -49,9 +56,24 @@ export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }
   const isHistoryTab = location.pathname.endsWith('/history');
   const searchSuffix = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
-  const seedAndConf = [team.seedLabel && `${team.seedLabel} in`, team.conference]
+  // Pre-2002 seasons legitimately have null record/seed from the API. We must show those nulls,
+  // not fall back to team.* current-season values, or the header would silently lie.
+  // On fetch failure for a past season, derive the name client-side from the lineage constant
+  // so the header at minimum shows the correct franchise name even when the API is down.
+  const seasonInfo = !isCurrentSeason ? seasonInfoData : null;
+  const seasonInfoFailed = !isCurrentSeason && seasonInfoError && !seasonInfoData;
+  const fallbackName = !isCurrentSeason
+    ? nameForYear(Number(team.id), selectedSeason, team.name)
+    : team.name;
+  const displayName     = seasonInfo?.name ?? fallbackName;
+  const displayLocation = seasonInfo?.location ?? (isCurrentSeason ? team.location : null);
+  const displayRecord   = seasonInfoFailed ? null : (seasonInfo?.record   ?? (isCurrentSeason ? team.record   : null));
+  const displaySeed     = seasonInfoFailed ? null : (seasonInfo?.seedLabel ?? (isCurrentSeason ? team.seedLabel : null));
+  const displayConf     = seasonInfoFailed ? null : (seasonInfo?.conference ?? (isCurrentSeason ? team.conference : null));
+
+  const seedAndConf = [displaySeed && `${displaySeed} in`, displayConf]
     .filter(Boolean).join(' ');
-  const segs = [team.record, seedAndConf, team.location].filter(Boolean);
+  const segs = [displayRecord, seedAndConf, displayLocation].filter(Boolean);
 
   // Sub-pages go back one level to the team Dashboard; the Dashboard itself goes back to All Teams.
   const onDashboard = location.pathname === `/team/${slug}` || location.pathname === `/team/${slug}/`;
@@ -66,7 +88,7 @@ export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }
           <img src={team.logo} alt={team.name} className="team-header-logo" />
         )}
         <div className="team-header-text">
-          <h2 className="team-header-name">{team.name}</h2>
+          <h2 className="team-header-name">{displayName}</h2>
           {segs.length > 0 && <p className="team-header-meta">{segs.join(' · ')}</p>}
         </div>
         <SeasonPicker
@@ -74,6 +96,8 @@ export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }
           onChange={onPickerChange}
           foundedYear={foundedYear}
           disabled={isHistoryTab}
+          teamId={Number(team.id)}
+          currentName={team.name}
         />
       </div>
       <nav className="team-spoke-nav">

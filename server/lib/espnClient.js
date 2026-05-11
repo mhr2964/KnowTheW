@@ -152,70 +152,95 @@ function getRoster(teamId, teamName) {
   return rosterPromises[teamId];
 }
 
+// Raw stats fetch — no in-process cache wrapper. Used by past-season route handlers that route
+// through the MongoDB teamSeasonCache instead. The in-process cache (teamSeasonStatsCache) is
+// reserved for current-season use only so its invalidation story stays clean.
+//
+// Return values:
+//   null         — ESPN returned a non-2xx response (transient error, do not cache).
+//   { noData: true } — ESPN returned 200 but the response body has no stats categories (confirmed
+//                  empty; safe to cache permanently for past seasons, e.g. pre-draft expansion year).
+//   { fgaPg, ... } — Normalized stats object.
+async function fetchTeamStatsRaw(teamId, year) {
+  const res = await fetch(`${ESPN}/teams/${teamId}/statistics?season=${year}&seasontype=2`);
+  // Non-2xx → transient ESPN error. Callers must not cache this.
+  if (!res.ok) return null;
+  const data = await res.json();
+  const cats = data.results?.stats?.categories;
+  // ESPN 200 but no stats categories — confirmed empty (e.g. team had no games that season).
+  if (!cats) return { noData: true };
+  const off = cats.find(c => c.name === 'offensive');
+  const def = cats.find(c => c.name === 'defensive');
+  const g = (cat, name) => cat?.stats.find(s => s.name === name)?.value ?? null;
+  return {
+    fgaPg:   g(off, 'avgFieldGoalsAttempted'),
+    fgmPg:   g(off, 'avgFieldGoalsMade'),
+    fgPct:   g(off, 'fieldGoalPct'),
+    fg3mPg:  g(off, 'avgThreePointFieldGoalsMade'),
+    fg3Pct:  g(off, 'threePointPct'),
+    ftaPg:   g(off, 'avgFreeThrowsAttempted'),
+    ftmPg:   g(off, 'avgFreeThrowsMade'),
+    ftPct:   g(off, 'freeThrowPct'),
+    ptsPg:   g(off, 'avgPoints'),
+    orbPg:   g(off, 'avgOffensiveRebounds'),
+    drbPg:   g(def, 'avgDefensiveRebounds'),
+    tovPg:   g(off, 'avgTurnovers'),
+    astPg:   g(off, 'avgAssists'),
+  };
+}
+
 function fetchTeamStats(teamId, year) {
-  return withCache(teamSeasonStatsCache, `${teamId}-${year}`, async () => {
-    const res = await fetch(`${ESPN}/teams/${teamId}/statistics?season=${year}&seasontype=2`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const cats = data.results?.stats?.categories;
-    if (!cats) return null;
-    const off = cats.find(c => c.name === 'offensive');
-    const def = cats.find(c => c.name === 'defensive');
-    const g = (cat, name) => cat?.stats.find(s => s.name === name)?.value ?? null;
-    return {
-      fgaPg:   g(off, 'avgFieldGoalsAttempted'),
-      fgmPg:   g(off, 'avgFieldGoalsMade'),
-      fgPct:   g(off, 'fieldGoalPct'),
-      fg3mPg:  g(off, 'avgThreePointFieldGoalsMade'),
-      fg3Pct:  g(off, 'threePointPct'),
-      ftaPg:   g(off, 'avgFreeThrowsAttempted'),
-      ftmPg:   g(off, 'avgFreeThrowsMade'),
-      ftPct:   g(off, 'freeThrowPct'),
-      ptsPg:   g(off, 'avgPoints'),
-      orbPg:   g(off, 'avgOffensiveRebounds'),
-      drbPg:   g(def, 'avgDefensiveRebounds'),
-      tovPg:   g(off, 'avgTurnovers'),
-      astPg:   g(off, 'avgAssists'),
-    };
-  });
+  return withCache(teamSeasonStatsCache, `${teamId}-${year}`, () => fetchTeamStatsRaw(teamId, year));
+}
+
+// Raw points-allowed fetch — no in-process cache wrapper. Same rationale as fetchTeamStatsRaw:
+// past-season callers route through teamSeasonCache (MongoDB) instead.
+async function fetchTeamPtsAllowedRaw(teamId, year) {
+  const res = await fetch(`${ESPN}/teams/${teamId}/schedule?season=${year}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  let sum = 0, count = 0;
+  for (const event of data.events ?? []) {
+    // ESPN schedule uses either event.seasonType or event.season for the type field
+    const stType = event.seasonType?.type ?? event.season?.type;
+    const stId   = event.seasonType?.id   ?? event.season?.id   ?? String(stType);
+    if (stType !== 2 && stId !== '2') continue;
+    const comps = event.competitions?.[0]?.competitors ?? [];
+    const tm  = comps.find(c => String(c.team?.id) === String(teamId));
+    const opp = comps.find(c => String(c.team?.id) !== String(teamId));
+    if (tm && opp && opp.score != null) {
+      const pts = parseFloat(opp.score?.value ?? opp.score);
+      if (!isNaN(pts) && pts > 0) { sum += pts; count++; }
+    }
+  }
+  return count > 0 ? sum / count : null;
 }
 
 // Returns average points allowed per regular-season game (full team schedule, not player gamelog).
 function fetchTeamPtsAllowed(teamId, year) {
-  return withCache(teamPtsAllowedCache, `${teamId}-${year}`, async () => {
-    const res = await fetch(`${ESPN}/teams/${teamId}/schedule?season=${year}`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    let sum = 0, count = 0;
-    for (const event of data.events ?? []) {
-      // ESPN schedule uses either event.seasonType or event.season for the type field
-      const stType = event.seasonType?.type ?? event.season?.type;
-      const stId   = event.seasonType?.id   ?? event.season?.id   ?? String(stType);
-      if (stType !== 2 && stId !== '2') continue;
-      const comps = event.competitions?.[0]?.competitors ?? [];
-      const tm  = comps.find(c => String(c.team?.id) === String(teamId));
-      const opp = comps.find(c => String(c.team?.id) !== String(teamId));
-      if (tm && opp && opp.score != null) {
-        const pts = parseFloat(opp.score?.value ?? opp.score);
-        if (!isNaN(pts) && pts > 0) { sum += pts; count++; }
-      }
-    }
-    return count > 0 ? sum / count : null;
-  });
+  return withCache(teamPtsAllowedCache, `${teamId}-${year}`, () => fetchTeamPtsAllowedRaw(teamId, year));
 }
 
 // Fetches and normalizes a team's schedule for a given season and season type.
 // seasontype: 2 = regular season, 3 = playoffs.
-// Returns an array of normalized event objects. Returns [] on any upstream error so callers can
-// treat it as non-fatal. Each event includes roundLabel (populated only for seasontype=3 when
-// ESPN provides competition.type.text).
+//
+// Return values:
+//   null  — ESPN returned a non-2xx response or a network/parse error occurred (transient, not cacheable).
+//   []    — ESPN returned 200 with zero events (confirmed-empty, safe to cache permanently for past seasons).
+//   [...] — Normalized event objects.
+//
+// Callers that treat any falsy result as "no games" (e.g. historyAggregator) handle null the same
+// as [] with `events ?? []` or a length check, so the null return is backwards-compatible.
+//
+// Each event includes roundLabel (populated only for seasontype=3 when ESPN provides competition.type.text).
 //
 // Pagination note: verified on 2024 Connecticut Sun regular season — ESPN returns all 40 games
 // in a single response. No pagination keys appear in the response envelope. Accepted for v1.
 async function fetchTeamSchedule(teamId, season, seasontype = 2) {
   try {
     const res = await fetch(`${ESPN}/teams/${teamId}/schedule?season=${season}&seasontype=${seasontype}`);
-    if (!res.ok) return [];
+    // Non-2xx → transient ESPN error. Return null so callers can distinguish from a legitimate empty schedule.
+    if (!res.ok) return null;
     const data = await res.json();
     return (data.events ?? []).map(event => {
       const comp  = event.competitions?.[0] ?? {};
@@ -237,7 +262,8 @@ async function fetchTeamSchedule(teamId, season, seasontype = 2) {
     });
   } catch (err) {
     console.error(`fetchTeamSchedule teamId=${teamId} season=${season} seasontype=${seasontype}:`, err.message);
-    return [];
+    // Network or parse error → treat same as non-2xx (transient, not cacheable).
+    return null;
   }
 }
 
@@ -338,7 +364,9 @@ getTeams()
 module.exports = {
   ESPN, ESPN_WEB, STANDINGS, withCache,
   getTeams, getRoster, fetchHistoricalRoster, fetchSeasonRoster,
-  fetchTeamStats, fetchTeamPtsAllowed, fetchGameSummary,
+  fetchTeamStats, fetchTeamStatsRaw, fetchTeamPtsAllowed, fetchTeamPtsAllowedRaw,
+  fetchGameSummary,
   fetchTeamSchedule, fetchPlayoffSchedule,
+  formatSeedLabel,
   rosterData, playerById, teamSeasonStatsCache,
 };

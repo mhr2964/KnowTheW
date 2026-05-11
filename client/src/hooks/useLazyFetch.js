@@ -11,6 +11,7 @@ export default function useLazyFetch(url, enabled) {
 
   useEffect(() => {
     fetchedRef.current = false;
+    setData(null);
   }, [url]);
 
   useEffect(() => {

@@ -355,4 +355,7 @@ async function buildHistory(teamObj) {
   return updatedResult;
 }
 
-module.exports = { buildHistory };
+// fetchStandingsForYear and isChampion are also exported for use by seasonInfo.js.
+// Dependency note: seasonInfo.js relies on fetchStandingsForYear for the pre-2003 corrupted
+// ESPN scalar fix (Home+Road sum) — do not duplicate that logic there.
+module.exports = { buildHistory, fetchStandingsForYear, isChampion };

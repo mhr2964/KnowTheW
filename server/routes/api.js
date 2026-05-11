@@ -4,11 +4,13 @@ const router  = express.Router();
 const crypto                                                             = require('crypto');
 const { getDb }                                                          = require('../db');
 const { WNBA_LG }                                                        = require('../constants/leagueAverages');
-const { ESPN_WEB, getTeams, getRoster, fetchSeasonRoster, fetchTeamStats, fetchTeamPtsAllowed,
-        fetchTeamSchedule,
+const { ESPN_WEB, getTeams, getRoster, fetchSeasonRoster, fetchTeamStats, fetchTeamStatsRaw,
+        fetchTeamPtsAllowed, fetchTeamPtsAllowedRaw, fetchTeamSchedule,
         rosterData, playerById, teamSeasonStatsCache }                   = require('../lib/espnClient');
 const { WNBA_FOUNDED }                                                   = require('../constants/wnbaFounded');
 const { buildHistory }                                                   = require('../lib/historyAggregator');
+const { buildSeasonInfo }                                                = require('../lib/seasonInfo');
+const { readOrFetch }                                                    = require('../lib/teamSeasonCache');
 const narrativeClient                                                    = require('../lib/narrativeClient');
 const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats }   = require('../lib/statsParser');
 const { ADV_HEADERS_SRV, buildAdvancedSplit, buildAdvancedCareer,
@@ -78,6 +80,60 @@ router.get('/teams/:id/roster', async (req, res) => {
   }
 });
 
+// GET /api/teams/:id/season-info?season=YYYY
+// Returns season-correct header tuple: { teamId, season, name, location, record?, seedLabel?,
+// conference?, champion? }. Fields are omitted (not null) when unavailable.
+//
+// Current season: proxied from getTeams() — no additional ESPN call, stays in sync with /api/teams.
+// Past season: fetched via fetchStandingsForYear, cached in teamSeasonInfo MongoDB collection.
+// The pre-2003 ESPN corrupted-scalar fix is in fetchStandingsForYear (historyAggregator) — not
+// duplicated here. Franchise name from WNBA_FRANCHISE_LINEAGE via buildSeasonInfo.
+router.get('/teams/:id/season-info', async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) {
+    return res.status(400).json({ error: 'team id must be a numeric string' });
+  }
+  const teamId = req.params.id;
+
+  const currentYear = new Date().getFullYear();
+  let season;
+  if (req.query.season === undefined || req.query.season === '') {
+    season = currentYear;
+  } else if (/^\d{4}$/.test(req.query.season)) {
+    season = parseInt(req.query.season, 10);
+  } else {
+    return res.status(400).json({ error: 'season must be a 4-digit year (e.g. 2024)' });
+  }
+
+  const foundedYear = WNBA_FOUNDED[teamId] ?? 1997;
+  if (season > currentYear || season < foundedYear) {
+    return res.status(400).json({ error: 'invalid season' });
+  }
+
+  try {
+    const allTeams = await getTeams();
+    const team = allTeams.find(t => String(t.id) === teamId);
+    if (!team) return res.status(404).json({ error: 'team not found' });
+
+    if (season === currentYear) {
+      // Fast path: proxy from current team object (no MongoDB, no extra ESPN call).
+      const result = await buildSeasonInfo(team, season, currentYear);
+      return res.json(result);
+    }
+
+    // Past season: cache-aside via MongoDB teamSeasonInfo collection.
+    const cacheKey = `${teamId}-${season}`;
+    const result = await readOrFetch(
+      'teamSeasonInfo',
+      cacheKey,
+      () => buildSeasonInfo(team, season, currentYear)
+    );
+    return res.json(result);
+  } catch (err) {
+    console.error(`teams/${teamId}/season-info season=${season}:`, err.message);
+    res.status(502).json({ error: 'upstream error fetching season info' });
+  }
+});
+
 router.get('/teams/:id/stats', async (req, res) => {
   // Validate :id — ESPN team IDs are integers; reject anything non-numeric.
   if (!/^\d+$/.test(req.params.id)) {
@@ -86,9 +142,10 @@ router.get('/teams/:id/stats', async (req, res) => {
   const teamId = req.params.id;
 
   // season param: default to current calendar year; reject non-numeric / non-4-digit values.
+  const currentYear = new Date().getFullYear();
   let season;
   if (req.query.season === undefined || req.query.season === '') {
-    season = new Date().getFullYear();
+    season = currentYear;
   } else if (/^\d{4}$/.test(req.query.season)) {
     season = parseInt(req.query.season, 10);
   } else {
@@ -96,27 +153,49 @@ router.get('/teams/:id/stats', async (req, res) => {
   }
 
   try {
-    // Run both upstream fetches in parallel; espnClient wraps each in withCache internally.
-    // fetchTeamPtsAllowed is a best-effort enrichment — if it rejects, preserve rawStats and
-    // omit oppPpg rather than dropping the whole response.
-    const [rawStats, oppPpg] = await Promise.all([
-      fetchTeamStats(teamId, season),
-      fetchTeamPtsAllowed(teamId, season).catch(err => {
-        console.warn(`teams/${teamId}/stats: oppPpg unavailable (season=${season}):`, err.message);
-        return null;
-      }),
-    ]);
+    if (season === currentYear) {
+      // Current season: use in-process caches (mutable mid-season). Same path as before.
+      // espnClient wraps each in withCache internally.
+      const [rawStats, oppPpg] = await Promise.all([
+        fetchTeamStats(teamId, season),
+        fetchTeamPtsAllowed(teamId, season).catch(err => {
+          console.warn(`teams/${teamId}/stats: oppPpg unavailable (season=${season}):`, err.message);
+          return null;
+        }),
+      ]);
 
-    // ESPN returned no stat data for this team/season combination.
-    if (!rawStats) {
-      return res.json({ empty: true, season, teamId });
+      // null → ESPN error; { noData: true } → ESPN 200 but no stats categories. Both render as empty.
+      if (!rawStats || rawStats.noData) return res.json({ empty: true, season, teamId });
+
+      const stats = { ...rawStats };
+      if (oppPpg != null) stats.oppPpg = oppPpg;
+      return res.json({ season, teamId, stats });
     }
 
-    // Merge oppPpg into the stats object only when we have a value — do not emit null fields.
-    const stats = { ...rawStats };
-    if (oppPpg != null) stats.oppPpg = oppPpg;
+    // Past season: route through MongoDB teamSeasonStats cache.
+    // Raw fetch functions bypass the in-process cache — past seasons are immutable and belong
+    // in MongoDB only. In-process cache stays current-season-only for clean invalidation story.
+    const cacheKey = `${teamId}-${season}`;
+    const result = await readOrFetch('teamSeasonStats', cacheKey, async () => {
+      const [rawStats, oppPpg] = await Promise.all([
+        fetchTeamStatsRaw(teamId, season),
+        fetchTeamPtsAllowedRaw(teamId, season).catch(err => {
+          console.warn(`teams/${teamId}/stats: oppPpg unavailable (season=${season}):`, err.message);
+          return null;
+        }),
+      ]);
 
-    res.json({ season, teamId, stats });
+      // null → ESPN error (non-2xx) — transient, do not cache.
+      if (rawStats === null) return { empty: true, season, teamId };
+      // { noData: true } → ESPN 200 but no stats categories — confirmed empty, safe to cache.
+      if (rawStats.noData) return { empty: true, confirmedEmpty: true, season, teamId };
+
+      const stats = { ...rawStats };
+      if (oppPpg != null) stats.oppPpg = oppPpg;
+      return { season, teamId, stats };
+    });
+
+    return res.json(result);
   } catch (err) {
     console.error(`teams/${teamId}/stats season=${season}:`, err.message);
     res.status(502).json({ error: 'upstream error fetching team stats' });
@@ -174,9 +253,33 @@ router.get('/teams/:id/schedule', async (req, res) => {
     const team = allTeams.find(t => String(t.id) === teamId);
     if (!team) return res.status(404).json({ error: 'team not found' });
 
-    const events = await fetchTeamSchedule(teamId, season, seasontype);
-    if (!events || events.length === 0) return res.json({ empty: true, teamId, season, seasontype, events: [] });
-    res.json({ teamId, season, seasontype, events });
+    const currentYear = new Date().getFullYear();
+
+    if (season === currentYear) {
+      // Current season: no cache — live data. Same path as before.
+      // fetchTeamSchedule returns null on ESPN error, [] on confirmed-empty, or an events array.
+      const events = await fetchTeamSchedule(teamId, season, seasontype);
+      if (!events || events.length === 0) return res.json({ empty: true, teamId, season, seasontype, events: [] });
+      return res.json({ teamId, season, seasontype, events });
+    }
+
+    // Past season: route through MongoDB teamSeasonSchedule cache.
+    // Cache key includes seasontype to prevent regular/playoff collision — same key shape as
+    // the design doc specifies: '<teamId>-<season>-<seasontype>'.
+    const cacheKey = `${teamId}-${season}-${seasontype}`;
+    const result = await readOrFetch('teamSeasonSchedule', cacheKey, async () => {
+      const events = await fetchTeamSchedule(teamId, season, seasontype);
+      // null → ESPN error (non-2xx or network failure) — do not cache; mark as transient empty.
+      if (events === null) return { empty: true, teamId, season, seasontype, events: [] };
+      // [] → ESPN 200 with zero events — confirmed empty, safe to cache permanently.
+      //       Keep empty: true so clients render the empty-state UI correctly.
+      //       Add confirmedEmpty: true so the cache gate knows this is safe to persist.
+      // non-empty array → normal response.
+      if (events.length === 0) return { empty: true, confirmedEmpty: true, teamId, season, seasontype, events: [] };
+      return { teamId, season, seasontype, events };
+    });
+
+    return res.json(result);
   } catch (err) {
     console.error(`teams/${teamId}/schedule season=${season} seasontype=${seasontype}:`, err.message);
     res.status(502).json({ error: 'upstream error fetching team schedule' });

@@ -6,11 +6,12 @@
 // If ESPN's champion constant and the playoff-schedule-derived result disagree, the constant wins —
 // it is the audit-trail source of truth.
 //
-// FRANCHISE_ALIASES maps each current ESPN display name to the historical names that belong to the
-// same franchise lineage. The aggregator uses this so that, e.g., Dallas Wings earns the Detroit
-// Shock championships (2003, 2006, 2008). Only franchises whose historical name differs from the
-// current ESPN display name need an entry here. Defunct-only franchises (Houston Comets, Sacramento
-// Monarchs) have no successor and are intentionally absent — no current team inherits their titles.
+// FRANCHISE_ALIASES is DERIVED from WNBA_FRANCHISE_LINEAGE — do not hand-edit it.
+// To add a relocation, edit server/constants/wnbaFranchiseLineage.js instead.
+// A module-load assertion guards against derivation drift (throws at boot if the derived set
+// diverges from the expected snapshot).
+
+const { WNBA_FRANCHISE_LINEAGE } = require('./wnbaFranchiseLineage');
 
 const WNBA_CHAMPIONS = Object.freeze({
   1997: { team: 'Houston Comets' },
@@ -44,12 +45,72 @@ const WNBA_CHAMPIONS = Object.freeze({
   2025: { team: 'New York Liberty' },
 });
 
-// Franchise lineage: current ESPN display name → historical names that count as the same franchise.
-// Sources: WNBA_FOUNDED comments + WNBA official franchise histories.
-const FRANCHISE_ALIASES = Object.freeze({
+// Derive FRANCHISE_ALIASES from WNBA_FRANCHISE_LINEAGE.
+// For each team, aliases = all historical names (entries where endYear !== null).
+// The last entry (endYear: null) is the current identity — not an alias of itself.
+function deriveAliasesFromLineage(lineage) {
+  const result = {};
+  for (const [, entries] of Object.entries(lineage)) {
+    // The entry with endYear: null is the current name
+    const currentEntry = entries.find(e => e.endYear === null);
+    if (!currentEntry) continue; // shouldn't happen with well-formed lineage
+    const currentName = currentEntry.name;
+    const aliases = entries
+      .filter(e => e.endYear !== null) // historical entries only
+      .map(e => e.name);
+    if (aliases.length > 0) {
+      result[currentName] = aliases;
+    }
+  }
+  return result;
+}
+
+const _derived = deriveAliasesFromLineage(WNBA_FRANCHISE_LINEAGE);
+
+// Module-load assertion: derived aliases must match the expected snapshot (the prior hand-maintained
+// set). This throws at boot if a lineage edit silently changes the alias set so isChampion() sees
+// the same names the champions constant was written against.
+// Expected set (Wikipedia-confirmed, 2026-05-11):
+//   Dallas Wings      → ['Detroit Shock', 'Tulsa Shock']
+//   Las Vegas Aces    → ['Utah Starzz', 'San Antonio Silver Stars', 'San Antonio Stars']
+//   Connecticut Sun   → ['Orlando Miracle']
+const EXPECTED_ALIAS_SNAPSHOT = {
   'Dallas Wings':    ['Detroit Shock', 'Tulsa Shock'],
   'Las Vegas Aces':  ['Utah Starzz', 'San Antonio Silver Stars', 'San Antonio Stars'],
   'Connecticut Sun': ['Orlando Miracle'],
-});
+};
+
+(function assertAliasesMatchSnapshot() {
+  const derivedKeys   = Object.keys(_derived).sort();
+  const expectedKeys  = Object.keys(EXPECTED_ALIAS_SNAPSHOT).sort();
+
+  if (JSON.stringify(derivedKeys) !== JSON.stringify(expectedKeys)) {
+    throw new Error(
+      `[wnbaChampions] FRANCHISE_ALIASES derivation mismatch — key sets differ.\n` +
+      `  Derived keys:  ${derivedKeys.join(', ')}\n` +
+      `  Expected keys: ${expectedKeys.join(', ')}\n` +
+      `Update EXPECTED_ALIAS_SNAPSHOT in wnbaChampions.js after verifying the lineage change.`
+    );
+  }
+
+  for (const key of derivedKeys) {
+    const derivedSet  = new Set(_derived[key]);
+    const expectedSet = new Set(EXPECTED_ALIAS_SNAPSHOT[key]);
+    const onlyInDerived  = [...derivedSet].filter(v => !expectedSet.has(v));
+    const onlyInExpected = [...expectedSet].filter(v => !derivedSet.has(v));
+    if (onlyInDerived.length > 0 || onlyInExpected.length > 0) {
+      throw new Error(
+        `[wnbaChampions] FRANCHISE_ALIASES derivation mismatch for "${key}".\n` +
+        `  Only in derived:  ${onlyInDerived.join(', ') || '(none)'}\n` +
+        `  Only in expected: ${onlyInExpected.join(', ') || '(none)'}\n` +
+        `Update EXPECTED_ALIAS_SNAPSHOT in wnbaChampions.js after verifying the lineage change.`
+      );
+    }
+  }
+})();
+
+const FRANCHISE_ALIASES = Object.freeze(
+  Object.fromEntries(Object.entries(_derived).map(([k, v]) => [k, Object.freeze(v)]))
+);
 
 module.exports = { WNBA_CHAMPIONS, FRANCHISE_ALIASES };
