@@ -1,5 +1,3 @@
-const { getDb } = require('../db');
-
 const ESPN      = 'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba';
 const ESPN_WEB  = 'https://site.web.api.espn.com/apis/common/v3/sports/basketball/wnba';
 const STANDINGS = 'https://site.api.espn.com/apis/v2/sports/basketball/wnba/standings';
@@ -336,19 +334,10 @@ async function fetchSeasonRoster(teamId, season, teamName) {
 }
 
 async function fetchGameSummary(eventId) {
-  const db = getDb();
-  if (db) {
-    const doc = await db.collection('gameSummaries').findOne({ _id: eventId });
-    if (doc) return doc.data;
-  }
   try {
     const res = await fetch(`${ESPN}/summary?event=${eventId}`);
     if (!res.ok) return null;
-    const data = await res.json();
-    if (db) db.collection('gameSummaries')
-      .replaceOne({ _id: eventId }, { _id: eventId, data }, { upsert: true })
-      .catch(err => console.error('mongo write gameSummaries:', err.message));
-    return data;
+    return await res.json();
   } catch {
     return null;
   }

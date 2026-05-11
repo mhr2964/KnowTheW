@@ -480,7 +480,14 @@ async function buildPlayerIndex() {
     }
   }
 
-  if (upserts.length) await db.collection('playerIndex').bulkWrite(upserts);
+  if (upserts.length) {
+    try {
+      await db.collection('playerIndex').bulkWrite(upserts, { ordered: false });
+    } catch (err) {
+      console.warn('[buildPlayerIndex] write failed:', err.message);
+      // Continue — read path falls back to live computation
+    }
+  }
 }
 
 module.exports = { getPlayerPercentiles, PERCENTILE_STATS, warmDistributionCache, buildPlayerIndex };

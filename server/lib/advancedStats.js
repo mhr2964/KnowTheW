@@ -2,6 +2,7 @@ const { GAME_MINUTES, WNBA_LG } = require('../constants/leagueAverages');
 const { ESPN_WEB, fetchGameSummary, fetchTeamStats, fetchTeamPtsAllowed, getTeams } = require('./espnClient');
 const { computeBasicRatioStats, computePER, computeWinShares } = require('./statFormulas');
 const { PBP_OC_KEYS, computeOnCourtStats, extractBoxscoreTeamStats } = require('./pbpExtractor');
+const { getCached, writeCache } = require('./teamSeasonCache');
 
 const ADV_HEADERS_SRV = [
   'SEASON_ID', 'TEAM_ABBREVIATION', 'GP',
@@ -159,7 +160,10 @@ function buildAdvancedCareer(pgSrc, totSrc) {
   ]};
 }
 
-async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, seasontype = 2) {
+// Inner implementation — no caching. Returns { row, pbpGames, complete } where complete is true
+// only when every eventId returned a non-null summary (no ESPN failures mid-fetch). Partial
+// results are still returned to the caller for display but must not be persisted to the cache.
+async function computeSeasonPBPUncached(playerId, season, playerRow, I, teamId, totRow, seasontype = 2) {
   const glData = await fetch(
     `${ESPN_WEB}/athletes/${playerId}/gamelog?season=${season}&seasontype=${seasontype}`
   ).then(r => r.ok ? r.json() : null);
@@ -189,6 +193,10 @@ async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, 
   if (!eventIds.length) return null;
 
   const summaries = await Promise.all(eventIds.map(id => fetchGameSummary(id)));
+  // Track how many ESPN fetches succeeded. complete = true when every eventId returned a
+  // non-null summary, meaning no ESPN 4xx/5xx/network failures occurred mid-fetch.
+  // Games where computeOnCourtStats returns null (no PBP data) are still counted as fetched.
+  const fetchedCount = summaries.filter(s => s !== null).length;
   const totOC = Object.fromEntries(PBP_OC_KEYS.map(k => [k, 0]));
   const totTm = { fga: 0, fgm: 0, fg3m: 0, fta: 0, ftm: 0, pts: 0, orb: 0, drb: 0, tov: 0, ast: 0 };
   let pbpGames = 0, wsGames = 0;
@@ -255,7 +263,47 @@ async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, 
     : [null, null, null, null];
 
   const row = [...advRow.slice(0, 16), ...wsVals];
-  return { row, pbpGames };
+
+  // complete = true only when every event returned a non-null ESPN response.
+  // Partial fetches (ESPN failing on some game IDs) must not be cached — they would bake in
+  // understated stats permanently. The row is still returned to the caller for this request.
+  const complete = fetchedCount === eventIds.length;
+  return { row, pbpGames, complete };
+}
+
+// Cache-aside wrapper. Past seasons (season < currentYear) are read from and written to the
+// playerSeasonPbp Mongo collection. Current season bypasses Mongo entirely — same posture as
+// teamSeasonCache.js for live data. Write is gated on complete === true so partial ESPN fetches
+// (ESPN flaking on a subset of games) are never persisted; they return live to the caller but
+// leave the cache slot open for a future complete fetch.
+async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, seasontype = 2) {
+  const currentYear = new Date().getFullYear();
+  const isPastSeason = Number(season) < currentYear;
+
+  if (isPastSeason) {
+    const cacheKey = `${playerId}-${season}-${seasontype}`;
+
+    // Check cache first — one findOne, no ESPN traffic on hit.
+    const cached = await getCached('playerSeasonPbp', cacheKey);
+    if (cached !== null) return cached;
+
+    // Cache miss — compute from ESPN.
+    const result = await computeSeasonPBPUncached(playerId, season, playerRow, I, teamId, totRow, seasontype);
+    if (!result) return null;
+
+    // Only persist when every eventId returned a non-null summary. Partial results indicate
+    // transient ESPN failures; caching them would permanently under-count on-court stats.
+    if (result.complete) {
+      writeCache('playerSeasonPbp', cacheKey, { row: result.row, pbpGames: result.pbpGames });
+    }
+
+    return { row: result.row, pbpGames: result.pbpGames };
+  }
+
+  // Current season: live compute, no Mongo.
+  const result = await computeSeasonPBPUncached(playerId, season, playerRow, I, teamId, totRow, seasontype);
+  if (!result) return null;
+  return { row: result.row, pbpGames: result.pbpGames };
 }
 
 function buildPbpSplit(valid, pgRows, rowI) {
