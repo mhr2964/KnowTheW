@@ -1370,6 +1370,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 0;
+  scroll-margin-top: 1rem;
 }
 .team-history-era-card > *:not(summary) {
   margin: 0 1.1rem 0.45rem;
@@ -1443,6 +1444,51 @@ body {
 .team-history-era-players-label {
   font-weight: 700;
   color: var(--text);
+}
+
+/* Era label column inside the seasons table */
+.team-history-cell--era {
+  width: 1px;
+  padding: 0;
+  border-right: 1px solid var(--border);
+  vertical-align: top;
+  white-space: nowrap;
+}
+.team-history-cell--era-gap {
+  /* rowSpan handled by the first-row cell; orphan rows get an empty gap cell */
+  border-right: 1px solid transparent;
+}
+
+.team-history-era-nav-btn {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0.45rem 0.65rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+}
+.team-history-era-nav-btn:hover .team-history-era-nav-label,
+.team-history-era-nav-btn:focus-visible .team-history-era-nav-label {
+  color: var(--accent);
+}
+.team-history-era-nav-btn--active .team-history-era-nav-label {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.team-history-era-nav-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: color 0.12s ease;
 }
 
 /* ── Team Schedule Page ── */
@@ -1745,6 +1791,8 @@ body {
   .th-short { display: inline; }
   /* Row-level gold accent + top banner already signal championship; pill is redundant here. */
   .team-history-champ-badge { display: none; }
+  /* Era label column is too narrow at mobile widths; era cards still accessible directly. */
+  .team-history-cell--era { display: none; }
 
   .team-schedule-opp-logo { width: 20px; height: 20px; }
   .team-schedule-final { display: none; }
