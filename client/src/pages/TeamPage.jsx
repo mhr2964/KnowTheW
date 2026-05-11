@@ -43,6 +43,7 @@ export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }
         <NavLink to={`/team/${slug}/roster`} className={({ isActive }) => isActive ? 'team-spoke-tab active' : 'team-spoke-tab'}>Roster</NavLink>
         <NavLink to={`/team/${slug}/stats`} className={({ isActive }) => isActive ? 'team-spoke-tab active' : 'team-spoke-tab'}>Stats</NavLink>
         <NavLink to={`/team/${slug}/history`} className={({ isActive }) => isActive ? 'team-spoke-tab active' : 'team-spoke-tab'}>History</NavLink>
+        <NavLink to={`/team/${slug}/schedule`} className={({ isActive }) => isActive ? 'team-spoke-tab active' : 'team-spoke-tab'}>Schedule</NavLink>
       </nav>
       <Outlet context={{ team, onSaveDeck }} />
     </>

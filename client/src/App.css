@@ -794,7 +794,7 @@ body {
 /* ── Team Dashboard ── */
 .team-dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
 }
 
@@ -1186,6 +1186,170 @@ body {
   color: var(--text);
 }
 
+/* ── Team Schedule Page ── */
+.team-schedule-page { display: flex; flex-direction: column; gap: 1.25rem; }
+
+.team-schedule-subheader {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 0.5rem;
+}
+
+.team-schedule-table { width: 100%; }
+
+.team-schedule-cell { vertical-align: middle; }
+
+.team-schedule-opponent-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.team-schedule-atvs {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  width: 1.4em;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.team-schedule-opp-logo {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.team-schedule-opp-abbr {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.team-schedule-result-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.team-schedule-result-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 3px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.team-schedule-result-pill--w {
+  background: rgba(74, 222, 128, 0.18);
+  color: #4ade80;
+}
+
+.team-schedule-result-pill--l {
+  background: rgba(248, 113, 113, 0.14);
+  color: #f87171;
+}
+
+.team-schedule-score {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.team-schedule-final {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.team-schedule-gametime {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Divider row — "Next up" between past and future games */
+.team-schedule-divider-row { pointer-events: none; }
+
+.team-schedule-divider-cell {
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.team-schedule-divider-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.team-schedule-divider-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--accent);
+  opacity: 0.4;
+}
+
+.team-schedule-divider-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* "Season complete" footer row */
+.team-schedule-footer-row td { border-bottom: none; }
+.team-schedule-footer-cell {
+  padding: 0.65rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  font-style: italic;
+}
+
+/* Dashboard "Next Up" card inline elements */
+.team-schedule-card-label {
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  color: var(--text-muted) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  min-width: 2.4rem;
+  flex-shrink: 0;
+}
+
+.team-schedule-card-atvs {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.team-schedule-card-logo {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.team-schedule-season-complete {
+  font-style: italic;
+  margin-top: 0.25rem;
+}
+
 /* ── Responsive ── */
 @media (max-width: 600px) {
   .header { padding: 0.75rem 1rem; gap: 0.75rem; }
@@ -1224,4 +1388,7 @@ body {
   .th-short { display: inline; }
   /* Row-level gold accent + top banner already signal championship; pill is redundant here. */
   .team-history-champ-badge { display: none; }
+
+  .team-schedule-opp-logo { width: 20px; height: 20px; }
+  .team-schedule-final { display: none; }
 }

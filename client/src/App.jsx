@@ -8,6 +8,7 @@ import TeamDashboard from './pages/TeamDashboard';
 import TeamRosterPage from './pages/TeamRosterPage';
 import TeamStatsPage from './pages/TeamStatsPage';
 import TeamHistoryPage from './pages/TeamHistoryPage';
+import TeamSchedulePage from './pages/TeamSchedulePage';
 import PlayerRoutePage from './pages/PlayerRoutePage';
 import SearchPage from './pages/SearchPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -117,6 +118,7 @@ export default function App() {
             <Route path="roster" element={<TeamRosterPage />} />
             <Route path="stats" element={<TeamStatsPage />} />
             <Route path="history" element={<TeamHistoryPage />} />
+            <Route path="schedule" element={<TeamSchedulePage />} />
             <Route path="*" element={<Navigate to=".." replace />} />
           </Route>
           <Route

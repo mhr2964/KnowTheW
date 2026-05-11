@@ -2,6 +2,17 @@ import { useState, useEffect } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { formatStatValue } from '../lib/statFormatters';
 
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function fmtDateShort(iso) {
+  const d = new Date(iso);
+  return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
+}
+
+function fmtTime(iso) {
+  return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+}
+
 export default function TeamDashboard() {
   const { team } = useOutletContext() ?? {};
 
@@ -13,6 +24,9 @@ export default function TeamDashboard() {
   const [statsPreview, setStatsPreview] = useState(null);
   const [historyPreview, setHistoryPreview] = useState(null);
   const [historyError, setHistoryError] = useState(false);
+
+  const [schedulePreview, setSchedulePreview] = useState(null);
+  const [scheduleError, setScheduleError] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -64,6 +78,25 @@ export default function TeamDashboard() {
       })
       .catch(err => {
         if (err.name !== 'AbortError') setHistoryError(true);
+      });
+    return () => controller.abort();
+  }, [team.id]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setScheduleError(false);
+    const season = new Date().getFullYear();
+    fetch(`/api/teams/${team.id}/schedule?season=${season}&seasontype=2`, { signal: controller.signal })
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(data => {
+        const events = data?.empty ? [] : (data?.events ?? []);
+        const todayMs = Date.now();
+        const nextGame = events.find(e => new Date(e.date).getTime() > todayMs) ?? null;
+        const lastGame = [...events].reverse().find(e => new Date(e.date).getTime() <= todayMs) ?? null;
+        setSchedulePreview({ nextGame, lastGame, empty: data?.empty ?? false });
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') setScheduleError(true);
       });
     return () => controller.abort();
   }, [team.id]);
@@ -157,6 +190,60 @@ export default function TeamDashboard() {
           )}
         </div>
         <Link to={`/team/${team.slug}/history`} className="team-dashboard-card-link">View History →</Link>
+      </div>
+
+      <div className="team-dashboard-card">
+        <div className="team-dashboard-card-headline">Next Up</div>
+        <div className="team-dashboard-card-body">
+          {scheduleError ? (
+            <p className="team-dashboard-placeholder">Schedule preview unavailable.</p>
+          ) : schedulePreview === null ? (
+            <p className="team-dashboard-placeholder">Loading…</p>
+          ) : schedulePreview.empty || (!schedulePreview.nextGame && !schedulePreview.lastGame) ? (
+            <p className="team-dashboard-placeholder">Schedule not yet available.</p>
+          ) : (
+            <>
+              {schedulePreview.nextGame && (
+                <div className="team-dashboard-player-row">
+                  <span className="team-dashboard-player-name team-schedule-card-label">Next</span>
+                  <span className="team-schedule-card-atvs">{schedulePreview.nextGame.atVs}</span>
+                  {schedulePreview.nextGame.opponent?.logo && (
+                    <img
+                      src={schedulePreview.nextGame.opponent.logo}
+                      alt=""
+                      className="team-schedule-card-logo"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <span className="team-dashboard-player-pos">{schedulePreview.nextGame.opponent?.abbreviation}</span>
+                  <span className="team-dashboard-player-pos">{fmtDateShort(schedulePreview.nextGame.date)}</span>
+                  <span className="team-dashboard-player-pos">{fmtTime(schedulePreview.nextGame.date)}</span>
+                </div>
+              )}
+              {schedulePreview.lastGame && (
+                <div className="team-dashboard-player-row">
+                  <span className="team-dashboard-player-name team-schedule-card-label">Last</span>
+                  {schedulePreview.lastGame.result && (
+                    <span className={`team-schedule-result-pill team-schedule-result-pill--${schedulePreview.lastGame.result.toLowerCase()}`}>
+                      {schedulePreview.lastGame.result}
+                    </span>
+                  )}
+                  {schedulePreview.lastGame.teamScore != null && (
+                    <span className="team-dashboard-player-pos">
+                      {schedulePreview.lastGame.teamScore}–{schedulePreview.lastGame.oppScore}
+                    </span>
+                  )}
+                  <span className="team-dashboard-player-pos">{schedulePreview.lastGame.opponent?.abbreviation}</span>
+                  <span className="team-dashboard-player-pos">{fmtDateShort(schedulePreview.lastGame.date)}</span>
+                </div>
+              )}
+              {!schedulePreview.nextGame && schedulePreview.lastGame && (
+                <p className="team-dashboard-placeholder team-schedule-season-complete">Season complete</p>
+              )}
+            </>
+          )}
+        </div>
+        <Link to={`/team/${team.slug}/schedule`} className="team-dashboard-card-link">View Schedule →</Link>
       </div>
     </div>
   );
