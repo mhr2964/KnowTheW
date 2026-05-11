@@ -68,15 +68,13 @@ export default function ScheduleTable({ events, todayIso, dividerRef }) {
                     <td colSpan={3} className="team-schedule-divider-cell">
                       <div className="team-schedule-divider-inner">
                         <span className="team-schedule-divider-rule" />
-                        <span className="team-schedule-divider-label">
-                          Next up &middot; {formatDateShort(todayIso)}
-                        </span>
+                        <span className="team-schedule-divider-label">Next up</span>
                         <span className="team-schedule-divider-rule" />
                       </div>
                     </td>
                   </tr>
                 )}
-                <tr className="team-history-row team-schedule-row">
+                <tr className={`team-history-row team-schedule-row${showDivider ? ' team-schedule-row--next' : ''}`}>
                   <td className="team-history-cell team-schedule-cell">
                     <span className="th-full">{formatDateFull(event.date)}</span>
                     <span className="th-short">{formatDateShort(event.date)}</span>

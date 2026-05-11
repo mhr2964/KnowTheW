@@ -1274,8 +1274,21 @@ body {
 
 .team-schedule-gametime {
   font-size: 0.84rem;
-  color: var(--text-muted);
+  color: var(--text);
   font-weight: 600;
+}
+
+/* First upcoming game — visually anchors the "Next up" divider above it. */
+.team-schedule-row--next .team-history-cell {
+  background: rgba(255, 107, 0, 0.06);
+}
+.team-schedule-row--next .team-history-cell:first-child {
+  border-left: 3px solid var(--accent);
+}
+.team-schedule-row--next .team-schedule-opp-abbr,
+.team-schedule-row--next .team-schedule-gametime {
+  color: var(--accent-light);
+  font-weight: 700;
 }
 
 /* Divider row — "Next up" between past and future games */
