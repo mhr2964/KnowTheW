@@ -187,7 +187,7 @@ export default function TeamDashboard() {
           ) : (
             <>
               <div className="team-dashboard-player-row">
-                <span className="team-dashboard-player-name">Championships</span>
+                <span className="team-dashboard-player-name">Titles</span>
                 <span className="team-dashboard-player-pos">
                   {historyPreview.championships.length > 0
                     ? `${historyPreview.championships.length} title${historyPreview.championships.length > 1 ? 's' : ''}`
