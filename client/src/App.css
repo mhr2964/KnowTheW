@@ -1058,32 +1058,11 @@ body {
   padding-top: 1.25rem;
 }
 
-.team-history-narrative-header {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-}
-
 .team-history-narrative-title {
   font-size: 1rem;
   font-weight: 700;
   color: var(--text);
   margin: 0;
-}
-
-.team-history-ai-label {
-  font-size: 0.6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 0.1rem 0.4rem;
-  white-space: nowrap;
-  flex-shrink: 0;
 }
 
 .team-history-narrative-summary,
@@ -1098,6 +1077,14 @@ body {
   color: var(--text-muted);
   border-top: 1px solid var(--border);
   padding-top: 1rem;
+}
+
+.team-history-narrative-disclaimer {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+  text-align: center;
 }
 
 .team-history-eras {

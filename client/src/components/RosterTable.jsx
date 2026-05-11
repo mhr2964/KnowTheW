@@ -17,7 +17,7 @@ export default function RosterTable({ players, teamName, onSaveDeck, onPlayerCli
       <div className="table-toolbar">
         <h3 className="section-title">Roster</h3>
         <button type="button" className="study-trigger-btn" onClick={() => setStudying(true)}>
-          Study this table
+          Study this roster
         </button>
       </div>
 

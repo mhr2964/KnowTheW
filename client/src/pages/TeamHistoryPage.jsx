@@ -207,10 +207,7 @@ export default function TeamHistoryPage() {
 
       {narrative && narrativeState === null && (
         <section className="team-history-narrative" aria-label="AI Franchise Summary">
-          <div className="team-history-narrative-header">
-            <h3 className="team-history-narrative-title">AI Franchise Summary</h3>
-            <span className="team-history-ai-label" aria-label="AI generated content">(AI summary)</span>
-          </div>
+          <h3 className="team-history-narrative-title">AI Franchise Summary</h3>
 
           {narrative.summary && (
             <p className="team-history-narrative-summary">{narrative.summary}</p>
@@ -244,6 +241,10 @@ export default function TeamHistoryPage() {
           {narrative.identity && (
             <p className="team-history-narrative-identity">{narrative.identity}</p>
           )}
+
+          <p className="team-history-narrative-disclaimer">
+            AI-generated summary — may contain inaccuracies.
+          </p>
         </section>
       )}
     </div>
