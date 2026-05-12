@@ -346,11 +346,12 @@ function buildUserMessage(inputs) {
     `Mode: ${mode}`,
   ];
 
-  // Legacy (hand-curated, pre-2002) caveat — tell the model not to expect advanced stats.
-  // ESPN's player API is sparse before 2002, so the constant only carries per-game basics
-  // and accolades; the grader should not penalise the missing PER/WS/TS% rows.
-  if (dataSource === 'legacy') {
-    lines.push('Data source: hand-curated historical compilation (Wikipedia). Advanced PBP stats (PER, WS, TS%) are not available for this player — grade based on per-game stats and accolades/championships only. Do not deduct grade for missing advanced metrics.');
+  // Legacy caveats. Two variants:
+  //   legacy-bulk-pg: per-game stats present (hand-curated or Wikipedia-enriched). Advanced stats
+  //     present for 1997-2001 only; later seasons are per-game only — do not penalise missing PER/WS.
+  //   legacy-bulk:    advanced-only (1997-2001 BBRef). No per-game data — grade from advanced + accolades.
+  if (dataSource === 'legacy-bulk-pg') {
+    lines.push('Data source: pre-2002 historical compilation. Per-game stats (PPG, RPG, APG, FG%) come from Wikipedia / hand-curated tables; advanced metrics (PER, TS%, WS, USG%) come from Basketball-Reference and are available only for 1997-2001 seasons. Grade based on whatever is present per row. Do not deduct grade for missing advanced metrics on post-2001 seasons.');
   } else if (dataSource === 'legacy-bulk') {
     lines.push("Data source: pre-2002 advanced-stats compilation (Basketball-Reference, via FiveThirtyEight). This player's stats are advanced-only (PER, TS%, WS, USG%, etc.). Per-game stats (PPG, RPG, APG) are unavailable. Grade based on advanced metrics, accolades, and championships. Do not invent per-game numbers — if your reasoning would normally cite PPG/RPG/APG, cite PER/TS%/WS/USG% instead.");
   }

@@ -6,12 +6,15 @@ export default function TeamRosterPage() {
   const { team, onSaveDeck, season, isCurrentSeason } = useOutletContext() ?? {};
   const navigate = useNavigate();
 
+  const isDefunct = !!team?.defunct;
+  const shouldFetch = isCurrentSeason || isDefunct;
+
   const [roster, setRoster] = useState([]);
   const [rosterLoading, setRosterLoading] = useState(false);
   const [rosterError, setRosterError] = useState(false);
 
   useEffect(() => {
-    if (!isCurrentSeason) return;
+    if (!shouldFetch) return;
 
     const controller = new AbortController();
     setRoster([]);
@@ -19,7 +22,7 @@ export default function TeamRosterPage() {
     setRosterLoading(true);
     fetch(`/api/teams/${team.id}/roster?season=${season}`, { signal: controller.signal })
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(data => { setRoster(data.players); setRosterLoading(false); })
+      .then(data => { setRoster(data.players ?? []); setRosterLoading(false); })
       .catch(err => {
         if (err.name !== 'AbortError') {
           setRosterError(true);
@@ -27,9 +30,9 @@ export default function TeamRosterPage() {
         }
       });
     return () => controller.abort();
-  }, [team?.id, season, isCurrentSeason]);
+  }, [team?.id, season, shouldFetch]);
 
-  if (!isCurrentSeason) {
+  if (!isCurrentSeason && !isDefunct) {
     return (
       <div className="team-spoke-content">
         <p className="status-msg">Historical rosters not available for the {season} season.</p>

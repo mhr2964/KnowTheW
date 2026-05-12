@@ -4,6 +4,7 @@ import ScheduleTable from '../components/ScheduleTable';
 
 export default function TeamSchedulePage() {
   const { team, season, isCurrentSeason } = useOutletContext() ?? {};
+  const isDefunct = !!team?.defunct;
 
   const [regularEvents, setRegularEvents] = useState([]);
   const [playoffEvents, setPlayoffEvents] = useState([]);
@@ -20,7 +21,7 @@ export default function TeamSchedulePage() {
     new Date().getMonth() >= 8;
 
   useEffect(() => {
-    if (!team?.id) return;
+    if (!team?.id || isDefunct) return;
 
     const controller = new AbortController();
     setLoading(true);
@@ -57,13 +58,19 @@ export default function TeamSchedulePage() {
       });
 
     return () => controller.abort();
-  }, [team?.id, season, needsPlayoffs]);
+  }, [team?.id, season, needsPlayoffs, isDefunct]);
 
   useEffect(() => {
     if (!loading && isCurrentSeason && dividerRef.current) {
       dividerRef.current.scrollIntoView({ block: 'center', behavior: 'auto' });
     }
   }, [loading, isCurrentSeason]);
+
+  if (isDefunct) return (
+    <div className="team-spoke-content">
+      <p className="status-msg">Schedule data is not available for historical franchises.</p>
+    </div>
+  );
 
   if (loading) return (
     <div className="team-spoke-content">

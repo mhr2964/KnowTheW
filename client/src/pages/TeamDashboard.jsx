@@ -15,6 +15,7 @@ function fmtTime(iso) {
 
 export default function TeamDashboard() {
   const { team, season, isCurrentSeason } = useOutletContext() ?? {};
+  const isDefunct = !!team?.defunct;
 
   const [rosterPreview, setRosterPreview] = useState([]);
   const [rosterCount, setRosterCount] = useState(null);
@@ -59,7 +60,7 @@ export default function TeamDashboard() {
   }, [team?.id, season, isCurrentSeason]);
 
   useEffect(() => {
-    if (!team?.id) return;
+    if (!team?.id || isDefunct) return;
     const controller = new AbortController();
     setStatsPreview(null);
     fetch(`/api/teams/${team.id}/stats?season=${season}`, { signal: controller.signal })
@@ -72,10 +73,10 @@ export default function TeamDashboard() {
       })
       .catch(() => {});
     return () => controller.abort();
-  }, [team?.id, season]);
+  }, [team?.id, season, isDefunct]);
 
   useEffect(() => {
-    if (!team?.id) return;
+    if (!team?.id || isDefunct) return;
     const controller = new AbortController();
     setHistoryError(false);
     fetch(`/api/teams/${team.id}/history`, { signal: controller.signal })
@@ -92,10 +93,10 @@ export default function TeamDashboard() {
         if (err.name !== 'AbortError') setHistoryError(true);
       });
     return () => controller.abort();
-  }, [team?.id]);
+  }, [team?.id, isDefunct]);
 
   useEffect(() => {
-    if (!team?.id) return;
+    if (!team?.id || isDefunct) return;
     const controller = new AbortController();
     setScheduleError(false);
     setSchedulePreview(null);
@@ -120,7 +121,7 @@ export default function TeamDashboard() {
         if (err.name !== 'AbortError') setScheduleError(true);
       });
     return () => controller.abort();
-  }, [team?.id, season, isCurrentSeason]);
+  }, [team?.id, season, isCurrentSeason, isDefunct]);
 
   return (
     <div className="team-dashboard-grid">

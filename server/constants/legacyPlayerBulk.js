@@ -10,14 +10,15 @@
 // data set. The graded-report prompt is told to grade these players from advanced metrics +
 // accolades alone.
 //
-// player_ID format is BBRef's (e.g. 'staleda01w'). Used as the synthetic player id since the
-// existing isLegacyId() check matches any id containing a hyphen — BBRef ids never contain
-// hyphens, so we need a separate detector (isBulkLegacyId) for the bulk set.
+// player_ID format is BBRef's (e.g. 'staleda01w'). Used as the synthetic player id.
 //
-// Coexistence with legacyPlayerStats.js (8 hand-curated legends): these may overlap by player
-// (e.g., Dawn Staley is both 'staleda01w' in this constant and 'staley-dawn-1970' in the hand-
-// curated one). The hand-curated copy carries per-game stats and wins by-name lookups; the
-// bulk copy wins by-id lookups (BBRef id). TODO: reconcile after v1 ships.
+// Per-game vs advanced: most entries are advanced-only (1997-2001 CSV). Eight legends have
+// hand-curated per-game data merged inline on their season objects (PTS_pg, REB_pg, AST_pg,
+// MIN_pg, FG_pct, FG3_pct, FT_pct, STL_pg, BLK_pg) plus extra season entries for years past
+// 2001 that the CSV does not cover (those entries are per-game-only, no PER/TS%/WS).
+//
+// LEGACY_ID_REDIRECTS below maps the retired synthetic ids
+// (e.g. 'cooper-cynthia-1963') to their BBRef counterparts so old URLs still resolve.
 //
 // Multi-team seasons: when a player played for two teams in one year (e.g., Olympia Scott 1999
 // DET → UTA), only the LAST team is recorded in seasons[year]. Both teams' rosters still list
@@ -141,11 +142,14 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1997: { team: 'HOU', age: 28, G: 28, MP: 784, MP_pct: 0.694, PER: 18.2, TS_pct: 0.531, ThrPAr: 0.132, FTr: 0.34, ORB_pct: 6.8, TRB_pct: 9.3, AST_pct: 12, STL_pct: 3.1, BLK_pct: 0.4, TOV_pct: 18.9, USG_pct: 21.2, OWS: 2.3, DWS: 1, WS: 3.3, WS40: 0.169 },
-      1998: { team: 'HOU', age: 29, G: 30, MP: 657, MP_pct: 0.541, PER: 14, TS_pct: 0.477, ThrPAr: 0.169, FTr: 0.231, ORB_pct: 8.6, TRB_pct: 10.6, AST_pct: 7.5, STL_pct: 2.1, BLK_pct: 0.4, TOV_pct: 15, USG_pct: 18.4, OWS: 1, DWS: 1.2, WS: 2.2, WS40: 0.133 },
-      1999: { team: 'HOU', age: 30, G: 32, MP: 735, MP_pct: 0.572, PER: 11.9, TS_pct: 0.514, ThrPAr: 0.268, FTr: 0.25, ORB_pct: 6.1, TRB_pct: 8.1, AST_pct: 9.3, STL_pct: 2.3, BLK_pct: 0.2, TOV_pct: 17.6, USG_pct: 14.7, OWS: 1, DWS: 1.1, WS: 2.1, WS40: 0.115 },
-      2000: { team: 'HOU', age: 31, G: 32, MP: 977, MP_pct: 0.754, PER: 13.5, TS_pct: 0.526, ThrPAr: 0.193, FTr: 0.21, ORB_pct: 5.4, TRB_pct: 8.3, AST_pct: 10.7, STL_pct: 2.5, BLK_pct: 0.3, TOV_pct: 17.2, USG_pct: 15.6, OWS: 1.5, DWS: 1.9, WS: 3.4, WS40: 0.141 },
-      2001: { team: 'HOU', age: 32, G: 32, MP: 1154, MP_pct: 0.895, PER: 23.2, TS_pct: 0.514, ThrPAr: 0.13, FTr: 0.295, ORB_pct: 5.3, TRB_pct: 7.5, AST_pct: 20.8, STL_pct: 3.1, BLK_pct: 0.2, TOV_pct: 12.6, USG_pct: 28.5, OWS: 4.5, DWS: 1.7, WS: 6.2, WS40: 0.216 },
+      1997: { team: 'HOU', age: 28, G: 28, MP: 784, MP_pct: 0.694, PER: 18.2, TS_pct: 0.531, ThrPAr: 0.132, FTr: 0.34, ORB_pct: 6.8, TRB_pct: 9.3, AST_pct: 12, STL_pct: 3.1, BLK_pct: 0.4, TOV_pct: 18.9, USG_pct: 21.2, OWS: 2.3, DWS: 1, WS: 3.3, WS40: 0.169, MIN_pg: 28.0, PTS_pg: 10.9, REB_pg: 3.9, AST_pg: 1.6, STL_pg: 1.5, BLK_pg: 0.1, FG_pct: 0.440, FG3_pct: 0.273, FT_pct: 0.894 },
+      1998: { team: 'HOU', age: 29, G: 30, MP: 657, MP_pct: 0.541, PER: 14, TS_pct: 0.477, ThrPAr: 0.169, FTr: 0.231, ORB_pct: 8.6, TRB_pct: 10.6, AST_pct: 7.5, STL_pct: 2.1, BLK_pct: 0.4, TOV_pct: 15, USG_pct: 18.4, OWS: 1, DWS: 1.2, WS: 2.2, WS40: 0.133, MIN_pg: 21.9, PTS_pg: 6.8, REB_pg: 3.6, AST_pg: 0.9, STL_pg: 0.8, BLK_pg: 0.1, FG_pct: 0.426, FG3_pct: 0.152, FT_pct: 0.756 },
+      1999: { team: 'HOU', age: 30, G: 32, MP: 735, MP_pct: 0.572, PER: 11.9, TS_pct: 0.514, ThrPAr: 0.268, FTr: 0.25, ORB_pct: 6.1, TRB_pct: 8.1, AST_pct: 9.3, STL_pct: 2.3, BLK_pct: 0.2, TOV_pct: 17.6, USG_pct: 14.7, OWS: 1, DWS: 1.1, WS: 2.1, WS40: 0.115, MIN_pg: 23.0, PTS_pg: 5.8, REB_pg: 2.8, AST_pg: 1.2, STL_pg: 0.9, BLK_pg: 0.1, FG_pct: 0.433, FG3_pct: 0.250, FT_pct: 0.829 },
+      2000: { team: 'HOU', age: 31, G: 32, MP: 977, MP_pct: 0.754, PER: 13.5, TS_pct: 0.526, ThrPAr: 0.193, FTr: 0.21, ORB_pct: 5.4, TRB_pct: 8.3, AST_pct: 10.7, STL_pct: 2.5, BLK_pct: 0.3, TOV_pct: 17.2, USG_pct: 15.6, OWS: 1.5, DWS: 1.9, WS: 3.4, WS40: 0.141, MIN_pg: 30.5, PTS_pg: 8.4, REB_pg: 3.7, AST_pg: 1.9, STL_pg: 1.3, BLK_pg: 0.1, FG_pct: 0.468, FG3_pct: 0.200, FT_pct: 0.837 },
+      2001: { team: 'HOU', age: 32, G: 32, MP: 1154, MP_pct: 0.895, PER: 23.2, TS_pct: 0.514, ThrPAr: 0.13, FTr: 0.295, ORB_pct: 5.3, TRB_pct: 7.5, AST_pct: 20.8, STL_pct: 3.1, BLK_pct: 0.2, TOV_pct: 12.6, USG_pct: 28.5, OWS: 4.5, DWS: 1.7, WS: 6.2, WS40: 0.216, MIN_pg: 36.1, PTS_pg: 18.5, REB_pg: 4.3, AST_pg: 2.9, STL_pg: 1.9, BLK_pg: 0.1, FG_pct: 0.426, FG3_pct: 0.333, FT_pct: 0.900 },
+      2002: { team: 'HOU', age: 33, G: 32, MIN_pg: 34.9, PTS_pg: 11.4, REB_pg: 3.9, AST_pg: 2.7, STL_pg: 1.6, BLK_pg: 0.2, FG_pct: 0.424, FG3_pct: 0.270, FT_pct: 0.883 },
+      2003: { team: 'HOU', age: 34, G: 34, MIN_pg: 33.4, PTS_pg: 11.5, REB_pg: 4.0, AST_pg: 2.0, STL_pg: 1.2, BLK_pg: 0.0, FG_pct: 0.466, FG3_pct: 0.243, FT_pct: 0.840 },
+      2005: { team: 'HOU', age: 36, G: 34, MIN_pg: 31.7, PTS_pg: 10.1, REB_pg: 2.7, AST_pg: 1.6, STL_pg: 1.6, BLK_pg: 0.2, FG_pct: 0.421, FG3_pct: 0.188, FT_pct: 0.883 },
     },
   },
   'artiska01w': {
@@ -282,9 +286,9 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1998: { team: 'CLE', age: 25, G: 12, MP: 126, MP_pct: 0.104, PER: 16.5, TS_pct: 0.617, ThrPAr: 0.188, FTr: 0.375, ORB_pct: 2.3, TRB_pct: 5.4, AST_pct: 32.3, STL_pct: 5.2, BLK_pct: 1.3, TOV_pct: 32.6, USG_pct: 10.6, OWS: 0.3, DWS: 0.2, WS: 0.5, WS40: 0.167 },
-      2000: { team: 'POR', age: 27, G: 32, MP: 796, MP_pct: 0.61, PER: 9.9, TS_pct: 0.532, ThrPAr: 0.536, FTr: 0.643, ORB_pct: 3.3, TRB_pct: 8.2, AST_pct: 21, STL_pct: 2.9, BLK_pct: 0.7, TOV_pct: 31.5, USG_pct: 12.6, OWS: 0.2, DWS: 0.9, WS: 1.1, WS40: 0.058 },
-      2001: { team: 'POR', age: 28, G: 31, MP: 788, MP_pct: 0.604, PER: 13.2, TS_pct: 0.509, ThrPAr: 0.613, FTr: 0.597, ORB_pct: 4.2, TRB_pct: 6.9, AST_pct: 25.5, STL_pct: 4.3, BLK_pct: 0.6, TOV_pct: 25.7, USG_pct: 12.6, OWS: 1, DWS: 1.1, WS: 2.1, WS40: 0.108 },
+      1998: { team: 'CLE', age: 25, G: 12, MP: 126, MP_pct: 0.104, PER: 16.5, TS_pct: 0.617, ThrPAr: 0.188, FTr: 0.375, ORB_pct: 2.3, TRB_pct: 5.4, AST_pct: 32.3, STL_pct: 5.2, BLK_pct: 1.3, TOV_pct: 32.6, USG_pct: 10.6, OWS: 0.3, DWS: 0.2, WS: 0.5, WS40: 0.167, MIN_pg: 11.5, PTS_pg: 1.9, REB_pg: 0.9, AST_pg: 2.1, STL_pg: 1.1, BLK_pg: 0.2, FG_pct: 0.571, FG3_pct: 0.333, FT_pct: 0.667 },
+      2000: { team: 'POR', age: 27, G: 32, MP: 796, MP_pct: 0.61, PER: 9.9, TS_pct: 0.532, ThrPAr: 0.536, FTr: 0.643, ORB_pct: 3.3, TRB_pct: 8.2, AST_pct: 21, STL_pct: 2.9, BLK_pct: 0.7, TOV_pct: 31.5, USG_pct: 12.6, OWS: 0.2, DWS: 0.9, WS: 1.1, WS40: 0.058, MIN_pg: 24.9, PTS_pg: 4.8, REB_pg: 3.0, AST_pg: 2.8, STL_pg: 1.3, BLK_pg: 0.2, FG_pct: 0.357, FG3_pct: 0.283, FT_pct: 0.778 },
+      2001: { team: 'POR', age: 28, G: 31, MP: 788, MP_pct: 0.604, PER: 13.2, TS_pct: 0.509, ThrPAr: 0.613, FTr: 0.597, ORB_pct: 4.2, TRB_pct: 6.9, AST_pct: 25.5, STL_pct: 4.3, BLK_pct: 0.6, TOV_pct: 25.7, USG_pct: 12.6, OWS: 1, DWS: 1.1, WS: 2.1, WS40: 0.108, MIN_pg: 25.4, PTS_pg: 4.9, REB_pg: 2.8, AST_pg: 3.3, STL_pg: 1.9, BLK_pg: 0.2, FG_pct: 0.328, FG3_pct: 0.315, FT_pct: 0.732 },
     },
   },
   'bibbyje01w': {
@@ -311,9 +315,9 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1999: { team: 'UTA', age: 32, G: 32, MP: 1014, MP_pct: 0.78, PER: 11.8, TS_pct: 0.441, ThrPAr: 0.245, FTr: 0.307, ORB_pct: 4, TRB_pct: 7, AST_pct: 27, STL_pct: 4.1, BLK_pct: 0.5, TOV_pct: 26.6, USG_pct: 11.4, OWS: 0.5, DWS: 0.6, WS: 1.1, WS40: 0.043 },
-      2000: { team: 'MIA', age: 33, G: 32, MP: 820, MP_pct: 0.633, PER: 12, TS_pct: 0.451, ThrPAr: 0.28, FTr: 0.28, ORB_pct: 3.6, TRB_pct: 7.7, AST_pct: 27.8, STL_pct: 4.3, BLK_pct: 0.1, TOV_pct: 22.9, USG_pct: 13.3, OWS: 0.1, DWS: 1.9, WS: 1.9, WS40: 0.095 },
-      2001: { team: 'MIA', age: 34, G: 32, MP: 946, MP_pct: 0.719, PER: 16.2, TS_pct: 0.432, ThrPAr: 0.107, FTr: 0.257, ORB_pct: 6.2, TRB_pct: 9.2, AST_pct: 26, STL_pct: 5.4, BLK_pct: 0.2, TOV_pct: 19.7, USG_pct: 14.5, OWS: 0.8, DWS: 2.6, WS: 3.4, WS40: 0.144 },
+      1999: { team: 'UTA', age: 32, G: 32, MP: 1014, MP_pct: 0.78, PER: 11.8, TS_pct: 0.441, ThrPAr: 0.245, FTr: 0.307, ORB_pct: 4, TRB_pct: 7, AST_pct: 27, STL_pct: 4.1, BLK_pct: 0.5, TOV_pct: 26.6, USG_pct: 11.4, OWS: 0.5, DWS: 0.6, WS: 1.1, WS40: 0.043, MIN_pg: 31.7, PTS_pg: 5.1, REB_pg: 3.5, AST_pg: 5.0, STL_pg: 2.4, BLK_pg: 0.2, FG_pct: 0.378, FG3_pct: 0.195, FT_pct: 0.620 },
+      2000: { team: 'MIA', age: 33, G: 32, MP: 820, MP_pct: 0.633, PER: 12, TS_pct: 0.451, ThrPAr: 0.28, FTr: 0.28, ORB_pct: 3.6, TRB_pct: 7.7, AST_pct: 27.8, STL_pct: 4.3, BLK_pct: 0.1, TOV_pct: 22.9, USG_pct: 13.3, OWS: 0.1, DWS: 1.9, WS: 1.9, WS40: 0.095, MIN_pg: 25.6, PTS_pg: 4.8, REB_pg: 2.9, AST_pg: 3.1, STL_pg: 1.8, BLK_pg: 0.0, FG_pct: 0.380, FG3_pct: 0.214, FT_pct: 0.690 },
+      2001: { team: 'MIA', age: 34, G: 32, MP: 946, MP_pct: 0.719, PER: 16.2, TS_pct: 0.432, ThrPAr: 0.107, FTr: 0.257, ORB_pct: 6.2, TRB_pct: 9.2, AST_pct: 26, STL_pct: 5.4, BLK_pct: 0.2, TOV_pct: 19.7, USG_pct: 14.5, OWS: 0.8, DWS: 2.6, WS: 3.4, WS40: 0.144, MIN_pg: 29.6, PTS_pg: 5.6, REB_pg: 3.9, AST_pg: 3.8, STL_pg: 2.6, BLK_pg: 0.1, FG_pct: 0.374, FG3_pct: 0.150, FT_pct: 0.771 },
     },
   },
   'bladerh01w': {
@@ -353,11 +357,14 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1997: { team: 'SAC', age: 30, G: 23, MP: 813, MP_pct: 0.719, PER: 23.6, TS_pct: 0.51, ThrPAr: 0.471, FTr: 0.169, ORB_pct: 4.6, TRB_pct: 10.4, AST_pct: 17.2, STL_pct: 3.6, BLK_pct: 0.1, TOV_pct: 11.7, USG_pct: 27.3, OWS: 3.5, DWS: 0.3, WS: 3.8, WS40: 0.187 },
-      1998: { team: 'SAC', age: 31, G: 5, MP: 133, MP_pct: 0.11, PER: 10.7, TS_pct: 0.391, ThrPAr: 0.448, FTr: 0.483, ORB_pct: 4.7, TRB_pct: 5.3, AST_pct: 9.4, STL_pct: 2.5, BLK_pct: 0, TOV_pct: 9.1, USG_pct: 27.1, OWS: 0, DWS: 0.1, WS: 0, WS40: 0.007 },
-      1999: { team: 'SAC', age: 32, G: 31, MP: 970, MP_pct: 0.758, PER: 17, TS_pct: 0.485, ThrPAr: 0.476, FTr: 0.239, ORB_pct: 5.6, TRB_pct: 8.3, AST_pct: 14.6, STL_pct: 1.7, BLK_pct: 0, TOV_pct: 9.2, USG_pct: 21.9, OWS: 3.1, DWS: 0.9, WS: 4, WS40: 0.167 },
-      2000: { team: 'SAC', age: 33, G: 29, MP: 868, MP_pct: 0.678, PER: 16, TS_pct: 0.469, ThrPAr: 0.435, FTr: 0.228, ORB_pct: 6.1, TRB_pct: 7.9, AST_pct: 12.4, STL_pct: 2.2, BLK_pct: 0.1, TOV_pct: 10, USG_pct: 24.2, OWS: 2, DWS: 0.7, WS: 2.8, WS40: 0.128 },
-      2001: { team: 'SAC', age: 34, G: 31, MP: 582, MP_pct: 0.446, PER: 16, TS_pct: 0.465, ThrPAr: 0.509, FTr: 0.241, ORB_pct: 7.4, TRB_pct: 9.9, AST_pct: 18.3, STL_pct: 2.7, BLK_pct: 0.1, TOV_pct: 14, USG_pct: 22.7, OWS: 1.2, DWS: 0.8, WS: 2, WS40: 0.138 },
+      1997: { team: 'SAC', age: 30, G: 23, MP: 813, MP_pct: 0.719, PER: 23.6, TS_pct: 0.51, ThrPAr: 0.471, FTr: 0.169, ORB_pct: 4.6, TRB_pct: 10.4, AST_pct: 17.2, STL_pct: 3.6, BLK_pct: 0.1, TOV_pct: 11.7, USG_pct: 27.3, OWS: 3.5, DWS: 0.3, WS: 3.8, WS40: 0.187, MIN_pg: 35.3, PTS_pg: 19.4, REB_pg: 5.8, AST_pg: 2.6, STL_pg: 2.3, BLK_pg: 0.0, FG_pct: 0.402, FG3_pct: 0.344, FT_pct: 0.768 },
+      1998: { team: 'SAC', age: 31, G: 5, MP: 133, MP_pct: 0.11, PER: 10.7, TS_pct: 0.391, ThrPAr: 0.448, FTr: 0.483, ORB_pct: 4.7, TRB_pct: 5.3, AST_pct: 9.4, STL_pct: 2.5, BLK_pct: 0, TOV_pct: 9.1, USG_pct: 27.1, OWS: 0, DWS: 0.1, WS: 0, WS40: 0.007, MIN_pg: 26.6, PTS_pg: 11.0, REB_pg: 2.2, AST_pg: 1.2, STL_pg: 1.2, BLK_pg: 0.0, FG_pct: 0.293, FG3_pct: 0.154, FT_pct: 0.607 },
+      1999: { team: 'SAC', age: 32, G: 31, MP: 970, MP_pct: 0.758, PER: 17, TS_pct: 0.485, ThrPAr: 0.476, FTr: 0.239, ORB_pct: 5.6, TRB_pct: 8.3, AST_pct: 14.6, STL_pct: 1.7, BLK_pct: 0, TOV_pct: 9.2, USG_pct: 21.9, OWS: 3.1, DWS: 0.9, WS: 4, WS40: 0.167, MIN_pg: 31.3, PTS_pg: 13.6, REB_pg: 4.3, AST_pg: 2.4, STL_pg: 1.0, BLK_pg: 0.0, FG_pct: 0.364, FG3_pct: 0.321, FT_pct: 0.798 },
+      2000: { team: 'SAC', age: 33, G: 29, MP: 868, MP_pct: 0.678, PER: 16, TS_pct: 0.469, ThrPAr: 0.435, FTr: 0.228, ORB_pct: 6.1, TRB_pct: 7.9, AST_pct: 12.4, STL_pct: 2.2, BLK_pct: 0.1, TOV_pct: 10, USG_pct: 24.2, OWS: 2, DWS: 0.7, WS: 2.8, WS40: 0.128, MIN_pg: 29.9, PTS_pg: 13.1, REB_pg: 3.7, AST_pg: 2.0, STL_pg: 1.2, BLK_pg: 0.0, FG_pct: 0.361, FG3_pct: 0.313, FT_pct: 0.762 },
+      2001: { team: 'SAC', age: 34, G: 31, MP: 582, MP_pct: 0.446, PER: 16, TS_pct: 0.465, ThrPAr: 0.509, FTr: 0.241, ORB_pct: 7.4, TRB_pct: 9.9, AST_pct: 18.3, STL_pct: 2.7, BLK_pct: 0.1, TOV_pct: 14, USG_pct: 22.7, OWS: 1.2, DWS: 0.8, WS: 2, WS40: 0.138, MIN_pg: 18.8, PTS_pg: 7.2, REB_pg: 3.0, AST_pg: 1.8, STL_pg: 0.9, BLK_pg: 0.0, FG_pct: 0.338, FG3_pct: 0.364, FT_pct: 0.692 },
+      2002: { team: 'SAC', age: 35, G: 32, MIN_pg: 23.0, PTS_pg: 10.9, REB_pg: 2.9, AST_pg: 1.2, STL_pg: 1.4, BLK_pg: 0.1, FG_pct: 0.396, FG3_pct: 0.326, FT_pct: 0.727 },
+      2003: { team: 'SAC', age: 36, G: 33, MIN_pg: 15.8, PTS_pg: 4.5, REB_pg: 1.7, AST_pg: 1.1, STL_pg: 1.0, BLK_pg: 0.1, FG_pct: 0.314, FG3_pct: 0.192, FT_pct: 0.769 },
+      2004: { team: 'SAC', age: 37, G: 34, MIN_pg: 13.8, PTS_pg: 4.7, REB_pg: 1.4, AST_pg: 0.9, STL_pg: 0.7, BLK_pg: 0.0, FG_pct: 0.370, FG3_pct: 0.405, FT_pct: 0.737 },
     },
   },
   'bookeka01w': {
@@ -473,9 +480,11 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1998: { team: 'DET', age: 29, G: 30, MP: 993, MP_pct: 0.828, PER: 18.3, TS_pct: 0.516, ThrPAr: 0.12, FTr: 0.283, ORB_pct: 2.1, TRB_pct: 5.2, AST_pct: 20.4, STL_pct: 2.1, BLK_pct: 0.1, TOV_pct: 13.4, USG_pct: 21.8, OWS: 3.2, DWS: 1, WS: 4.2, WS40: 0.17 },
-      1999: { team: 'DET', age: 30, G: 32, MP: 1002, MP_pct: 0.771, PER: 15.2, TS_pct: 0.543, ThrPAr: 0.219, FTr: 0.282, ORB_pct: 3.5, TRB_pct: 4.2, AST_pct: 16, STL_pct: 1.4, BLK_pct: 0.4, TOV_pct: 16.1, USG_pct: 21.6, OWS: 2.1, DWS: 0.5, WS: 2.6, WS40: 0.104 },
-      2001: { team: 'MIA', age: 32, G: 29, MP: 850, MP_pct: 0.646, PER: 18, TS_pct: 0.49, ThrPAr: 0.192, FTr: 0.203, ORB_pct: 1.6, TRB_pct: 4, AST_pct: 18.2, STL_pct: 2, BLK_pct: 0.5, TOV_pct: 8.8, USG_pct: 25.6, OWS: 2.3, DWS: 1, WS: 3.3, WS40: 0.155 },
+      1998: { team: 'DET', age: 29, G: 30, MP: 993, MP_pct: 0.828, PER: 18.3, TS_pct: 0.516, ThrPAr: 0.12, FTr: 0.283, ORB_pct: 2.1, TRB_pct: 5.2, AST_pct: 20.4, STL_pct: 2.1, BLK_pct: 0.1, TOV_pct: 13.4, USG_pct: 21.8, OWS: 3.2, DWS: 1, WS: 4.2, WS40: 0.17, MIN_pg: 33.1, PTS_pg: 14.2, REB_pg: 2.9, AST_pg: 3.3, STL_pg: 1.3, BLK_pg: 0.0, FG_pct: 0.428, FG3_pct: 0.364, FT_pct: 0.923 },
+      1999: { team: 'DET', age: 30, G: 32, MP: 1002, MP_pct: 0.771, PER: 15.2, TS_pct: 0.543, ThrPAr: 0.219, FTr: 0.282, ORB_pct: 3.5, TRB_pct: 4.2, AST_pct: 16, STL_pct: 1.4, BLK_pct: 0.4, TOV_pct: 16.1, USG_pct: 21.6, OWS: 2.1, DWS: 0.5, WS: 2.6, WS40: 0.104, MIN_pg: 31.3, PTS_pg: 13.3, REB_pg: 2.1, AST_pg: 2.3, STL_pg: 0.8, BLK_pg: 0.2, FG_pct: 0.438, FG3_pct: 0.487, FT_pct: 0.847 },
+      2001: { team: 'MIA', age: 32, G: 29, MP: 850, MP_pct: 0.646, PER: 18, TS_pct: 0.49, ThrPAr: 0.192, FTr: 0.203, ORB_pct: 1.6, TRB_pct: 4, AST_pct: 18.2, STL_pct: 2, BLK_pct: 0.5, TOV_pct: 8.8, USG_pct: 25.6, OWS: 2.3, DWS: 1, WS: 3.3, WS40: 0.155, MIN_pg: 29.3, PTS_pg: 12.7, REB_pg: 1.7, AST_pg: 2.2, STL_pg: 1.0, BLK_pg: 0.1, FG_pct: 0.413, FG3_pct: 0.394, FT_pct: 0.814 },
+      2002: { team: 'MIA', age: 33, G: 30, MIN_pg: 25.4, PTS_pg: 8.8, REB_pg: 1.4, AST_pg: 1.5, STL_pg: 0.9, BLK_pg: 0.1, FG_pct: 0.365, FG3_pct: 0.318, FT_pct: 0.821 },
+      2003: { team: 'SEA', age: 34, G: 34, MIN_pg: 28.7, PTS_pg: 8.2, REB_pg: 1.6, AST_pg: 2.0, STL_pg: 0.9, BLK_pg: 0.1, FG_pct: 0.415, FG3_pct: 0.438, FT_pct: 0.806 },
     },
   },
   'brownci01w': {
@@ -545,11 +554,12 @@ const LEGACY_PLAYERS_BULK = {
     position: 'F',
     retired: true,
     seasons: {
-      1997: { team: 'CHA', age: 29, G: 28, MP: 875, MP_pct: 0.781, PER: 22.1, TS_pct: 0.5, ThrPAr: 0.071, FTr: 0.247, ORB_pct: 9.6, TRB_pct: 12.7, AST_pct: 15.6, STL_pct: 3.4, BLK_pct: 5.2, TOV_pct: 15.9, USG_pct: 23.2, OWS: 2.2, DWS: 2, WS: 4.2, WS40: 0.193 },
-      1998: { team: 'CHA', age: 30, G: 30, MP: 947, MP_pct: 0.789, PER: 20.6, TS_pct: 0.493, ThrPAr: 0.071, FTr: 0.234, ORB_pct: 8.1, TRB_pct: 12.6, AST_pct: 9.8, STL_pct: 3.8, BLK_pct: 3.9, TOV_pct: 13.7, USG_pct: 23, OWS: 1.8, DWS: 2.3, WS: 4.2, WS40: 0.175 },
-      1999: { team: 'CHA', age: 31, G: 32, MP: 1008, MP_pct: 0.784, PER: 21.7, TS_pct: 0.551, ThrPAr: 0.092, FTr: 0.332, ORB_pct: 8.6, TRB_pct: 14.7, AST_pct: 10.4, STL_pct: 3.6, BLK_pct: 3.8, TOV_pct: 15.2, USG_pct: 20.1, OWS: 2.4, DWS: 2.2, WS: 4.6, WS40: 0.181 },
-      2000: { team: 'WAS', age: 32, G: 32, MP: 1094, MP_pct: 0.855, PER: 17.5, TS_pct: 0.532, ThrPAr: 0.116, FTr: 0.214, ORB_pct: 7.8, TRB_pct: 11.5, AST_pct: 7.4, STL_pct: 3.4, BLK_pct: 3.7, TOV_pct: 15.3, USG_pct: 17.3, OWS: 1.8, DWS: 1.6, WS: 3.4, WS40: 0.123 },
-      2001: { team: 'WAS', age: 33, G: 32, MP: 1073, MP_pct: 0.825, PER: 15.8, TS_pct: 0.453, ThrPAr: 0.224, FTr: 0.168, ORB_pct: 7.2, TRB_pct: 13.2, AST_pct: 8.2, STL_pct: 2.9, BLK_pct: 4.6, TOV_pct: 14.7, USG_pct: 16.6, OWS: 0.6, DWS: 2.3, WS: 2.9, WS40: 0.109 },
+      1997: { team: 'CHA', age: 29, G: 28, MP: 875, MP_pct: 0.781, PER: 22.1, TS_pct: 0.5, ThrPAr: 0.071, FTr: 0.247, ORB_pct: 9.6, TRB_pct: 12.7, AST_pct: 15.6, STL_pct: 3.4, BLK_pct: 5.2, TOV_pct: 15.9, USG_pct: 23.2, OWS: 2.2, DWS: 2, WS: 4.2, WS40: 0.193, MIN_pg: 31.3, PTS_pg: 12.8, REB_pg: 6.4, AST_pg: 2.3, STL_pg: 1.9, BLK_pg: 2.0, FG_pct: 0.448, FG3_pct: 0.304, FT_pct: 0.775 },
+      1998: { team: 'CHA', age: 30, G: 30, MP: 947, MP_pct: 0.789, PER: 20.6, TS_pct: 0.493, ThrPAr: 0.071, FTr: 0.234, ORB_pct: 8.1, TRB_pct: 12.6, AST_pct: 9.8, STL_pct: 3.8, BLK_pct: 3.9, TOV_pct: 13.7, USG_pct: 23, OWS: 1.8, DWS: 2.3, WS: 4.2, WS40: 0.175, MIN_pg: 31.6, PTS_pg: 13.3, REB_pg: 6.5, AST_pg: 1.5, STL_pg: 2.2, BLK_pg: 1.5, FG_pct: 0.441, FG3_pct: 0.154, FT_pct: 0.826 },
+      1999: { team: 'CHA', age: 31, G: 32, MP: 1008, MP_pct: 0.784, PER: 21.7, TS_pct: 0.551, ThrPAr: 0.092, FTr: 0.332, ORB_pct: 8.6, TRB_pct: 14.7, AST_pct: 10.4, STL_pct: 3.6, BLK_pct: 3.8, TOV_pct: 15.2, USG_pct: 20.1, OWS: 2.4, DWS: 2.2, WS: 4.6, WS40: 0.181, MIN_pg: 31.5, PTS_pg: 11.5, REB_pg: 6.8, AST_pg: 1.6, STL_pg: 1.9, BLK_pg: 1.4, FG_pct: 0.486, FG3_pct: 0.370, FT_pct: 0.773 },
+      2000: { team: 'WAS', age: 32, G: 32, MP: 1094, MP_pct: 0.855, PER: 17.5, TS_pct: 0.532, ThrPAr: 0.116, FTr: 0.214, ORB_pct: 7.8, TRB_pct: 11.5, AST_pct: 7.4, STL_pct: 3.4, BLK_pct: 3.7, TOV_pct: 15.3, USG_pct: 17.3, OWS: 1.8, DWS: 1.6, WS: 3.4, WS40: 0.123, MIN_pg: 34.2, PTS_pg: 10.7, REB_pg: 5.7, AST_pg: 1.3, STL_pg: 2.0, BLK_pg: 1.5, FG_pct: 0.486, FG3_pct: 0.324, FT_pct: 0.714 },
+      2001: { team: 'WAS', age: 33, G: 32, MP: 1073, MP_pct: 0.825, PER: 15.8, TS_pct: 0.453, ThrPAr: 0.224, FTr: 0.168, ORB_pct: 7.2, TRB_pct: 13.2, AST_pct: 8.2, STL_pct: 2.9, BLK_pct: 4.6, TOV_pct: 14.7, USG_pct: 16.6, OWS: 0.6, DWS: 2.3, WS: 2.9, WS40: 0.109, MIN_pg: 33.5, PTS_pg: 8.7, REB_pg: 7.2, AST_pg: 1.3, STL_pg: 1.7, BLK_pg: 1.8, FG_pct: 0.392, FG3_pct: 0.297, FT_pct: 0.729 },
+      2002: { team: 'WAS', age: 34, G: 32, MIN_pg: 29.8, PTS_pg: 8.5, REB_pg: 5.8, AST_pg: 1.7, STL_pg: 1.7, BLK_pg: 1.2, FG_pct: 0.462, FG3_pct: 0.396, FT_pct: 0.829 },
     },
   },
   'burgean01w': {
@@ -632,9 +642,13 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1999: { team: 'PHO', age: 30, G: 28, MP: 750, MP_pct: 0.586, PER: 11.2, TS_pct: 0.469, ThrPAr: 0.387, FTr: 0.215, ORB_pct: 1.8, TRB_pct: 4.5, AST_pct: 10.5, STL_pct: 1.9, BLK_pct: 1.1, TOV_pct: 14.4, USG_pct: 21.3, OWS: 0.2, DWS: 0.5, WS: 0.7, WS40: 0.037 },
-      2000: { team: 'SEA', age: 31, G: 16, MP: 510, MP_pct: 0.394, PER: 14.2, TS_pct: 0.462, ThrPAr: 0.228, FTr: 0.27, ORB_pct: 2.1, TRB_pct: 4.8, AST_pct: 20.7, STL_pct: 2.2, BLK_pct: 0.7, TOV_pct: 14.3, USG_pct: 28.4, OWS: -0.3, DWS: 0.3, WS: 0, WS40: -0.001 },
-      2001: { team: 'SAC', age: 32, G: 32, MP: 854, MP_pct: 0.654, PER: 11.4, TS_pct: 0.494, ThrPAr: 0.385, FTr: 0.176, ORB_pct: 1.6, TRB_pct: 6.2, AST_pct: 16.2, STL_pct: 1.3, BLK_pct: 0.9, TOV_pct: 19.6, USG_pct: 18.2, OWS: 0.8, DWS: 0.7, WS: 1.5, WS40: 0.068 },
+      1999: { team: 'PHO', age: 30, G: 28, MP: 750, MP_pct: 0.586, PER: 11.2, TS_pct: 0.469, ThrPAr: 0.387, FTr: 0.215, ORB_pct: 1.8, TRB_pct: 4.5, AST_pct: 10.5, STL_pct: 1.9, BLK_pct: 1.1, TOV_pct: 14.4, USG_pct: 21.3, OWS: 0.2, DWS: 0.5, WS: 0.7, WS40: 0.037, MIN_pg: 26.8, PTS_pg: 9.6, REB_pg: 1.9, AST_pg: 1.3, STL_pg: 0.9, BLK_pg: 0.4, FG_pct: 0.364, FG3_pct: 0.376, FT_pct: 0.714 },
+      2000: { team: 'SEA', age: 31, G: 16, MP: 510, MP_pct: 0.394, PER: 14.2, TS_pct: 0.462, ThrPAr: 0.228, FTr: 0.27, ORB_pct: 2.1, TRB_pct: 4.8, AST_pct: 20.7, STL_pct: 2.2, BLK_pct: 0.7, TOV_pct: 14.3, USG_pct: 28.4, OWS: -0.3, DWS: 0.3, WS: 0, WS40: -0.001, MIN_pg: 31.9, PTS_pg: 13.9, REB_pg: 2.1, AST_pg: 2.3, STL_pg: 1.2, BLK_pg: 0.3, FG_pct: 0.391, FG3_pct: 0.265, FT_pct: 0.707 },
+      2001: { team: 'SAC', age: 32, G: 32, MP: 854, MP_pct: 0.654, PER: 11.4, TS_pct: 0.494, ThrPAr: 0.385, FTr: 0.176, ORB_pct: 1.6, TRB_pct: 6.2, AST_pct: 16.2, STL_pct: 1.3, BLK_pct: 0.9, TOV_pct: 19.6, USG_pct: 18.2, OWS: 0.8, DWS: 0.7, WS: 1.5, WS40: 0.068, MIN_pg: 26.7, PTS_pg: 8.1, REB_pg: 2.7, AST_pg: 2.3, STL_pg: 0.6, BLK_pg: 0.3, FG_pct: 0.377, FG3_pct: 0.457, FT_pct: 0.767 },
+      2002: { team: 'SAC', age: 33, G: 1, MIN_pg: 12.0, PTS_pg: 4.0, REB_pg: 1.0, AST_pg: 0.0, STL_pg: 1.0, BLK_pg: 0.0, FG_pct: 0.400 },
+      2003: { team: 'SAC', age: 34, G: 34, MIN_pg: 21.3, PTS_pg: 7.9, REB_pg: 2.1, AST_pg: 1.3, STL_pg: 0.6, BLK_pg: 0.2, FG_pct: 0.402, FG3_pct: 0.414, FT_pct: 0.758 },
+      2004: { team: 'SAC', age: 35, G: 22, MIN_pg: 15.1, PTS_pg: 3.4, REB_pg: 0.9, AST_pg: 0.7, STL_pg: 0.2, BLK_pg: 0.1, FG_pct: 0.382, FG3_pct: 0.410 },
+      2005: { team: 'SAN', age: 36, G: 28, MIN_pg: 8.9, PTS_pg: 1.7, REB_pg: 0.5, AST_pg: 0.5, STL_pg: 0.3, BLK_pg: 0.0, FG_pct: 0.313, FG3_pct: 0.263, FT_pct: 1.000 },
     },
   },
   'campbmi01w': {
@@ -653,9 +667,20 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1999: { team: 'DET', age: 22, G: 26, MP: 646, MP_pct: 0.497, PER: 12.5, TS_pct: 0.431, ThrPAr: 0.074, FTr: 0.594, ORB_pct: 6.5, TRB_pct: 7.8, AST_pct: 12, STL_pct: 2.2, BLK_pct: 0.1, TOV_pct: 13.5, USG_pct: 24.1, OWS: 0, DWS: 0.6, WS: 0.7, WS40: 0.041 },
-      2000: { team: 'DET', age: 23, G: 28, MP: 784, MP_pct: 0.61, PER: 15.1, TS_pct: 0.493, ThrPAr: 0.025, FTr: 0.645, ORB_pct: 5.2, TRB_pct: 5.9, AST_pct: 18.4, STL_pct: 3.4, BLK_pct: 0.5, TOV_pct: 16.4, USG_pct: 18.1, OWS: 1.3, DWS: 0.5, WS: 1.8, WS40: 0.092 },
-      2001: { team: 'DET', age: 24, G: 32, MP: 625, MP_pct: 0.477, PER: 13.6, TS_pct: 0.437, ThrPAr: 0.026, FTr: 0.383, ORB_pct: 9.2, TRB_pct: 9, AST_pct: 23.4, STL_pct: 2.9, BLK_pct: 0.1, TOV_pct: 19.6, USG_pct: 22.2, OWS: 0.3, DWS: 0.1, WS: 0.4, WS40: 0.025 },
+      1999: { team: 'DET', age: 22, G: 26, MP: 646, MP_pct: 0.497, PER: 12.5, TS_pct: 0.431, ThrPAr: 0.074, FTr: 0.594, ORB_pct: 6.5, TRB_pct: 7.8, AST_pct: 12, STL_pct: 2.2, BLK_pct: 0.1, TOV_pct: 13.5, USG_pct: 24.1, OWS: 0, DWS: 0.6, WS: 0.7, WS40: 0.041, MIN_pg: 24.8, PTS_pg: 9.6, REB_pg: 3.1, AST_pg: 1.5, STL_pg: 1.0, BLK_pg: 0.0, FG_pct: 0.332, FG3_pct: 0.176, FT_pct: 0.691 },
+      2000: { team: 'DET', age: 23, G: 28, MP: 784, MP_pct: 0.61, PER: 15.1, TS_pct: 0.493, ThrPAr: 0.025, FTr: 0.645, ORB_pct: 5.2, TRB_pct: 5.9, AST_pct: 18.4, STL_pct: 3.4, BLK_pct: 0.5, TOV_pct: 16.4, USG_pct: 18.1, OWS: 1.3, DWS: 0.5, WS: 1.8, WS40: 0.092, MIN_pg: 28.0, PTS_pg: 9.2, REB_pg: 2.5, AST_pg: 2.9, STL_pg: 1.8, BLK_pg: 0.2, FG_pct: 0.409, FG3_pct: 0.000, FT_pct: 0.695 },
+      2001: { team: 'DET', age: 24, G: 32, MP: 625, MP_pct: 0.477, PER: 13.6, TS_pct: 0.437, ThrPAr: 0.026, FTr: 0.383, ORB_pct: 9.2, TRB_pct: 9, AST_pct: 23.4, STL_pct: 2.9, BLK_pct: 0.1, TOV_pct: 19.6, USG_pct: 22.2, OWS: 0.3, DWS: 0.1, WS: 0.4, WS40: 0.025, MIN_pg: 19.5, PTS_pg: 6.2, REB_pg: 2.6, AST_pg: 2.2, STL_pg: 1.0, BLK_pg: 0.0, FG_pct: 0.363, FG3_pct: 0.000, FT_pct: 0.757 },
+      2002: { team: 'DET', age: 25, G: 28, MIN_pg: 22.3, PTS_pg: 5.7, REB_pg: 2.5, AST_pg: 3.0, STL_pg: 0.8, BLK_pg: 0.1, FG_pct: 0.338, FG3_pct: 0.000, FT_pct: 0.724 },
+      2003: { team: 'HOU', age: 26, G: 32, MIN_pg: 20.3, PTS_pg: 5.4, REB_pg: 3.1, AST_pg: 1.8, STL_pg: 0.7, BLK_pg: 0.0, FG_pct: 0.379, FG3_pct: 0.000, FT_pct: 0.667 },
+      2004: { team: 'HOU', age: 27, G: 32, MIN_pg: 24.1, PTS_pg: 5.5, REB_pg: 2.6, AST_pg: 2.0, STL_pg: 1.0, BLK_pg: 0.0, FG_pct: 0.420, FG3_pct: 0.000, FT_pct: 0.708 },
+      2005: { team: 'HOU', age: 28, G: 33, MIN_pg: 30.2, PTS_pg: 8.2, REB_pg: 3.3, AST_pg: 3.1, STL_pg: 0.9, BLK_pg: 0.1, FG_pct: 0.399, FG3_pct: 0.000, FT_pct: 0.727 },
+      2006: { team: 'HOU', age: 29, G: 15, MIN_pg: 28.7, PTS_pg: 10.9, REB_pg: 3.5, AST_pg: 2.9, STL_pg: 1.1, BLK_pg: 0.0, FG_pct: 0.514, FG3_pct: 0.000, FT_pct: 0.727 },
+      2007: { team: 'CHI', age: 30, G: 30, MIN_pg: 25.9, PTS_pg: 8.6, REB_pg: 2.1, AST_pg: 4.1, STL_pg: 1.0, BLK_pg: 0.1, FG_pct: 0.361, FG3_pct: 0.250, FT_pct: 0.704 },
+      2008: { team: 'CHI', age: 31, G: 28, MIN_pg: 26.3, PTS_pg: 8.1, REB_pg: 2.5, AST_pg: 4.1, STL_pg: 1.0, BLK_pg: 0.1, FG_pct: 0.394, FG3_pct: 0.167, FT_pct: 0.669 },
+      2009: { team: 'CHI', age: 32, G: 34, MIN_pg: 22.8, PTS_pg: 6.9, REB_pg: 1.9, AST_pg: 3.2, STL_pg: 0.8, BLK_pg: 0.1, FG_pct: 0.381, FG3_pct: 0.364, FT_pct: 0.689 },
+      2010: { team: 'CHI', age: 33, G: 34, MIN_pg: 26.0, PTS_pg: 9.0, REB_pg: 2.6, AST_pg: 3.4, STL_pg: 1.0, BLK_pg: 0.2, FG_pct: 0.430, FG3_pct: 0.182, FT_pct: 0.693 },
+      2011: { team: 'CHI', age: 34, G: 22, MIN_pg: 15.0, PTS_pg: 4.1, REB_pg: 1.2, AST_pg: 2.0, STL_pg: 0.5, BLK_pg: 0.1, FG_pct: 0.318, FG3_pct: 0.143, FT_pct: 0.576 },
+      2012: { team: 'WAS', age: 35, G: 6, MIN_pg: 12.0, PTS_pg: 2.8, REB_pg: 1.3, AST_pg: 1.0, STL_pg: 0.3, BLK_pg: 0.0, FG_pct: 0.261, FG3_pct: 0.000, FT_pct: 0.500 },
     },
   },
   'cartede01w': {
@@ -799,10 +824,11 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1997: { team: 'HOU', age: 34, G: 28, MP: 982, MP_pct: 0.869, PER: 32.2, TS_pct: 0.629, ThrPAr: 0.399, FTr: 0.49, ORB_pct: 4.3, TRB_pct: 7.5, AST_pct: 31.4, STL_pct: 3.4, BLK_pct: 0.5, TOV_pct: 18.1, USG_pct: 28.7, OWS: 8.1, DWS: 1.3, WS: 9.4, WS40: 0.385 },
-      1998: { team: 'HOU', age: 35, G: 30, MP: 1051, MP_pct: 0.865, PER: 31.1, TS_pct: 0.604, ThrPAr: 0.352, FTr: 0.541, ORB_pct: 3.1, TRB_pct: 6.8, AST_pct: 27, STL_pct: 2.6, BLK_pct: 0.9, TOV_pct: 14.4, USG_pct: 29.9, OWS: 8.1, DWS: 1.9, WS: 10, WS40: 0.382 },
-      1999: { team: 'HOU', age: 36, G: 31, MP: 1101, MP_pct: 0.857, PER: 29.5, TS_pct: 0.614, ThrPAr: 0.378, FTr: 0.5, ORB_pct: 2.1, TRB_pct: 5.2, AST_pct: 31.9, STL_pct: 2.2, BLK_pct: 0.8, TOV_pct: 15.7, USG_pct: 29.3, OWS: 7.7, DWS: 1.5, WS: 9.2, WS40: 0.335 },
-      2000: { team: 'HOU', age: 37, G: 31, MP: 1085, MP_pct: 0.838, PER: 23.4, TS_pct: 0.59, ThrPAr: 0.309, FTr: 0.429, ORB_pct: 2.3, TRB_pct: 5.3, AST_pct: 27.5, STL_pct: 2.1, BLK_pct: 0.5, TOV_pct: 17.5, USG_pct: 25.8, OWS: 5.2, DWS: 1.8, WS: 7, WS40: 0.259 },
+      1997: { team: 'HOU', age: 34, G: 28, MP: 982, MP_pct: 0.869, PER: 32.2, TS_pct: 0.629, ThrPAr: 0.399, FTr: 0.49, ORB_pct: 4.3, TRB_pct: 7.5, AST_pct: 31.4, STL_pct: 3.4, BLK_pct: 0.5, TOV_pct: 18.1, USG_pct: 28.7, OWS: 8.1, DWS: 1.3, WS: 9.4, WS40: 0.385, MIN_pg: 35.1, PTS_pg: 22.2, REB_pg: 4.0, AST_pg: 4.7, STL_pg: 2.1, BLK_pg: 0.2, TOV_pg: 3.9, FG_pct: 0.470, FG3_pct: 0.414, FT_pct: 0.864 },
+      1998: { team: 'HOU', age: 35, G: 30, MP: 1051, MP_pct: 0.865, PER: 31.1, TS_pct: 0.604, ThrPAr: 0.352, FTr: 0.541, ORB_pct: 3.1, TRB_pct: 6.8, AST_pct: 27, STL_pct: 2.6, BLK_pct: 0.9, TOV_pct: 14.4, USG_pct: 29.9, OWS: 8.1, DWS: 1.9, WS: 10, WS40: 0.382, MIN_pg: 35.0, PTS_pg: 22.7, REB_pg: 3.7, AST_pg: 4.4, STL_pg: 1.6, BLK_pg: 0.4, TOV_pg: 3.2, FG_pct: 0.446, FG3_pct: 0.400, FT_pct: 0.854 },
+      1999: { team: 'HOU', age: 36, G: 31, MP: 1101, MP_pct: 0.857, PER: 29.5, TS_pct: 0.614, ThrPAr: 0.378, FTr: 0.5, ORB_pct: 2.1, TRB_pct: 5.2, AST_pct: 31.9, STL_pct: 2.2, BLK_pct: 0.8, TOV_pct: 15.7, USG_pct: 29.3, OWS: 7.7, DWS: 1.5, WS: 9.2, WS40: 0.335, MIN_pg: 35.5, PTS_pg: 22.1, REB_pg: 2.8, AST_pg: 5.2, STL_pg: 1.4, BLK_pg: 0.4, TOV_pg: 3.4, FG_pct: 0.463, FG3_pct: 0.335, FT_pct: 0.891 },
+      2000: { team: 'HOU', age: 37, G: 31, MP: 1085, MP_pct: 0.838, PER: 23.4, TS_pct: 0.59, ThrPAr: 0.309, FTr: 0.429, ORB_pct: 2.3, TRB_pct: 5.3, AST_pct: 27.5, STL_pct: 2.1, BLK_pct: 0.5, TOV_pct: 17.5, USG_pct: 25.8, OWS: 5.2, DWS: 1.8, WS: 7, WS40: 0.259, MIN_pg: 35.0, PTS_pg: 17.7, REB_pg: 2.7, AST_pg: 5.0, STL_pg: 1.3, BLK_pg: 0.2, TOV_pg: 3.2, FG_pct: 0.459, FG3_pct: 0.355, FT_pct: 0.875 },
+      2003: { team: 'HOU', age: 40, G: 4, MIN_pg: 36.0, PTS_pg: 16.0, REB_pg: 2.5, AST_pg: 5.5, STL_pg: 1.0, BLK_pg: 0.3, TOV_pg: 3.5, FG_pct: 0.421, FG3_pct: 0.389, FT_pct: 0.893 },
     },
   },
   'crawlsy01w': {
@@ -887,11 +913,18 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1997: { team: 'LAS', age: 21, G: 27, MP: 715, MP_pct: 0.624, PER: 19.2, TS_pct: 0.55, ThrPAr: 0.206, FTr: 0.349, ORB_pct: 4, TRB_pct: 6.9, AST_pct: 14.4, STL_pct: 3.6, BLK_pct: 0.5, TOV_pct: 16.6, USG_pct: 21.6, OWS: 2.3, DWS: 1, WS: 3.3, WS40: 0.183 },
-      1998: { team: 'LAS', age: 22, G: 22, MP: 710, MP_pct: 0.589, PER: 18.2, TS_pct: 0.536, ThrPAr: 0.208, FTr: 0.399, ORB_pct: 2.2, TRB_pct: 4.7, AST_pct: 15.6, STL_pct: 1.8, BLK_pct: 0.9, TOV_pct: 14.6, USG_pct: 24.6, OWS: 2.3, DWS: 0.3, WS: 2.6, WS40: 0.144 },
-      1999: { team: 'LAS', age: 23, G: 32, MP: 563, MP_pct: 0.435, PER: 14.2, TS_pct: 0.477, ThrPAr: 0.241, FTr: 0.327, ORB_pct: 3.8, TRB_pct: 7.2, AST_pct: 17.1, STL_pct: 1.6, BLK_pct: 0.6, TOV_pct: 14.6, USG_pct: 21.7, OWS: 0.8, DWS: 0.4, WS: 1.2, WS40: 0.085 },
-      2000: { team: 'LAS', age: 24, G: 31, MP: 882, MP_pct: 0.684, PER: 16.6, TS_pct: 0.52, ThrPAr: 0.117, FTr: 0.265, ORB_pct: 5, TRB_pct: 7.4, AST_pct: 21, STL_pct: 2.5, BLK_pct: 0.9, TOV_pct: 15.6, USG_pct: 20.6, OWS: 1.9, DWS: 1.6, WS: 3.5, WS40: 0.159 },
-      2001: { team: 'LAS', age: 25, G: 29, MP: 925, MP_pct: 0.714, PER: 14.7, TS_pct: 0.476, ThrPAr: 0.107, FTr: 0.27, ORB_pct: 2.7, TRB_pct: 5.9, AST_pct: 21.9, STL_pct: 1.7, BLK_pct: 0.2, TOV_pct: 16.6, USG_pct: 21.9, OWS: 1.7, DWS: 0.4, WS: 2.2, WS40: 0.093 },
+      1997: { team: 'LAS', age: 21, G: 27, MP: 715, MP_pct: 0.624, PER: 19.2, TS_pct: 0.55, ThrPAr: 0.206, FTr: 0.349, ORB_pct: 4, TRB_pct: 6.9, AST_pct: 14.4, STL_pct: 3.6, BLK_pct: 0.5, TOV_pct: 16.6, USG_pct: 21.6, OWS: 2.3, DWS: 1, WS: 3.3, WS40: 0.183, MIN_pg: 26.5, PTS_pg: 11.9, REB_pg: 3.0, AST_pg: 2.0, STL_pg: 1.8, BLK_pg: 0.2, FG_pct: 0.456, FG3_pct: 0.423, FT_pct: 0.773 },
+      1998: { team: 'LAS', age: 22, G: 22, MP: 710, MP_pct: 0.589, PER: 18.2, TS_pct: 0.536, ThrPAr: 0.208, FTr: 0.399, ORB_pct: 2.2, TRB_pct: 4.7, AST_pct: 15.6, STL_pct: 1.8, BLK_pct: 0.9, TOV_pct: 14.6, USG_pct: 24.6, OWS: 2.3, DWS: 0.3, WS: 2.6, WS40: 0.144, MIN_pg: 32.3, PTS_pg: 16.2, REB_pg: 2.5, AST_pg: 2.5, STL_pg: 1.1, BLK_pg: 0.4, FG_pct: 0.438, FG3_pct: 0.356, FT_pct: 0.779 },
+      1999: { team: 'LAS', age: 23, G: 32, MP: 563, MP_pct: 0.435, PER: 14.2, TS_pct: 0.477, ThrPAr: 0.241, FTr: 0.327, ORB_pct: 3.8, TRB_pct: 7.2, AST_pct: 17.1, STL_pct: 1.6, BLK_pct: 0.6, TOV_pct: 14.6, USG_pct: 21.7, OWS: 0.8, DWS: 0.4, WS: 1.2, WS40: 0.085, MIN_pg: 17.6, PTS_pg: 6.8, REB_pg: 2.1, AST_pg: 1.7, STL_pg: 0.5, BLK_pg: 0.1, FG_pct: 0.387, FG3_pct: 0.313, FT_pct: 0.738 },
+      2000: { team: 'LAS', age: 24, G: 31, MP: 882, MP_pct: 0.684, PER: 16.6, TS_pct: 0.52, ThrPAr: 0.117, FTr: 0.265, ORB_pct: 5, TRB_pct: 7.4, AST_pct: 21, STL_pct: 2.5, BLK_pct: 0.9, TOV_pct: 15.6, USG_pct: 20.6, OWS: 1.9, DWS: 1.6, WS: 3.5, WS40: 0.159, MIN_pg: 28.5, PTS_pg: 10.9, REB_pg: 3.4, AST_pg: 3.1, STL_pg: 1.3, BLK_pg: 0.3, FG_pct: 0.454, FG3_pct: 0.353, FT_pct: 0.805 },
+      2001: { team: 'LAS', age: 25, G: 29, MP: 925, MP_pct: 0.714, PER: 14.7, TS_pct: 0.476, ThrPAr: 0.107, FTr: 0.27, ORB_pct: 2.7, TRB_pct: 5.9, AST_pct: 21.9, STL_pct: 1.7, BLK_pct: 0.2, TOV_pct: 16.6, USG_pct: 21.9, OWS: 1.7, DWS: 0.4, WS: 2.2, WS40: 0.093, MIN_pg: 31.9, PTS_pg: 11.7, REB_pg: 2.9, AST_pg: 3.9, STL_pg: 0.9, BLK_pg: 0.1, FG_pct: 0.417, FG3_pct: 0.176, FT_pct: 0.791 },
+      2002: { team: 'LAS', age: 26, G: 30, MIN_pg: 31.9, PTS_pg: 10.6, REB_pg: 3.1, AST_pg: 4.0, STL_pg: 0.9, BLK_pg: 0.2, FG_pct: 0.391, FG3_pct: 0.351, FT_pct: 0.831 },
+      2003: { team: 'LAS', age: 27, G: 30, MIN_pg: 34.7, PTS_pg: 13.7, REB_pg: 4.2, AST_pg: 3.0, STL_pg: 1.2, BLK_pg: 0.3, FG_pct: 0.437, FG3_pct: 0.212, FT_pct: 0.883 },
+      2004: { team: 'LAS', age: 28, G: 32, MIN_pg: 28.5, PTS_pg: 9.7,  REB_pg: 3.4, AST_pg: 3.5, STL_pg: 1.1, BLK_pg: 0.0, FG_pct: 0.442, FG3_pct: 0.455, FT_pct: 0.782 },
+      2005: { team: 'LAS', age: 29, G: 30, MIN_pg: 20.2, PTS_pg: 5.3,  REB_pg: 2.2, AST_pg: 2.6, STL_pg: 0.8, BLK_pg: 0.1, FG_pct: 0.409, FG3_pct: 0.000, FT_pct: 0.850 },
+      2006: { team: 'HOU', age: 30, G: 21, MIN_pg: 25.7, PTS_pg: 7.0,  REB_pg: 2.6, AST_pg: 2.3, STL_pg: 0.6, BLK_pg: 0.1, FG_pct: 0.404, FG3_pct: 0.111, FT_pct: 0.821 },
+      2007: { team: 'HOU', age: 31, G: 18, MIN_pg: 27.2, PTS_pg: 12.0, REB_pg: 3.2, AST_pg: 3.2, STL_pg: 1.3, BLK_pg: 0.3, FG_pct: 0.439, FG3_pct: 0.294, FT_pct: 0.861 },
+      2008: { team: 'HOU', age: 32, G: 24, MIN_pg: 26.4, PTS_pg: 9.0,  REB_pg: 3.2, AST_pg: 1.8, STL_pg: 1.0, BLK_pg: 0.1, FG_pct: 0.403, FG3_pct: 0.154, FT_pct: 0.857 },
     },
   },
   'domonna01w': {
@@ -928,10 +961,17 @@ const LEGACY_PLAYERS_BULK = {
     position: 'C',
     retired: true,
     seasons: {
-      1998: { team: 'UTA', age: 24, G: 30, MP: 839, MP_pct: 0.693, PER: 20.4, TS_pct: 0.538, ThrPAr: 0.023, FTr: 0.419, ORB_pct: 6, TRB_pct: 16.2, AST_pct: 13.5, STL_pct: 0.9, BLK_pct: 10.7, TOV_pct: 23.1, USG_pct: 25.4, OWS: 0.6, DWS: 1.2, WS: 1.8, WS40: 0.087 },
-      1999: { team: 'UTA', age: 25, G: 32, MP: 733, MP_pct: 0.564, PER: 25, TS_pct: 0.59, ThrPAr: 0.071, FTr: 0.47, ORB_pct: 6.7, TRB_pct: 17.8, AST_pct: 17.6, STL_pct: 1, BLK_pct: 9.2, TOV_pct: 21, USG_pct: 27.1, OWS: 2.2, DWS: 1, WS: 3.2, WS40: 0.174 },
-      2000: { team: 'UTA', age: 26, G: 32, MP: 775, MP_pct: 0.605, PER: 17.3, TS_pct: 0.523, ThrPAr: 0.059, FTr: 0.436, ORB_pct: 5.1, TRB_pct: 14.5, AST_pct: 12.3, STL_pct: 1.3, BLK_pct: 10.5, TOV_pct: 22.6, USG_pct: 21.5, OWS: 0.5, DWS: 1.2, WS: 1.7, WS40: 0.088 },
-      2001: { team: 'UTA', age: 27, G: 32, MP: 970, MP_pct: 0.749, PER: 19.2, TS_pct: 0.515, ThrPAr: 0.052, FTr: 0.375, ORB_pct: 4.2, TRB_pct: 15.9, AST_pct: 13.3, STL_pct: 1.5, BLK_pct: 9.8, TOV_pct: 21, USG_pct: 21.7, OWS: 0.7, DWS: 2.2, WS: 3, WS40: 0.123 },
+      1998: { team: 'UTA', age: 24, G: 30, MP: 839, MP_pct: 0.693, PER: 20.4, TS_pct: 0.538, ThrPAr: 0.023, FTr: 0.419, ORB_pct: 6, TRB_pct: 16.2, AST_pct: 13.5, STL_pct: 0.9, BLK_pct: 10.7, TOV_pct: 23.1, USG_pct: 25.4, OWS: 0.6, DWS: 1.2, WS: 1.8, WS40: 0.087, MIN_pg: 28.0, PTS_pg: 12.9, REB_pg: 7.8, AST_pg: 1.8, STL_pg: 0.5, BLK_pg: 3.8, FG_pct: 0.482, FG3_pct: 0.143, FT_pct: 0.732 },
+      1999: { team: 'UTA', age: 25, G: 32, MP: 733, MP_pct: 0.564, PER: 25, TS_pct: 0.59, ThrPAr: 0.071, FTr: 0.47, ORB_pct: 6.7, TRB_pct: 17.8, AST_pct: 17.6, STL_pct: 1, BLK_pct: 9.2, TOV_pct: 21, USG_pct: 27.1, OWS: 2.2, DWS: 1, WS: 3.2, WS40: 0.174, MIN_pg: 22.9, PTS_pg: 12.6, REB_pg: 6.4, AST_pg: 1.8, STL_pg: 0.4, BLK_pg: 2.4, FG_pct: 0.498, FG3_pct: 0.350, FT_pct: 0.857 },
+      2000: { team: 'UTA', age: 26, G: 32, MP: 775, MP_pct: 0.605, PER: 17.3, TS_pct: 0.523, ThrPAr: 0.059, FTr: 0.436, ORB_pct: 5.1, TRB_pct: 14.5, AST_pct: 12.3, STL_pct: 1.3, BLK_pct: 10.5, TOV_pct: 22.6, USG_pct: 21.5, OWS: 0.5, DWS: 1.2, WS: 1.7, WS40: 0.088, MIN_pg: 24.2, PTS_pg: 9.2, REB_pg: 5.5, AST_pg: 1.6, STL_pg: 0.6, BLK_pg: 3.0, FG_pct: 0.445, FG3_pct: 0.143, FT_pct: 0.796 },
+      2001: { team: 'UTA', age: 27, G: 32, MP: 970, MP_pct: 0.749, PER: 19.2, TS_pct: 0.515, ThrPAr: 0.052, FTr: 0.375, ORB_pct: 4.2, TRB_pct: 15.9, AST_pct: 13.3, STL_pct: 1.5, BLK_pct: 9.8, TOV_pct: 21, USG_pct: 21.7, OWS: 0.7, DWS: 2.2, WS: 3, WS40: 0.123, MIN_pg: 30.3, PTS_pg: 10.9, REB_pg: 7.6, AST_pg: 2.0, STL_pg: 0.8, BLK_pg: 3.5, FG_pct: 0.440, FG3_pct: 0.400, FT_pct: 0.798 },
+      2002: { team: 'UTA', age: 28, G: 30, MIN_pg: 29.2, PTS_pg: 13.1, REB_pg: 8.7, AST_pg: 2.4, STL_pg: 0.8, BLK_pg: 3.6, FG_pct: 0.436, FG3_pct: 0.250, FT_pct: 0.844 },
+      2003: { team: 'SAN', age: 29, G: 34, MIN_pg: 27.2, PTS_pg: 11.9, REB_pg: 7.4, AST_pg: 1.7, STL_pg: 0.6, BLK_pg: 2.9, FG_pct: 0.451, FG3_pct: 0.000, FT_pct: 0.723 },
+      2004: { team: 'SAN', age: 30, G: 34, MIN_pg: 20.1, PTS_pg: 6.6, REB_pg: 4.9, AST_pg: 1.8, STL_pg: 0.6, BLK_pg: 1.4, FG_pct: 0.433, FG3_pct: 0.500, FT_pct: 0.759 },
+      2005: { team: 'CON', age: 31, G: 31, MIN_pg: 21.6, PTS_pg: 7.3, REB_pg: 6.3, AST_pg: 1.2, STL_pg: 0.3, BLK_pg: 2.3, FG_pct: 0.537, FG3_pct: 0.500, FT_pct: 0.769 },
+      2006: { team: 'CON', age: 32, G: 34, MIN_pg: 21.9, PTS_pg: 9.4, REB_pg: 6.1, AST_pg: 1.2, STL_pg: 0.6, BLK_pg: 2.5, FG_pct: 0.494, FG3_pct: 0.250, FT_pct: 0.821 },
+      2007: { team: 'CON', age: 33, G: 32, MIN_pg: 20.1, PTS_pg: 6.7, REB_pg: 6.5, AST_pg: 1.0, STL_pg: 0.4, BLK_pg: 2.1, FG_pct: 0.487, FG3_pct: 0.400, FT_pct: 0.789 },
+      2008: { team: 'LAS', age: 34, G: 2, MIN_pg: 7.0, PTS_pg: 2.0, REB_pg: 1.5, AST_pg: 0.0, STL_pg: 0.0, BLK_pg: 0.0, FG_pct: 0.400 },
     },
   },
   'edwarmi01w': {
@@ -1221,11 +1261,13 @@ const LEGACY_PLAYERS_BULK = {
     position: 'F-C',
     retired: true,
     seasons: {
-      1997: { team: 'PHO', age: 33, G: 28, MP: 874, MP_pct: 0.77, PER: 19.3, TS_pct: 0.513, ThrPAr: 0.173, FTr: 0.322, ORB_pct: 6, TRB_pct: 10.6, AST_pct: 6.1, STL_pct: 2.3, BLK_pct: 1.5, TOV_pct: 11.9, USG_pct: 25.1, OWS: 2.7, DWS: 1.8, WS: 4.5, WS40: 0.204 },
-      1998: { team: 'PHO', age: 34, G: 30, MP: 962, MP_pct: 0.792, PER: 25.6, TS_pct: 0.54, ThrPAr: 0.167, FTr: 0.396, ORB_pct: 8.1, TRB_pct: 14.7, AST_pct: 10.6, STL_pct: 2.8, BLK_pct: 0.8, TOV_pct: 13.3, USG_pct: 31.8, OWS: 3.7, DWS: 2.3, WS: 6, WS40: 0.249 },
-      1999: { team: 'PHO', age: 35, G: 32, MP: 1095, MP_pct: 0.855, PER: 15.4, TS_pct: 0.479, ThrPAr: 0.168, FTr: 0.414, ORB_pct: 6.1, TRB_pct: 10.7, AST_pct: 11, STL_pct: 1.9, BLK_pct: 0.5, TOV_pct: 14.7, USG_pct: 25.9, OWS: 1.4, DWS: 1.2, WS: 2.6, WS40: 0.094 },
-      2000: { team: 'PHO', age: 36, G: 30, MP: 826, MP_pct: 0.643, PER: 18.2, TS_pct: 0.518, ThrPAr: 0.218, FTr: 0.335, ORB_pct: 5.3, TRB_pct: 9.7, AST_pct: 11.9, STL_pct: 1.5, BLK_pct: 3.2, TOV_pct: 14, USG_pct: 26, OWS: 1.6, DWS: 1.1, WS: 2.7, WS40: 0.133 },
-      2001: { team: 'PHO', age: 37, G: 32, MP: 858, MP_pct: 0.665, PER: 16, TS_pct: 0.497, ThrPAr: 0.197, FTr: 0.27, ORB_pct: 5.4, TRB_pct: 9.7, AST_pct: 9.7, STL_pct: 2.1, BLK_pct: 1.9, TOV_pct: 15.2, USG_pct: 26.4, OWS: 0.8, DWS: 0.8, WS: 1.6, WS40: 0.073 },
+      1997: { team: 'PHO', age: 33, G: 28, MP: 874, MP_pct: 0.77, PER: 19.3, TS_pct: 0.513, ThrPAr: 0.173, FTr: 0.322, ORB_pct: 6, TRB_pct: 10.6, AST_pct: 6.1, STL_pct: 2.3, BLK_pct: 1.5, TOV_pct: 11.9, USG_pct: 25.1, OWS: 2.7, DWS: 1.8, WS: 4.5, WS40: 0.204, MIN_pg: 31.2, PTS_pg: 15.7, REB_pg: 5.4, AST_pg: 0.8, STL_pg: 1.3, BLK_pg: 0.5, FG_pct: 0.434, FG3_pct: 0.308, FT_pct: 0.777 },
+      1998: { team: 'PHO', age: 34, G: 30, MP: 962, MP_pct: 0.792, PER: 25.6, TS_pct: 0.54, ThrPAr: 0.167, FTr: 0.396, ORB_pct: 8.1, TRB_pct: 14.7, AST_pct: 10.6, STL_pct: 2.8, BLK_pct: 0.8, TOV_pct: 13.3, USG_pct: 31.8, OWS: 3.7, DWS: 2.3, WS: 6, WS40: 0.249, MIN_pg: 32.1, PTS_pg: 20.8, REB_pg: 7.3, AST_pg: 1.4, STL_pg: 1.7, BLK_pg: 0.3, FG_pct: 0.463, FG3_pct: 0.378, FT_pct: 0.703 },
+      1999: { team: 'PHO', age: 35, G: 32, MP: 1095, MP_pct: 0.855, PER: 15.4, TS_pct: 0.479, ThrPAr: 0.168, FTr: 0.414, ORB_pct: 6.1, TRB_pct: 10.7, AST_pct: 11, STL_pct: 1.9, BLK_pct: 0.5, TOV_pct: 14.7, USG_pct: 25.9, OWS: 1.4, DWS: 1.2, WS: 2.6, WS40: 0.094, MIN_pg: 34.2, PTS_pg: 15.2, REB_pg: 5.8, AST_pg: 1.7, STL_pg: 1.2, BLK_pg: 0.2, FG_pct: 0.381, FG3_pct: 0.250, FT_pct: 0.797 },
+      2000: { team: 'PHO', age: 36, G: 30, MP: 826, MP_pct: 0.643, PER: 18.2, TS_pct: 0.518, ThrPAr: 0.218, FTr: 0.335, ORB_pct: 5.3, TRB_pct: 9.7, AST_pct: 11.9, STL_pct: 1.5, BLK_pct: 3.2, TOV_pct: 14, USG_pct: 26, OWS: 1.6, DWS: 1.1, WS: 2.7, WS40: 0.133, MIN_pg: 27.5, PTS_pg: 12.5, REB_pg: 3.9, AST_pg: 1.5, STL_pg: 0.7, BLK_pg: 1.0, FG_pct: 0.440, FG3_pct: 0.275, FT_pct: 0.745 },
+      2001: { team: 'PHO', age: 37, G: 32, MP: 858, MP_pct: 0.665, PER: 16, TS_pct: 0.497, ThrPAr: 0.197, FTr: 0.27, ORB_pct: 5.4, TRB_pct: 9.7, AST_pct: 9.7, STL_pct: 2.1, BLK_pct: 1.9, TOV_pct: 15.2, USG_pct: 26.4, OWS: 0.8, DWS: 0.8, WS: 1.6, WS40: 0.073, MIN_pg: 26.8, PTS_pg: 12.3, REB_pg: 4.0, AST_pg: 1.1, STL_pg: 1.0, BLK_pg: 0.6, FG_pct: 0.423, FG3_pct: 0.343, FT_pct: 0.740 },
+      2002: { team: 'PHO', age: 38, G: 31, MIN_pg: 28.2, PTS_pg: 15.3, REB_pg: 3.7, AST_pg: 1.2, STL_pg: 0.9, BLK_pg: 0.7, FG_pct: 0.415, FG3_pct: 0.387, FT_pct: 0.802 },
+      2003: { team: 'LAS', age: 39, G: 33, MIN_pg: 12.0, PTS_pg: 3.1, REB_pg: 1.7, AST_pg: 0.6, STL_pg: 0.5, BLK_pg: 0.1, FG_pct: 0.412, FG3_pct: 0.269, FT_pct: 0.762 },
     },
   },
   'gilmous01w': {
@@ -1292,9 +1334,17 @@ const LEGACY_PLAYERS_BULK = {
     position: 'C-F',
     retired: true,
     seasons: {
-      1999: { team: 'SAC', age: 29, G: 29, MP: 979, MP_pct: 0.765, PER: 31.9, TS_pct: 0.576, ThrPAr: 0.003, FTr: 0.635, ORB_pct: 17.1, TRB_pct: 20.6, AST_pct: 10, STL_pct: 4, BLK_pct: 4.7, TOV_pct: 12.2, USG_pct: 24.4, OWS: 5.3, DWS: 2.8, WS: 8.1, WS40: 0.33 },
-      2000: { team: 'SAC', age: 30, G: 32, MP: 1026, MP_pct: 0.802, PER: 30.3, TS_pct: 0.586, ThrPAr: 0, FTr: 0.537, ORB_pct: 18.1, TRB_pct: 20.8, AST_pct: 9.2, STL_pct: 4.6, BLK_pct: 5.1, TOV_pct: 15.5, USG_pct: 24.1, OWS: 4.8, DWS: 3, WS: 7.8, WS40: 0.304 },
-      2001: { team: 'SAC', age: 31, G: 32, MP: 1077, MP_pct: 0.825, PER: 28.4, TS_pct: 0.576, ThrPAr: 0, FTr: 0.505, ORB_pct: 18.9, TRB_pct: 20.6, AST_pct: 10.8, STL_pct: 3.3, BLK_pct: 2.8, TOV_pct: 14.3, USG_pct: 23.2, OWS: 5.7, DWS: 2.7, WS: 8.4, WS40: 0.311 },
+      1999: { team: 'SAC', age: 29, G: 29, MP: 979, MP_pct: 0.765, PER: 31.9, TS_pct: 0.576, ThrPAr: 0.003, FTr: 0.635, ORB_pct: 17.1, TRB_pct: 20.6, AST_pct: 10, STL_pct: 4, BLK_pct: 4.7, TOV_pct: 12.2, USG_pct: 24.4, OWS: 5.3, DWS: 2.8, WS: 8.1, WS40: 0.33, MIN_pg: 33.8, PTS_pg: 18.8, REB_pg: 11.3, AST_pg: 1.6, STL_pg: 2.5, BLK_pg: 1.9, FG_pct: 0.541, FG3_pct: 0.000, FT_pct: 0.617 },
+      2000: { team: 'SAC', age: 30, G: 32, MP: 1026, MP_pct: 0.802, PER: 30.3, TS_pct: 0.586, ThrPAr: 0, FTr: 0.537, ORB_pct: 18.1, TRB_pct: 20.8, AST_pct: 9.2, STL_pct: 4.6, BLK_pct: 5.1, TOV_pct: 15.5, USG_pct: 24.1, OWS: 4.8, DWS: 3, WS: 7.8, WS40: 0.304, MIN_pg: 32.1, PTS_pg: 16.3, REB_pg: 10.3, AST_pg: 1.5, STL_pg: 2.6, BLK_pg: 1.9, FG_pct: 0.535, FG3_pct: 0.000, FT_pct: 0.706 },
+      2001: { team: 'SAC', age: 31, G: 32, MP: 1077, MP_pct: 0.825, PER: 28.4, TS_pct: 0.576, ThrPAr: 0, FTr: 0.505, ORB_pct: 18.9, TRB_pct: 20.6, AST_pct: 10.8, STL_pct: 3.3, BLK_pct: 2.8, TOV_pct: 14.3, USG_pct: 23.2, OWS: 5.7, DWS: 2.7, WS: 8.4, WS40: 0.311, MIN_pg: 33.7, PTS_pg: 16.2, REB_pg: 11.2, AST_pg: 1.7, STL_pg: 2.0, BLK_pg: 1.2, FG_pct: 0.522, FG3_pct: 0.000, FT_pct: 0.720 },
+      2002: { team: 'SAC', age: 32, G: 17, MIN_pg: 33.9, PTS_pg: 16.9, REB_pg: 8.7, AST_pg: 1.1, STL_pg: 0.9, BLK_pg: 0.8, FG_pct: 0.520, FG3_pct: 0.000, FT_pct: 0.803 },
+      2003: { team: 'SAC', age: 33, G: 34, MIN_pg: 29.9, PTS_pg: 13.8, REB_pg: 7.3, AST_pg: 1.4, STL_pg: 1.7, BLK_pg: 1.1, FG_pct: 0.485, FG3_pct: 0.000, FT_pct: 0.774 },
+      2004: { team: 'SAC', age: 34, G: 34, MIN_pg: 30.3, PTS_pg: 14.5, REB_pg: 7.2, AST_pg: 1.2, STL_pg: 2.2, BLK_pg: 1.2, FG_pct: 0.519, FG3_pct: 0.000, FT_pct: 0.853 },
+      2005: { team: 'SAC', age: 35, G: 34, MIN_pg: 28.3, PTS_pg: 13.8, REB_pg: 6.6, AST_pg: 1.5, STL_pg: 1.2, BLK_pg: 0.9, FG_pct: 0.485, FG3_pct: 0.000, FT_pct: 0.707 },
+      2006: { team: 'SAC', age: 36, G: 34, MIN_pg: 25.1, PTS_pg: 12.0, REB_pg: 6.4, AST_pg: 1.6, STL_pg: 1.3, BLK_pg: 0.5, FG_pct: 0.457, FG3_pct: 0.000, FT_pct: 0.751 },
+      2007: { team: 'SAC', age: 37, G: 32, MIN_pg: 23.1, PTS_pg: 9.0,  REB_pg: 4.6, AST_pg: 1.5, STL_pg: 1.0, BLK_pg: 0.4, FG_pct: 0.502, FG3_pct: 0.000, FT_pct: 0.658 },
+      2008: { team: 'SEA', age: 38, G: 30, MIN_pg: 21.9, PTS_pg: 7.2,  REB_pg: 6.3, AST_pg: 1.5, STL_pg: 1.4, BLK_pg: 0.6, FG_pct: 0.462, FG3_pct: 0.000, FT_pct: 0.648 },
+      2009: { team: 'IND', age: 39, G: 3,  MIN_pg: 13.7, PTS_pg: 6.3,  REB_pg: 2.3, AST_pg: 0.0, STL_pg: 0.0, BLK_pg: 0.7, FG_pct: 0.500, FG3_pct: 0.000, FT_pct: 0.778 },
     },
   },
   'groomla01w': {
@@ -1367,9 +1417,21 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1999: { team: 'NYL', age: 22, G: 30, MP: 202, MP_pct: 0.155, PER: 12, TS_pct: 0.56, ThrPAr: 0.594, FTr: 0.266, ORB_pct: 1.3, TRB_pct: 6.4, AST_pct: 17.6, STL_pct: 1.7, BLK_pct: 0, TOV_pct: 25.1, USG_pct: 23.5, OWS: 0.1, DWS: 0.3, WS: 0.3, WS40: 0.069 },
-      2000: { team: 'NYL', age: 23, G: 32, MP: 835, MP_pct: 0.65, PER: 18.4, TS_pct: 0.622, ThrPAr: 0.56, FTr: 0.274, ORB_pct: 3.1, TRB_pct: 5.2, AST_pct: 14.7, STL_pct: 2.1, BLK_pct: 0.1, TOV_pct: 18, USG_pct: 20.9, OWS: 2.7, DWS: 1, WS: 3.7, WS40: 0.179 },
-      2001: { team: 'NYL', age: 24, G: 32, MP: 619, MP_pct: 0.484, PER: 18.8, TS_pct: 0.597, ThrPAr: 0.563, FTr: 0.259, ORB_pct: 2.2, TRB_pct: 5.7, AST_pct: 16.3, STL_pct: 2.6, BLK_pct: 0.2, TOV_pct: 17.9, USG_pct: 22.3, OWS: 1.8, DWS: 0.5, WS: 2.3, WS40: 0.148 },
+      1999: { team: 'NYL', age: 22, G: 30, MP: 202, MP_pct: 0.155, PER: 12, TS_pct: 0.56, ThrPAr: 0.594, FTr: 0.266, ORB_pct: 1.3, TRB_pct: 6.4, AST_pct: 17.6, STL_pct: 1.7, BLK_pct: 0, TOV_pct: 25.1, USG_pct: 23.5, OWS: 0.1, DWS: 0.3, WS: 0.3, WS40: 0.069, MIN_pg: 6.7, PTS_pg: 2.7, REB_pg: 0.6, AST_pg: 0.6, STL_pg: 0.2, BLK_pg: 0.0, FG_pct: 0.422, FG3_pct: 0.289, FT_pct: 0.882 },
+      2000: { team: 'NYL', age: 23, G: 32, MP: 835, MP_pct: 0.65, PER: 18.4, TS_pct: 0.622, ThrPAr: 0.56, FTr: 0.274, ORB_pct: 3.1, TRB_pct: 5.2, AST_pct: 14.7, STL_pct: 2.1, BLK_pct: 0.1, TOV_pct: 18, USG_pct: 20.9, OWS: 2.7, DWS: 1, WS: 3.7, WS40: 0.179, MIN_pg: 26.1, PTS_pg: 12.0, REB_pg: 2.0, AST_pg: 1.8, STL_pg: 0.9, BLK_pg: 0.0, FG_pct: 0.472, FG3_pct: 0.369, FT_pct: 0.884 },
+      2001: { team: 'NYL', age: 24, G: 32, MP: 619, MP_pct: 0.484, PER: 18.8, TS_pct: 0.597, ThrPAr: 0.563, FTr: 0.259, ORB_pct: 2.2, TRB_pct: 5.7, AST_pct: 16.3, STL_pct: 2.6, BLK_pct: 0.2, TOV_pct: 17.9, USG_pct: 22.3, OWS: 1.8, DWS: 0.5, WS: 2.3, WS40: 0.148, MIN_pg: 19.3, PTS_pg: 8.2, REB_pg: 1.6, AST_pg: 1.6, STL_pg: 0.8, BLK_pg: 0.0, FG_pct: 0.457, FG3_pct: 0.378, FT_pct: 0.784 },
+      2002: { team: 'NYL', age: 25, G: 32, MIN_pg: 20.6, PTS_pg: 8.0, REB_pg: 2.1, AST_pg: 1.7, STL_pg: 0.8, BLK_pg: 0.0, FG_pct: 0.442, FG3_pct: 0.386, FT_pct: 0.679 },
+      2003: { team: 'NYL', age: 26, G: 11, MIN_pg: 23.4, PTS_pg: 14.7, REB_pg: 1.9, AST_pg: 1.6, STL_pg: 0.9, BLK_pg: 0.1, FG_pct: 0.575, FG3_pct: 0.469, FT_pct: 0.951 },
+      2004: { team: 'NYL', age: 27, G: 34, MIN_pg: 33.2, PTS_pg: 13.5, REB_pg: 3.5, AST_pg: 4.4, STL_pg: 1.7, BLK_pg: 0.1, FG_pct: 0.432, FG3_pct: 0.335, FT_pct: 0.836 },
+      2005: { team: 'NYL', age: 28, G: 34, MIN_pg: 34.7, PTS_pg: 13.9, REB_pg: 3.4, AST_pg: 4.3, STL_pg: 1.8, BLK_pg: 0.1, FG_pct: 0.432, FG3_pct: 0.365, FT_pct: 0.901 },
+      2006: { team: 'NYL', age: 29, G: 22, MIN_pg: 30.8, PTS_pg: 14.7, REB_pg: 3.0, AST_pg: 3.7, STL_pg: 1.3, BLK_pg: 0.1, FG_pct: 0.425, FG3_pct: 0.343, FT_pct: 0.960 },
+      2007: { team: 'SAN', age: 30, G: 28, MIN_pg: 33.4, PTS_pg: 18.8, REB_pg: 2.8, AST_pg: 5.0, STL_pg: 0.8, BLK_pg: 0.2, FG_pct: 0.445, FG3_pct: 0.404, FT_pct: 0.931 },
+      2008: { team: 'SAN', age: 31, G: 33, MIN_pg: 33.4, PTS_pg: 17.6, REB_pg: 2.8, AST_pg: 4.9, STL_pg: 1.3, BLK_pg: 0.2, FG_pct: 0.390, FG3_pct: 0.350, FT_pct: 0.937 },
+      2009: { team: 'SAN', age: 32, G: 31, MIN_pg: 33.8, PTS_pg: 19.5, REB_pg: 3.3, AST_pg: 5.0, STL_pg: 1.6, BLK_pg: 0.4, FG_pct: 0.447, FG3_pct: 0.369, FT_pct: 0.901 },
+      2010: { team: 'SAN', age: 33, G: 32, MIN_pg: 33.6, PTS_pg: 15.1, REB_pg: 2.9, AST_pg: 5.4, STL_pg: 1.1, BLK_pg: 0.2, FG_pct: 0.442, FG3_pct: 0.390, FT_pct: 0.960 },
+      2011: { team: 'SAN', age: 34, G: 33, MIN_pg: 31.8, PTS_pg: 15.9, REB_pg: 2.9, AST_pg: 5.8, STL_pg: 1.5, BLK_pg: 0.2, FG_pct: 0.440, FG3_pct: 0.389, FT_pct: 0.892 },
+      2012: { team: 'SAN', age: 35, G: 33, MIN_pg: 30.2, PTS_pg: 14.7, REB_pg: 2.5, AST_pg: 5.3, STL_pg: 0.9, BLK_pg: 0.2, FG_pct: 0.441, FG3_pct: 0.435, FT_pct: 0.876 },
+      2014: { team: 'SAN', age: 37, G: 32, MIN_pg: 24.5, PTS_pg: 9.1, REB_pg: 1.4, AST_pg: 4.2, STL_pg: 0.4, BLK_pg: 0.1, FG_pct: 0.417, FG3_pct: 0.398, FT_pct: 1.000 },
     },
   },
   'hamptky01w': {
@@ -1531,9 +1593,17 @@ const LEGACY_PLAYERS_BULK = {
     position: 'F',
     retired: true,
     seasons: {
-      1999: { team: 'WAS', age: 21, G: 31, MP: 1061, MP_pct: 0.819, PER: 21.1, TS_pct: 0.497, ThrPAr: 0.063, FTr: 0.325, ORB_pct: 9.5, TRB_pct: 15, AST_pct: 17.6, STL_pct: 2, BLK_pct: 2.1, TOV_pct: 17, USG_pct: 29.1, OWS: 1.6, DWS: 1.5, WS: 3.1, WS40: 0.117 },
-      2000: { team: 'WAS', age: 22, G: 32, MP: 1131, MP_pct: 0.884, PER: 21.4, TS_pct: 0.505, ThrPAr: 0.078, FTr: 0.257, ORB_pct: 7.1, TRB_pct: 14.6, AST_pct: 15.9, STL_pct: 2.4, BLK_pct: 1.4, TOV_pct: 14.3, USG_pct: 28.5, OWS: 2.1, DWS: 1.4, WS: 3.5, WS40: 0.125 },
-      2001: { team: 'WAS', age: 23, G: 29, MP: 975, MP_pct: 0.75, PER: 21.8, TS_pct: 0.457, ThrPAr: 0.099, FTr: 0.317, ORB_pct: 8.8, TRB_pct: 16.1, AST_pct: 18, STL_pct: 2.7, BLK_pct: 1.2, TOV_pct: 15, USG_pct: 31.7, OWS: 0.7, DWS: 2, WS: 2.7, WS40: 0.112 },
+      1999: { team: 'WAS', age: 21, G: 31, MP: 1061, MP_pct: 0.819, PER: 21.1, TS_pct: 0.497, ThrPAr: 0.063, FTr: 0.325, ORB_pct: 9.5, TRB_pct: 15, AST_pct: 17.6, STL_pct: 2, BLK_pct: 2.1, TOV_pct: 17, USG_pct: 29.1, OWS: 1.6, DWS: 1.5, WS: 3.1, WS40: 0.117, MIN_pg: 34.2, PTS_pg: 16.9, REB_pg: 7.9, AST_pg: 2.4, STL_pg: 1.2, BLK_pg: 0.9, FG_pct: 0.437, FG3_pct: 0.172, FT_pct: 0.773 },
+      2000: { team: 'WAS', age: 22, G: 32, MP: 1131, MP_pct: 0.884, PER: 21.4, TS_pct: 0.505, ThrPAr: 0.078, FTr: 0.257, ORB_pct: 7.1, TRB_pct: 14.6, AST_pct: 15.9, STL_pct: 2.4, BLK_pct: 1.4, TOV_pct: 14.3, USG_pct: 28.5, OWS: 2.1, DWS: 1.4, WS: 3.5, WS40: 0.125, MIN_pg: 35.3, PTS_pg: 17.5, REB_pg: 7.5, AST_pg: 2.5, STL_pg: 1.5, BLK_pg: 0.6, FG_pct: 0.465, FG3_pct: 0.256, FT_pct: 0.680 },
+      2001: { team: 'WAS', age: 23, G: 29, MP: 975, MP_pct: 0.75, PER: 21.8, TS_pct: 0.457, ThrPAr: 0.099, FTr: 0.317, ORB_pct: 8.8, TRB_pct: 16.1, AST_pct: 18, STL_pct: 2.7, BLK_pct: 1.2, TOV_pct: 15, USG_pct: 31.7, OWS: 0.7, DWS: 2, WS: 2.7, WS40: 0.112, MIN_pg: 33.6, PTS_pg: 16.8, REB_pg: 8.8, AST_pg: 2.3, STL_pg: 1.5, BLK_pg: 0.5, FG_pct: 0.400, FG3_pct: 0.239, FT_pct: 0.682 },
+      2002: { team: 'WAS', age: 24, G: 20, MIN_pg: 31.7, PTS_pg: 19.9, REB_pg: 11.6, AST_pg: 2.3, STL_pg: 1.0, BLK_pg: 0.3, FG_pct: 0.452, FG3_pct: 0.393, FT_pct: 0.830 },
+      2003: { team: 'WAS', age: 25, G: 27, MIN_pg: 35.1, PTS_pg: 20.5, REB_pg: 10.9, AST_pg: 3.3, STL_pg: 1.3, BLK_pg: 0.6, FG_pct: 0.425, FG3_pct: 0.171, FT_pct: 0.903 },
+      2004: { team: 'WAS', age: 26, G: 23, MIN_pg: 34.8, PTS_pg: 19.0, REB_pg: 8.3, AST_pg: 2.4, STL_pg: 1.7, BLK_pg: 0.8, FG_pct: 0.402, FG3_pct: 0.412, FT_pct: 0.803 },
+      2005: { team: 'LAS', age: 27, G: 33, MIN_pg: 35.8, PTS_pg: 17.0, REB_pg: 6.8, AST_pg: 3.2, STL_pg: 1.2, BLK_pg: 0.5, FG_pct: 0.480, FG3_pct: 0.231, FT_pct: 0.788 },
+      2006: { team: 'LAS', age: 28, G: 25, MIN_pg: 29.5, PTS_pg: 15.0, REB_pg: 6.1, AST_pg: 2.2, STL_pg: 1.4, BLK_pg: 0.4, FG_pct: 0.470, FG3_pct: 0.200, FT_pct: 0.884 },
+      2007: { team: 'LAS', age: 29, G: 5, MIN_pg: 30.0, PTS_pg: 15.8, REB_pg: 5.6, AST_pg: 3.0, STL_pg: 1.2, BLK_pg: 0.6, FG_pct: 0.492, FG3_pct: 0.667, FT_pct: 0.833 },
+      2009: { team: 'ATL', age: 31, G: 25, MIN_pg: 28.3, PTS_pg: 13.9, REB_pg: 4.4, AST_pg: 2.2, STL_pg: 1.4, BLK_pg: 0.3, FG_pct: 0.414, FG3_pct: 0.200, FT_pct: 0.839 },
+      2010: { team: 'SAN', age: 32, G: 29, MIN_pg: 29.0, PTS_pg: 13.6, REB_pg: 5.3, AST_pg: 2.0, STL_pg: 1.5, BLK_pg: 0.3, FG_pct: 0.494, FG3_pct: 0.355, FT_pct: 0.806 },
     },
   },
   'hollake01w': {
@@ -1617,7 +1687,18 @@ const LEGACY_PLAYERS_BULK = {
     position: 'F-C',
     retired: true,
     seasons: {
-      2001: { team: 'SEA', age: 20, G: 29, MP: 1001, MP_pct: 0.764, PER: 22.5, TS_pct: 0.471, ThrPAr: 0.318, FTr: 0.352, ORB_pct: 7, TRB_pct: 13, AST_pct: 11.7, STL_pct: 3.3, BLK_pct: 5.9, TOV_pct: 10.2, USG_pct: 27.1, OWS: 2, DWS: 2.1, WS: 4.1, WS40: 0.163 },
+      2001: { team: 'SEA', age: 20, G: 29, MP: 1001, MP_pct: 0.764, PER: 22.5, TS_pct: 0.471, ThrPAr: 0.318, FTr: 0.352, ORB_pct: 7, TRB_pct: 13, AST_pct: 11.7, STL_pct: 3.3, BLK_pct: 5.9, TOV_pct: 10.2, USG_pct: 27.1, OWS: 2, DWS: 2.1, WS: 4.1, WS40: 0.163, MIN_pg: 34.5, PTS_pg: 15.2, REB_pg: 6.7, AST_pg: 1.5, STL_pg: 1.9, BLK_pg: 2.2, FG_pct: 0.367, FG3_pct: 0.310, FT_pct: 0.727 },
+      2002: { team: 'SEA', age: 21, G: 28, MIN_pg: 31.5, PTS_pg: 17.2, REB_pg: 6.8, AST_pg: 1.5, STL_pg: 1.1, BLK_pg: 2.9, FG_pct: 0.403, FG3_pct: 0.350, FT_pct: 0.756 },
+      2003: { team: 'SEA', age: 22, G: 33, MIN_pg: 33.6, PTS_pg: 21.2, REB_pg: 9.3, AST_pg: 1.9, STL_pg: 1.2, BLK_pg: 1.9, FG_pct: 0.483, FG3_pct: 0.317, FT_pct: 0.825 },
+      2004: { team: 'SEA', age: 23, G: 31, MIN_pg: 34.5, PTS_pg: 20.5, REB_pg: 6.7, AST_pg: 1.6, STL_pg: 1.0, BLK_pg: 2.0, FG_pct: 0.478, FG3_pct: 0.452, FT_pct: 0.811 },
+      2005: { team: 'SEA', age: 24, G: 34, MIN_pg: 34.6, PTS_pg: 17.6, REB_pg: 9.2, AST_pg: 1.7, STL_pg: 1.1, BLK_pg: 2.0, FG_pct: 0.458, FG3_pct: 0.288, FT_pct: 0.834 },
+      2006: { team: 'SEA', age: 25, G: 30, MIN_pg: 28.3, PTS_pg: 19.5, REB_pg: 7.7, AST_pg: 1.6, STL_pg: 0.8, BLK_pg: 1.7, FG_pct: 0.535, FG3_pct: 0.377, FT_pct: 0.899 },
+      2007: { team: 'SEA', age: 26, G: 31, MIN_pg: 32.9, PTS_pg: 23.8, REB_pg: 9.7, AST_pg: 1.3, STL_pg: 1.0, BLK_pg: 2.0, FG_pct: 0.519, FG3_pct: 0.402, FT_pct: 0.883 },
+      2008: { team: 'SEA', age: 27, G: 21, MIN_pg: 33.0, PTS_pg: 20.2, REB_pg: 7.0, AST_pg: 1.2, STL_pg: 1.5, BLK_pg: 1.6, FG_pct: 0.452, FG3_pct: 0.295, FT_pct: 0.934 },
+      2009: { team: 'SEA', age: 28, G: 26, MIN_pg: 32.4, PTS_pg: 19.2, REB_pg: 7.0, AST_pg: 0.8, STL_pg: 1.5, BLK_pg: 1.7, FG_pct: 0.463, FG3_pct: 0.430, FT_pct: 0.797 },
+      2010: { team: 'SEA', age: 29, G: 32, MIN_pg: 31.0, PTS_pg: 20.5, REB_pg: 8.3, AST_pg: 1.2, STL_pg: 0.9, BLK_pg: 1.2, FG_pct: 0.462, FG3_pct: 0.346, FT_pct: 0.910 },
+      2011: { team: 'SEA', age: 30, G: 13, MIN_pg: 24.8, PTS_pg: 12.2, REB_pg: 4.9, AST_pg: 0.3, STL_pg: 1.0, BLK_pg: 0.8, FG_pct: 0.396, FG3_pct: 0.311, FT_pct: 0.884 },
+      2012: { team: 'SEA', age: 31, G: 9,  MIN_pg: 24.8, PTS_pg: 12.2, REB_pg: 4.9, AST_pg: 0.3, STL_pg: 1.0, BLK_pg: 0.8, FG_pct: 0.425, FG3_pct: 0.311, FT_pct: 0.720 },
     },
   },
   'jacksta01w': {
@@ -1743,11 +1824,19 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G-F',
     retired: true,
     seasons: {
-      1997: { team: 'NYL', age: 25, G: 26, MP: 789, MP_pct: 0.695, PER: 12.4, TS_pct: 0.434, ThrPAr: 0.078, FTr: 0.13, ORB_pct: 7.2, TRB_pct: 8.5, AST_pct: 17.2, STL_pct: 1.3, BLK_pct: 0.4, TOV_pct: 14.7, USG_pct: 19, OWS: 0.8, DWS: 0.9, WS: 1.7, WS40: 0.086 },
-      1998: { team: 'NYL', age: 26, G: 30, MP: 905, MP_pct: 0.748, PER: 18.7, TS_pct: 0.518, ThrPAr: 0.171, FTr: 0.251, ORB_pct: 6.3, TRB_pct: 8.3, AST_pct: 17.6, STL_pct: 1.9, BLK_pct: 0.7, TOV_pct: 11, USG_pct: 21.3, OWS: 3.1, DWS: 1.2, WS: 4.3, WS40: 0.189 },
-      1999: { team: 'NYL', age: 27, G: 32, MP: 1082, MP_pct: 0.829, PER: 17.9, TS_pct: 0.494, ThrPAr: 0.18, FTr: 0.218, ORB_pct: 5.2, TRB_pct: 8.9, AST_pct: 21.3, STL_pct: 2.4, BLK_pct: 0.1, TOV_pct: 13.3, USG_pct: 22.8, OWS: 2.5, DWS: 1.6, WS: 4.2, WS40: 0.154 },
-      2000: { team: 'NYL', age: 28, G: 31, MP: 1023, MP_pct: 0.796, PER: 17.2, TS_pct: 0.532, ThrPAr: 0.219, FTr: 0.235, ORB_pct: 5.4, TRB_pct: 9, AST_pct: 15.8, STL_pct: 1.3, BLK_pct: 0.4, TOV_pct: 13.8, USG_pct: 20.5, OWS: 2.6, DWS: 1.4, WS: 4, WS40: 0.156 },
-      2001: { team: 'NYL', age: 29, G: 32, MP: 939, MP_pct: 0.734, PER: 16.9, TS_pct: 0.495, ThrPAr: 0.252, FTr: 0.215, ORB_pct: 3.4, TRB_pct: 7.7, AST_pct: 18.3, STL_pct: 2.2, BLK_pct: 0.4, TOV_pct: 12.7, USG_pct: 22.4, OWS: 1.9, DWS: 0.8, WS: 2.8, WS40: 0.117 },
+      1997: { team: 'NYL', age: 25, G: 26, MP: 789, MP_pct: 0.695, PER: 12.4, TS_pct: 0.434, ThrPAr: 0.078, FTr: 0.13, ORB_pct: 7.2, TRB_pct: 8.5, AST_pct: 17.2, STL_pct: 1.3, BLK_pct: 0.4, TOV_pct: 14.7, USG_pct: 19, OWS: 0.8, DWS: 0.9, WS: 1.7, WS40: 0.086, MIN_pg: 30.3, PTS_pg: 9.6, REB_pg: 4.2, AST_pg: 2.5, STL_pg: 0.7, BLK_pg: 0.2, FG_pct: 0.404, FG3_pct: 0.190, FT_pct: 0.771 },
+      1998: { team: 'NYL', age: 26, G: 30, MP: 905, MP_pct: 0.748, PER: 18.7, TS_pct: 0.518, ThrPAr: 0.171, FTr: 0.251, ORB_pct: 6.3, TRB_pct: 8.3, AST_pct: 17.6, STL_pct: 1.9, BLK_pct: 0.7, TOV_pct: 11, USG_pct: 21.3, OWS: 3.1, DWS: 1.2, WS: 4.3, WS40: 0.189, MIN_pg: 30.2, PTS_pg: 12.5, REB_pg: 3.8, AST_pg: 2.5, STL_pg: 1.0, BLK_pg: 0.2, FG_pct: 0.446, FG3_pct: 0.375, FT_pct: 0.768 },
+      1999: { team: 'NYL', age: 27, G: 32, MP: 1082, MP_pct: 0.829, PER: 17.9, TS_pct: 0.494, ThrPAr: 0.18, FTr: 0.218, ORB_pct: 5.2, TRB_pct: 8.9, AST_pct: 21.3, STL_pct: 2.4, BLK_pct: 0.1, TOV_pct: 13.3, USG_pct: 22.8, OWS: 2.5, DWS: 1.6, WS: 4.2, WS40: 0.154, MIN_pg: 33.8, PTS_pg: 13.3, REB_pg: 4.4, AST_pg: 3.3, STL_pg: 1.4, BLK_pg: 0.0, FG_pct: 0.419, FG3_pct: 0.352, FT_pct: 0.837 },
+      2000: { team: 'NYL', age: 28, G: 31, MP: 1023, MP_pct: 0.796, PER: 17.2, TS_pct: 0.532, ThrPAr: 0.219, FTr: 0.235, ORB_pct: 5.4, TRB_pct: 9, AST_pct: 15.8, STL_pct: 1.3, BLK_pct: 0.4, TOV_pct: 13.8, USG_pct: 20.5, OWS: 2.6, DWS: 1.4, WS: 4, WS40: 0.156, MIN_pg: 33.0, PTS_pg: 12.3, REB_pg: 4.4, AST_pg: 2.5, STL_pg: 0.7, BLK_pg: 0.2, FG_pct: 0.441, FG3_pct: 0.380, FT_pct: 0.882 },
+      2001: { team: 'NYL', age: 29, G: 32, MP: 939, MP_pct: 0.734, PER: 16.9, TS_pct: 0.495, ThrPAr: 0.252, FTr: 0.215, ORB_pct: 3.4, TRB_pct: 7.7, AST_pct: 18.3, STL_pct: 2.2, BLK_pct: 0.4, TOV_pct: 12.7, USG_pct: 22.4, OWS: 1.9, DWS: 0.8, WS: 2.8, WS40: 0.117, MIN_pg: 29.3, PTS_pg: 11.0, REB_pg: 3.3, AST_pg: 2.7, STL_pg: 1.1, BLK_pg: 0.1, FG_pct: 0.414, FG3_pct: 0.366, FT_pct: 0.757 },
+      2002: { team: 'NYL', age: 30, G: 31, MIN_pg: 33.2, PTS_pg: 11.6, REB_pg: 3.5, AST_pg: 2.8, STL_pg: 0.9, BLK_pg: 0.1, FG_pct: 0.456, FG3_pct: 0.421, FT_pct: 0.803 },
+      2003: { team: 'NYL', age: 31, G: 32, MIN_pg: 32.6, PTS_pg: 13.4, REB_pg: 3.0, AST_pg: 2.3, STL_pg: 0.9, BLK_pg: 0.2, FG_pct: 0.458, FG3_pct: 0.365, FT_pct: 0.859 },
+      2004: { team: 'NYL', age: 32, G: 34, MIN_pg: 32.9, PTS_pg: 9.4, REB_pg: 3.6, AST_pg: 3.6, STL_pg: 0.7, BLK_pg: 0.1, FG_pct: 0.413, FG3_pct: 0.283, FT_pct: 0.886 },
+      2005: { team: 'NYL', age: 33, G: 34, MIN_pg: 30.1, PTS_pg: 10.4, REB_pg: 3.5, AST_pg: 2.7, STL_pg: 0.7, BLK_pg: 0.1, FG_pct: 0.474, FG3_pct: 0.357, FT_pct: 0.774 },
+      2006: { team: 'SAN', age: 34, G: 34, MIN_pg: 29.5, PTS_pg: 9.9, REB_pg: 4.9, AST_pg: 3.6, STL_pg: 0.8, BLK_pg: 0.1, FG_pct: 0.375, FG3_pct: 0.333, FT_pct: 0.844 },
+      2007: { team: 'SAN', age: 35, G: 30, MIN_pg: 28.4, PTS_pg: 8.1, REB_pg: 4.8, AST_pg: 3.5, STL_pg: 1.1, BLK_pg: 0.3, FG_pct: 0.444, FG3_pct: 0.429, FT_pct: 0.821 },
+      2008: { team: 'SAN', age: 36, G: 32, MIN_pg: 27.9, PTS_pg: 6.7, REB_pg: 5.3, AST_pg: 3.6, STL_pg: 0.8, BLK_pg: 0.2, FG_pct: 0.439, FG3_pct: 0.282, FT_pct: 0.778 },
+      2009: { team: 'SAN', age: 37, G: 32, MIN_pg: 23.0, PTS_pg: 6.4, REB_pg: 3.4, AST_pg: 2.4, STL_pg: 0.5, BLK_pg: 0.1, FG_pct: 0.432, FG3_pct: 0.375, FT_pct: 0.852 },
     },
   },
   'jollyke01w': {
@@ -1783,11 +1872,14 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1997: { team: 'CLE', age: 24, G: 28, MP: 589, MP_pct: 0.519, PER: 12.4, TS_pct: 0.451, ThrPAr: 0.052, FTr: 0.245, ORB_pct: 7.2, TRB_pct: 9, AST_pct: 8.8, STL_pct: 2.1, BLK_pct: 0.4, TOV_pct: 17.6, USG_pct: 24.4, OWS: 0.1, DWS: 0.5, WS: 0.6, WS40: 0.038 },
-      1998: { team: 'CLE', age: 25, G: 30, MP: 683, MP_pct: 0.562, PER: 16.1, TS_pct: 0.528, ThrPAr: 0.085, FTr: 0.345, ORB_pct: 6.1, TRB_pct: 9.4, AST_pct: 11.4, STL_pct: 2.5, BLK_pct: 0.4, TOV_pct: 16.1, USG_pct: 22.7, OWS: 1.3, DWS: 0.8, WS: 2.1, WS40: 0.122 },
-      1999: { team: 'CLE', age: 26, G: 32, MP: 853, MP_pct: 0.666, PER: 15.6, TS_pct: 0.483, ThrPAr: 0.055, FTr: 0.24, ORB_pct: 7.3, TRB_pct: 9.2, AST_pct: 13.8, STL_pct: 2.7, BLK_pct: 0.5, TOV_pct: 15.5, USG_pct: 24.2, OWS: 0.6, DWS: 0.9, WS: 1.5, WS40: 0.069 },
-      2000: { team: 'CLE', age: 27, G: 32, MP: 948, MP_pct: 0.729, PER: 15.4, TS_pct: 0.512, ThrPAr: 0.139, FTr: 0.146, ORB_pct: 7.7, TRB_pct: 10.5, AST_pct: 14.4, STL_pct: 1.8, BLK_pct: 0.2, TOV_pct: 14.9, USG_pct: 21.2, OWS: 1.7, DWS: 1.2, WS: 2.9, WS40: 0.121 },
-      2001: { team: 'CLE', age: 28, G: 30, MP: 998, MP_pct: 0.777, PER: 17.8, TS_pct: 0.489, ThrPAr: 0.09, FTr: 0.218, ORB_pct: 6.2, TRB_pct: 11.4, AST_pct: 10.5, STL_pct: 1.8, BLK_pct: 0.4, TOV_pct: 11.4, USG_pct: 24.6, OWS: 2.2, DWS: 2.3, WS: 4.5, WS40: 0.181 },
+      1997: { team: 'CLE', age: 24, G: 28, MP: 589, MP_pct: 0.519, PER: 12.4, TS_pct: 0.451, ThrPAr: 0.052, FTr: 0.245, ORB_pct: 7.2, TRB_pct: 9, AST_pct: 8.8, STL_pct: 2.1, BLK_pct: 0.4, TOV_pct: 17.6, USG_pct: 24.4, OWS: 0.1, DWS: 0.5, WS: 0.6, WS40: 0.038, MIN_pg: 21.0, PTS_pg: 8.2, REB_pg: 2.9, AST_pg: 0.9, STL_pg: 0.8, BLK_pg: 0.1, FG_pct: 0.402, FG3_pct: 0.417, FT_pct: 0.714 },
+      1998: { team: 'CLE', age: 25, G: 30, MP: 683, MP_pct: 0.562, PER: 16.1, TS_pct: 0.528, ThrPAr: 0.085, FTr: 0.345, ORB_pct: 6.1, TRB_pct: 9.4, AST_pct: 11.4, STL_pct: 2.5, BLK_pct: 0.4, TOV_pct: 16.1, USG_pct: 22.7, OWS: 1.3, DWS: 0.8, WS: 2.1, WS40: 0.122, MIN_pg: 22.8, PTS_pg: 9.5, REB_pg: 3.2, AST_pg: 1.3, STL_pg: 1.1, BLK_pg: 0.1, FG_pct: 0.464, FG3_pct: 0.350, FT_pct: 0.753 },
+      1999: { team: 'CLE', age: 26, G: 32, MP: 853, MP_pct: 0.666, PER: 15.6, TS_pct: 0.483, ThrPAr: 0.055, FTr: 0.24, ORB_pct: 7.3, TRB_pct: 9.2, AST_pct: 13.8, STL_pct: 2.7, BLK_pct: 0.5, TOV_pct: 15.5, USG_pct: 24.2, OWS: 0.6, DWS: 0.9, WS: 1.5, WS40: 0.069, MIN_pg: 26.7, PTS_pg: 10.8, REB_pg: 3.8, AST_pg: 1.6, STL_pg: 1.3, BLK_pg: 0.2, FG_pct: 0.434, FG3_pct: 0.278, FT_pct: 0.769 },
+      2000: { team: 'CLE', age: 27, G: 32, MP: 948, MP_pct: 0.729, PER: 15.4, TS_pct: 0.512, ThrPAr: 0.139, FTr: 0.146, ORB_pct: 7.7, TRB_pct: 10.5, AST_pct: 14.4, STL_pct: 1.8, BLK_pct: 0.2, TOV_pct: 14.9, USG_pct: 21.2, OWS: 1.7, DWS: 1.2, WS: 2.9, WS40: 0.121, MIN_pg: 29.6, PTS_pg: 11.0, REB_pg: 4.3, AST_pg: 2.0, STL_pg: 0.9, BLK_pg: 0.1, FG_pct: 0.474, FG3_pct: 0.311, FT_pct: 0.681 },
+      2001: { team: 'CLE', age: 28, G: 30, MP: 998, MP_pct: 0.777, PER: 17.8, TS_pct: 0.489, ThrPAr: 0.09, FTr: 0.218, ORB_pct: 6.2, TRB_pct: 11.4, AST_pct: 10.5, STL_pct: 1.8, BLK_pct: 0.4, TOV_pct: 11.4, USG_pct: 24.6, OWS: 2.2, DWS: 2.3, WS: 4.5, WS40: 0.181, MIN_pg: 33.3, PTS_pg: 13.5, REB_pg: 5.5, AST_pg: 1.5, STL_pg: 1.0, BLK_pg: 0.1, FG_pct: 0.438, FG3_pct: 0.265, FT_pct: 0.793 },
+      2002: { team: 'CLE', age: 29, G: 32, MIN_pg: 34.2, PTS_pg: 12.2, REB_pg: 5.5, AST_pg: 2.3, STL_pg: 1.4, BLK_pg: 0.1, FG_pct: 0.399, FG3_pct: 0.278, FT_pct: 0.785 },
+      2003: { team: 'CLE', age: 30, G: 34, MIN_pg: 19.8, PTS_pg: 4.8, REB_pg: 2.9, AST_pg: 1.3, STL_pg: 0.6, BLK_pg: 0.1, FG_pct: 0.337, FG3_pct: 0.308, FT_pct: 0.718 },
+      2004: { team: 'DET', age: 31, G: 33, MIN_pg: 15.7, PTS_pg: 5.5, REB_pg: 2.1, AST_pg: 0.6, STL_pg: 0.6, BLK_pg: 0.1, FG_pct: 0.371, FG3_pct: 0.267, FT_pct: 0.750 },
     },
   },
   'jordapa01w': {
@@ -1938,11 +2030,18 @@ const LEGACY_PLAYERS_BULK = {
     position: 'C',
     retired: true,
     seasons: {
-      1997: { team: 'LAS', age: 24, G: 28, MP: 902, MP_pct: 0.788, PER: 21.6, TS_pct: 0.49, ThrPAr: 0.124, FTr: 0.509, ORB_pct: 9, TRB_pct: 17.8, AST_pct: 15.9, STL_pct: 2.2, BLK_pct: 5.1, TOV_pct: 19.4, USG_pct: 27.7, OWS: 1.4, DWS: 2.2, WS: 3.5, WS40: 0.157 },
-      1998: { team: 'LAS', age: 25, G: 28, MP: 898, MP_pct: 0.745, PER: 28.5, TS_pct: 0.548, ThrPAr: 0.054, FTr: 0.418, ORB_pct: 10.3, TRB_pct: 18.9, AST_pct: 17.9, STL_pct: 2.5, BLK_pct: 5.3, TOV_pct: 16.9, USG_pct: 30, OWS: 3.6, DWS: 2.1, WS: 5.7, WS40: 0.255 },
-      1999: { team: 'LAS', age: 26, G: 32, MP: 930, MP_pct: 0.718, PER: 22.9, TS_pct: 0.546, ThrPAr: 0.134, FTr: 0.401, ORB_pct: 9.7, TRB_pct: 16.5, AST_pct: 12.2, STL_pct: 2.1, BLK_pct: 4.4, TOV_pct: 17, USG_pct: 27.2, OWS: 2.6, DWS: 1.9, WS: 4.4, WS40: 0.19 },
-      2000: { team: 'LAS', age: 27, G: 32, MP: 1028, MP_pct: 0.797, PER: 24.2, TS_pct: 0.548, ThrPAr: 0.074, FTr: 0.477, ORB_pct: 9.5, TRB_pct: 18.6, AST_pct: 12.3, STL_pct: 1.7, BLK_pct: 6, TOV_pct: 16.5, USG_pct: 28.7, OWS: 3, DWS: 3.2, WS: 6.1, WS40: 0.238 },
-      2001: { team: 'LAS', age: 28, G: 31, MP: 1033, MP_pct: 0.798, PER: 27.7, TS_pct: 0.549, ThrPAr: 0.128, FTr: 0.413, ORB_pct: 11.3, TRB_pct: 18.4, AST_pct: 14.3, STL_pct: 1.9, BLK_pct: 6.4, TOV_pct: 15.1, USG_pct: 29.8, OWS: 4.8, DWS: 2.2, WS: 7, WS40: 0.272 },
+      1997: { team: 'LAS', age: 24, G: 28, MP: 902, MP_pct: 0.788, PER: 21.6, TS_pct: 0.49, ThrPAr: 0.124, FTr: 0.509, ORB_pct: 9, TRB_pct: 17.8, AST_pct: 15.9, STL_pct: 2.2, BLK_pct: 5.1, TOV_pct: 19.4, USG_pct: 27.7, OWS: 1.4, DWS: 2.2, WS: 3.5, WS40: 0.157, MIN_pg: 32.2, PTS_pg: 15.9, REB_pg: 9.5, AST_pg: 2.6, STL_pg: 1.4, BLK_pg: 2.1, FG_pct: 0.431, FG3_pct: 0.261, FT_pct: 0.598 },
+      1998: { team: 'LAS', age: 25, G: 28, MP: 898, MP_pct: 0.745, PER: 28.5, TS_pct: 0.548, ThrPAr: 0.054, FTr: 0.418, ORB_pct: 10.3, TRB_pct: 18.9, AST_pct: 17.9, STL_pct: 2.5, BLK_pct: 5.3, TOV_pct: 16.9, USG_pct: 30, OWS: 3.6, DWS: 2.1, WS: 5.7, WS40: 0.255, MIN_pg: 32.1, PTS_pg: 19.6, REB_pg: 10.2, AST_pg: 2.5, STL_pg: 1.5, BLK_pg: 2.1, FG_pct: 0.478, FG3_pct: 0.391, FT_pct: 0.768 },
+      1999: { team: 'LAS', age: 26, G: 32, MP: 930, MP_pct: 0.718, PER: 22.9, TS_pct: 0.546, ThrPAr: 0.134, FTr: 0.401, ORB_pct: 9.7, TRB_pct: 16.5, AST_pct: 12.2, STL_pct: 2.1, BLK_pct: 4.4, TOV_pct: 17, USG_pct: 27.2, OWS: 2.6, DWS: 1.9, WS: 4.4, WS40: 0.19, MIN_pg: 29.1, PTS_pg: 15.6, REB_pg: 7.8, AST_pg: 1.8, STL_pg: 1.1, BLK_pg: 1.5, FG_pct: 0.468, FG3_pct: 0.423, FT_pct: 0.731 },
+      2000: { team: 'LAS', age: 27, G: 32, MP: 1028, MP_pct: 0.797, PER: 24.2, TS_pct: 0.548, ThrPAr: 0.074, FTr: 0.477, ORB_pct: 9.5, TRB_pct: 18.6, AST_pct: 12.3, STL_pct: 1.7, BLK_pct: 6, TOV_pct: 16.5, USG_pct: 28.7, OWS: 3, DWS: 3.2, WS: 6.1, WS40: 0.238, MIN_pg: 32.1, PTS_pg: 17.8, REB_pg: 9.6, AST_pg: 1.9, STL_pg: 1.0, BLK_pg: 2.3, FG_pct: 0.458, FG3_pct: 0.219, FT_pct: 0.824 },
+      2001: { team: 'LAS', age: 28, G: 31, MP: 1033, MP_pct: 0.798, PER: 27.7, TS_pct: 0.549, ThrPAr: 0.128, FTr: 0.413, ORB_pct: 11.3, TRB_pct: 18.4, AST_pct: 14.3, STL_pct: 1.9, BLK_pct: 6.4, TOV_pct: 15.1, USG_pct: 29.8, OWS: 4.8, DWS: 2.2, WS: 7, WS40: 0.272, MIN_pg: 33.3, PTS_pg: 19.5, REB_pg: 9.6, AST_pg: 2.4, STL_pg: 1.1, BLK_pg: 2.3, FG_pct: 0.473, FG3_pct: 0.367, FT_pct: 0.736 },
+      2002: { team: 'LAS', age: 29, G: 31, MIN_pg: 34.2, PTS_pg: 16.9, REB_pg: 10.4, AST_pg: 2.7, STL_pg: 1.5, BLK_pg: 2.9, FG_pct: 0.466, FG3_pct: 0.324, FT_pct: 0.727 },
+      2003: { team: 'LAS', age: 30, G: 23, MIN_pg: 34.4, PTS_pg: 18.4, REB_pg: 10.0, AST_pg: 2.0, STL_pg: 1.3, BLK_pg: 2.7, FG_pct: 0.442, FG3_pct: 0.324, FT_pct: 0.617 },
+      2004: { team: 'LAS', age: 31, G: 34, MIN_pg: 33.8, PTS_pg: 17.6, REB_pg: 9.9,  AST_pg: 2.6, STL_pg: 1.5, BLK_pg: 2.9, FG_pct: 0.494, FG3_pct: 0.273, FT_pct: 0.712 },
+      2005: { team: 'LAS', age: 32, G: 34, MIN_pg: 32.2, PTS_pg: 15.2, REB_pg: 7.3,  AST_pg: 2.6, STL_pg: 2.0, BLK_pg: 2.1, FG_pct: 0.440, FG3_pct: 0.206, FT_pct: 0.586 },
+      2006: { team: 'LAS', age: 33, G: 34, MIN_pg: 30.7, PTS_pg: 20.0, REB_pg: 9.5,  AST_pg: 3.2, STL_pg: 1.5, BLK_pg: 1.7, FG_pct: 0.511, FG3_pct: 0.400, FT_pct: 0.650 },
+      2008: { team: 'LAS', age: 35, G: 33, MIN_pg: 32.1, PTS_pg: 15.1, REB_pg: 8.9,  AST_pg: 2.4, STL_pg: 1.5, BLK_pg: 2.9, FG_pct: 0.463, FG3_pct: 0.235, FT_pct: 0.661 },
+      2009: { team: 'LAS', age: 36, G: 23, MIN_pg: 27.7, PTS_pg: 15.4, REB_pg: 6.6,  AST_pg: 2.1, STL_pg: 0.7, BLK_pg: 1.4, FG_pct: 0.518, FG3_pct: 0.167, FT_pct: 0.722 },
     },
   },
   'levanni01w': {
@@ -2037,11 +2136,18 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1997: { team: 'LAS', age: 20, G: 21, MP: 325, MP_pct: 0.284, PER: 14.2, TS_pct: 0.43, ThrPAr: 0.279, FTr: 0.176, ORB_pct: 8.7, TRB_pct: 10.1, AST_pct: 12.8, STL_pct: 3.7, BLK_pct: 1.4, TOV_pct: 15.6, USG_pct: 23.7, OWS: 0.1, DWS: 0.5, WS: 0.6, WS40: 0.078 },
-      1998: { team: 'LAS', age: 21, G: 29, MP: 710, MP_pct: 0.589, PER: 12.7, TS_pct: 0.429, ThrPAr: 0.416, FTr: 0.167, ORB_pct: 4.9, TRB_pct: 10.7, AST_pct: 11.5, STL_pct: 2.2, BLK_pct: 1, TOV_pct: 11.8, USG_pct: 19.7, OWS: 0.6, DWS: 0.8, WS: 1.4, WS40: 0.079 },
-      1999: { team: 'LAS', age: 22, G: 32, MP: 938, MP_pct: 0.724, PER: 16.7, TS_pct: 0.469, ThrPAr: 0.435, FTr: 0.232, ORB_pct: 5.6, TRB_pct: 10.1, AST_pct: 21.6, STL_pct: 2.5, BLK_pct: 1.3, TOV_pct: 13.5, USG_pct: 20.9, OWS: 1.8, DWS: 1.3, WS: 3.1, WS40: 0.131 },
-      2000: { team: 'LAS', age: 23, G: 32, MP: 940, MP_pct: 0.729, PER: 20.4, TS_pct: 0.527, ThrPAr: 0.475, FTr: 0.266, ORB_pct: 6.3, TRB_pct: 11.9, AST_pct: 19.7, STL_pct: 3.4, BLK_pct: 1.6, TOV_pct: 12, USG_pct: 21.4, OWS: 3, DWS: 2.5, WS: 5.5, WS40: 0.233 },
-      2001: { team: 'LAS', age: 24, G: 28, MP: 828, MP_pct: 0.639, PER: 19.3, TS_pct: 0.538, ThrPAr: 0.48, FTr: 0.309, ORB_pct: 3.5, TRB_pct: 10, AST_pct: 17.9, STL_pct: 2.7, BLK_pct: 1.2, TOV_pct: 13.1, USG_pct: 19.2, OWS: 3.2, DWS: 1.1, WS: 4.3, WS40: 0.209 },
+      1997: { team: 'LAS', age: 20, G: 21, MP: 325, MP_pct: 0.284, PER: 14.2, TS_pct: 0.43, ThrPAr: 0.279, FTr: 0.176, ORB_pct: 8.7, TRB_pct: 10.1, AST_pct: 12.8, STL_pct: 3.7, BLK_pct: 1.4, TOV_pct: 15.6, USG_pct: 23.7, OWS: 0.1, DWS: 0.5, WS: 0.6, WS40: 0.078, MIN_pg: 15.5, PTS_pg: 6.0, REB_pg: 2.6, AST_pg: 1.0, STL_pg: 1.1, BLK_pg: 0.3, FG_pct: 0.390, FG3_pct: 0.184, FT_pct: 0.542 },
+      1998: { team: 'LAS', age: 21, G: 29, MP: 710, MP_pct: 0.589, PER: 12.7, TS_pct: 0.429, ThrPAr: 0.416, FTr: 0.167, ORB_pct: 4.9, TRB_pct: 10.7, AST_pct: 11.5, STL_pct: 2.2, BLK_pct: 1, TOV_pct: 11.8, USG_pct: 19.7, OWS: 0.6, DWS: 0.8, WS: 1.4, WS40: 0.079, MIN_pg: 24.5, PTS_pg: 8.2, REB_pg: 4.4, AST_pg: 1.5, STL_pg: 1.0, BLK_pg: 0.3, FG_pct: 0.339, FG3_pct: 0.308, FT_pct: 0.698 },
+      1999: { team: 'LAS', age: 22, G: 32, MP: 938, MP_pct: 0.724, PER: 16.7, TS_pct: 0.469, ThrPAr: 0.435, FTr: 0.232, ORB_pct: 5.6, TRB_pct: 10.1, AST_pct: 21.6, STL_pct: 2.5, BLK_pct: 1.3, TOV_pct: 13.5, USG_pct: 20.9, OWS: 1.8, DWS: 1.3, WS: 3.1, WS40: 0.131, MIN_pg: 29.3, PTS_pg: 10.8, REB_pg: 4.8, AST_pg: 3.5, STL_pg: 1.4, BLK_pg: 0.5, FG_pct: 0.372, FG3_pct: 0.281, FT_pct: 0.718 },
+      2000: { team: 'LAS', age: 23, G: 32, MP: 940, MP_pct: 0.729, PER: 20.4, TS_pct: 0.527, ThrPAr: 0.475, FTr: 0.266, ORB_pct: 6.3, TRB_pct: 11.9, AST_pct: 19.7, STL_pct: 3.4, BLK_pct: 1.6, TOV_pct: 12, USG_pct: 21.4, OWS: 3, DWS: 2.5, WS: 5.5, WS40: 0.233, MIN_pg: 29.4, PTS_pg: 12.3, REB_pg: 5.6, AST_pg: 3.1, STL_pg: 1.8, BLK_pg: 0.6, FG_pct: 0.388, FG3_pct: 0.384, FT_pct: 0.820 },
+      2001: { team: 'LAS', age: 24, G: 28, MP: 828, MP_pct: 0.639, PER: 19.3, TS_pct: 0.538, ThrPAr: 0.48, FTr: 0.309, ORB_pct: 3.5, TRB_pct: 10, AST_pct: 17.9, STL_pct: 2.7, BLK_pct: 1.2, TOV_pct: 13.1, USG_pct: 19.2, OWS: 3.2, DWS: 1.1, WS: 4.3, WS40: 0.209, MIN_pg: 29.6, PTS_pg: 11.2, REB_pg: 4.6, AST_pg: 3.1, STL_pg: 1.4, BLK_pg: 0.4, FG_pct: 0.387, FG3_pct: 0.382, FT_pct: 0.861 },
+      2002: { team: 'LAS', age: 25, G: 32, MIN_pg: 32.8, PTS_pg: 16.8, REB_pg: 5.2, AST_pg: 2.9, STL_pg: 1.2, BLK_pg: 0.3, FG_pct: 0.423, FG3_pct: 0.366, FT_pct: 0.839 },
+      2003: { team: 'LAS', age: 26, G: 32, MIN_pg: 32.6, PTS_pg: 13.8, REB_pg: 4.4, AST_pg: 2.6, STL_pg: 0.9, BLK_pg: 0.6, FG_pct: 0.407, FG3_pct: 0.264, FT_pct: 0.866 },
+      2004: { team: 'LAS', age: 27, G: 31, MIN_pg: 31.1, PTS_pg: 14.4, REB_pg: 3.9, AST_pg: 2.4, STL_pg: 1.2, BLK_pg: 0.1, FG_pct: 0.415, FG3_pct: 0.404, FT_pct: 0.824 },
+      2005: { team: 'LAS', age: 28, G: 17, MIN_pg: 21.6, PTS_pg: 5.8, REB_pg: 1.6, AST_pg: 1.7, STL_pg: 0.9, BLK_pg: 0.0, FG_pct: 0.320, FG3_pct: 0.224, FT_pct: 0.500 },
+      2006: { team: 'LAS', age: 29, G: 32, MIN_pg: 21.2, PTS_pg: 8.5, REB_pg: 2.0, AST_pg: 1.5, STL_pg: 0.6, BLK_pg: 0.2, FG_pct: 0.377, FG3_pct: 0.333, FT_pct: 0.889 },
+      2007: { team: 'LAS', age: 30, G: 33, MIN_pg: 23.1, PTS_pg: 8.1, REB_pg: 3.8, AST_pg: 2.2, STL_pg: 0.9, BLK_pg: 0.1, FG_pct: 0.364, FG3_pct: 0.310, FT_pct: 0.754 },
+      2008: { team: 'HOU', age: 31, G: 20, MIN_pg: 16.4, PTS_pg: 4.6, REB_pg: 1.9, AST_pg: 0.9, STL_pg: 0.5, BLK_pg: 0.0, FG_pct: 0.303, FG3_pct: 0.274, FT_pct: 0.714 },
     },
   },
   'machacl01w': {
@@ -2165,9 +2271,9 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1998: { team: 'CLE', age: 31, G: 28, MP: 882, MP_pct: 0.726, PER: 15.2, TS_pct: 0.58, ThrPAr: 0.403, FTr: 0.398, ORB_pct: 1.3, TRB_pct: 4.7, AST_pct: 35.3, STL_pct: 3, BLK_pct: 0.5, TOV_pct: 33.5, USG_pct: 17, OWS: 1.1, DWS: 0.9, WS: 2.1, WS40: 0.093 },
-      1999: { team: 'CLE', age: 32, G: 18, MP: 511, MP_pct: 0.399, PER: 8.6, TS_pct: 0.508, ThrPAr: 0.612, FTr: 0.194, ORB_pct: 1, TRB_pct: 5.4, AST_pct: 28.2, STL_pct: 1.1, BLK_pct: 0.3, TOV_pct: 33.7, USG_pct: 15.2, OWS: -0.4, DWS: 0.2, WS: -0.2, WS40: -0.013 },
-      2000: { team: 'CLE', age: 33, G: 32, MP: 705, MP_pct: 0.542, PER: 12.2, TS_pct: 0.573, ThrPAr: 0.693, FTr: 0.179, ORB_pct: 1.8, TRB_pct: 5.1, AST_pct: 31.3, STL_pct: 1.3, BLK_pct: 0.1, TOV_pct: 31.4, USG_pct: 15.5, OWS: 0.8, DWS: 0.6, WS: 1.3, WS40: 0.076 },
+      1998: { team: 'CLE', age: 31, G: 28, MP: 882, MP_pct: 0.726, PER: 15.2, TS_pct: 0.58, ThrPAr: 0.403, FTr: 0.398, ORB_pct: 1.3, TRB_pct: 4.7, AST_pct: 35.3, STL_pct: 3, BLK_pct: 0.5, TOV_pct: 33.5, USG_pct: 17, OWS: 1.1, DWS: 0.9, WS: 2.1, WS40: 0.093, MIN_pg: 31.5, PTS_pg: 8.6, REB_pg: 2.2, AST_pg: 6.4, STL_pg: 1.8, BLK_pg: 0.2, FG_pct: 0.455, FG3_pct: 0.408, FT_pct: 0.729 },
+      1999: { team: 'CLE', age: 32, G: 18, MP: 511, MP_pct: 0.399, PER: 8.6, TS_pct: 0.508, ThrPAr: 0.612, FTr: 0.194, ORB_pct: 1, TRB_pct: 5.4, AST_pct: 28.2, STL_pct: 1.1, BLK_pct: 0.3, TOV_pct: 33.7, USG_pct: 15.2, OWS: -0.4, DWS: 0.2, WS: -0.2, WS40: -0.013, MIN_pg: 28.4, PTS_pg: 6.0, REB_pg: 2.4, AST_pg: 4.2, STL_pg: 0.6, BLK_pg: 0.1, FG_pct: 0.367, FG3_pct: 0.333, FT_pct: 0.842 },
+      2000: { team: 'CLE', age: 33, G: 32, MP: 705, MP_pct: 0.542, PER: 12.2, TS_pct: 0.573, ThrPAr: 0.693, FTr: 0.179, ORB_pct: 1.8, TRB_pct: 5.1, AST_pct: 31.3, STL_pct: 1.3, BLK_pct: 0.1, TOV_pct: 31.4, USG_pct: 15.5, OWS: 0.8, DWS: 0.6, WS: 1.3, WS40: 0.076, MIN_pg: 22.0, PTS_pg: 5.4, REB_pg: 1.6, AST_pg: 3.7, STL_pg: 0.5, BLK_pg: 0.0, FG_pct: 0.414, FG3_pct: 0.392, FT_pct: 0.760 },
     },
   },
   'mccrani01w': {
@@ -2176,10 +2282,15 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1998: { team: 'WAS', age: 26, G: 29, MP: 969, MP_pct: 0.804, PER: 16.3, TS_pct: 0.492, ThrPAr: 0.16, FTr: 0.313, ORB_pct: 4.1, TRB_pct: 5.4, AST_pct: 23.2, STL_pct: 2.3, BLK_pct: 0.2, TOV_pct: 19.4, USG_pct: 29.5, OWS: 0.8, DWS: -0.7, WS: 0.1, WS40: 0.004 },
-      1999: { team: 'WAS', age: 27, G: 32, MP: 1043, MP_pct: 0.805, PER: 18.7, TS_pct: 0.534, ThrPAr: 0.336, FTr: 0.352, ORB_pct: 4.6, TRB_pct: 5.3, AST_pct: 18.6, STL_pct: 1.9, BLK_pct: 0.1, TOV_pct: 16.9, USG_pct: 29.4, OWS: 2.6, DWS: 0.3, WS: 2.9, WS40: 0.111 },
-      2000: { team: 'WAS', age: 28, G: 32, MP: 1046, MP_pct: 0.817, PER: 18.1, TS_pct: 0.553, ThrPAr: 0.392, FTr: 0.382, ORB_pct: 3, TRB_pct: 3.7, AST_pct: 16.6, STL_pct: 2.5, BLK_pct: 0.4, TOV_pct: 16.5, USG_pct: 25.6, OWS: 2.8, DWS: 0.3, WS: 3.1, WS40: 0.117 },
-      2001: { team: 'WAS', age: 29, G: 32, MP: 828, MP_pct: 0.637, PER: 14.2, TS_pct: 0.507, ThrPAr: 0.328, FTr: 0.441, ORB_pct: 3.2, TRB_pct: 4.1, AST_pct: 13.4, STL_pct: 1.9, BLK_pct: 0, TOV_pct: 17.4, USG_pct: 25, OWS: 1, DWS: 0.3, WS: 1.4, WS40: 0.067 },
+      1998: { team: 'WAS', age: 26, G: 29, MP: 969, MP_pct: 0.804, PER: 16.3, TS_pct: 0.492, ThrPAr: 0.16, FTr: 0.313, ORB_pct: 4.1, TRB_pct: 5.4, AST_pct: 23.2, STL_pct: 2.3, BLK_pct: 0.2, TOV_pct: 19.4, USG_pct: 29.5, OWS: 0.8, DWS: -0.7, WS: 0.1, WS40: 0.004, MIN_pg: 33.4, PTS_pg: 17.7, REB_pg: 2.9, AST_pg: 3.1, STL_pg: 1.5, BLK_pg: 0.1, FG_pct: 0.419, FG3_pct: 0.319, FT_pct: 0.748 },
+      1999: { team: 'WAS', age: 27, G: 32, MP: 1043, MP_pct: 0.805, PER: 18.7, TS_pct: 0.534, ThrPAr: 0.336, FTr: 0.352, ORB_pct: 4.6, TRB_pct: 5.3, AST_pct: 18.6, STL_pct: 1.9, BLK_pct: 0.1, TOV_pct: 16.9, USG_pct: 29.4, OWS: 2.6, DWS: 0.3, WS: 2.9, WS40: 0.111, MIN_pg: 32.6, PTS_pg: 17.5, REB_pg: 2.7, AST_pg: 2.4, STL_pg: 1.1, BLK_pg: 0.0, FG_pct: 0.424, FG3_pct: 0.301, FT_pct: 0.806 },
+      2000: { team: 'WAS', age: 28, G: 32, MP: 1046, MP_pct: 0.817, PER: 18.1, TS_pct: 0.553, ThrPAr: 0.392, FTr: 0.382, ORB_pct: 3, TRB_pct: 3.7, AST_pct: 16.6, STL_pct: 2.5, BLK_pct: 0.4, TOV_pct: 16.5, USG_pct: 25.6, OWS: 2.8, DWS: 0.3, WS: 3.1, WS40: 0.117, MIN_pg: 32.7, PTS_pg: 15.5, REB_pg: 1.8, AST_pg: 2.7, STL_pg: 1.4, BLK_pg: 0.2, FG_pct: 0.434, FG3_pct: 0.331, FT_pct: 0.769 },
+      2001: { team: 'WAS', age: 29, G: 32, MP: 828, MP_pct: 0.637, PER: 14.2, TS_pct: 0.507, ThrPAr: 0.328, FTr: 0.441, ORB_pct: 3.2, TRB_pct: 4.1, AST_pct: 13.4, STL_pct: 1.9, BLK_pct: 0, TOV_pct: 17.4, USG_pct: 25, OWS: 1, DWS: 0.3, WS: 1.4, WS40: 0.067, MIN_pg: 25.9, PTS_pg: 11.0, REB_pg: 1.8, AST_pg: 1.5, STL_pg: 0.8, BLK_pg: 0.0, FG_pct: 0.410, FG3_pct: 0.232, FT_pct: 0.711 },
+      2002: { team: 'IND', age: 30, G: 32, MIN_pg: 33.1, PTS_pg: 11.5, REB_pg: 3.0, AST_pg: 2.2, STL_pg: 0.9, BLK_pg: 0.1, FG_pct: 0.415, FG3_pct: 0.318, FT_pct: 0.816 },
+      2003: { team: 'IND', age: 31, G: 34, MIN_pg: 21.6, PTS_pg: 3.9, REB_pg: 1.5, AST_pg: 1.4, STL_pg: 1.1, BLK_pg: 0.1, FG_pct: 0.377, FG3_pct: 0.219, FT_pct: 0.833 },
+      2004: { team: 'PHO', age: 32, G: 27, MIN_pg: 13.7, PTS_pg: 2.6, REB_pg: 1.1, AST_pg: 0.5, STL_pg: 0.3, BLK_pg: 0.0, FG_pct: 0.448, FG3_pct: 0.455, FT_pct: 0.571 },
+      2005: { team: 'SAN', age: 33, G: 23, MIN_pg: 13.1, PTS_pg: 1.7, REB_pg: 0.9, AST_pg: 0.7, STL_pg: 0.5, BLK_pg: 0.0, FG_pct: 0.242, FG3_pct: 0.050, FT_pct: 0.636 },
+      2006: { team: 'CHI', age: 34, G: 11, MIN_pg: 7.5, PTS_pg: 2.0, REB_pg: 0.5, AST_pg: 0.5, STL_pg: 0.6, BLK_pg: 0.1, FG_pct: 0.364, FG3_pct: 0.200, FT_pct: 0.714 },
     },
   },
   'mccrini01w': {
@@ -2370,11 +2481,11 @@ const LEGACY_PLAYERS_BULK = {
     position: 'F',
     retired: true,
     seasons: {
-      1997: { team: 'CLE', age: 24, G: 28, MP: 944, MP_pct: 0.832, PER: 18.6, TS_pct: 0.584, ThrPAr: 0.291, FTr: 0.284, ORB_pct: 3.3, TRB_pct: 7.5, AST_pct: 14.4, STL_pct: 2.3, BLK_pct: 0.7, TOV_pct: 19.2, USG_pct: 20.1, OWS: 2.9, DWS: 0.9, WS: 3.8, WS40: 0.161 },
-      1998: { team: 'CLE', age: 25, G: 30, MP: 972, MP_pct: 0.8, PER: 16.1, TS_pct: 0.57, ThrPAr: 0.22, FTr: 0.266, ORB_pct: 4.3, TRB_pct: 7.7, AST_pct: 13.1, STL_pct: 1.8, BLK_pct: 1.8, TOV_pct: 16.9, USG_pct: 18.8, OWS: 2.4, DWS: 1, WS: 3.4, WS40: 0.138 },
-      1999: { team: 'CLE', age: 26, G: 31, MP: 925, MP_pct: 0.723, PER: 14.7, TS_pct: 0.531, ThrPAr: 0.314, FTr: 0.213, ORB_pct: 3.9, TRB_pct: 8, AST_pct: 11.6, STL_pct: 1.9, BLK_pct: 2, TOV_pct: 20, USG_pct: 21.2, OWS: 0.6, DWS: 0.9, WS: 1.5, WS40: 0.066 },
-      2000: { team: 'CLE', age: 27, G: 14, MP: 443, MP_pct: 0.341, PER: 16.2, TS_pct: 0.53, ThrPAr: 0.433, FTr: 0.146, ORB_pct: 2.8, TRB_pct: 6.7, AST_pct: 11, STL_pct: 2, BLK_pct: 1.7, TOV_pct: 13.4, USG_pct: 22.6, OWS: 0.9, DWS: 0.6, WS: 1.5, WS40: 0.136 },
-      2001: { team: 'CLE', age: 28, G: 8, MP: 113, MP_pct: 0.088, PER: 10.7, TS_pct: 0.409, ThrPAr: 0.395, FTr: 0.211, ORB_pct: 1.3, TRB_pct: 6.1, AST_pct: 14.8, STL_pct: 1.1, BLK_pct: 4.3, TOV_pct: 12.6, USG_pct: 22.2, OWS: 0, DWS: 0.2, WS: 0.2, WS40: 0.07 },
+      1997: { team: 'CLE', age: 24, G: 28, MP: 944, MP_pct: 0.832, PER: 18.6, TS_pct: 0.584, ThrPAr: 0.291, FTr: 0.284, ORB_pct: 3.3, TRB_pct: 7.5, AST_pct: 14.4, STL_pct: 2.3, BLK_pct: 0.7, TOV_pct: 19.2, USG_pct: 20.1, OWS: 2.9, DWS: 0.9, WS: 3.8, WS40: 0.161, MIN_pg: 33.7, PTS_pg: 13.7, REB_pg: 3.9, AST_pg: 2.4, STL_pg: 1.4, BLK_pg: 0.3, FG_pct: 0.473, FG3_pct: 0.435, FT_pct: 0.855 },
+      1998: { team: 'CLE', age: 25, G: 30, MP: 972, MP_pct: 0.8, PER: 16.1, TS_pct: 0.57, ThrPAr: 0.22, FTr: 0.266, ORB_pct: 4.3, TRB_pct: 7.7, AST_pct: 13.1, STL_pct: 1.8, BLK_pct: 1.8, TOV_pct: 16.9, USG_pct: 18.8, OWS: 2.4, DWS: 1, WS: 3.4, WS40: 0.138, MIN_pg: 32.4, PTS_pg: 12.0, REB_pg: 3.7, AST_pg: 2.2, STL_pg: 1.1, BLK_pg: 0.7, FG_pct: 0.468, FG3_pct: 0.452, FT_pct: 0.893 },
+      1999: { team: 'CLE', age: 26, G: 31, MP: 925, MP_pct: 0.723, PER: 14.7, TS_pct: 0.531, ThrPAr: 0.314, FTr: 0.213, ORB_pct: 3.9, TRB_pct: 8, AST_pct: 11.6, STL_pct: 1.9, BLK_pct: 2, TOV_pct: 20, USG_pct: 21.2, OWS: 0.6, DWS: 0.9, WS: 1.5, WS40: 0.066, MIN_pg: 29.8, PTS_pg: 11.1, REB_pg: 3.7, AST_pg: 1.6, STL_pg: 1.0, BLK_pg: 0.7, FG_pct: 0.419, FG3_pct: 0.366, FT_pct: 0.984 },
+      2000: { team: 'CLE', age: 27, G: 14, MP: 443, MP_pct: 0.341, PER: 16.2, TS_pct: 0.53, ThrPAr: 0.433, FTr: 0.146, ORB_pct: 2.8, TRB_pct: 6.7, AST_pct: 11, STL_pct: 2, BLK_pct: 1.7, TOV_pct: 13.4, USG_pct: 22.6, OWS: 0.9, DWS: 0.6, WS: 1.5, WS40: 0.136, MIN_pg: 31.6, PTS_pg: 13.2, REB_pg: 2.9, AST_pg: 1.6, STL_pg: 1.1, BLK_pg: 0.6, FG_pct: 0.409, FG3_pct: 0.408, FT_pct: 0.917 },
+      2001: { team: 'CLE', age: 28, G: 8, MP: 113, MP_pct: 0.088, PER: 10.7, TS_pct: 0.409, ThrPAr: 0.395, FTr: 0.211, ORB_pct: 1.3, TRB_pct: 6.1, AST_pct: 14.8, STL_pct: 1.1, BLK_pct: 4.3, TOV_pct: 12.6, USG_pct: 22.2, OWS: 0, DWS: 0.2, WS: 0.2, WS40: 0.07, MIN_pg: 14.1, PTS_pg: 4.3, REB_pg: 1.3, AST_pg: 1.0, STL_pg: 0.3, BLK_pg: 0.6, FG_pct: 0.342, FG3_pct: 0.200, FT_pct: 0.625 },
     },
   },
   'nevescl01w': {
@@ -2463,11 +2574,17 @@ const LEGACY_PLAYERS_BULK = {
     position: 'F',
     retired: true,
     seasons: {
-      1997: { team: 'UTA', age: 22, G: 28, MP: 936, MP_pct: 0.828, PER: 18.7, TS_pct: 0.446, ThrPAr: 0.114, FTr: 0.412, ORB_pct: 9, TRB_pct: 13.9, AST_pct: 12.2, STL_pct: 2.7, BLK_pct: 0.5, TOV_pct: 12.5, USG_pct: 27, OWS: 1.6, DWS: 0.4, WS: 2, WS40: 0.083 },
-      1998: { team: 'UTA', age: 23, G: 28, MP: 761, MP_pct: 0.629, PER: 19.9, TS_pct: 0.521, ThrPAr: 0.055, FTr: 0.404, ORB_pct: 11.3, TRB_pct: 14.6, AST_pct: 8.7, STL_pct: 1.3, BLK_pct: 0.5, TOV_pct: 13.4, USG_pct: 25.1, OWS: 2.1, DWS: 0, WS: 2.2, WS40: 0.115 },
-      1999: { team: 'UTA', age: 24, G: 20, MP: 446, MP_pct: 0.343, PER: 12.8, TS_pct: 0.489, ThrPAr: 0.213, FTr: 0.482, ORB_pct: 6.7, TRB_pct: 11.9, AST_pct: 12.9, STL_pct: 0.4, BLK_pct: 1.6, TOV_pct: 15.8, USG_pct: 20.9, OWS: 0.6, DWS: -0.1, WS: 0.5, WS40: 0.044 },
-      2000: { team: 'DET', age: 25, G: 32, MP: 914, MP_pct: 0.711, PER: 18, TS_pct: 0.51, ThrPAr: 0.129, FTr: 0.362, ORB_pct: 9.6, TRB_pct: 15.7, AST_pct: 8.7, STL_pct: 1.2, BLK_pct: 0.9, TOV_pct: 13.1, USG_pct: 24.8, OWS: 2.1, DWS: 0.7, WS: 2.8, WS40: 0.121 },
-      2001: { team: 'DET', age: 26, G: 22, MP: 651, MP_pct: 0.497, PER: 15, TS_pct: 0.483, ThrPAr: 0.153, FTr: 0.274, ORB_pct: 7.5, TRB_pct: 16.1, AST_pct: 7.8, STL_pct: 2.1, BLK_pct: 0.5, TOV_pct: 16.6, USG_pct: 21.9, OWS: 0.4, DWS: 0.5, WS: 0.9, WS40: 0.055 },
+      1997: { team: 'UTA', age: 22, G: 28, MP: 936, MP_pct: 0.828, PER: 18.7, TS_pct: 0.446, ThrPAr: 0.114, FTr: 0.412, ORB_pct: 9, TRB_pct: 13.9, AST_pct: 12.2, STL_pct: 2.7, BLK_pct: 0.5, TOV_pct: 12.5, USG_pct: 27, OWS: 1.6, DWS: 0.4, WS: 2, WS40: 0.083, MIN_pg: 33.4, PTS_pg: 15.8, REB_pg: 8.0, AST_pg: 1.7, STL_pg: 1.7, BLK_pg: 0.2, FG_pct: 0.374, FG3_pct: 0.250, FT_pct: 0.676 },
+      1998: { team: 'UTA', age: 23, G: 28, MP: 761, MP_pct: 0.629, PER: 19.9, TS_pct: 0.521, ThrPAr: 0.055, FTr: 0.404, ORB_pct: 11.3, TRB_pct: 14.6, AST_pct: 8.7, STL_pct: 1.3, BLK_pct: 0.5, TOV_pct: 13.4, USG_pct: 25.1, OWS: 2.1, DWS: 0, WS: 2.2, WS40: 0.115, MIN_pg: 27.2, PTS_pg: 13.5, REB_pg: 6.6, AST_pg: 1.1, STL_pg: 0.6, BLK_pg: 0.2, FG_pct: 0.472, FG3_pct: 0.353, FT_pct: 0.653 },
+      1999: { team: 'UTA', age: 24, G: 20, MP: 446, MP_pct: 0.343, PER: 12.8, TS_pct: 0.489, ThrPAr: 0.213, FTr: 0.482, ORB_pct: 6.7, TRB_pct: 11.9, AST_pct: 12.9, STL_pct: 0.4, BLK_pct: 1.6, TOV_pct: 15.8, USG_pct: 20.9, OWS: 0.6, DWS: -0.1, WS: 0.5, WS40: 0.044, MIN_pg: 22.3, PTS_pg: 8.4, REB_pg: 4.2, AST_pg: 1.5, STL_pg: 0.2, BLK_pg: 0.4, FG_pct: 0.404, FG3_pct: 0.300, FT_pct: 0.647 },
+      2000: { team: 'DET', age: 25, G: 32, MP: 914, MP_pct: 0.711, PER: 18, TS_pct: 0.51, ThrPAr: 0.129, FTr: 0.362, ORB_pct: 9.6, TRB_pct: 15.7, AST_pct: 8.7, STL_pct: 1.2, BLK_pct: 0.9, TOV_pct: 13.1, USG_pct: 24.8, OWS: 2.1, DWS: 0.7, WS: 2.8, WS40: 0.121, MIN_pg: 28.6, PTS_pg: 13.8, REB_pg: 6.8, AST_pg: 1.2, STL_pg: 0.6, BLK_pg: 0.3, FG_pct: 0.448, FG3_pct: 0.250, FT_pct: 0.704 },
+      2001: { team: 'DET', age: 26, G: 22, MP: 651, MP_pct: 0.497, PER: 15, TS_pct: 0.483, ThrPAr: 0.153, FTr: 0.274, ORB_pct: 7.5, TRB_pct: 16.1, AST_pct: 7.8, STL_pct: 2.1, BLK_pct: 0.5, TOV_pct: 16.6, USG_pct: 21.9, OWS: 0.4, DWS: 0.5, WS: 0.9, WS40: 0.055, MIN_pg: 29.6, PTS_pg: 10.6, REB_pg: 7.0, AST_pg: 1.0, STL_pg: 1.0, BLK_pg: 0.2, FG_pct: 0.423, FG3_pct: 0.333, FT_pct: 0.678 },
+      2002: { team: 'DET', age: 27, G: 32, MIN_pg: 29.7, PTS_pg: 11.4, REB_pg: 5.9, AST_pg: 1.3, STL_pg: 1.1, BLK_pg: 0.3, FG_pct: 0.431, FG3_pct: 0.347, FT_pct: 0.676 },
+      2003: { team: 'CON', age: 28, G: 32, MIN_pg: 13.5, PTS_pg: 4.7, REB_pg: 3.3, AST_pg: 0.5, STL_pg: 0.3, BLK_pg: 0.1, FG_pct: 0.395, FG3_pct: 0.217, FT_pct: 0.821 },
+      2004: { team: 'CON', age: 29, G: 33, MIN_pg: 23.8, PTS_pg: 9.0, REB_pg: 5.5, AST_pg: 0.9, STL_pg: 0.7, BLK_pg: 0.2, FG_pct: 0.427, FG3_pct: 0.317, FT_pct: 0.800 },
+      2005: { team: 'SAN', age: 30, G: 34, MIN_pg: 25.9, PTS_pg: 9.6, REB_pg: 5.7, AST_pg: 1.0, STL_pg: 0.6, BLK_pg: 0.2, FG_pct: 0.517, FG3_pct: 0.429, FT_pct: 0.743 },
+      2006: { team: 'SEA', age: 31, G: 5, MIN_pg: 24.0, PTS_pg: 9.4, REB_pg: 7.6, AST_pg: 0.6, STL_pg: 1.0, BLK_pg: 0.6, FG_pct: 0.485, FG3_pct: 0.333, FT_pct: 0.737 },
+      2007: { team: 'SEA', age: 32, G: 34, MIN_pg: 13.9, PTS_pg: 4.6, REB_pg: 4.3, AST_pg: 0.5, STL_pg: 0.4, BLK_pg: 0.2, FG_pct: 0.417, FG3_pct: 0.143, FT_pct: 0.782 },
     },
   },
   'paschti01w': {
@@ -2504,10 +2621,21 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1998: { team: 'SAC', age: 23, G: 30, MP: 1080, MP_pct: 0.896, PER: 12.2, TS_pct: 0.446, ThrPAr: 0.261, FTr: 0.661, ORB_pct: 1.5, TRB_pct: 8.3, AST_pct: 37.2, STL_pct: 3.4, BLK_pct: 0.2, TOV_pct: 35.3, USG_pct: 14.2, OWS: -0.6, DWS: 1.4, WS: 0.9, WS40: 0.032 },
-      1999: { team: 'SAC', age: 24, G: 32, MP: 1120, MP_pct: 0.875, PER: 11.5, TS_pct: 0.42, ThrPAr: 0.171, FTr: 0.59, ORB_pct: 3.1, TRB_pct: 8.5, AST_pct: 33.6, STL_pct: 3.2, BLK_pct: 0.4, TOV_pct: 32.6, USG_pct: 16.4, OWS: -0.9, DWS: 1.9, WS: 1, WS40: 0.035 },
-      2000: { team: 'SAC', age: 25, G: 30, MP: 936, MP_pct: 0.731, PER: 17.1, TS_pct: 0.448, ThrPAr: 0.27, FTr: 0.578, ORB_pct: 1.6, TRB_pct: 6.1, AST_pct: 41.2, STL_pct: 4.2, BLK_pct: 0.5, TOV_pct: 23.4, USG_pct: 15.1, OWS: 1.6, DWS: 1.5, WS: 3.1, WS40: 0.134 },
-      2001: { team: 'SAC', age: 26, G: 23, MP: 744, MP_pct: 0.57, PER: 15, TS_pct: 0.473, ThrPAr: 0.339, FTr: 0.516, ORB_pct: 1, TRB_pct: 7.2, AST_pct: 39.5, STL_pct: 3.1, BLK_pct: 0.9, TOV_pct: 29.6, USG_pct: 13.8, OWS: 1.1, DWS: 1.2, WS: 2.3, WS40: 0.124 },
+      1998: { team: 'SAC', age: 23, G: 30, MP: 1080, MP_pct: 0.896, PER: 12.2, TS_pct: 0.446, ThrPAr: 0.261, FTr: 0.661, ORB_pct: 1.5, TRB_pct: 8.3, AST_pct: 37.2, STL_pct: 3.4, BLK_pct: 0.2, TOV_pct: 35.3, USG_pct: 14.2, OWS: -0.6, DWS: 1.4, WS: 0.9, WS40: 0.032, MIN_pg: 36.0, PTS_pg: 6.3, REB_pg: 4.7, AST_pg: 7.5, STL_pg: 2.2, BLK_pg: 0.1, FG_pct: 0.333, FG3_pct: 0.233, FT_pct: 0.642 },
+      1999: { team: 'SAC', age: 24, G: 32, MP: 1120, MP_pct: 0.875, PER: 11.5, TS_pct: 0.42, ThrPAr: 0.171, FTr: 0.59, ORB_pct: 3.1, TRB_pct: 8.5, AST_pct: 33.6, STL_pct: 3.2, BLK_pct: 0.4, TOV_pct: 32.6, USG_pct: 16.4, OWS: -0.9, DWS: 1.9, WS: 1, WS40: 0.035, MIN_pg: 35.0, PTS_pg: 7.3, REB_pg: 4.8, AST_pg: 7.1, STL_pg: 2.1, BLK_pg: 0.2, FG_pct: 0.320, FG3_pct: 0.158, FT_pct: 0.664 },
+      2000: { team: 'SAC', age: 25, G: 30, MP: 936, MP_pct: 0.731, PER: 17.1, TS_pct: 0.448, ThrPAr: 0.27, FTr: 0.578, ORB_pct: 1.6, TRB_pct: 6.1, AST_pct: 41.2, STL_pct: 4.2, BLK_pct: 0.5, TOV_pct: 23.4, USG_pct: 15.1, OWS: 1.6, DWS: 1.5, WS: 3.1, WS40: 0.134, MIN_pg: 31.2, PTS_pg: 6.9, REB_pg: 3.0, AST_pg: 7.9, STL_pg: 2.3, BLK_pg: 0.2, FG_pct: 0.368, FG3_pct: 0.200, FT_pct: 0.579 },
+      2001: { team: 'SAC', age: 26, G: 23, MP: 744, MP_pct: 0.57, PER: 15, TS_pct: 0.473, ThrPAr: 0.339, FTr: 0.516, ORB_pct: 1, TRB_pct: 7.2, AST_pct: 39.5, STL_pct: 3.1, BLK_pct: 0.9, TOV_pct: 29.6, USG_pct: 13.8, OWS: 1.1, DWS: 1.2, WS: 2.3, WS40: 0.124, MIN_pg: 32.3, PTS_pg: 6.3, REB_pg: 3.7, AST_pg: 7.5, STL_pg: 1.7, BLK_pg: 0.4, FG_pct: 0.339, FG3_pct: 0.262, FT_pct: 0.766 },
+      2002: { team: 'SAC', age: 27, G: 24, MIN_pg: 35.5, PTS_pg: 8.5, REB_pg: 4.3, AST_pg: 8.0, STL_pg: 2.7, BLK_pg: 0.0, FG_pct: 0.377, FG3_pct: 0.250, FT_pct: 0.728 },
+      2003: { team: 'SAC', age: 28, G: 34, MIN_pg: 32.0, PTS_pg: 5.4, REB_pg: 3.5, AST_pg: 6.7, STL_pg: 1.8, BLK_pg: 0.0, FG_pct: 0.302, FG3_pct: 0.250, FT_pct: 0.579 },
+      2004: { team: 'SAC', age: 29, G: 32, MIN_pg: 29.4, PTS_pg: 6.0, REB_pg: 3.1, AST_pg: 4.9, STL_pg: 1.9, BLK_pg: 0.1, FG_pct: 0.354, FG3_pct: 0.338, FT_pct: 0.714 },
+      2005: { team: 'SAC', age: 30, G: 34, MIN_pg: 27.3, PTS_pg: 5.7, REB_pg: 2.9, AST_pg: 4.4, STL_pg: 1.4, BLK_pg: 0.2, FG_pct: 0.314, FG3_pct: 0.195, FT_pct: 0.790 },
+      2006: { team: 'SAC', age: 31, G: 34, MIN_pg: 24.9, PTS_pg: 5.4, REB_pg: 2.7, AST_pg: 3.4, STL_pg: 1.7, BLK_pg: 0.1, FG_pct: 0.339, FG3_pct: 0.194, FT_pct: 0.792 },
+      2007: { team: 'SAC', age: 32, G: 32, MIN_pg: 23.7, PTS_pg: 5.7, REB_pg: 2.6, AST_pg: 4.5, STL_pg: 1.5, BLK_pg: 0.0, FG_pct: 0.314, FG3_pct: 0.214, FT_pct: 0.822 },
+      2008: { team: 'SAC', age: 33, G: 33, MIN_pg: 25.9, PTS_pg: 8.6, REB_pg: 3.0, AST_pg: 5.2, STL_pg: 2.0, BLK_pg: 0.1, FG_pct: 0.374, FG3_pct: 0.286, FT_pct: 0.809 },
+      2009: { team: 'SAC', age: 34, G: 30, MIN_pg: 24.1, PTS_pg: 4.9, REB_pg: 2.7, AST_pg: 5.2, STL_pg: 1.0, BLK_pg: 0.1, FG_pct: 0.324, FG3_pct: 0.111, FT_pct: 0.814 },
+      2010: { team: 'LAS', age: 35, G: 32, MIN_pg: 26.3, PTS_pg: 4.9, REB_pg: 4.0, AST_pg: 6.9, STL_pg: 1.3, BLK_pg: 0.1, FG_pct: 0.410, FG3_pct: 0.111, FT_pct: 0.819 },
+      2011: { team: 'LAS', age: 36, G: 34, MIN_pg: 23.7, PTS_pg: 6.0, REB_pg: 2.8, AST_pg: 4.8, STL_pg: 0.8, BLK_pg: 0.1, FG_pct: 0.486, FG3_pct: 0.417, FT_pct: 0.868 },
+      2012: { team: 'CHI', age: 37, G: 18, MIN_pg: 12.8, PTS_pg: 1.8, REB_pg: 1.3, AST_pg: 2.1, STL_pg: 0.4, BLK_pg: 0.2, FG_pct: 0.375, FG3_pct: 0.200, FT_pct: 0.545 },
     },
   },
   'perazja01w': {
@@ -2557,9 +2685,15 @@ const LEGACY_PLAYERS_BULK = {
     position: 'F-C',
     retired: true,
     seasons: {
-      1999: { team: 'ORL', age: 29, G: 32, MP: 335, MP_pct: 0.26, PER: 9.2, TS_pct: 0.428, ThrPAr: 0.023, FTr: 0.422, ORB_pct: 10.1, TRB_pct: 12.9, AST_pct: 5.8, STL_pct: 3.2, BLK_pct: 2.1, TOV_pct: 24, USG_pct: 28.6, OWS: -1.1, DWS: 0.5, WS: -0.6, WS40: -0.074 },
-      2000: { team: 'NYL', age: 30, G: 31, MP: 978, MP_pct: 0.761, PER: 20.1, TS_pct: 0.507, ThrPAr: 0.022, FTr: 0.357, ORB_pct: 12.1, TRB_pct: 17, AST_pct: 6.5, STL_pct: 3.6, BLK_pct: 2, TOV_pct: 16.8, USG_pct: 26.2, OWS: 1, DWS: 2.8, WS: 3.8, WS40: 0.155 },
-      2001: { team: 'NYL', age: 31, G: 32, MP: 1049, MP_pct: 0.82, PER: 21.2, TS_pct: 0.526, ThrPAr: 0.01, FTr: 0.305, ORB_pct: 11.6, TRB_pct: 16.5, AST_pct: 7.2, STL_pct: 2.7, BLK_pct: 1.5, TOV_pct: 15.3, USG_pct: 27, OWS: 2.1, DWS: 1.8, WS: 3.9, WS40: 0.15 },
+      1999: { team: 'ORL', age: 29, G: 32, MP: 335, MP_pct: 0.26, PER: 9.2, TS_pct: 0.428, ThrPAr: 0.023, FTr: 0.422, ORB_pct: 10.1, TRB_pct: 12.9, AST_pct: 5.8, STL_pct: 3.2, BLK_pct: 2.1, TOV_pct: 24, USG_pct: 28.6, OWS: -1.1, DWS: 0.5, WS: -0.6, WS40: -0.074, MIN_pg: 10.5, PTS_pg: 4.1, REB_pg: 2.1, AST_pg: 0.3, STL_pg: 0.6, BLK_pg: 0.3, FG_pct: 0.406, FG3_pct: 0.000, FT_pct: 0.481 },
+      2000: { team: 'NYL', age: 30, G: 31, MP: 978, MP_pct: 0.761, PER: 20.1, TS_pct: 0.507, ThrPAr: 0.022, FTr: 0.357, ORB_pct: 12.1, TRB_pct: 17, AST_pct: 6.5, STL_pct: 3.6, BLK_pct: 2, TOV_pct: 16.8, USG_pct: 26.2, OWS: 1, DWS: 2.8, WS: 3.8, WS40: 0.155, MIN_pg: 31.5, PTS_pg: 13.8, REB_pg: 8.0, AST_pg: 0.9, STL_pg: 1.9, BLK_pg: 0.7, FG_pct: 0.467, FG3_pct: 0.250, FT_pct: 0.654 },
+      2001: { team: 'NYL', age: 31, G: 32, MP: 1049, MP_pct: 0.82, PER: 21.2, TS_pct: 0.526, ThrPAr: 0.01, FTr: 0.305, ORB_pct: 11.6, TRB_pct: 16.5, AST_pct: 7.2, STL_pct: 2.7, BLK_pct: 1.5, TOV_pct: 15.3, USG_pct: 27, OWS: 2.1, DWS: 1.8, WS: 3.9, WS40: 0.15, MIN_pg: 32.8, PTS_pg: 15.3, REB_pg: 8.0, AST_pg: 1.1, STL_pg: 1.5, BLK_pg: 0.5, FG_pct: 0.507, FG3_pct: 0.000, FT_pct: 0.584 },
+      2002: { team: 'NYL', age: 32, G: 32, MIN_pg: 31.5, PTS_pg: 14.1, REB_pg: 7.0, AST_pg: 1.3, STL_pg: 1.8, BLK_pg: 0.4, FG_pct: 0.491, FG3_pct: 0.000, FT_pct: 0.675 },
+      2003: { team: 'NYL', age: 33, G: 33, MIN_pg: 31.3, PTS_pg: 11.3, REB_pg: 8.5, AST_pg: 1.7, STL_pg: 1.7, BLK_pg: 0.8, FG_pct: 0.397, FG3_pct: 0.200, FT_pct: 0.649 },
+      2004: { team: 'NYL', age: 34, G: 13, MIN_pg: 23.9, PTS_pg: 6.7, REB_pg: 5.4, AST_pg: 1.2, STL_pg: 1.1, BLK_pg: 0.8, FG_pct: 0.347, FG3_pct: 0.000, FT_pct: 0.457 },
+      2005: { team: 'HOU', age: 35, G: 32, MIN_pg: 11.4, PTS_pg: 3.5, REB_pg: 2.5, AST_pg: 0.4, STL_pg: 0.3, BLK_pg: 0.3, FG_pct: 0.426, FG3_pct: 0.000, FT_pct: 0.646 },
+      2006: { team: 'HOU', age: 36, G: 21, MIN_pg: 10.6, PTS_pg: 2.8, REB_pg: 2.2, AST_pg: 0.2, STL_pg: 0.4, BLK_pg: 0.2, FG_pct: 0.385, FG3_pct: 0.000, FT_pct: 0.655 },
+      2007: { team: 'HOU', age: 37, G: 6, MIN_pg: 5.8, PTS_pg: 1.7, REB_pg: 0.8, AST_pg: 0.2, STL_pg: 0.5, BLK_pg: 0.0, FG_pct: 0.300, FG3_pct: 0.000, FT_pct: 1.000 },
     },
   },
   'pollica01w': {
@@ -2973,9 +3107,21 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1999: { team: 'MIN', age: 25, G: 30, MP: 971, MP_pct: 0.75, PER: 13.6, TS_pct: 0.525, ThrPAr: 0.466, FTr: 0.322, ORB_pct: 5.4, TRB_pct: 6.1, AST_pct: 13.4, STL_pct: 1.2, BLK_pct: 1, TOV_pct: 14.2, USG_pct: 20.2, OWS: 2, DWS: 0.5, WS: 2.4, WS40: 0.1 },
-      2000: { team: 'MIN', age: 26, G: 32, MP: 1193, MP_pct: 0.928, PER: 22.3, TS_pct: 0.578, ThrPAr: 0.481, FTr: 0.363, ORB_pct: 3.2, TRB_pct: 5.4, AST_pct: 17.6, STL_pct: 2.1, BLK_pct: 0.6, TOV_pct: 12, USG_pct: 26.4, OWS: 5.3, DWS: 1.1, WS: 6.4, WS40: 0.213 },
-      2001: { team: 'MIN', age: 27, G: 32, MP: 1234, MP_pct: 0.953, PER: 23.3, TS_pct: 0.577, ThrPAr: 0.462, FTr: 0.53, ORB_pct: 4.2, TRB_pct: 6.3, AST_pct: 16.1, STL_pct: 1.1, BLK_pct: 0.4, TOV_pct: 12, USG_pct: 28.9, OWS: 7.2, DWS: 0.3, WS: 7.5, WS40: 0.244 },
+      1999: { team: 'MIN', age: 25, G: 30, MP: 971, MP_pct: 0.75, PER: 13.6, TS_pct: 0.525, ThrPAr: 0.466, FTr: 0.322, ORB_pct: 5.4, TRB_pct: 6.1, AST_pct: 13.4, STL_pct: 1.2, BLK_pct: 1, TOV_pct: 14.2, USG_pct: 20.2, OWS: 2, DWS: 0.5, WS: 2.4, WS40: 0.1, MIN_pg: 32.4, PTS_pg: 11.7, REB_pg: 2.9, AST_pg: 2.0, STL_pg: 0.6, BLK_pg: 0.3, FG_pct: 0.387, FG3_pct: 0.382, FT_pct: 0.766 },
+      2000: { team: 'MIN', age: 26, G: 32, MP: 1193, MP_pct: 0.928, PER: 22.3, TS_pct: 0.578, ThrPAr: 0.481, FTr: 0.363, ORB_pct: 3.2, TRB_pct: 5.4, AST_pct: 17.6, STL_pct: 2.1, BLK_pct: 0.6, TOV_pct: 12, USG_pct: 26.4, OWS: 5.3, DWS: 1.1, WS: 6.4, WS40: 0.213, MIN_pg: 37.3, PTS_pg: 20.2, REB_pg: 2.9, AST_pg: 2.8, STL_pg: 1.4, BLK_pg: 0.2, FG_pct: 0.421, FG3_pct: 0.379, FT_pct: 0.869 },
+      2001: { team: 'MIN', age: 27, G: 32, MP: 1234, MP_pct: 0.953, PER: 23.3, TS_pct: 0.577, ThrPAr: 0.462, FTr: 0.53, ORB_pct: 4.2, TRB_pct: 6.3, AST_pct: 16.1, STL_pct: 1.1, BLK_pct: 0.4, TOV_pct: 12, USG_pct: 28.9, OWS: 7.2, DWS: 0.3, WS: 7.5, WS40: 0.244, MIN_pg: 38.6, PTS_pg: 23.1, REB_pg: 3.8, AST_pg: 2.2, STL_pg: 0.7, BLK_pg: 0.2, FG_pct: 0.393, FG3_pct: 0.354, FT_pct: 0.895 },
+      2002: { team: 'MIN', age: 28, G: 31, MIN_pg: 36.7, PTS_pg: 16.5, REB_pg: 3.0, AST_pg: 2.5, STL_pg: 1.0, BLK_pg: 0.2, FG_pct: 0.404, FG3_pct: 0.330, FT_pct: 0.824 },
+      2003: { team: 'MIN', age: 29, G: 34, MIN_pg: 34.9, PTS_pg: 18.2, REB_pg: 4.1, AST_pg: 2.5, STL_pg: 0.7, BLK_pg: 0.2, FG_pct: 0.457, FG3_pct: 0.390, FT_pct: 0.881 },
+      2004: { team: 'MIN', age: 30, G: 23, MIN_pg: 34.8, PTS_pg: 18.8, REB_pg: 3.7, AST_pg: 2.3, STL_pg: 1.0, BLK_pg: 0.3, FG_pct: 0.431, FG3_pct: 0.432, FT_pct: 0.899 },
+      2005: { team: 'DET', age: 31, G: 36, MIN_pg: 32.5, PTS_pg: 11.9, REB_pg: 2.3, AST_pg: 2.4, STL_pg: 0.9, BLK_pg: 0.2, FG_pct: 0.379, FG3_pct: 0.333, FT_pct: 0.781 },
+      2006: { team: 'DET', age: 32, G: 34, MIN_pg: 33.4, PTS_pg: 11.7, REB_pg: 2.7, AST_pg: 3.3, STL_pg: 0.7, BLK_pg: 0.1, FG_pct: 0.407, FG3_pct: 0.366, FT_pct: 0.912 },
+      2007: { team: 'DET', age: 33, G: 34, MIN_pg: 34.3, PTS_pg: 13.2, REB_pg: 3.8, AST_pg: 3.6, STL_pg: 1.2, BLK_pg: 0.1, FG_pct: 0.361, FG3_pct: 0.311, FT_pct: 0.847 },
+      2008: { team: 'DET', age: 34, G: 34, MIN_pg: 33.9, PTS_pg: 14.7, REB_pg: 2.8, AST_pg: 4.0, STL_pg: 0.9, BLK_pg: 0.1, FG_pct: 0.383, FG3_pct: 0.360, FT_pct: 0.887 },
+      2009: { team: 'DET', age: 35, G: 27, MIN_pg: 33.1, PTS_pg: 13.7, REB_pg: 2.3, AST_pg: 2.8, STL_pg: 0.8, BLK_pg: 0.1, FG_pct: 0.435, FG3_pct: 0.432, FT_pct: 0.918 },
+      2010: { team: 'WAS', age: 36, G: 33, MIN_pg: 30.8, PTS_pg: 9.5, REB_pg: 2.1, AST_pg: 2.6, STL_pg: 0.7, BLK_pg: 0.2, FG_pct: 0.395, FG3_pct: 0.362, FT_pct: 0.764 },
+      2011: { team: 'SEA', age: 37, G: 34, MIN_pg: 25.1, PTS_pg: 7.5, REB_pg: 2.3, AST_pg: 2.0, STL_pg: 0.7, BLK_pg: 0.2, FG_pct: 0.395, FG3_pct: 0.395, FT_pct: 0.857 },
+      2012: { team: 'SEA', age: 38, G: 34, MIN_pg: 27.0, PTS_pg: 6.7, REB_pg: 2.7, AST_pg: 2.1, STL_pg: 0.6, BLK_pg: 0.1, FG_pct: 0.412, FG3_pct: 0.400, FT_pct: 0.838 },
+      2013: { team: 'NYL', age: 39, G: 34, MIN_pg: 26.6, PTS_pg: 6.1, REB_pg: 1.9, AST_pg: 1.8, STL_pg: 0.7, BLK_pg: 0.2, FG_pct: 0.374, FG3_pct: 0.315, FT_pct: 0.848 },
     },
   },
   'smithla01w': {
@@ -3034,9 +3180,14 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1999: { team: 'CHA', age: 29, G: 32, MP: 1065, MP_pct: 0.829, PER: 16.9, TS_pct: 0.54, ThrPAr: 0.346, FTr: 0.302, ORB_pct: 1.6, TRB_pct: 4.6, AST_pct: 33.3, STL_pct: 2.1, BLK_pct: 0.2, TOV_pct: 20.9, USG_pct: 20.7, OWS: 2.4, DWS: 0.5, WS: 3, WS40: 0.112 },
-      2000: { team: 'CHA', age: 30, G: 32, MP: 1099, MP_pct: 0.849, PER: 12.4, TS_pct: 0.494, ThrPAr: 0.348, FTr: 0.292, ORB_pct: 2.6, TRB_pct: 4.7, AST_pct: 31.9, STL_pct: 1.9, BLK_pct: 0.1, TOV_pct: 24.2, USG_pct: 16.7, OWS: 1.1, DWS: -0.8, WS: 0.3, WS40: 0.012 },
-      2001: { team: 'CHA', age: 31, G: 32, MP: 1152, MP_pct: 0.886, PER: 13.8, TS_pct: 0.487, ThrPAr: 0.317, FTr: 0.203, ORB_pct: 1.4, TRB_pct: 4.3, AST_pct: 32.3, STL_pct: 2.8, BLK_pct: 0.1, TOV_pct: 24.6, USG_pct: 18.4, OWS: 1.4, DWS: 0.8, WS: 2.3, WS40: 0.079 },
+      1999: { team: 'CHA', age: 29, G: 32, MP: 1065, MP_pct: 0.829, PER: 16.9, TS_pct: 0.54, ThrPAr: 0.346, FTr: 0.302, ORB_pct: 1.6, TRB_pct: 4.6, AST_pct: 33.3, STL_pct: 2.1, BLK_pct: 0.2, TOV_pct: 20.9, USG_pct: 20.7, OWS: 2.4, DWS: 0.5, WS: 3, WS40: 0.112, MIN_pg: 33.3, PTS_pg: 11.5, REB_pg: 2.3, AST_pg: 5.5, STL_pg: 1.2, BLK_pg: 0.1, FG_pct: 0.415, FG3_pct: 0.317, FT_pct: 0.934 },
+      2000: { team: 'CHA', age: 30, G: 32, MP: 1099, MP_pct: 0.849, PER: 12.4, TS_pct: 0.494, ThrPAr: 0.348, FTr: 0.292, ORB_pct: 2.6, TRB_pct: 4.7, AST_pct: 31.9, STL_pct: 1.9, BLK_pct: 0.1, TOV_pct: 24.2, USG_pct: 16.7, OWS: 1.1, DWS: -0.8, WS: 0.3, WS40: 0.012, MIN_pg: 34.3, PTS_pg: 8.8, REB_pg: 2.4, AST_pg: 5.9, STL_pg: 1.2, BLK_pg: 0.0, FG_pct: 0.372, FG3_pct: 0.330, FT_pct: 0.878 },
+      2001: { team: 'CHA', age: 31, G: 32, MP: 1152, MP_pct: 0.886, PER: 13.8, TS_pct: 0.487, ThrPAr: 0.317, FTr: 0.203, ORB_pct: 1.4, TRB_pct: 4.3, AST_pct: 32.3, STL_pct: 2.8, BLK_pct: 0.1, TOV_pct: 24.6, USG_pct: 18.4, OWS: 1.4, DWS: 0.8, WS: 2.3, WS40: 0.079, MIN_pg: 36.0, PTS_pg: 9.3, REB_pg: 2.2, AST_pg: 5.6, STL_pg: 1.6, BLK_pg: 0.0, FG_pct: 0.381, FG3_pct: 0.371, FT_pct: 0.895 },
+      2002: { team: 'CHA', age: 32, G: 32, MIN_pg: 33.2, PTS_pg: 8.7, REB_pg: 1.8, AST_pg: 5.1, STL_pg: 1.5, BLK_pg: 0.0, FG_pct: 0.364, FG3_pct: 0.398, FT_pct: 0.762 },
+      2003: { team: 'CHA', age: 33, G: 34, MIN_pg: 31.9, PTS_pg: 7.9, REB_pg: 1.7, AST_pg: 5.1, STL_pg: 1.4, BLK_pg: 0.1, FG_pct: 0.417, FG3_pct: 0.389, FT_pct: 0.836 },
+      2004: { team: 'CHA', age: 34, G: 34, MIN_pg: 33.6, PTS_pg: 8.9, REB_pg: 1.7, AST_pg: 5.0, STL_pg: 1.3, BLK_pg: 0.1, FG_pct: 0.431, FG3_pct: 0.407, FT_pct: 0.759 },
+      2005: { team: 'HOU', age: 35, G: 33, MIN_pg: 27.4, PTS_pg: 5.4, REB_pg: 2.1, AST_pg: 4.5, STL_pg: 1.1, BLK_pg: 0.0, FG_pct: 0.387, FG3_pct: 0.369, FT_pct: 0.803 },
+      2006: { team: 'HOU', age: 36, G: 34, MIN_pg: 29.9, PTS_pg: 7.4, REB_pg: 2.2, AST_pg: 3.9, STL_pg: 1.0, BLK_pg: 0.2, FG_pct: 0.420, FG3_pct: 0.427, FT_pct: 0.806 },
     },
   },
   'starbka01w': {
@@ -3105,11 +3256,15 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1997: { team: 'CHA', age: 29, G: 28, MP: 1011, MP_pct: 0.903, PER: 20.5, TS_pct: 0.504, ThrPAr: 0.194, FTr: 0.225, ORB_pct: 6.1, TRB_pct: 9.5, AST_pct: 26.3, STL_pct: 2.3, BLK_pct: 1.7, TOV_pct: 18.5, USG_pct: 25.1, OWS: 2.4, DWS: 1.4, WS: 3.8, WS40: 0.151 },
-      1998: { team: 'CHA', age: 30, G: 30, MP: 1046, MP_pct: 0.872, PER: 19.6, TS_pct: 0.491, ThrPAr: 0.249, FTr: 0.242, ORB_pct: 3.4, TRB_pct: 8.1, AST_pct: 25.6, STL_pct: 2.8, BLK_pct: 1.1, TOV_pct: 14.4, USG_pct: 23.7, OWS: 2.5, DWS: 1.7, WS: 4.2, WS40: 0.161 },
-      1999: { team: 'CHA', age: 31, G: 32, MP: 1041, MP_pct: 0.81, PER: 18.5, TS_pct: 0.521, ThrPAr: 0.18, FTr: 0.233, ORB_pct: 4.4, TRB_pct: 7.4, AST_pct: 19.9, STL_pct: 1.8, BLK_pct: 1.5, TOV_pct: 13.9, USG_pct: 23.8, OWS: 2.2, DWS: 0.7, WS: 3, WS40: 0.113 },
-      2000: { team: 'CHA', age: 32, G: 32, MP: 1123, MP_pct: 0.867, PER: 22.3, TS_pct: 0.541, ThrPAr: 0.229, FTr: 0.289, ORB_pct: 4.2, TRB_pct: 8.1, AST_pct: 24.7, STL_pct: 2.8, BLK_pct: 1.8, TOV_pct: 14.1, USG_pct: 26.4, OWS: 3.4, DWS: 0, WS: 3.4, WS40: 0.122 },
-      2001: { team: 'CHA', age: 33, G: 32, MP: 1006, MP_pct: 0.774, PER: 23.4, TS_pct: 0.556, ThrPAr: 0.176, FTr: 0.214, ORB_pct: 5.8, TRB_pct: 9.5, AST_pct: 22.1, STL_pct: 2.7, BLK_pct: 1.7, TOV_pct: 14.7, USG_pct: 24.7, OWS: 4.1, DWS: 1.2, WS: 5.4, WS40: 0.214 },
+      1997: { team: 'CHA', age: 29, G: 28, MP: 1011, MP_pct: 0.903, PER: 20.5, TS_pct: 0.504, ThrPAr: 0.194, FTr: 0.225, ORB_pct: 6.1, TRB_pct: 9.5, AST_pct: 26.3, STL_pct: 2.3, BLK_pct: 1.7, TOV_pct: 18.5, USG_pct: 25.1, OWS: 2.4, DWS: 1.4, WS: 3.8, WS40: 0.151, MIN_pg: 36.1, PTS_pg: 15.7, REB_pg: 5.5, AST_pg: 4.4, STL_pg: 1.5, BLK_pg: 0.8, FG_pct: 0.447, FG3_pct: 0.325, FT_pct: 0.674 },
+      1998: { team: 'CHA', age: 30, G: 30, MP: 1046, MP_pct: 0.872, PER: 19.6, TS_pct: 0.491, ThrPAr: 0.249, FTr: 0.242, ORB_pct: 3.4, TRB_pct: 8.1, AST_pct: 25.6, STL_pct: 2.8, BLK_pct: 1.1, TOV_pct: 14.4, USG_pct: 23.7, OWS: 2.5, DWS: 1.7, WS: 4.2, WS40: 0.161, MIN_pg: 34.9, PTS_pg: 15.0, REB_pg: 4.6, AST_pg: 4.5, STL_pg: 1.8, BLK_pg: 0.5, FG_pct: 0.418, FG3_pct: 0.282, FT_pct: 0.750 },
+      1999: { team: 'CHA', age: 31, G: 32, MP: 1041, MP_pct: 0.81, PER: 18.5, TS_pct: 0.521, ThrPAr: 0.18, FTr: 0.233, ORB_pct: 4.4, TRB_pct: 7.4, AST_pct: 19.9, STL_pct: 1.8, BLK_pct: 1.5, TOV_pct: 13.9, USG_pct: 23.8, OWS: 2.2, DWS: 0.7, WS: 3, WS40: 0.113, MIN_pg: 32.5, PTS_pg: 13.6, REB_pg: 3.5, AST_pg: 2.9, STL_pg: 1.0, BLK_pg: 0.6, FG_pct: 0.460, FG3_pct: 0.309, FT_pct: 0.739 },
+      2000: { team: 'CHA', age: 32, G: 32, MP: 1123, MP_pct: 0.867, PER: 22.3, TS_pct: 0.541, ThrPAr: 0.229, FTr: 0.289, ORB_pct: 4.2, TRB_pct: 8.1, AST_pct: 24.7, STL_pct: 2.8, BLK_pct: 1.8, TOV_pct: 14.1, USG_pct: 26.4, OWS: 3.4, DWS: 0, WS: 3.4, WS40: 0.122, MIN_pg: 35.1, PTS_pg: 17.7, REB_pg: 4.3, AST_pg: 3.8, STL_pg: 1.7, BLK_pg: 0.7, FG_pct: 0.462, FG3_pct: 0.358, FT_pct: 0.739 },
+      2001: { team: 'CHA', age: 33, G: 32, MP: 1006, MP_pct: 0.774, PER: 23.4, TS_pct: 0.556, ThrPAr: 0.176, FTr: 0.214, ORB_pct: 5.8, TRB_pct: 9.5, AST_pct: 22.1, STL_pct: 2.7, BLK_pct: 1.7, TOV_pct: 14.7, USG_pct: 24.7, OWS: 4.1, DWS: 1.2, WS: 5.4, WS40: 0.214, MIN_pg: 31.4, PTS_pg: 14.1, REB_pg: 4.3, AST_pg: 2.8, STL_pg: 1.3, BLK_pg: 0.6, FG_pct: 0.484, FG3_pct: 0.446, FT_pct: 0.797 },
+      2002: { team: 'CHA', age: 34, G: 32, MIN_pg: 29.7, PTS_pg: 12.8, REB_pg: 5.5, AST_pg: 2.8, STL_pg: 1.2, BLK_pg: 0.3, FG_pct: 0.456, FG3_pct: 0.414, FT_pct: 0.688 },
+      2003: { team: 'CHA', age: 35, G: 34, MIN_pg: 29.4, PTS_pg: 11.1, REB_pg: 4.1, AST_pg: 2.9, STL_pg: 1.4, BLK_pg: 0.2, FG_pct: 0.458, FG3_pct: 0.307, FT_pct: 0.759 },
+      2004: { team: 'CHA', age: 36, G: 34, MIN_pg: 22.9, PTS_pg: 6.0, REB_pg: 3.5, AST_pg: 1.4, STL_pg: 0.8, BLK_pg: 0.2, FG_pct: 0.414, FG3_pct: 0.297, FT_pct: 0.773 },
+      2005: { team: 'DET', age: 37, G: 18, MIN_pg: 5.7, PTS_pg: 1.2, REB_pg: 0.7, AST_pg: 0.7, STL_pg: 0.2, BLK_pg: 0.0, FG_pct: 0.348, FG3_pct: 0.200, FT_pct: 0.667 },
     },
   },
   'stiresh01w': {
@@ -3167,10 +3322,18 @@ const LEGACY_PLAYERS_BULK = {
     position: 'F-G',
     retired: true,
     seasons: {
-      1997: { team: 'HOU', age: 26, G: 9, MP: 129, MP_pct: 0.114, PER: 26.6, TS_pct: 0.541, ThrPAr: 0.302, FTr: 0.264, ORB_pct: 6, TRB_pct: 7.7, AST_pct: 12.7, STL_pct: 3, BLK_pct: 2.6, TOV_pct: 6.3, USG_pct: 22.9, OWS: 0.7, DWS: 0.2, WS: 0.9, WS40: 0.283 },
-      1998: { team: 'HOU', age: 27, G: 29, MP: 937, MP_pct: 0.771, PER: 24.4, TS_pct: 0.511, ThrPAr: 0.247, FTr: 0.212, ORB_pct: 5.5, TRB_pct: 10.3, AST_pct: 14.1, STL_pct: 4.3, BLK_pct: 1.3, TOV_pct: 11.6, USG_pct: 25.5, OWS: 3.4, DWS: 2.6, WS: 6, WS40: 0.255 },
-      1999: { team: 'HOU', age: 28, G: 32, MP: 1100, MP_pct: 0.856, PER: 28.9, TS_pct: 0.539, ThrPAr: 0.2, FTr: 0.249, ORB_pct: 6.1, TRB_pct: 12.1, AST_pct: 25.7, STL_pct: 4, BLK_pct: 3.6, TOV_pct: 13.3, USG_pct: 27.7, OWS: 5, DWS: 3.1, WS: 8.1, WS40: 0.294 },
-      2000: { team: 'HOU', age: 29, G: 31, MP: 1090, MP_pct: 0.842, PER: 32, TS_pct: 0.587, ThrPAr: 0.188, FTr: 0.3, ORB_pct: 5.4, TRB_pct: 12.2, AST_pct: 23.6, STL_pct: 4.6, BLK_pct: 2.6, TOV_pct: 13, USG_pct: 28.6, OWS: 6.3, DWS: 3.6, WS: 9.8, WS40: 0.361 },
+      1997: { team: 'HOU', age: 26, G: 9, MP: 129, MP_pct: 0.114, PER: 26.6, TS_pct: 0.541, ThrPAr: 0.302, FTr: 0.264, ORB_pct: 6, TRB_pct: 7.7, AST_pct: 12.7, STL_pct: 3, BLK_pct: 2.6, TOV_pct: 6.3, USG_pct: 22.9, OWS: 0.7, DWS: 0.2, WS: 0.9, WS40: 0.283, MIN_pg: 14.3, PTS_pg: 7.1, REB_pg: 1.7, AST_pg: 0.8, STL_pg: 0.8, BLK_pg: 0.4, FG_pct: 0.472, FG3_pct: 0.250, FT_pct: 0.714 },
+      1998: { team: 'HOU', age: 27, G: 29, MP: 937, MP_pct: 0.771, PER: 24.4, TS_pct: 0.511, ThrPAr: 0.247, FTr: 0.212, ORB_pct: 5.5, TRB_pct: 10.3, AST_pct: 14.1, STL_pct: 4.3, BLK_pct: 1.3, TOV_pct: 11.6, USG_pct: 25.5, OWS: 3.4, DWS: 2.6, WS: 6, WS40: 0.255, MIN_pg: 32.3, PTS_pg: 15.6, REB_pg: 5.1, AST_pg: 2.1, STL_pg: 2.5, BLK_pg: 0.5, FG_pct: 0.427, FG3_pct: 0.360, FT_pct: 0.826 },
+      1999: { team: 'HOU', age: 28, G: 32, MP: 1100, MP_pct: 0.856, PER: 28.9, TS_pct: 0.539, ThrPAr: 0.2, FTr: 0.249, ORB_pct: 6.1, TRB_pct: 12.1, AST_pct: 25.7, STL_pct: 4, BLK_pct: 3.6, TOV_pct: 13.3, USG_pct: 27.7, OWS: 5, DWS: 3.1, WS: 8.1, WS40: 0.294, MIN_pg: 34.4, PTS_pg: 18.3, REB_pg: 6.3, AST_pg: 4.0, STL_pg: 2.4, BLK_pg: 1.4, FG_pct: 0.462, FG3_pct: 0.337, FT_pct: 0.820 },
+      2000: { team: 'HOU', age: 29, G: 31, MP: 1090, MP_pct: 0.842, PER: 32, TS_pct: 0.587, ThrPAr: 0.188, FTr: 0.3, ORB_pct: 5.4, TRB_pct: 12.2, AST_pct: 23.6, STL_pct: 4.6, BLK_pct: 2.6, TOV_pct: 13, USG_pct: 28.6, OWS: 6.3, DWS: 3.6, WS: 9.8, WS40: 0.361, MIN_pg: 35.2, PTS_pg: 20.7, REB_pg: 6.3, AST_pg: 3.8, STL_pg: 2.8, BLK_pg: 1.1, FG_pct: 0.506, FG3_pct: 0.374, FT_pct: 0.821 },
+      2002: { team: 'HOU', age: 31, G: 32, MIN_pg: 36.1, PTS_pg: 18.5, REB_pg: 4.9, AST_pg: 3.3, STL_pg: 2.8, BLK_pg: 0.7, FG_pct: 0.434, FG3_pct: 0.288, FT_pct: 0.825 },
+      2003: { team: 'HOU', age: 32, G: 31, MIN_pg: 35.0, PTS_pg: 15.6, REB_pg: 4.6, AST_pg: 3.9, STL_pg: 2.5, BLK_pg: 0.8, FG_pct: 0.406, FG3_pct: 0.304, FT_pct: 0.887 },
+      2004: { team: 'HOU', age: 33, G: 31, MIN_pg: 34.5, PTS_pg: 14.8, REB_pg: 4.9, AST_pg: 2.9, STL_pg: 1.5, BLK_pg: 0.5, FG_pct: 0.422, FG3_pct: 0.308, FT_pct: 0.856 },
+      2005: { team: 'HOU', age: 34, G: 33, MIN_pg: 37.1, PTS_pg: 18.6, REB_pg: 3.6, AST_pg: 4.3, STL_pg: 2.0, BLK_pg: 0.8, FG_pct: 0.447, FG3_pct: 0.360, FT_pct: 0.850 },
+      2006: { team: 'HOU', age: 35, G: 31, MIN_pg: 35.8, PTS_pg: 15.5, REB_pg: 5.9, AST_pg: 3.7, STL_pg: 2.1, BLK_pg: 0.3, FG_pct: 0.413, FG3_pct: 0.278, FT_pct: 0.764 },
+      2007: { team: 'HOU', age: 36, G: 3,  MIN_pg: 35.3, PTS_pg: 7.7, REB_pg: 5.7, AST_pg: 3.7, STL_pg: 1.7, BLK_pg: 0.3, FG_pct: 0.360, FG3_pct: 0.143, FT_pct: 1.000 },
+      2008: { team: 'SEA', age: 37, G: 29, MIN_pg: 24.3, PTS_pg: 7.1, REB_pg: 4.3, AST_pg: 2.1, STL_pg: 1.5, BLK_pg: 0.3, FG_pct: 0.391, FG3_pct: 0.222, FT_pct: 0.695 },
+      2011: { team: 'TUL', age: 40, G: 33, MIN_pg: 29.9, PTS_pg: 8.2, REB_pg: 4.1, AST_pg: 2.3, STL_pg: 0.8, BLK_pg: 0.3, FG_pct: 0.398, FG3_pct: 0.319, FT_pct: 0.870 },
     },
   },
   'tateso01w': {
@@ -3219,11 +3382,23 @@ const LEGACY_PLAYERS_BULK = {
     position: 'F',
     retired: true,
     seasons: {
-      1997: { team: 'HOU', age: 22, G: 28, MP: 885, MP_pct: 0.783, PER: 18.6, TS_pct: 0.524, ThrPAr: 0.314, FTr: 0.252, ORB_pct: 9.8, TRB_pct: 13.7, AST_pct: 7.7, STL_pct: 1.3, BLK_pct: 2.7, TOV_pct: 14.9, USG_pct: 22, OWS: 3.2, DWS: 1.1, WS: 4.3, WS40: 0.195 },
-      1998: { team: 'HOU', age: 23, G: 27, MP: 874, MP_pct: 0.719, PER: 19.2, TS_pct: 0.532, ThrPAr: 0.356, FTr: 0.256, ORB_pct: 9.7, TRB_pct: 14.2, AST_pct: 5.3, STL_pct: 2, BLK_pct: 2.4, TOV_pct: 12.8, USG_pct: 20.1, OWS: 2.9, DWS: 2, WS: 5, WS40: 0.228 },
-      1999: { team: 'HOU', age: 24, G: 32, MP: 1074, MP_pct: 0.836, PER: 15.7, TS_pct: 0.518, ThrPAr: 0.327, FTr: 0.257, ORB_pct: 8.7, TRB_pct: 12.6, AST_pct: 5, STL_pct: 1.7, BLK_pct: 2.5, TOV_pct: 16, USG_pct: 20.4, OWS: 1.8, DWS: 2, WS: 3.8, WS40: 0.142 },
-      2000: { team: 'HOU', age: 25, G: 32, MP: 1087, MP_pct: 0.839, PER: 23.9, TS_pct: 0.586, ThrPAr: 0.324, FTr: 0.302, ORB_pct: 9.2, TRB_pct: 15.4, AST_pct: 8.6, STL_pct: 2.5, BLK_pct: 2, TOV_pct: 15.4, USG_pct: 24.9, OWS: 4.3, DWS: 2.9, WS: 7.2, WS40: 0.264 },
-      2001: { team: 'HOU', age: 26, G: 30, MP: 1102, MP_pct: 0.854, PER: 22.2, TS_pct: 0.483, ThrPAr: 0.284, FTr: 0.309, ORB_pct: 9.5, TRB_pct: 13.4, AST_pct: 13.2, STL_pct: 1.6, BLK_pct: 1.8, TOV_pct: 12.7, USG_pct: 31.1, OWS: 3.2, DWS: 1.7, WS: 5, WS40: 0.18 },
+      1997: { team: 'HOU', age: 22, G: 28, MP: 885, MP_pct: 0.783, PER: 18.6, TS_pct: 0.524, ThrPAr: 0.314, FTr: 0.252, ORB_pct: 9.8, TRB_pct: 13.7, AST_pct: 7.7, STL_pct: 1.3, BLK_pct: 2.7, TOV_pct: 14.9, USG_pct: 22, OWS: 3.2, DWS: 1.1, WS: 4.3, WS40: 0.195, MIN_pg: 31.6, PTS_pg: 13.2, REB_pg: 6.6, AST_pg: 1.1, STL_pg: 0.8, BLK_pg: 1.0, FG_pct: 0.418, FG3_pct: 0.370, FT_pct: 0.838 },
+      1998: { team: 'HOU', age: 23, G: 27, MP: 874, MP_pct: 0.719, PER: 19.2, TS_pct: 0.532, ThrPAr: 0.356, FTr: 0.256, ORB_pct: 9.7, TRB_pct: 14.2, AST_pct: 5.3, STL_pct: 2, BLK_pct: 2.4, TOV_pct: 12.8, USG_pct: 20.1, OWS: 2.9, DWS: 2, WS: 5, WS40: 0.228, MIN_pg: 32.4, PTS_pg: 12.7, REB_pg: 7.1, AST_pg: 0.9, STL_pg: 1.2, BLK_pg: 0.9, FG_pct: 0.419, FG3_pct: 0.359, FT_pct: 0.851 },
+      1999: { team: 'HOU', age: 24, G: 32, MP: 1074, MP_pct: 0.836, PER: 15.7, TS_pct: 0.518, ThrPAr: 0.327, FTr: 0.257, ORB_pct: 8.7, TRB_pct: 12.6, AST_pct: 5, STL_pct: 1.7, BLK_pct: 2.5, TOV_pct: 16, USG_pct: 20.4, OWS: 1.8, DWS: 2, WS: 3.8, WS40: 0.142, MIN_pg: 33.6, PTS_pg: 12.2, REB_pg: 6.4, AST_pg: 0.9, STL_pg: 1.0, BLK_pg: 1.0, FG_pct: 0.419, FG3_pct: 0.351, FT_pct: 0.782 },
+      2000: { team: 'HOU', age: 25, G: 32, MP: 1087, MP_pct: 0.839, PER: 23.9, TS_pct: 0.586, ThrPAr: 0.324, FTr: 0.302, ORB_pct: 9.2, TRB_pct: 15.4, AST_pct: 8.6, STL_pct: 2.5, BLK_pct: 2, TOV_pct: 15.4, USG_pct: 24.9, OWS: 4.3, DWS: 2.9, WS: 7.2, WS40: 0.264, MIN_pg: 34.0, PTS_pg: 16.9, REB_pg: 7.7, AST_pg: 1.5, STL_pg: 1.5, BLK_pg: 0.8, FG_pct: 0.469, FG3_pct: 0.417, FT_pct: 0.837 },
+      2001: { team: 'HOU', age: 26, G: 30, MP: 1102, MP_pct: 0.854, PER: 22.2, TS_pct: 0.483, ThrPAr: 0.284, FTr: 0.309, ORB_pct: 9.5, TRB_pct: 13.4, AST_pct: 13.2, STL_pct: 1.6, BLK_pct: 1.8, TOV_pct: 12.7, USG_pct: 31.1, OWS: 3.2, DWS: 1.7, WS: 5, WS40: 0.18, MIN_pg: 36.7, PTS_pg: 19.3, REB_pg: 7.8, AST_pg: 1.9, STL_pg: 1.0, BLK_pg: 0.7, FG_pct: 0.377, FG3_pct: 0.293, FT_pct: 0.840 },
+      2002: { team: 'HOU', age: 27, G: 29, MIN_pg: 36.3, PTS_pg: 16.7, REB_pg: 7.5, AST_pg: 2.1, STL_pg: 0.9, BLK_pg: 0.7, FG_pct: 0.431, FG3_pct: 0.370, FT_pct: 0.823 },
+      2003: { team: 'HOU', age: 28, G: 28, MIN_pg: 34.8, PTS_pg: 16.9, REB_pg: 5.9, AST_pg: 1.7, STL_pg: 0.6, BLK_pg: 0.8, FG_pct: 0.413, FG3_pct: 0.342, FT_pct: 0.779 },
+      2004: { team: 'HOU', age: 29, G: 26, MIN_pg: 36.3, PTS_pg: 20.0, REB_pg: 6.0, AST_pg: 1.8, STL_pg: 0.8, BLK_pg: 0.9, FG_pct: 0.402, FG3_pct: 0.407, FT_pct: 0.789 },
+      2005: { team: 'HOU', age: 30, G: 15, MIN_pg: 29.3, PTS_pg: 10.1, REB_pg: 3.8, AST_pg: 1.5, STL_pg: 0.8, BLK_pg: 0.3, FG_pct: 0.413, FG3_pct: 0.300, FT_pct: 0.762 },
+      2006: { team: 'HOU', age: 31, G: 21, MIN_pg: 33.1, PTS_pg: 18.7, REB_pg: 5.6, AST_pg: 2.2, STL_pg: 1.0, BLK_pg: 0.6, FG_pct: 0.457, FG3_pct: 0.417, FT_pct: 0.804 },
+      2007: { team: 'HOU', age: 32, G: 34, MIN_pg: 36.3, PTS_pg: 18.8, REB_pg: 6.7, AST_pg: 2.8, STL_pg: 0.9, BLK_pg: 0.7, FG_pct: 0.420, FG3_pct: 0.400, FT_pct: 0.834 },
+      2008: { team: 'HOU', age: 33, G: 30, MIN_pg: 35.8, PTS_pg: 18.1, REB_pg: 6.9, AST_pg: 2.2, STL_pg: 1.1, BLK_pg: 0.7, FG_pct: 0.413, FG3_pct: 0.406, FT_pct: 0.859 },
+      2009: { team: 'LAS', age: 34, G: 34, MIN_pg: 34.8, PTS_pg: 13.0, REB_pg: 5.9, AST_pg: 2.3, STL_pg: 0.8, BLK_pg: 0.7, FG_pct: 0.385, FG3_pct: 0.369, FT_pct: 0.867 },
+      2010: { team: 'LAS', age: 35, G: 33, MIN_pg: 33.2, PTS_pg: 16.6, REB_pg: 6.2, AST_pg: 1.8, STL_pg: 1.2, BLK_pg: 0.7, FG_pct: 0.446, FG3_pct: 0.352, FT_pct: 0.872 },
+      2011: { team: 'LAS', age: 36, G: 34, MIN_pg: 25.0, PTS_pg: 9.9,  REB_pg: 4.6, AST_pg: 1.1, STL_pg: 1.2, BLK_pg: 0.7, FG_pct: 0.386, FG3_pct: 0.339, FT_pct: 0.833 },
+      2012: { team: 'SEA', age: 37, G: 29, MIN_pg: 19.0, PTS_pg: 8.9,  REB_pg: 3.4, AST_pg: 0.5, STL_pg: 0.5, BLK_pg: 0.8, FG_pct: 0.442, FG3_pct: 0.427, FT_pct: 0.833 },
+      2013: { team: 'SEA', age: 38, G: 34, MIN_pg: 28.7, PTS_pg: 14.1, REB_pg: 5.8, AST_pg: 1.1, STL_pg: 0.5, BLK_pg: 0.6, FG_pct: 0.410, FG3_pct: 0.370, FT_pct: 0.874 },
     },
   },
   'threaro01w': {
@@ -3471,11 +3646,14 @@ const LEGACY_PLAYERS_BULK = {
     position: 'G',
     retired: true,
     seasons: {
-      1997: { team: 'NYL', age: 31, G: 28, MP: 924, MP_pct: 0.814, PER: 16.3, TS_pct: 0.541, ThrPAr: 0.255, FTr: 0.73, ORB_pct: 3.3, TRB_pct: 7.7, AST_pct: 33.6, STL_pct: 5, BLK_pct: 0.2, TOV_pct: 34.2, USG_pct: 13.4, OWS: 1.1, DWS: 2.4, WS: 3.4, WS40: 0.149 },
-      1998: { team: 'NYL', age: 32, G: 30, MP: 1002, MP_pct: 0.828, PER: 15.3, TS_pct: 0.467, ThrPAr: 0.261, FTr: 0.367, ORB_pct: 2.6, TRB_pct: 7.9, AST_pct: 34.4, STL_pct: 5.6, BLK_pct: 0, TOV_pct: 30.5, USG_pct: 14.8, OWS: 0.3, DWS: 2.7, WS: 3, WS40: 0.118 },
-      1999: { team: 'NYL', age: 33, G: 32, MP: 1086, MP_pct: 0.832, PER: 16.3, TS_pct: 0.533, ThrPAr: 0.432, FTr: 0.295, ORB_pct: 2.6, TRB_pct: 6.5, AST_pct: 35, STL_pct: 4.2, BLK_pct: 0.3, TOV_pct: 27.2, USG_pct: 13.5, OWS: 2, DWS: 2.2, WS: 4.2, WS40: 0.154 },
-      2000: { team: 'NYL', age: 34, G: 32, MP: 1078, MP_pct: 0.839, PER: 15, TS_pct: 0.543, ThrPAr: 0.288, FTr: 0.529, ORB_pct: 2, TRB_pct: 6.8, AST_pct: 34.3, STL_pct: 3.6, BLK_pct: 0.4, TOV_pct: 31.3, USG_pct: 12.9, OWS: 1.5, DWS: 2.2, WS: 3.7, WS40: 0.138 },
-      2001: { team: 'NYL', age: 35, G: 32, MP: 974, MP_pct: 0.761, PER: 16.5, TS_pct: 0.513, ThrPAr: 0.156, FTr: 0.473, ORB_pct: 4.1, TRB_pct: 8.2, AST_pct: 36.1, STL_pct: 3.3, BLK_pct: 0.4, TOV_pct: 28.6, USG_pct: 15, OWS: 2, DWS: 1.2, WS: 3.2, WS40: 0.132 },
+      1997: { team: 'NYL', age: 31, G: 28, MP: 924, MP_pct: 0.814, PER: 16.3, TS_pct: 0.541, ThrPAr: 0.255, FTr: 0.73, ORB_pct: 3.3, TRB_pct: 7.7, AST_pct: 33.6, STL_pct: 5, BLK_pct: 0.2, TOV_pct: 34.2, USG_pct: 13.4, OWS: 1.1, DWS: 2.4, WS: 3.4, WS40: 0.149, MIN_pg: 33.0, PTS_pg: 7.0, REB_pg: 4.1, AST_pg: 6.2, STL_pg: 3.0, BLK_pg: 0.1, FG_pct: 0.467, FG3_pct: 0.086, FT_pct: 0.650 },
+      1998: { team: 'NYL', age: 32, G: 30, MP: 1002, MP_pct: 0.828, PER: 15.3, TS_pct: 0.467, ThrPAr: 0.261, FTr: 0.367, ORB_pct: 2.6, TRB_pct: 7.9, AST_pct: 34.4, STL_pct: 5.6, BLK_pct: 0, TOV_pct: 30.5, USG_pct: 14.8, OWS: 0.3, DWS: 2.7, WS: 3, WS40: 0.118, MIN_pg: 33.4, PTS_pg: 6.8, REB_pg: 4.0, AST_pg: 6.4, STL_pg: 3.3, BLK_pg: 0.0, FG_pct: 0.388, FG3_pct: 0.327, FT_pct: 0.609 },
+      1999: { team: 'NYL', age: 33, G: 32, MP: 1086, MP_pct: 0.832, PER: 16.3, TS_pct: 0.533, ThrPAr: 0.432, FTr: 0.295, ORB_pct: 2.6, TRB_pct: 6.5, AST_pct: 35, STL_pct: 4.2, BLK_pct: 0.3, TOV_pct: 27.2, USG_pct: 13.5, OWS: 2, DWS: 2.2, WS: 4.2, WS40: 0.154, MIN_pg: 33.9, PTS_pg: 7.2, REB_pg: 3.3, AST_pg: 6.4, STL_pg: 2.4, BLK_pg: 0.1, FG_pct: 0.421, FG3_pct: 0.378, FT_pct: 0.679 },
+      2000: { team: 'NYL', age: 34, G: 32, MP: 1078, MP_pct: 0.839, PER: 15, TS_pct: 0.543, ThrPAr: 0.288, FTr: 0.529, ORB_pct: 2, TRB_pct: 6.8, AST_pct: 34.3, STL_pct: 3.6, BLK_pct: 0.4, TOV_pct: 31.3, USG_pct: 12.9, OWS: 1.5, DWS: 2.2, WS: 3.7, WS40: 0.138, MIN_pg: 33.7, PTS_pg: 6.4, REB_pg: 3.4, AST_pg: 6.4, STL_pg: 2.0, BLK_pg: 0.2, FG_pct: 0.438, FG3_pct: 0.250, FT_pct: 0.741 },
+      2001: { team: 'NYL', age: 35, G: 32, MP: 974, MP_pct: 0.761, PER: 16.5, TS_pct: 0.513, ThrPAr: 0.156, FTr: 0.473, ORB_pct: 4.1, TRB_pct: 8.2, AST_pct: 36.1, STL_pct: 3.3, BLK_pct: 0.4, TOV_pct: 28.6, USG_pct: 15, OWS: 2, DWS: 1.2, WS: 3.2, WS40: 0.132, MIN_pg: 30.4, PTS_pg: 6.5, REB_pg: 3.7, AST_pg: 6.3, STL_pg: 1.7, BLK_pg: 0.1, FG_pct: 0.431, FG3_pct: 0.385, FT_pct: 0.671 },
+      2002: { team: 'NYL', age: 36, G: 32, MIN_pg: 29.8, PTS_pg: 3.4, REB_pg: 2.7, AST_pg: 5.7, STL_pg: 1.3, BLK_pg: 0.1, FG_pct: 0.342, FG3_pct: 0.100, FT_pct: 0.519 },
+      2003: { team: 'NYL', age: 37, G: 34, MIN_pg: 24.2, PTS_pg: 2.9, REB_pg: 2.9, AST_pg: 4.4, STL_pg: 0.8, BLK_pg: 0.1, FG_pct: 0.385, FG3_pct: 0.000, FT_pct: 0.750 },
+      2004: { team: 'LAS', age: 38, G: 34, MIN_pg: 8.6, PTS_pg: 0.5, REB_pg: 0.9, AST_pg: 0.9, STL_pg: 0.4, BLK_pg: 0.0, FG_pct: 0.320, FG3_pct: 0.333 },
     },
   },
   'webbum01w': {
@@ -3526,11 +3704,12 @@ const LEGACY_PLAYERS_BULK = {
     position: 'F',
     retired: true,
     seasons: {
-      1997: { team: 'NYL', age: 30, G: 28, MP: 332, MP_pct: 0.293, PER: 12.3, TS_pct: 0.411, ThrPAr: 0.065, FTr: 0.308, ORB_pct: 13.3, TRB_pct: 17.4, AST_pct: 17.2, STL_pct: 2.8, BLK_pct: 4.5, TOV_pct: 27.5, USG_pct: 22.7, OWS: -0.6, DWS: 0.9, WS: 0.4, WS40: 0.046 },
-      1998: { team: 'NYL', age: 31, G: 30, MP: 444, MP_pct: 0.367, PER: 12.1, TS_pct: 0.505, ThrPAr: 0.028, FTr: 0.421, ORB_pct: 11.6, TRB_pct: 12.3, AST_pct: 15.5, STL_pct: 2, BLK_pct: 2, TOV_pct: 27.5, USG_pct: 18.6, OWS: 0.2, DWS: 0.7, WS: 0.9, WS40: 0.084 },
-      1999: { team: 'NYL', age: 32, G: 32, MP: 938, MP_pct: 0.719, PER: 12.5, TS_pct: 0.434, ThrPAr: 0.066, FTr: 0.23, ORB_pct: 10.6, TRB_pct: 16.1, AST_pct: 9.3, STL_pct: 2.6, BLK_pct: 4.5, TOV_pct: 20.2, USG_pct: 16.5, OWS: -0.3, DWS: 2.3, WS: 2, WS40: 0.085 },
-      2000: { team: 'NYL', age: 33, G: 32, MP: 680, MP_pct: 0.529, PER: 12.1, TS_pct: 0.458, ThrPAr: 0.035, FTr: 0.434, ORB_pct: 9.9, TRB_pct: 14.8, AST_pct: 5.8, STL_pct: 2.3, BLK_pct: 5.3, TOV_pct: 22.7, USG_pct: 16.4, OWS: -0.3, DWS: 1.7, WS: 1.4, WS40: 0.082 },
-      2001: { team: 'NYL', age: 34, G: 30, MP: 602, MP_pct: 0.47, PER: 16.1, TS_pct: 0.513, ThrPAr: 0.054, FTr: 0.4, ORB_pct: 8.2, TRB_pct: 15.5, AST_pct: 11.2, STL_pct: 3.5, BLK_pct: 4.7, TOV_pct: 22, USG_pct: 16.8, OWS: 0.6, DWS: 1.4, WS: 2, WS40: 0.132 },
+      1997: { team: 'NYL', age: 30, G: 28, MP: 332, MP_pct: 0.293, PER: 12.3, TS_pct: 0.411, ThrPAr: 0.065, FTr: 0.308, ORB_pct: 13.3, TRB_pct: 17.4, AST_pct: 17.2, STL_pct: 2.8, BLK_pct: 4.5, TOV_pct: 27.5, USG_pct: 22.7, OWS: -0.6, DWS: 0.9, WS: 0.4, WS40: 0.046, MIN_pg: 11.9, PTS_pg: 3.6, REB_pg: 3.4, AST_pg: 1.0, STL_pg: 0.6, BLK_pg: 0.6, FG_pct: 0.355, FG3_pct: 0.286, FT_pct: 0.667 },
+      1998: { team: 'NYL', age: 31, G: 30, MP: 444, MP_pct: 0.367, PER: 12.1, TS_pct: 0.505, ThrPAr: 0.028, FTr: 0.421, ORB_pct: 11.6, TRB_pct: 12.3, AST_pct: 15.5, STL_pct: 2, BLK_pct: 2, TOV_pct: 27.5, USG_pct: 18.6, OWS: 0.2, DWS: 0.7, WS: 0.9, WS40: 0.084, MIN_pg: 14.8, PTS_pg: 4.3, REB_pg: 2.8, AST_pg: 1.2, STL_pg: 0.5, BLK_pg: 0.3, FG_pct: 0.430, FG3_pct: 0.000, FT_pct: 0.800 },
+      1999: { team: 'NYL', age: 32, G: 32, MP: 938, MP_pct: 0.719, PER: 12.5, TS_pct: 0.434, ThrPAr: 0.066, FTr: 0.23, ORB_pct: 10.6, TRB_pct: 16.1, AST_pct: 9.3, STL_pct: 2.6, BLK_pct: 4.5, TOV_pct: 20.2, USG_pct: 16.5, OWS: -0.3, DWS: 2.3, WS: 2, WS40: 0.085, MIN_pg: 29.3, PTS_pg: 6.8, REB_pg: 7.0, AST_pg: 1.4, STL_pg: 1.3, BLK_pg: 1.3, FG_pct: 0.403, FG3_pct: 0.133, FT_pct: 0.615 },
+      2000: { team: 'NYL', age: 33, G: 32, MP: 680, MP_pct: 0.529, PER: 12.1, TS_pct: 0.458, ThrPAr: 0.035, FTr: 0.434, ORB_pct: 9.9, TRB_pct: 14.8, AST_pct: 5.8, STL_pct: 2.3, BLK_pct: 5.3, TOV_pct: 22.7, USG_pct: 16.4, OWS: -0.3, DWS: 1.7, WS: 1.4, WS40: 0.082, MIN_pg: 21.3, PTS_pg: 4.9, REB_pg: 4.7, AST_pg: 0.7, STL_pg: 0.8, BLK_pg: 1.2, FG_pct: 0.385, FG3_pct: 0.200, FT_pct: 0.726 },
+      2001: { team: 'NYL', age: 34, G: 30, MP: 602, MP_pct: 0.47, PER: 16.1, TS_pct: 0.513, ThrPAr: 0.054, FTr: 0.4, ORB_pct: 8.2, TRB_pct: 15.5, AST_pct: 11.2, STL_pct: 3.5, BLK_pct: 4.7, TOV_pct: 22, USG_pct: 16.8, OWS: 0.6, DWS: 1.4, WS: 2, WS40: 0.132, MIN_pg: 20.1, PTS_pg: 5.2, REB_pg: 4.6, AST_pg: 1.2, STL_pg: 1.2, BLK_pg: 1.0, FG_pct: 0.469, FG3_pct: 0.000, FT_pct: 0.673 },
+      2002: { team: 'NYL', age: 35, G: 30, MIN_pg: 14.3, PTS_pg: 2.2, REB_pg: 3.4, AST_pg: 0.5, STL_pg: 0.7, BLK_pg: 0.5, FG_pct: 0.343, FG3_pct: 0.000, FT_pct: 0.667 },
     },
   },
   'widemja01w': {
@@ -3589,9 +3768,13 @@ const LEGACY_PLAYERS_BULK = {
     position: 'C',
     retired: true,
     seasons: {
-      1999: { team: 'UTA', age: 28, G: 28, MP: 954, MP_pct: 0.734, PER: 24.8, TS_pct: 0.585, ThrPAr: 0.006, FTr: 0.55, ORB_pct: 14.8, TRB_pct: 17.2, AST_pct: 5.7, STL_pct: 2.2, BLK_pct: 2, TOV_pct: 13.6, USG_pct: 24, OWS: 4.4, DWS: 0.6, WS: 4.9, WS40: 0.207 },
-      2000: { team: 'UTA', age: 29, G: 29, MP: 1039, MP_pct: 0.812, PER: 25.7, TS_pct: 0.583, ThrPAr: 0.014, FTr: 0.625, ORB_pct: 17.2, TRB_pct: 20.8, AST_pct: 9.9, STL_pct: 1.8, BLK_pct: 1.5, TOV_pct: 14.5, USG_pct: 24.1, OWS: 5.4, DWS: 1, WS: 6.4, WS40: 0.246 },
-      2001: { team: 'UTA', age: 30, G: 31, MP: 1064, MP_pct: 0.822, PER: 21.3, TS_pct: 0.539, ThrPAr: 0.011, FTr: 0.381, ORB_pct: 14.6, TRB_pct: 18.3, AST_pct: 11.1, STL_pct: 2.2, BLK_pct: 0.8, TOV_pct: 14.7, USG_pct: 22, OWS: 3.6, DWS: 1.5, WS: 5.1, WS40: 0.193 },
+      1999: { team: 'UTA', age: 28, G: 28, MP: 954, MP_pct: 0.734, PER: 24.8, TS_pct: 0.585, ThrPAr: 0.006, FTr: 0.55, ORB_pct: 14.8, TRB_pct: 17.2, AST_pct: 5.7, STL_pct: 2.2, BLK_pct: 2, TOV_pct: 13.6, USG_pct: 24, OWS: 4.4, DWS: 0.6, WS: 4.9, WS40: 0.207, MIN_pg: 34.1, PTS_pg: 18.0, REB_pg: 9.2, AST_pg: 0.9, STL_pg: 1.4, BLK_pg: 0.8, FG_pct: 0.519, FG3_pct: 0.000, FT_pct: 0.754 },
+      2000: { team: 'UTA', age: 29, G: 29, MP: 1039, MP_pct: 0.812, PER: 25.7, TS_pct: 0.583, ThrPAr: 0.014, FTr: 0.625, ORB_pct: 17.2, TRB_pct: 20.8, AST_pct: 9.9, STL_pct: 1.8, BLK_pct: 1.5, TOV_pct: 14.5, USG_pct: 24.1, OWS: 5.4, DWS: 1, WS: 6.4, WS40: 0.246, MIN_pg: 35.8, PTS_pg: 18.7, REB_pg: 11.6, AST_pg: 1.8, STL_pg: 1.2, BLK_pg: 0.6, FG_pct: 0.490, FG3_pct: 0.600, FT_pct: 0.798 },
+      2001: { team: 'UTA', age: 30, G: 31, MP: 1064, MP_pct: 0.822, PER: 21.3, TS_pct: 0.539, ThrPAr: 0.011, FTr: 0.381, ORB_pct: 14.6, TRB_pct: 18.3, AST_pct: 11.1, STL_pct: 2.2, BLK_pct: 0.8, TOV_pct: 14.7, USG_pct: 22, OWS: 3.6, DWS: 1.5, WS: 5.1, WS40: 0.193, MIN_pg: 34.3, PTS_pg: 14.2, REB_pg: 9.9, AST_pg: 1.8, STL_pg: 1.3, BLK_pg: 0.3, FG_pct: 0.490, FG3_pct: 0.000, FT_pct: 0.729 },
+      2002: { team: 'UTA', age: 31, G: 31, MIN_pg: 32.5, PTS_pg: 11.3, REB_pg: 8.2, AST_pg: 1.2, STL_pg: 1.2, BLK_pg: 0.5, FG_pct: 0.435, FG3_pct: 0.417, FT_pct: 0.742 },
+      2003: { team: 'IND', age: 32, G: 34, MIN_pg: 31.0, PTS_pg: 13.4, REB_pg: 7.5, AST_pg: 1.4, STL_pg: 1.3, BLK_pg: 0.6, FG_pct: 0.485, FG3_pct: 0.000, FT_pct: 0.709 },
+      2004: { team: 'IND', age: 33, G: 34, MIN_pg: 28.1, PTS_pg: 10.3, REB_pg: 6.9, AST_pg: 1.8, STL_pg: 1.2, BLK_pg: 0.7, FG_pct: 0.454, FG3_pct: 0.000, FT_pct: 0.697 },
+      2005: { team: 'IND', age: 34, G: 34, MIN_pg: 23.6, PTS_pg: 7.4, REB_pg: 5.5, AST_pg: 0.9, STL_pg: 1.0, BLK_pg: 0.4, FG_pct: 0.415, FG3_pct: 0.000, FT_pct: 0.672 },
     },
   },
   'williri01w': {
@@ -3747,10 +3930,35 @@ const LEGACY_PLAYERS_BULK = {
 
 /**
  * Detect a bulk-legacy BBRef id. They look like 'staleda01w' — lowercase letters with a numeric
- * tail and a trailing 'w'. Hand-curated legacy ids contain hyphens; ESPN ids are pure integers.
+ * tail and a trailing 'w'. Old synthetic legacy ids contain hyphens; ESPN ids are pure integers.
  */
 function isBulkLegacyId(id) {
   return typeof id === 'string' && /^[a-z]{2,8}\d{2}w$/.test(id);
+}
+
+/**
+ * Retired synthetic ids (lastname-firstname-birthyear) used by the deleted legacyPlayerStats.js
+ * map. Kept for backward-compat so old shared URLs resolve. Resolution path: api.js translates
+ * the synthetic id to the BBRef id before any data lookup.
+ */
+const LEGACY_ID_REDIRECTS = Object.freeze({
+  'cooper-cynthia-1963':   'coopecy01w',
+  'swoopes-sheryl-1971':   'swoopsh01w',
+  'leslie-lisa-1972':      'leslili01w',
+  'jackson-lauren-1981':   'jacksla01w',
+  'griffith-yolanda-1970': 'griffyo01w',
+  'thompson-tina-1975':    'thompti01w',
+  'dixon-tamecka-1975':    'dixonta01w',
+  'wicks-sue-1966':        'wickssu01w',
+});
+
+/**
+ * Translate a retired synthetic id to its BBRef counterpart. Returns the id unchanged if it
+ * isn't in the redirect map. Use this at the entry of any /api/players/:id-style route so a
+ * single check covers profile, detailed-stats, and graded-report.
+ */
+function resolveLegacyId(id) {
+  return LEGACY_ID_REDIRECTS[id] ?? id;
 }
 
 function getBulkLegacyPlayer(id) {
@@ -3810,51 +4018,135 @@ function buildBulkLegacyProfile(player) {
 }
 
 /**
- * Build the detailed-stats payload for a bulk-legacy player. Only advanced rows are available —
- * no per-game stats — so the response carries advancedOnly: true. The shape mirrors what the
- * frontend's stat-tab strip expects (perGame/totals/per36/per100), with the populated half being
- * 'advanced' alone.
+ * Per-game headers — match the ESPN/legacy detailed-stats table shape so the same client renderer
+ * works for both. Only the fields Wikipedia / hand-curated data provide are non-null.
+ */
+const BULK_PG_HEADERS = Object.freeze([
+  'SEASON_ID', 'TEAM_ABBREVIATION', 'GP', 'GS', 'MIN',
+  'FGM', 'FGA', 'FG_PCT', 'FG3M', 'FG3A', 'FG3_PCT',
+  'FTM', 'FTA', 'FT_PCT', 'OREB', 'DREB', 'REB',
+  'AST', 'STL', 'BLK', 'TOV', 'PF', 'PTS',
+]);
+
+// One season's per-game line as an array aligned to BULK_PG_HEADERS.
+// Returns null when the season has no per-game stats at all (advanced-only row).
+function bulkPgRow(year, s) {
+  if (s.PTS_pg == null && s.REB_pg == null && s.AST_pg == null) return null;
+  return [
+    String(year),
+    s.team ?? null,
+    s.G ?? null,
+    null,                          // GS — not tracked
+    s.MIN_pg ?? null,
+    null, null, s.FG_pct ?? null,  // FGM/FGA not tracked, only %
+    null, null, s.FG3_pct ?? null,
+    null, null, s.FT_pct ?? null,
+    s.OREB_pg ?? null, s.DREB_pg ?? null, s.REB_pg ?? null,
+    s.AST_pg ?? null, s.STL_pg ?? null, s.BLK_pg ?? null,
+    s.TOV_pg ?? null, null,        // PF not tracked
+    s.PTS_pg ?? null,
+  ];
+}
+
+// GP-weighted career averages across rows that have per-game data. Skips advanced-only rows.
+function buildBulkPgCareerRow(player) {
+  const seasons = Object.values(player.seasons).filter(s => s.PTS_pg != null || s.REB_pg != null || s.AST_pg != null);
+  const totalGp = seasons.reduce((sum, s) => sum + (s.G ?? 0), 0);
+  if (totalGp === 0) return null;
+
+  const wAvg = (key) => {
+    let sum = 0; let weight = 0;
+    for (const s of seasons) {
+      const v = s[key]; const g = s.G ?? 0;
+      if (v == null || g === 0) continue;
+      sum += v * g; weight += g;
+    }
+    return weight ? Number((sum / weight).toFixed(3)) : null;
+  };
+
+  return [
+    'Career', '', totalGp, null, wAvg('MIN_pg'),
+    null, null, wAvg('FG_pct'),
+    null, null, wAvg('FG3_pct'),
+    null, null, wAvg('FT_pct'),
+    wAvg('OREB_pg'), wAvg('DREB_pg'), wAvg('REB_pg'),
+    wAvg('AST_pg'), wAvg('STL_pg'), wAvg('BLK_pg'),
+    wAvg('TOV_pg'), null,
+    wAvg('PTS_pg'),
+  ];
+}
+
+/**
+ * Build the detailed-stats payload for a bulk-legacy player. Returns both per-game and advanced
+ * splits when present. Per-game rows are emitted for any season with PTS_pg/REB_pg/AST_pg set
+ * (hand-curated legends — and any other player Wikipedia enrichment populates). Advanced rows
+ * are emitted for any season with PER/WS data (1997-2001 CSV coverage). The two splits may
+ * cover different year sets — e.g., a player's 2002+ seasons are per-game-only.
+ *
+ * advancedOnly stays true only when no per-game data exists, so the frontend can hide the
+ * per-game tab in that case.
  */
 function buildBulkLegacyDetailedStats(player) {
   const years = Object.keys(player.seasons).map(Number).sort();
-  const rows = years.map(y => {
-    const s = player.seasons[y];
-    return {
-      year:    String(y),
-      team:    s.team,
-      age:     s.age,
-      G:       s.G,
-      MP:      s.MP,
-      PER:     s.PER,
-      TS_pct:  s.TS_pct,
-      ORB_pct: s.ORB_pct,
-      TRB_pct: s.TRB_pct,
-      AST_pct: s.AST_pct,
-      STL_pct: s.STL_pct,
-      BLK_pct: s.BLK_pct,
-      TOV_pct: s.TOV_pct,
-      USG_pct: s.USG_pct,
-      OWS:     s.OWS,
-      DWS:     s.DWS,
-      WS:      s.WS,
-      WS40:    s.WS40,
-    };
-  });
+
+  // Advanced rows — emitted only when PER is present (advanced-only or merged season).
+  const advRows = years
+    .filter(y => player.seasons[y].PER != null)
+    .map(y => {
+      const s = player.seasons[y];
+      return {
+        year:    String(y),
+        team:    s.team,
+        age:     s.age,
+        G:       s.G,
+        MP:      s.MP,
+        PER:     s.PER,
+        TS_pct:  s.TS_pct,
+        ORB_pct: s.ORB_pct,
+        TRB_pct: s.TRB_pct,
+        AST_pct: s.AST_pct,
+        STL_pct: s.STL_pct,
+        BLK_pct: s.BLK_pct,
+        TOV_pct: s.TOV_pct,
+        USG_pct: s.USG_pct,
+        OWS:     s.OWS,
+        DWS:     s.DWS,
+        WS:      s.WS,
+        WS40:    s.WS40,
+      };
+    });
+
+  // Per-game rows — emitted for any season with at least one per-game stat.
+  const pgRows = years
+    .map(y => bulkPgRow(y, player.seasons[y]))
+    .filter(Boolean);
+  const careerPgRow = buildBulkPgCareerRow(player);
+
+  const pgTable     = pgRows.length     ? { headers: BULK_PG_HEADERS, rows: pgRows } : null;
+  const pgCareerTbl = careerPgRow       ? { headers: BULK_PG_HEADERS, rows: [careerPgRow] } : null;
+
   return {
     source:        'legacy-bulk',
-    advancedOnly:  true,
+    advancedOnly:  !pgTable,                                     // false when per-game data exists
     dataSource:    'legacy-bulk',
-    perGame:       { regular: null, regularCareer: null, playoffs: null, playoffCareer: null },
+    perGame: {
+      regular:       pgTable,
+      regularCareer: pgCareerTbl,
+      playoffs:      null,
+      playoffCareer: null,
+    },
     totals:        { regular: null, regularCareer: null, playoffs: null, playoffCareer: null },
     per36:         { regular: null, regularCareer: null, playoffs: null, playoffCareer: null },
     per100:        null,
-    advanced:      { regular: rows, playoffs: null },
+    advanced:      { regular: advRows.length ? advRows : null, playoffs: null },
   };
 }
 
 module.exports = {
   LEGACY_PLAYERS_BULK,
+  LEGACY_ID_REDIRECTS,
   isBulkLegacyId,
+  resolveLegacyId,
   getBulkLegacyPlayer,
   searchBulkLegacyPlayers,
   buildBulkLegacyProfile,

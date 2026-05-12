@@ -19,6 +19,7 @@ function conferenceShort(conf) {
 
 export default function TeamHistoryPage() {
   const { team } = useOutletContext() ?? {};
+  const isDefunct = !!team?.defunct;
 
   const [historyData, setHistoryData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -29,7 +30,7 @@ export default function TeamHistoryPage() {
   const [narrativeState, setNarrativeState] = useState(null);
 
   useEffect(() => {
-    if (!team?.id) return;
+    if (!team?.id || isDefunct) return;
     const controller = new AbortController();
     setHistoryData(null);
     setError(false);
@@ -44,10 +45,10 @@ export default function TeamHistoryPage() {
         }
       });
     return () => controller.abort();
-  }, [team?.id]);
+  }, [team?.id, isDefunct]);
 
   useEffect(() => {
-    if (!team?.id) return;
+    if (!team?.id || isDefunct) return;
     const controller = new AbortController();
     setNarrative(null);
     setNarrativeState(null);
@@ -74,7 +75,13 @@ export default function TeamHistoryPage() {
         }
       });
     return () => controller.abort();
-  }, [team?.id]);
+  }, [team?.id, isDefunct]);
+
+  if (isDefunct) return (
+    <div className="team-spoke-content">
+      <p className="status-msg">Season-by-season history is not available for historical franchises.</p>
+    </div>
+  );
 
   if (loading) return (
     <div className="team-spoke-content">

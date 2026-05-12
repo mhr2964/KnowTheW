@@ -63,9 +63,22 @@ export default function App() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch('/api/teams', { signal: controller.signal })
-      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(data => { setTeams(data); setTeamsLoading(false); })
+    Promise.all([
+      fetch('/api/teams', { signal: controller.signal })
+        .then(r => { if (!r.ok) throw new Error(); return r.json(); }),
+      fetch('/api/teams/legacy', { signal: controller.signal })
+        .then(r => { if (!r.ok) throw new Error(); return r.json(); }),
+    ])
+      .then(([active, legacyRes]) => {
+        const legacy = (legacyRes.teams ?? []).map(t => ({
+          ...t,
+          slug: t.id,
+          color: '888888',
+          logo: null,
+        }));
+        setTeams([...active, ...legacy]);
+        setTeamsLoading(false);
+      })
       .catch(err => {
         if (err.name !== 'AbortError') {
           setTeamsError('Could not load teams — is the server running?');

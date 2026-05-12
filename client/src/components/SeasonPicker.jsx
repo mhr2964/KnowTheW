@@ -1,9 +1,9 @@
 import { getCurrentSeason } from '../lib/currentSeason';
 import { nameForYear } from '../constants/wnbaFranchiseLineageClient';
 
-export default function SeasonPicker({ value, onChange, foundedYear, disabled, teamId, currentName }) {
+export default function SeasonPicker({ value, onChange, foundedYear, maxYear, disabled, teamId, currentName }) {
   const currentSeason = getCurrentSeason();
-  const top = Math.max(foundedYear, currentSeason);
+  const top = Math.max(foundedYear, maxYear ?? currentSeason);
 
   const years = [];
   for (let y = top; y >= foundedYear; y--) {

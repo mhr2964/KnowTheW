@@ -20,17 +20,21 @@ export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }
   }, [team]);
 
   const currentSeason = getCurrentSeason();
-  const foundedYear = team ? (WNBA_FOUNDED_CLIENT[team.id] ?? 1997) : 1997;
+  const isDefunct = !!team?.defunct;
+  const foundedYear = team
+    ? (isDefunct ? team.activeYears[0] : (WNBA_FOUNDED_CLIENT[team.id] ?? 1997))
+    : 1997;
+  const maxSeason = isDefunct ? team.activeYears[1] : currentSeason;
   const rawSeasonStr = searchParams.get('season');
   const isWellFormed = rawSeasonStr !== null && /^\d{4}$/.test(rawSeasonStr);
   const rawSeason = isWellFormed ? parseInt(rawSeasonStr, 10) : NaN;
-  const isValidSeason = Number.isFinite(rawSeason) && rawSeason >= foundedYear && rawSeason <= currentSeason;
-  const selectedSeason = isValidSeason ? rawSeason : currentSeason;
-  const isCurrentSeason = selectedSeason === currentSeason;
+  const isValidSeason = Number.isFinite(rawSeason) && rawSeason >= foundedYear && rawSeason <= maxSeason;
+  const selectedSeason = isValidSeason ? rawSeason : maxSeason;
+  const isCurrentSeason = !isDefunct && selectedSeason === currentSeason;
 
   const { data: seasonInfoData, loading: seasonInfoLoading, error: seasonInfoError } = useLazyFetch(
     `/api/teams/${team?.id}/season-info?season=${selectedSeason}`,
-    !!team && !isCurrentSeason && Number.isInteger(selectedSeason)
+    !!team && !isDefunct && !isCurrentSeason && Number.isInteger(selectedSeason)
   );
 
   // Strip or correct an invalid/garbage ?season= param so shared URLs reflect real content.
@@ -40,21 +44,21 @@ export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }
     const parsedRaw = /^\d{4}$/.test(rawParam) ? parseInt(rawParam, 10) : null;
     if (parsedRaw !== selectedSeason) {
       const next = new URLSearchParams(searchParams);
-      if (selectedSeason === currentSeason) {
+      if (selectedSeason === maxSeason && !isDefunct) {
         next.delete('season');
       } else {
         next.set('season', String(selectedSeason));
       }
       setSearchParams(next, { replace: true });
     }
-  }, [searchParams, selectedSeason, currentSeason, setSearchParams]);
+  }, [searchParams, selectedSeason, maxSeason, isDefunct, setSearchParams]);
 
   if (teamsLoading) return <p className="status-msg">Loading teams...</p>;
   if (teamsError) return <p className="status-msg error">{teamsError}</p>;
   if (!team) return <p className="status-msg">Team not found.</p>;
 
   const onPickerChange = (year) => {
-    if (year === currentSeason) {
+    if (year === currentSeason && !isDefunct) {
       setSearchParams(prev => {
         const next = new URLSearchParams(prev);
         next.delete('season');
@@ -82,7 +86,7 @@ export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }
     ? nameForYear(Number(team.id), selectedSeason, team.name)
     : team.name;
   const displayName     = seasonInfo?.name ?? fallbackName;
-  const displayLocation = seasonInfo?.location ?? (isCurrentSeason ? team.location : null);
+  const displayLocation = seasonInfo?.location ?? ((isCurrentSeason || isDefunct) ? team.location : null);
   const displayRecord   = seasonInfoFailed ? null : (seasonInfo?.record   ?? (isCurrentSeason ? team.record   : null));
   const displaySeed     = seasonInfoFailed ? null : (seasonInfo?.seedLabel ?? (isCurrentSeason ? team.seedLabel : null));
   const displayConf     = seasonInfoFailed ? null : (seasonInfo?.conference ?? (isCurrentSeason ? team.conference : null));
@@ -113,9 +117,10 @@ export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }
           }
         </div>
         <SeasonPicker
-          value={isHistoryTab ? currentSeason : selectedSeason}
+          value={isHistoryTab ? maxSeason : selectedSeason}
           onChange={onPickerChange}
           foundedYear={foundedYear}
+          maxYear={maxSeason}
           disabled={isHistoryTab}
           teamId={Number(team.id)}
           currentName={team.name}

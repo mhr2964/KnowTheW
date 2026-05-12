@@ -54,13 +54,14 @@ function StatGroup({ label, stats }) {
 
 export default function TeamStatsPage() {
   const { team, season } = useOutletContext() ?? {};
+  const isDefunct = !!team?.defunct;
 
   const [statsData, setStatsData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!team?.id) return;
+    if (!team?.id || isDefunct) return;
     const controller = new AbortController();
     setStatsData(null);
     setError(false);
@@ -75,7 +76,13 @@ export default function TeamStatsPage() {
         }
       });
     return () => controller.abort();
-  }, [team?.id, season]);
+  }, [team?.id, season, isDefunct]);
+
+  if (isDefunct) return (
+    <div className="team-spoke-content">
+      <p className="status-msg">Team stats are not available for historical franchises.</p>
+    </div>
+  );
 
   if (loading) return (
     <div className="team-spoke-content">

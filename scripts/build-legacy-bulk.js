@@ -199,14 +199,12 @@ const playerFileHeader = `// legacyPlayerBulk.js — bulk-imported pre-2002 WNBA
 // data set. The graded-report prompt is told to grade these players from advanced metrics +
 // accolades alone.
 //
-// player_ID format is BBRef's (e.g. 'staleda01w'). Used as the synthetic player id since the
-// existing isLegacyId() check matches any id containing a hyphen — BBRef ids never contain
-// hyphens, so we need a separate detector (isBulkLegacyId) for the bulk set.
+// player_ID format is BBRef's (e.g. 'staleda01w'). Used as the synthetic player id.
 //
-// Coexistence with legacyPlayerStats.js (8 hand-curated legends): these may overlap by player
-// (e.g., Dawn Staley is both 'staleda01w' in this constant and 'staley-dawn-1970' in the hand-
-// curated one). The hand-curated copy carries per-game stats and wins by-name lookups; the
-// bulk copy wins by-id lookups (BBRef id). TODO: reconcile after v1 ships.
+// Per-game enrichment: most entries are advanced-only (this script's CSV import). A subset of
+// historically significant players (hand-curated and Wikipedia-sourced) have per-game stats
+// merged inline on their season objects. Regenerating this file from CSV will WIPE that
+// enrichment — re-apply manually or extend the script.
 //
 // Multi-team seasons: when a player played for two teams in one year (e.g., Olympia Scott 1999
 // DET → UTA), only the LAST team is recorded in seasons[year]. Both teams' rosters still list

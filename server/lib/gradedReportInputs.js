@@ -22,8 +22,7 @@ const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats } = require
 const { ADV_HEADERS_SRV, buildAdvancedSplit, computeSeasonPBP, buildPbpSplit } = require('./advancedStats');
 const { WNBA_LG } = require('../constants/leagueAverages');
 const { getPlayerAccolades } = require('../constants/wnbaAccolades');
-const { isLegacyId, getLegacyPlayer, buildLegacyDetailedStats } = require('../constants/legacyPlayerStats');
-const { isBulkLegacyId, getBulkLegacyPlayer } = require('../constants/legacyPlayerBulk');
+const { isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyId } = require('../constants/legacyPlayerBulk');
 
 // Resolve player basics — name, position — from ESPN.
 async function fetchPlayerBasics(playerId) {
@@ -91,63 +90,12 @@ function advRowToObj(headers, row) {
 }
 
 /**
- * Build the input bundle for a legacy (hand-curated) player. No ESPN call, no advanced stats.
- * Playoffs mode is always empty (Wikipedia tables don't publish per-season playoff splits).
- * The returned bundle carries dataSource='legacy' so the prompt builder can add a caveat.
- */
-function buildLegacyInputs(playerId, mode) {
-  const legacy = getLegacyPlayer(playerId);
-  if (!legacy) return null;
-
-  if (mode === 'playoffs') return { empty: true };
-
-  const detailed   = buildLegacyDetailedStats(legacy);
-  const pgSplit    = detailed.perGame.regular;
-  const pgCareer   = detailed.perGame.regularCareer;
-
-  if (!pgSplit?.rows?.length) return null;
-
-  const seasonRows = pgSplit.rows
-    .map(r => rowToObj(pgSplit.headers, r))
-    .sort((a, b) => String(a.year).localeCompare(String(b.year)));
-
-  const careerRow = pgCareer?.rows?.[0]
-    ? rowToObj(pgCareer.headers, pgCareer.rows[0])
-    : null;
-
-  const touchedYears = new Set(seasonRows.map(r => String(r.year)));
-  const leagueByYear = {};
-  for (const yr of touchedYears) {
-    if (WNBA_LG[yr]) leagueByYear[yr] = WNBA_LG[yr];
-  }
-
-  const accolades     = getPlayerAccolades(legacy.name);
-  const championships = accolades.championships ?? [];
-
-  const seasonsPlayed = seasonRows
-    .filter(r => r.gp != null && Number(r.gp) > 0)
-    .map(r => Number(r.year))
-    .sort((a, b) => a - b);
-
-  return {
-    player: { id: legacy.id, name: legacy.name, position: legacy.position },
-    mode,
-    seasonRows,
-    careerRow,
-    leagueByYear,
-    advancedRows: [],          // Wikipedia doesn't publish PER/WS/TS% — left empty
-    championships,
-    accolades,
-    seasonsPlayed,
-    dataSource: 'legacy',
-  };
-}
-
-/**
- * Build the input bundle for a bulk-legacy (BBRef CSV) player. Only advanced stats are available
- * (PER, TS%, WS, USG%, etc.) — no per-game data. Playoffs mode is always empty because the CSV
- * has no playoff splits. The prompt is told (via dataSource='legacy-bulk') to grade from advanced
- * metrics + accolades alone and not invent per-game numbers.
+ * Build the input bundle for a bulk-legacy (BBRef-keyed) player. Each season carries advanced
+ * stats (PER, TS%, WS, USG%) when present (1997-2001 CSV coverage) and per-game stats (PPG, RPG,
+ * APG, FG%) when present (hand-curated or Wikipedia-enriched). The two fields may be sparse on
+ * the same year — e.g., a 2002+ season is per-game-only because the CSV stops at 2001.
+ *
+ * Playoffs mode is always empty because the source data has no playoff splits.
  */
 function buildBulkLegacyInputs(playerId, mode) {
   const bulk = getBulkLegacyPlayer(playerId);
@@ -158,43 +106,52 @@ function buildBulkLegacyInputs(playerId, mode) {
   const years = Object.keys(bulk.seasons).map(Number).sort();
   if (years.length === 0) return null;
 
-  // advancedRows: shaped to match what advRowToObj produces, so buildUserMessage's advByYear
-  // merge can interleave these advanced fields with the (empty) seasonRows.
-  const advancedRows = years.map(y => {
-    const s = bulk.seasons[y];
-    return {
-      year:    String(y),
-      gp:      s.G,
-      tsPct:   s.TS_pct,
-      efgPct:  null,
-      usgPct:  s.USG_pct,
-      astPct:  s.AST_pct,
-      orbPct:  s.ORB_pct,
-      drbPct:  null,
-      trbPct:  s.TRB_pct,
-      stlPct:  s.STL_pct,
-      blkPct:  s.BLK_pct,
-      per:     s.PER,
-      ows:     s.OWS,
-      dws:     s.DWS,
-      ws:      s.WS,
-      wsPer48: s.WS40,
-    };
-  });
+  // advancedRows: emitted only when PER is set on the season (i.e., 1997-2001 CSV row).
+  // buildUserMessage merges these into the seasonRows display by year string.
+  const advancedRows = years
+    .filter(y => bulk.seasons[y].PER != null)
+    .map(y => {
+      const s = bulk.seasons[y];
+      return {
+        year:    String(y),
+        gp:      s.G,
+        tsPct:   s.TS_pct,
+        efgPct:  null,
+        usgPct:  s.USG_pct,
+        astPct:  s.AST_pct,
+        orbPct:  s.ORB_pct,
+        drbPct:  null,
+        trbPct:  s.TRB_pct,
+        stlPct:  s.STL_pct,
+        blkPct:  s.BLK_pct,
+        per:     s.PER,
+        ows:     s.OWS,
+        dws:     s.DWS,
+        ws:      s.WS,
+        wsPer48: s.WS40,
+      };
+    });
 
-  // seasonRows: we have NO per-game stats. Emit minimal rows (year, team, GP, MP) so the prompt's
-  // "Seasons played" wording still has a list to chew on; numeric per-game fields are null.
+  // seasonRows: one entry per year. Per-game fields are populated when the season has _pg data;
+  // otherwise null (so the prompt's stat-line rendering elides the missing fields).
   const seasonRows = years.map(y => {
     const s = bulk.seasons[y];
     return {
       year:     String(y),
       teamAbbr: s.team || null,
       gp:       s.G,
-      min:      s.MP != null && s.G ? Number((s.MP / s.G).toFixed(1)) : null,
-      pts:      null, reb: null, orb: null, drb: null, ast: null, stl: null, blk: null, tov: null,
-      fgm:      null, fga: null, fgPct: null,
-      fg3m:     null, fg3a: null, fg3Pct: null,
-      ftm:      null, fta: null, ftPct: null,
+      min:      s.MIN_pg ?? (s.MP != null && s.G ? Number((s.MP / s.G).toFixed(1)) : null),
+      pts:      s.PTS_pg ?? null,
+      reb:      s.REB_pg ?? null,
+      orb:      s.OREB_pg ?? null,
+      drb:      s.DREB_pg ?? null,
+      ast:      s.AST_pg ?? null,
+      stl:      s.STL_pg ?? null,
+      blk:      s.BLK_pg ?? null,
+      tov:      s.TOV_pg ?? null,
+      fgm:      null, fga: null, fgPct: s.FG_pct ?? null,
+      fg3m:     null, fg3a: null, fg3Pct: s.FG3_pct ?? null,
+      ftm:      null, fta: null, ftPct: s.FT_pct ?? null,
     };
   });
 
@@ -212,6 +169,9 @@ function buildBulkLegacyInputs(playerId, mode) {
     .map(r => Number(r.year))
     .sort((a, b) => a - b);
 
+  // Per-game presence flag — used by the prompt builder to pick the right caveat.
+  const hasPerGame = seasonRows.some(r => r.pts != null || r.reb != null || r.ast != null);
+
   return {
     player: { id: bulk.id, name: bulk.name, position: bulk.position || '' },
     mode,
@@ -222,7 +182,7 @@ function buildBulkLegacyInputs(playerId, mode) {
     championships,
     accolades,
     seasonsPlayed,
-    dataSource:   'legacy-bulk',
+    dataSource:   hasPerGame ? 'legacy-bulk-pg' : 'legacy-bulk',
   };
 }
 
@@ -234,14 +194,13 @@ function buildBulkLegacyInputs(playerId, mode) {
  * @returns {Promise<{ player, mode, seasonRows, careerRow, leagueByYear, championships, accolades, seasonsPlayed } | { empty: true }>}
  */
 async function buildInputs(playerId, mode) {
-  // Legacy (hand-curated, pre-2002) — bypass ESPN entirely. We only have per-game regular-season
-  // data, so playoffs mode is always empty for legacy players (Wikipedia tables don't split that out).
-  if (isLegacyId(playerId)) {
-    return buildLegacyInputs(playerId, mode);
-  }
+  // Redirect retired synthetic ids (e.g. 'cooper-cynthia-1963') to their BBRef counterparts.
+  // Old shared URLs still resolve via this hop.
+  playerId = resolveLegacyId(playerId);
 
-  // Bulk-legacy (BBRef CSV import) — advanced-only data, no per-game stats. The graded-report
-  // prompt is told to grade from advanced metrics + accolades only (no PPG/RPG to fall back on).
+  // Bulk-legacy (BBRef-keyed historical data) — bypass ESPN entirely. Carries both advanced and
+  // (for enriched players) per-game stats. Playoffs mode is always empty because the source data
+  // has no playoff splits.
   if (isBulkLegacyId(playerId)) {
     return buildBulkLegacyInputs(playerId, mode);
   }

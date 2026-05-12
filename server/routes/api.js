@@ -18,9 +18,7 @@ const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats }   = requi
 const { ADV_HEADERS_SRV, buildAdvancedSplit, buildAdvancedCareer,
         computeSeasonPBP, buildPbpSplit }                                = require('../lib/advancedStats');
 const { getPlayerPercentiles }                                           = require('../lib/percentileClient');
-const { isLegacyId, getLegacyPlayer, searchLegacyPlayers,
-        buildLegacyProfile, buildLegacyDetailedStats }                   = require('../constants/legacyPlayerStats');
-const { LEGACY_PLAYERS_BULK, isBulkLegacyId, getBulkLegacyPlayer,
+const { LEGACY_PLAYERS_BULK, isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyId,
         searchBulkLegacyPlayers, buildBulkLegacyProfile,
         buildBulkLegacyDetailedStats }                                   = require('../constants/legacyPlayerBulk');
 const { LEGACY_DEFUNCT_TEAMS, getLegacyRoster, tricodeForEspnId,
@@ -401,19 +399,11 @@ router.get('/search', async (req, res) => {
         .map(d => ({ id: d.id, name: d.name, position: d.position, headshot: d.headshot, retired: true }));
     }
 
-    // Hand-curated pre-2002 legends (ESPN data is sparse before 2002). Mixed in alongside
-    // active and ESPN-retired players so historical greats surface in the same search response.
-    const legacyMatches     = searchLegacyPlayers(q);
+    // Pre-2002 legends are stored alongside the bulk-legacy dataset (single source of truth).
+    // Eight hand-curated greats have per-game stats inline; the rest are advanced-only.
     const bulkLegacyMatches = searchBulkLegacyPlayers(q);
 
-    // De-dupe by name: when a player appears in BOTH the hand-curated set (per-game stats) and the
-    // bulk set (advanced stats), the hand-curated copy wins because it has per-game data the UI
-    // already knows how to render. The bulk copy is dropped from the same search response.
-    // TODO: reconcile into a single source of truth in a follow-up pass.
-    const handCuratedNames = new Set(legacyMatches.map(p => p.name.toLowerCase()));
-    const dedupedBulk      = bulkLegacyMatches.filter(p => !handCuratedNames.has(p.name.toLowerCase()));
-
-    const matchedPlayers = [...activePlayers, ...retiredPlayers, ...legacyMatches, ...dedupedBulk].slice(0, 30);
+    const matchedPlayers = [...activePlayers, ...retiredPlayers, ...bulkLegacyMatches].slice(0, 30);
     res.json({ teams: matchedTeams, players: matchedPlayers });
   } catch {
     res.status(500).json({ error: 'search failed' });
@@ -422,27 +412,23 @@ router.get('/search', async (req, res) => {
 
 router.get('/players/:id', async (req, res) => {
   try {
-    // Legacy (hand-curated, pre-2002) — short-circuit before ESPN lookup.
-    // ESPN ids are pure integers; hand-curated legacy ids contain a hyphen, so no collision risk.
-    if (isLegacyId(req.params.id)) {
-      const legacy = getLegacyPlayer(req.params.id);
-      if (!legacy) return res.status(404).json({ error: 'player not found' });
-      return res.json({ player: buildLegacyProfile(legacy), dataSource: 'legacy' });
-    }
+    // Translate retired synthetic ids ('cooper-cynthia-1963') to their BBRef counterparts.
+    // Old shared URLs continue to work; the response carries the canonical BBRef id.
+    const playerId = resolveLegacyId(req.params.id);
 
-    // Bulk-legacy (BBRef CSV import) — short-circuit before ESPN. Pattern: 'staleda01w'.
+    // Bulk-legacy (BBRef-keyed historical data) — short-circuit before ESPN. Pattern: 'staleda01w'.
     // ESPN ids are pure integers and never end in a 'w', so no collision risk with the regex.
-    if (isBulkLegacyId(req.params.id)) {
-      const bulk = getBulkLegacyPlayer(req.params.id);
+    if (isBulkLegacyId(playerId)) {
+      const bulk = getBulkLegacyPlayer(playerId);
       if (!bulk) return res.status(404).json({ error: 'player not found' });
       return res.json({ player: buildBulkLegacyProfile(bulk), dataSource: 'legacy-bulk' });
     }
 
-    const player = playerById[req.params.id];
+    const player = playerById[playerId];
     if (player) return res.json({ player });
 
     // Not in active roster — try ESPN on-demand (retired player)
-    const r = await fetch(`${ESPN_WEB}/athletes/${req.params.id}`);
+    const r = await fetch(`${ESPN_WEB}/athletes/${playerId}`);
     if (!r.ok) return res.status(404).json({ error: 'player not found' });
     const data = await r.json();
     const a = data.athlete;
@@ -471,22 +457,18 @@ router.get('/players/:id', async (req, res) => {
 
 router.get('/players/:id/detailed-stats', async (req, res) => {
   try {
-    // Legacy (hand-curated) players: skip ESPN entirely, build from constant.
-    if (isLegacyId(req.params.id)) {
-      const legacy = getLegacyPlayer(req.params.id);
-      if (!legacy) return res.status(404).json({ error: 'player not found' });
-      return res.json(buildLegacyDetailedStats(legacy));
-    }
+    // Translate retired synthetic ids to BBRef. Old URLs keep working.
+    const playerId = resolveLegacyId(req.params.id);
 
-    // Bulk-legacy (BBRef CSV) players: advanced-only, no per-game data. The response carries
-    // advancedOnly: true so the frontend can hide the per-game tab or render an empty state.
-    if (isBulkLegacyId(req.params.id)) {
-      const bulk = getBulkLegacyPlayer(req.params.id);
+    // Bulk-legacy (BBRef-keyed) players: build from constant, skip ESPN. The response carries
+    // advancedOnly when no per-game data is present, so the frontend can hide the per-game tab.
+    if (isBulkLegacyId(playerId)) {
+      const bulk = getBulkLegacyPlayer(playerId);
       if (!bulk) return res.status(404).json({ error: 'player not found' });
       return res.json(buildBulkLegacyDetailedStats(bulk));
     }
 
-    const { regData, postData, teamsById } = await fetchPlayerSeasonData(req.params.id);
+    const { regData, postData, teamsById } = await fetchPlayerSeasonData(playerId);
     const result = buildDetailedStats(regData, postData, teamsById);
 
     // Players with no WNBA games yet (rookies pre-season, etc.) get an empty payload instead of 404
@@ -662,13 +644,14 @@ router.get('/players/:id/percentiles', async (req, res) => {
 // 200 { empty: true } — mode=playoffs with zero playoff GP
 // 502 — Claude error or shape validation failure
 router.get('/players/:id/graded-report', async (req, res) => {
-  // Validate :id — numeric (ESPN), hand-curated legacy id (contains a hyphen), or bulk-legacy
-  // BBRef id (e.g. 'staleda01w'). buildInputs branches on each via isLegacyId / isBulkLegacyId.
+  // Validate :id — numeric (ESPN), retired synthetic id (e.g. 'cooper-cynthia-1963'), or bulk-legacy
+  // BBRef id (e.g. 'staleda01w'). Synthetic ids resolve to BBRef via resolveLegacyId, after which
+  // buildInputs branches on isBulkLegacyId.
   const rawId = req.params.id;
-  if (!/^\d+$/.test(rawId) && !isLegacyId(rawId) && !isBulkLegacyId(rawId)) {
+  const playerId = resolveLegacyId(rawId);
+  if (!/^\d+$/.test(playerId) && !isBulkLegacyId(playerId)) {
     return res.status(400).json({ error: 'player id must be a numeric string or legacy id' });
   }
-  const playerId = rawId;
 
   // Validate mode (default 'career')
   const modeRaw = req.query.mode;
