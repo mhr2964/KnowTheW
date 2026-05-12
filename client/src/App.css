@@ -1207,11 +1207,10 @@ body {
   transform: rotate(180deg);
 }
 
-/* Winner arrow — sits adjacent to the grade, points toward the center */
-.grade-grid-arrow {
-  font-size: 0.65rem;
+/* Winner arrow — lives in the center column, stacked below the stat name */
+.grade-grid-winner-arrow {
+  font-size: 1rem;
   color: var(--accent);
-  flex-shrink: 0;
   line-height: 1;
 }
 
@@ -1321,6 +1320,17 @@ body {
   .grade-grid-row-label {
     font-size: 0.62rem;
     text-align: left;
+  }
+
+  /* On mobile the center is a row; push chevron to the far right */
+  .grade-grid-center .grade-grid-row-chevron {
+    margin-left: auto;
+  }
+
+  /* Winner arrow sits inline after the label at a smaller size */
+  .grade-grid-winner-arrow {
+    font-size: 0.75rem;
+    margin-left: 0.3rem;
   }
 
   .grade-grid-cell--left {

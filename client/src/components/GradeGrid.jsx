@@ -44,18 +44,21 @@ function GradeGridRow({ category, catA, catB, nameA, nameB, gradeA, gradeB }) {
         {/* Left half — Player A's grade, right-aligned toward the center */}
         <div className="grade-grid-cell grade-grid-cell--left">
           <GradeBadge grade={gradeA} size="large" winner={aWins} />
-          {aWins && <span className="grade-grid-arrow grade-grid-arrow--left" aria-hidden="true">◀</span>}
         </div>
 
-        {/* Center — stat label + expand chevron */}
+        {/* Center — stat label, winner arrow, expand chevron */}
         <div className="grade-grid-center">
           <span className="grade-grid-row-label">{category.toUpperCase()}</span>
+          {(aWins || bWins) && (
+            <span className="grade-grid-winner-arrow" aria-hidden="true">
+              {aWins ? '◀' : '▶'}
+            </span>
+          )}
           <span className="grade-grid-row-chevron" aria-hidden="true">▾</span>
         </div>
 
         {/* Right half — Player B's grade, left-aligned toward the center */}
         <div className="grade-grid-cell grade-grid-cell--right">
-          {bWins && <span className="grade-grid-arrow grade-grid-arrow--right" aria-hidden="true">▶</span>}
           <GradeBadge grade={gradeB} size="large" winner={bWins} />
         </div>
       </summary>
