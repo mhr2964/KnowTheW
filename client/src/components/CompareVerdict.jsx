@@ -48,7 +48,6 @@ function computeVerdict(reportA, reportB, mode) {
     }
   }
 
-  // Short peak window warning — either player < 3 seasons
   let shortPeakWarning = null;
   if (mode === 'peak') {
     const peakA = reportA.peakSeasons?.length ?? 0;
@@ -76,20 +75,24 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, mode, l
     );
   }
 
-  // One side errored but the other loaded — show degraded verdict.
   const oneErrored = (errorA && reportB) || (errorB && reportA);
   if (!verdict && oneErrored) {
-    const gradeA     = reportA?.overall?.grade ?? null;
-    const gradeB     = reportB?.overall?.grade ?? null;
+    const gradeA = reportA?.overall?.grade ?? null;
+    const gradeB = reportB?.overall?.grade ?? null;
     const failingName = errorA ? nameA : nameB;
     return (
       <div className="compare-verdict">
         <p className="compare-verdict-label">AT A GLANCE</p>
-        <div className="compare-verdict-overall">
-          <span className="compare-verdict-overall-label">Overall</span>
-          {gradeA ? <GradeBadge grade={gradeA} /> : <span className="compare-verdict-grade-dash">—</span>}
-          <span className="compare-verdict-vs-arrow">vs</span>
-          {gradeB ? <GradeBadge grade={gradeB} /> : <span className="compare-verdict-grade-dash">—</span>}
+        <div className="compare-verdict-fight">
+          <span className="compare-verdict-fight-side compare-verdict-fight-side--left">
+            <span className="compare-verdict-fight-name">{nameA}</span>
+            {gradeA ? <GradeBadge grade={gradeA} size="large" /> : <span className="compare-verdict-grade-dash">—</span>}
+          </span>
+          <span className="compare-verdict-fight-divider">vs</span>
+          <span className="compare-verdict-fight-side compare-verdict-fight-side--right">
+            {gradeB ? <GradeBadge grade={gradeB} size="large" /> : <span className="compare-verdict-grade-dash">—</span>}
+            <span className="compare-verdict-fight-name">{nameB}</span>
+          </span>
         </div>
         <p className="compare-verdict-error-notice">Couldn&apos;t load graded report for {failingName}</p>
       </div>
@@ -99,44 +102,77 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, mode, l
   if (!verdict) return null;
 
   const { wonByA, wonByB, tied, overallCmp, overallA, overallB, overallMargin, volumeSignal, shortPeakWarning } = verdict;
-  const winner = overallCmp > 0 ? nameA : overallCmp < 0 ? nameB : null;
-  const loserGrade = overallCmp > 0 ? overallB : overallCmp < 0 ? overallA : null;
-  const winnerGrade = overallCmp > 0 ? overallA : overallCmp < 0 ? overallB : null;
+
+  // Which side is the overall winner
+  const aWinsOverall = overallCmp > 0;
+  const bWinsOverall = overallCmp < 0;
+  const tiedOverall = overallCmp === 0;
 
   return (
     <div className="compare-verdict">
       <p className="compare-verdict-label">AT A GLANCE</p>
 
-      <div className="compare-verdict-cats">
-        <span>{nameA} wins <strong>{wonByA}</strong></span>
-        <span className="compare-verdict-sep">·</span>
-        <span>{nameB} wins <strong>{wonByB}</strong></span>
-        {tied > 0 && <>
-          <span className="compare-verdict-sep">·</span>
-          <span>Tie <strong>{tied}</strong></span>
-        </>}
+      {/* Fight-night score line */}
+      <div className="compare-verdict-fight">
+        <span className={`compare-verdict-fight-side compare-verdict-fight-side--left${aWinsOverall ? ' compare-verdict-fight-side--winner' : ''}`}>
+          <span className="compare-verdict-fight-name">{nameA}</span>
+          <span className={`compare-verdict-score${aWinsOverall ? ' compare-verdict-score--winner' : ''}`}>{wonByA}</span>
+        </span>
+
+        <span className="compare-verdict-fight-divider">—</span>
+
+        <span className={`compare-verdict-fight-side compare-verdict-fight-side--right${bWinsOverall ? ' compare-verdict-fight-side--winner' : ''}`}>
+          <span className={`compare-verdict-score${bWinsOverall ? ' compare-verdict-score--winner' : ''}`}>{wonByB}</span>
+          <span className="compare-verdict-fight-name">{nameB}</span>
+        </span>
       </div>
 
-      <div className="compare-verdict-overall">
-        <span className="compare-verdict-overall-label">Overall</span>
-        {overallA && <GradeBadge grade={overallA} />}
-        <span className="compare-verdict-vs-arrow">vs</span>
-        {overallB && <GradeBadge grade={overallB} />}
-        {winner && <span className="compare-verdict-winner">{winner} wins</span>}
-        {overallCmp === 0 && <span className="compare-verdict-winner">Tied</span>}
-        {loserGrade && winnerGrade && overallMargin >= 3 && (
-          <span className="compare-verdict-margin">
-            ({overallMargin} grades apart)
-          </span>
-        )}
-      </div>
-
-      {volumeSignal && (
-        <p className="compare-verdict-volume">{volumeSignal}</p>
+      {tied > 0 && (
+        <p className="compare-verdict-tied">
+          {tied} tied categor{tied === 1 ? 'y' : 'ies'}
+        </p>
       )}
 
-      {shortPeakWarning && (
-        <p className="compare-verdict-short-peak">Note: {shortPeakWarning}.</p>
+      {/* Adversarial overall grades */}
+      {overallA && overallB && (
+        <div className="compare-verdict-overall-row">
+          <span className="compare-verdict-overall-side compare-verdict-overall-side--left">
+            {aWinsOverall && <span className="compare-verdict-overall-arrow" aria-hidden="true">◀</span>}
+            <GradeBadge grade={overallA} size={aWinsOverall || tiedOverall ? 'large' : 'small'} muted={bWinsOverall} />
+          </span>
+          <span className="compare-verdict-overall-label">OVERALL</span>
+          <span className="compare-verdict-overall-side compare-verdict-overall-side--right">
+            <GradeBadge grade={overallB} size={bWinsOverall || tiedOverall ? 'large' : 'small'} muted={aWinsOverall} />
+            {bWinsOverall && <span className="compare-verdict-overall-arrow" aria-hidden="true">▶</span>}
+          </span>
+        </div>
+      )}
+
+      {overallMargin >= 3 && !tiedOverall && (
+        <p className="compare-verdict-margin">{overallMargin} grades apart</p>
+      )}
+
+      {(reportA?.overall?.summary || reportB?.overall?.summary) && (
+        <div className="compare-overall-summaries">
+          {reportA?.overall?.summary && (
+            <div className="compare-overall-summary">
+              <span className="compare-overall-summary-name">{nameA}</span>
+              <p>{reportA.overall.summary}</p>
+            </div>
+          )}
+          {reportB?.overall?.summary && (
+            <div className="compare-overall-summary">
+              <span className="compare-overall-summary-name">{nameB}</span>
+              <p>{reportB.overall.summary}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {(volumeSignal || shortPeakWarning) && (
+        <p className="compare-verdict-volume">
+          {[volumeSignal, shortPeakWarning].filter(Boolean).join(' · ')}
+        </p>
       )}
     </div>
   );

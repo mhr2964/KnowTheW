@@ -841,16 +841,16 @@ body {
 .compare-change-link {
   background: none;
   border: none;
-  color: var(--text-muted);
-  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
   padding: 0;
   transition: color 0.12s;
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-underline-offset: 3px;
 }
-.compare-change-link:hover { color: var(--accent); }
+.compare-change-link:hover { color: var(--text); }
 
 .compare-leader {
   font-weight: 800;
@@ -1071,6 +1071,18 @@ body {
   justify-content: center;
 }
 
+.grade-badge--small {
+  font-size: 0.72rem;
+  padding: 0.14rem 0.5rem;
+  border-radius: 4px;
+  min-width: 2.2rem;
+  justify-content: center;
+}
+
+.grade-badge--muted {
+  opacity: 0.45;
+}
+
 /* ── Grade Grid ── */
 .grade-grid {
   border: 1px solid var(--border);
@@ -1079,6 +1091,39 @@ body {
   margin-bottom: 1.25rem;
 }
 
+/* Column header strip */
+.grade-grid-header {
+  display: grid;
+  grid-template-columns: 1fr 7rem 1fr;
+  align-items: center;
+  padding: 0.45rem 1rem;
+  background: var(--surface-2);
+  border-bottom: 2px solid var(--border);
+}
+
+.grade-grid-header-name {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.grade-grid-header-name--left {
+  text-align: right;
+  padding-right: 1rem;
+}
+
+.grade-grid-header-name--right {
+  text-align: left;
+  padding-left: 1rem;
+}
+
+.grade-grid-header-sep {
+  /* spacer for the center column */
+}
+
+/* Rows */
 .grade-grid-row {
   border-bottom: 1px solid var(--border);
 }
@@ -1087,65 +1132,87 @@ body {
 }
 
 .grade-grid-row--overall > summary {
-  border-bottom: 2px solid var(--border);
+  background: var(--surface);
 }
 .grade-grid-row--overall .grade-grid-row-label {
   font-size: 0.78rem;
+  font-weight: 800;
   color: var(--text);
 }
 .grade-grid-row--overall .grade-badge--large {
-  font-size: 1.25rem;
-  padding: 0.35rem 0.9rem;
+  font-size: 1.3rem;
+  padding: 0.38rem 1rem;
 }
 
 .grade-grid-row-summary {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr auto;
+  grid-template-columns: 1fr 7rem 1fr;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.65rem 1rem;
+  padding: 0.6rem 1rem;
   cursor: pointer;
   user-select: none;
   list-style: none;
   background: var(--surface);
+  gap: 0;
 }
 .grade-grid-row-summary::-webkit-details-marker { display: none; }
 .grade-grid-row-summary:hover { background: var(--surface-2); }
 
+/* Left cell — grade right-aligned toward center */
+.grade-grid-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.grade-grid-cell--left {
+  justify-content: flex-end;
+  padding-right: 0.6rem;
+}
+
+.grade-grid-cell--right {
+  justify-content: flex-start;
+  padding-left: 0.6rem;
+}
+
+/* Center column — stat label + chevron */
+.grade-grid-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  padding: 0.35rem 0.5rem;
+  min-height: 2.4rem;
+}
+
 .grade-grid-row-label {
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--text-muted);
   white-space: nowrap;
-}
-
-.grade-grid-row-cell {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  justify-content: center;
-}
-
-.grade-grid-row-cell--winner .grade-badge {
-  box-shadow: 0 0 0 2px var(--accent);
-}
-
-.grade-grid-check {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--accent);
-  flex-shrink: 0;
+  text-align: center;
 }
 
 .grade-grid-row-chevron {
-  font-size: 0.6rem;
+  font-size: 1rem;
   color: var(--text-muted);
   transition: transform 0.18s ease;
-  justify-self: end;
+  line-height: 1;
 }
 .grade-grid-row[open] > summary .grade-grid-row-chevron {
-  transform: rotate(90deg);
+  transform: rotate(180deg);
+}
+
+/* Winner arrow — sits adjacent to the grade, points toward the center */
+.grade-grid-arrow {
+  font-size: 0.65rem;
+  color: var(--accent);
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 /* Expand panel */
@@ -1168,6 +1235,16 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+}
+
+.grade-grid-expand-panel--left {
+  text-align: right;
+  align-items: flex-end;
+}
+
+.grade-grid-expand-panel--right {
+  text-align: left;
+  align-items: flex-start;
 }
 
 .grade-grid-expand-name {
@@ -1210,31 +1287,75 @@ body {
 }
 .grade-grid-skeleton-row:last-child { border-bottom: none; }
 
-/* Mobile */
+/* Mobile — collapse adversarial 3-col to 2-row stack */
 @media (max-width: 600px) {
-  .grade-grid-row-summary {
-    grid-template-columns: 1fr 1fr 1fr auto;
-    padding: 0.55rem 0.65rem;
-    gap: 0.3rem;
+  .grade-grid-header {
+    display: none;
   }
+
+  /* Row 1: stat label full-width; Row 2: left grade | right grade */
+  .grade-grid-row-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "center center"
+      "left   right";
+    gap: 0;
+    padding: 0.55rem 0.75rem;
+  }
+
+  .grade-grid-center {
+    grid-area: center;
+    border-left: none;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 0 0 0.35rem 0;
+    margin-bottom: 0.35rem;
+    min-height: unset;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
   .grade-grid-row-label {
     font-size: 0.62rem;
+    text-align: left;
   }
+
+  .grade-grid-cell--left {
+    grid-area: left;
+    justify-content: center;
+    padding: 0.25rem 0.4rem;
+    border-right: 1px solid var(--border);
+  }
+
+  .grade-grid-cell--right {
+    grid-area: right;
+    justify-content: center;
+    padding: 0.25rem 0.4rem;
+  }
+
   .grade-badge--large {
     font-size: 0.95rem;
     padding: 0.22rem 0.55rem;
     min-width: 2.5rem;
   }
-  .grade-grid-row--overall .grade-badge--large {
-    font-size: 1.05rem;
-  }
+
   .grade-grid-expand {
     grid-template-columns: 1fr;
   }
+
   .grade-grid-expand-divider {
     width: auto;
     height: 1px;
     align-self: auto;
+  }
+
+  .grade-grid-expand-panel--left,
+  .grade-grid-expand-panel--right {
+    text-align: left;
+    align-items: flex-start;
   }
 }
 
@@ -1284,7 +1405,7 @@ body {
   margin-bottom: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.6rem;
 }
 
 .compare-verdict-label {
@@ -1295,56 +1416,126 @@ body {
   letter-spacing: 0.1em;
 }
 
-.compare-verdict-cats {
+/* Fight-night score row */
+.compare-verdict-fight {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  font-size: 0.88rem;
+  gap: 0;
+}
+
+.compare-verdict-fight-side {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1;
+}
+
+.compare-verdict-fight-side--left {
+  justify-content: flex-end;
+}
+
+.compare-verdict-fight-side--right {
+  justify-content: flex-start;
+}
+
+.compare-verdict-fight-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.compare-verdict-fight-side--winner .compare-verdict-fight-name {
   color: var(--text);
 }
-.compare-verdict-cats strong { color: var(--accent); }
-.compare-verdict-sep { color: var(--text-muted); }
 
-.compare-verdict-overall {
+.compare-verdict-score {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: var(--text-muted);
+  line-height: 1;
+  min-width: 1.4ch;
+  text-align: center;
+}
+
+.compare-verdict-score--winner {
+  color: var(--accent);
+}
+
+.compare-verdict-fight-divider {
+  font-size: 1.3rem;
+  font-weight: 300;
+  color: var(--text-muted);
+  padding: 0 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Tied categories note */
+.compare-verdict-tied {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0;
+}
+
+/* Adversarial overall grades row */
+.compare-verdict-overall-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  gap: 0;
+  border-top: 1px solid var(--border);
+  padding-top: 0.55rem;
+}
+
+.compare-verdict-overall-side {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.compare-verdict-overall-side--left {
+  justify-content: flex-end;
+}
+
+.compare-verdict-overall-side--right {
+  justify-content: flex-start;
 }
 
 .compare-verdict-overall-label {
-  font-size: 0.73rem;
+  font-size: 0.6rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-right: 0.15rem;
+  letter-spacing: 0.1em;
+  text-align: center;
+  padding: 0 0.65rem;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
-.compare-verdict-vs-arrow {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-}
-
-.compare-verdict-winner {
-  font-size: 0.82rem;
-  font-weight: 700;
+.compare-verdict-overall-arrow {
+  font-size: 0.65rem;
   color: var(--accent);
-  margin-left: 0.25rem;
+  flex-shrink: 0;
 }
 
 .compare-verdict-margin {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
+  text-align: center;
+  margin: 0;
 }
 
 .compare-verdict-volume {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
   border-top: 1px solid var(--border);
   padding-top: 0.5rem;
   margin-top: 0.1rem;
+  line-height: 1.5;
 }
 
 .compare-verdict-grade-dash {
