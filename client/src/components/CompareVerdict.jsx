@@ -64,7 +64,7 @@ function computeVerdict(reportA, reportB, mode) {
   return { wonByA, wonByB, tied, overallCmp, overallMargin, overallA, overallB, volumeSignal, shortPeakWarning };
 }
 
-export default function CompareVerdict({ reportA, reportB, nameA, nameB, mode, loading }) {
+export default function CompareVerdict({ reportA, reportB, nameA, nameB, mode, loading, errorA, errorB }) {
   const verdict = useMemo(() => computeVerdict(reportA, reportB, mode), [reportA, reportB, mode]);
 
   if (loading) {
@@ -72,6 +72,26 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, mode, l
       <div className="compare-verdict compare-verdict--skeleton">
         <div className="compare-verdict-skeleton-line" />
         <div className="compare-verdict-skeleton-line compare-verdict-skeleton-line--short" />
+      </div>
+    );
+  }
+
+  // One side errored but the other loaded — show degraded verdict.
+  const oneErrored = (errorA && reportB) || (errorB && reportA);
+  if (!verdict && oneErrored) {
+    const gradeA     = reportA?.overall?.grade ?? null;
+    const gradeB     = reportB?.overall?.grade ?? null;
+    const failingName = errorA ? nameA : nameB;
+    return (
+      <div className="compare-verdict">
+        <p className="compare-verdict-label">AT A GLANCE</p>
+        <div className="compare-verdict-overall">
+          <span className="compare-verdict-overall-label">Overall</span>
+          {gradeA ? <GradeBadge grade={gradeA} /> : <span className="compare-verdict-grade-dash">—</span>}
+          <span className="compare-verdict-vs-arrow">vs</span>
+          {gradeB ? <GradeBadge grade={gradeB} /> : <span className="compare-verdict-grade-dash">—</span>}
+        </div>
+        <p className="compare-verdict-error-notice">Couldn&apos;t load graded report for {failingName}</p>
       </div>
     );
   }

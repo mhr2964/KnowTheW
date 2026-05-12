@@ -4,10 +4,8 @@ import useLazyFetch from '../hooks/useLazyFetch';
 import ComparePickerModal from '../components/ComparePickerModal';
 import CompareModeToggle from '../components/CompareModeToggle';
 import CompareVerdict from '../components/CompareVerdict';
-import GradeCard from '../components/GradeCard';
+import GradeGrid from '../components/GradeGrid';
 import { initialsOf } from '../lib/initials';
-
-const CATEGORIES = ['Scoring', 'Playmaking', 'Rebounding', 'Defense', 'Efficiency', 'Longevity'];
 
 function PlayerHero({ player, loading, error, onChangeSide, sideB }) {
   const sideBClass = sideB ? ' compare-hero-side-b' : '';
@@ -48,11 +46,12 @@ function PlayerHero({ player, loading, error, onChangeSide, sideB }) {
   );
 }
 
-function GradeCardSkeleton() {
+function GradeGridSkeleton() {
   return (
-    <div className="compare-grade-card compare-grade-card--skeleton">
-      <div className="compare-grade-skeleton-header" />
-      <div className="compare-grade-skeleton-body" />
+    <div className="grade-grid grade-grid--skeleton">
+      {Array.from({ length: 7 }).map((_, i) => (
+        <div key={i} className="grade-grid-skeleton-row" />
+      ))}
     </div>
   );
 }
@@ -176,42 +175,20 @@ export default function ComparePage() {
                 nameB={nameB}
                 mode={mode}
                 loading={bothReportsLoading}
+                errorA={errorReportA}
+                errorB={errorReportB}
               />
 
-              {/* Overall summaries */}
-              {(effectiveReportA?.overall?.summary || effectiveReportB?.overall?.summary) && !bothReportsLoading && (
-                <div className="compare-overall-summaries">
-                  {effectiveReportA?.overall?.summary && (
-                    <div className="compare-overall-summary">
-                      <span className="compare-overall-summary-name">{nameA}</span>
-                      <p>{effectiveReportA.overall.summary}</p>
-                    </div>
-                  )}
-                  {effectiveReportB?.overall?.summary && (
-                    <div className="compare-overall-summary">
-                      <span className="compare-overall-summary-name">{nameB}</span>
-                      <p>{effectiveReportB.overall.summary}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Grade cards */}
-              <div className="compare-grade-cards">
-                {bothReportsLoading
-                  ? CATEGORIES.map(cat => <GradeCardSkeleton key={cat} />)
-                  : CATEGORIES.map(cat => (
-                      <GradeCard
-                        key={cat}
-                        category={cat}
-                        reportA={emptyA ? null : reportAData}
-                        reportB={emptyB ? null : reportBData}
-                        nameA={nameA}
-                        nameB={nameB}
-                      />
-                    ))
-                }
-              </div>
+              {/* Grade grid */}
+              {bothReportsLoading
+                ? <GradeGridSkeleton />
+                : <GradeGrid
+                    reportA={effectiveReportA}
+                    reportB={effectiveReportB}
+                    nameA={nameA}
+                    nameB={nameB}
+                  />
+              }
             </>
           )}
 

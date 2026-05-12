@@ -109,7 +109,7 @@ const GRADED_REPORT_TOOL = {
 
 // Bumped whenever the system prompt, tool schema, or model changes — included in the
 // sourceHash so existing cached reports regenerate on the next request.
-const PROMPT_VERSION = 2;
+const PROMPT_VERSION = 3;
 
 // System prompt is static across all player calls so Anthropic can cache it.
 const SYSTEM_PROMPT_TEXT =
@@ -127,6 +127,12 @@ const SYSTEM_PROMPT_TEXT =
   'Note the small-sample caveat in the context string when this cap applies. ' +
   'Position awareness: a guard with 6 RPG is exceptional; a center with 6 RPG is below average. ' +
   'Grade rebounding and defense with positional context when position is provided. ' +
+  'REBOUNDING GRADE — weight OREB significantly more than DREB. Offensive rebounds reflect effort, ' +
+  'positioning, and tenacity — a much stronger signal of "real rebounder" than DREB which is largely ' +
+  'position-driven. Concrete rule: a player\'s OREB rate should drive the grade more than total RPG. ' +
+  'A guard at 1.5 OREB is rare and approaches A-tier rebounding. A forward at 1.5+ OREB is HOF-tier ' +
+  'hustle. Cite OREB/DREB split explicitly in the stats string AND context paragraph. ' +
+  'Never grade rebounding A+ without elite OREB rate. ' +
   'Mode-specific weighting for Overall: for Career mode, weight Efficiency/Impact and Longevity ' +
   'most heavily. For Peak mode, weight Scoring and Efficiency. For Playoffs mode, weight ' +
   'Efficiency and the sample of high-leverage games played — championship context matters here. ' +
@@ -298,6 +304,7 @@ function buildUserMessage(inputs) {
       `${yr}: ${r.gp ?? '?'} GP`,
       r.pts != null    ? `${fmt(r.pts)} PPG` : null,
       r.reb != null    ? `${fmt(r.reb)} RPG` : null,
+      (r.orb != null && r.drb != null) ? `${fmt(r.orb)} OREB/${fmt(r.drb)} DREB` : null,
       r.ast != null    ? `${fmt(r.ast)} APG` : null,
       r.stl != null    ? `${fmt(r.stl)} STL` : null,
       r.blk != null    ? `${fmt(r.blk)} BLK` : null,
@@ -331,6 +338,7 @@ function buildUserMessage(inputs) {
       cr.gp    != null ? `${cr.gp} GP`          : null,
       cr.pts   != null ? `${fmt(cr.pts)} PPG`    : null,
       cr.reb   != null ? `${fmt(cr.reb)} RPG`    : null,
+      (cr.orb != null && cr.drb != null) ? `${fmt(cr.orb)} OREB/${fmt(cr.drb)} DREB` : null,
       cr.ast   != null ? `${fmt(cr.ast)} APG`    : null,
       cr.stl   != null ? `${fmt(cr.stl)} STL`    : null,
       cr.blk   != null ? `${fmt(cr.blk)} BLK`    : null,
@@ -351,6 +359,26 @@ function buildUserMessage(inputs) {
   }
 
   return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Retry helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Call an async fn, retrying once on transient errors (5xx, ETIMEDOUT, ECONNRESET).
+ * 4xx errors are not retried — they won't improve and the user should see them immediately.
+ */
+async function callWithRetry(fn, { retries = 1, delayMs = 1500 } = {}) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const transient = err.status >= 500 || err.code === 'ETIMEDOUT' || err.code === 'ECONNRESET' || /timeout/i.test(err.message ?? '');
+      if (!transient || attempt === retries) throw err;
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -375,7 +403,7 @@ async function callClaude({ inputs, mode }) {
 
   const userMessage = buildUserMessage(inputs);
 
-  const response = await anthropic.messages.create({
+  const response = await callWithRetry(() => anthropic.messages.create({
     model:      'claude-haiku-4-5-20251001',
     max_tokens: 2048,
     system: [
@@ -393,7 +421,7 @@ async function callClaude({ inputs, mode }) {
         content: userMessage,
       },
     ],
-  });
+  }));
 
   const toolUse = response.content.find(block => block.type === 'tool_use');
   if (!toolUse) {

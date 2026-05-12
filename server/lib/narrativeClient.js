@@ -166,6 +166,22 @@ function validateNarrativeShape(input) {
 }
 
 // ---------------------------------------------------------------------------
+// Retry helper
+// ---------------------------------------------------------------------------
+
+async function callWithRetry(fn, { retries = 1, delayMs = 1500 } = {}) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const transient = err.status >= 500 || err.code === 'ETIMEDOUT' || err.code === 'ECONNRESET' || /timeout/i.test(err.message ?? '');
+      if (!transient || attempt === retries) throw err;
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -207,7 +223,7 @@ async function getNarrative({ team, history }) {
     `Season-by-season records (newest first):\n` +
     seasonRows.join('\n');
 
-  const response = await anthropic.messages.create({
+  const response = await callWithRetry(() => anthropic.messages.create({
     model:      'claude-haiku-4-5-20251001',
     max_tokens: 2048,
     system: [
@@ -225,7 +241,7 @@ async function getNarrative({ team, history }) {
         content: userMessage,
       },
     ],
-  });
+  }));
 
   const toolUse = response.content.find(block => block.type === 'tool_use');
   if (!toolUse) {
