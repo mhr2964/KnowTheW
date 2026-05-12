@@ -338,13 +338,20 @@ function fmt(n, decimals = 1) {
 }
 
 function buildUserMessage(inputs) {
-  const { player, mode, seasonRows, careerRow, leagueByYear, advancedRows, championships, accolades, seasonsPlayed } = inputs;
+  const { player, mode, seasonRows, careerRow, leagueByYear, advancedRows, championships, accolades, seasonsPlayed, dataSource } = inputs;
 
   const lines = [
     `Player: ${player.name}`,
     `Position: ${player.position || 'Unknown'}`,
     `Mode: ${mode}`,
   ];
+
+  // Legacy (hand-curated, pre-2002) caveat — tell the model not to expect advanced stats.
+  // ESPN's player API is sparse before 2002, so the constant only carries per-game basics
+  // and accolades; the grader should not penalise the missing PER/WS/TS% rows.
+  if (dataSource === 'legacy') {
+    lines.push('Data source: hand-curated historical compilation (Wikipedia). Advanced PBP stats (PER, WS, TS%) are not available for this player — grade based on per-game stats and accolades/championships only. Do not deduct grade for missing advanced metrics.');
+  }
 
   // seasonsPlayed — explicit list of years the player has real data for (GP > 0).
   // The prompt uses this to constrain peakSeasons to a strict subset and to detect gaps.

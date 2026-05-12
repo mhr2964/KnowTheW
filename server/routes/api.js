@@ -18,6 +18,8 @@ const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats }   = requi
 const { ADV_HEADERS_SRV, buildAdvancedSplit, buildAdvancedCareer,
         computeSeasonPBP, buildPbpSplit }                                = require('../lib/advancedStats');
 const { getPlayerPercentiles }                                           = require('../lib/percentileClient');
+const { isLegacyId, getLegacyPlayer, searchLegacyPlayers,
+        buildLegacyProfile, buildLegacyDetailedStats }                   = require('../constants/legacyPlayerStats');
 
 async function fetchPlayerSeasonData(playerId) {
   const [teams, regData, postData] = await Promise.all([
@@ -314,7 +316,11 @@ router.get('/search', async (req, res) => {
         .map(d => ({ id: d.id, name: d.name, position: d.position, headshot: d.headshot, retired: true }));
     }
 
-    const matchedPlayers = [...activePlayers, ...retiredPlayers].slice(0, 30);
+    // Hand-curated pre-2002 legends (ESPN data is sparse before 2002). Mixed in alongside
+    // active and ESPN-retired players so historical greats surface in the same search response.
+    const legacyMatches = searchLegacyPlayers(q);
+
+    const matchedPlayers = [...activePlayers, ...retiredPlayers, ...legacyMatches].slice(0, 30);
     res.json({ teams: matchedTeams, players: matchedPlayers });
   } catch {
     res.status(500).json({ error: 'search failed' });
@@ -323,6 +329,14 @@ router.get('/search', async (req, res) => {
 
 router.get('/players/:id', async (req, res) => {
   try {
+    // Legacy (hand-curated, pre-2002) — short-circuit before ESPN lookup.
+    // ESPN ids are pure integers; legacy ids contain a hyphen, so no collision risk.
+    if (isLegacyId(req.params.id)) {
+      const legacy = getLegacyPlayer(req.params.id);
+      if (!legacy) return res.status(404).json({ error: 'player not found' });
+      return res.json({ player: buildLegacyProfile(legacy), dataSource: 'legacy' });
+    }
+
     const player = playerById[req.params.id];
     if (player) return res.json({ player });
 
@@ -356,6 +370,12 @@ router.get('/players/:id', async (req, res) => {
 
 router.get('/players/:id/detailed-stats', async (req, res) => {
   try {
+    // Legacy (hand-curated) players: skip ESPN entirely, build from constant.
+    if (isLegacyId(req.params.id)) {
+      const legacy = getLegacyPlayer(req.params.id);
+      if (!legacy) return res.status(404).json({ error: 'player not found' });
+      return res.json(buildLegacyDetailedStats(legacy));
+    }
 
     const { regData, postData, teamsById } = await fetchPlayerSeasonData(req.params.id);
     const result = buildDetailedStats(regData, postData, teamsById);
@@ -533,11 +553,14 @@ router.get('/players/:id/percentiles', async (req, res) => {
 // 200 { empty: true } — mode=playoffs with zero playoff GP
 // 502 — Claude error or shape validation failure
 router.get('/players/:id/graded-report', async (req, res) => {
-  // Validate :id
-  if (!/^\d+$/.test(req.params.id)) {
-    return res.status(400).json({ error: 'player id must be a numeric string' });
+  // Validate :id — numeric (ESPN) or legacy synthetic id (contains a hyphen).
+  // Legacy ids skirt the numeric check because they're hand-curated identifiers like
+  // 'cooper-cynthia-1963'; the buildInputs path branches on isLegacyId.
+  const rawId = req.params.id;
+  if (!/^\d+$/.test(rawId) && !isLegacyId(rawId)) {
+    return res.status(400).json({ error: 'player id must be a numeric string or legacy id' });
   }
-  const playerId = req.params.id;
+  const playerId = rawId;
 
   // Validate mode (default 'career')
   const modeRaw = req.query.mode;

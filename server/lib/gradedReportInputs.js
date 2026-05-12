@@ -22,6 +22,7 @@ const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats } = require
 const { ADV_HEADERS_SRV, buildAdvancedSplit, computeSeasonPBP, buildPbpSplit } = require('./advancedStats');
 const { WNBA_LG } = require('../constants/leagueAverages');
 const { getPlayerAccolades } = require('../constants/wnbaAccolades');
+const { isLegacyId, getLegacyPlayer, buildLegacyDetailedStats } = require('../constants/legacyPlayerStats');
 
 // Resolve player basics — name, position — from ESPN.
 async function fetchPlayerBasics(playerId) {
@@ -89,6 +90,59 @@ function advRowToObj(headers, row) {
 }
 
 /**
+ * Build the input bundle for a legacy (hand-curated) player. No ESPN call, no advanced stats.
+ * Playoffs mode is always empty (Wikipedia tables don't publish per-season playoff splits).
+ * The returned bundle carries dataSource='legacy' so the prompt builder can add a caveat.
+ */
+function buildLegacyInputs(playerId, mode) {
+  const legacy = getLegacyPlayer(playerId);
+  if (!legacy) return null;
+
+  if (mode === 'playoffs') return { empty: true };
+
+  const detailed   = buildLegacyDetailedStats(legacy);
+  const pgSplit    = detailed.perGame.regular;
+  const pgCareer   = detailed.perGame.regularCareer;
+
+  if (!pgSplit?.rows?.length) return null;
+
+  const seasonRows = pgSplit.rows
+    .map(r => rowToObj(pgSplit.headers, r))
+    .sort((a, b) => String(a.year).localeCompare(String(b.year)));
+
+  const careerRow = pgCareer?.rows?.[0]
+    ? rowToObj(pgCareer.headers, pgCareer.rows[0])
+    : null;
+
+  const touchedYears = new Set(seasonRows.map(r => String(r.year)));
+  const leagueByYear = {};
+  for (const yr of touchedYears) {
+    if (WNBA_LG[yr]) leagueByYear[yr] = WNBA_LG[yr];
+  }
+
+  const accolades     = getPlayerAccolades(legacy.name);
+  const championships = accolades.championships ?? [];
+
+  const seasonsPlayed = seasonRows
+    .filter(r => r.gp != null && Number(r.gp) > 0)
+    .map(r => Number(r.year))
+    .sort((a, b) => a - b);
+
+  return {
+    player: { id: legacy.id, name: legacy.name, position: legacy.position },
+    mode,
+    seasonRows,
+    careerRow,
+    leagueByYear,
+    advancedRows: [],          // Wikipedia doesn't publish PER/WS/TS% — left empty
+    championships,
+    accolades,
+    seasonsPlayed,
+    dataSource: 'legacy',
+  };
+}
+
+/**
  * Build the input bundle for gradedReportClient.
  *
  * @param {string} playerId  - ESPN athlete ID
@@ -96,6 +150,12 @@ function advRowToObj(headers, row) {
  * @returns {Promise<{ player, mode, seasonRows, careerRow, leagueByYear, championships, accolades, seasonsPlayed } | { empty: true }>}
  */
 async function buildInputs(playerId, mode) {
+  // Legacy (hand-curated, pre-2002) — bypass ESPN entirely. We only have per-game regular-season
+  // data, so playoffs mode is always empty for legacy players (Wikipedia tables don't split that out).
+  if (isLegacyId(playerId)) {
+    return buildLegacyInputs(playerId, mode);
+  }
+
   const teams = await getTeams();
   const teamsById = Object.fromEntries(teams.map(t => [String(t.id), t]));
 
