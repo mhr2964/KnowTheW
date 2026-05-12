@@ -4,14 +4,16 @@
 // the existing ESPN-backed routes (reusing the same helpers api.js uses directly), then
 // slices to the rows relevant for the requested mode and attaches league-average context.
 //
-// Returns { player, mode, seasonRows, careerRow, leagueByYear, championships, accolades }
+// Returns { player, mode, seasonRows, careerRow, leagueByYear, championships, accolades, seasonsPlayed }
 // Returns { empty: true } when mode is 'playoffs' and the player has no playoff data.
 //
-// championships: array of years the player's team won the WNBA Championship.
-//   Derived from WNBA_CHAMPIONS + franchise alias lineage. Players on defunct franchises
-//   (Houston Comets, Sacramento Monarchs) may have incomplete results if their team ID is
-//   not resolvable via the current teams list — acceptable for v1.
-// accolades: { mvp, finalsMVP, dpoy, roy, sixth, allWnbaFirst } — from wnbaAccolades.js.
+// championships: array of years the player won a WNBA Championship.
+//   Sourced from WNBA_PLAYER_CHAMPIONSHIPS constant (via getPlayerAccolades) — NOT derived from
+//   season rows + franchise aliases. That derivation failed for players who missed a season
+//   (no ESPN row that year) and misfired on franchise-lineage edge cases.
+// accolades: { mvp, finalsMVP, dpoy, roy, sixth, allWnbaFirst, championships } — from wnbaAccolades.js.
+// seasonsPlayed: sorted array of integer years the player has actual season rows for (GP > 0).
+//   Passed explicitly to the prompt so peakSeasons can be validated as a strict subset.
 
 'use strict';
 
@@ -19,7 +21,6 @@ const { ESPN_WEB, getTeams, fetchTeamStats, teamSeasonStatsCache } = require('./
 const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats } = require('./statsParser');
 const { ADV_HEADERS_SRV, buildAdvancedSplit, computeSeasonPBP, buildPbpSplit } = require('./advancedStats');
 const { WNBA_LG } = require('../constants/leagueAverages');
-const { isChampion } = require('./historyAggregator');
 const { getPlayerAccolades } = require('../constants/wnbaAccolades');
 
 // Resolve player basics — name, position — from ESPN.
@@ -64,25 +65,6 @@ function rowToObj(headers, row) {
   };
 }
 
-// Derive championship years from per-season rows.
-//
-// Uses isChampion(year, teamDisplayName) from historyAggregator, which resolves franchise
-// lineage aliases so Detroit Shock ↔ Dallas Wings and similar work correctly.
-//
-// teamNameByYear: map of seasonYear(string) → team display name, built from teamsById lookup.
-// Years where the team ID isn't in teamsById (defunct franchises: Comets, Monarchs) will have
-// no entry and are silently skipped — those championships are not attributable in v1.
-function getChampionshipsForPlayer(seasonRows, teamNameByYear) {
-  const years = [];
-  for (const row of seasonRows) {
-    const yr  = Number(row.year);
-    const teamName = teamNameByYear[String(yr)];
-    if (!teamName) continue;
-    if (isChampion(yr, teamName)) years.push(yr);
-  }
-  return years.sort((a, b) => a - b);
-}
-
 // Convert an advanced row (array aligned to ADV_HEADERS_SRV) into a labelled object.
 function advRowToObj(headers, row) {
   const I = Object.fromEntries(headers.map((h, i) => [h, i]));
@@ -111,7 +93,7 @@ function advRowToObj(headers, row) {
  *
  * @param {string} playerId  - ESPN athlete ID
  * @param {string} mode      - 'career' | 'peak' | 'playoffs'
- * @returns {Promise<{ player, mode, seasonRows, careerRow, leagueByYear, championships, accolades } | { empty: true }>}
+ * @returns {Promise<{ player, mode, seasonRows, careerRow, leagueByYear, championships, accolades, seasonsPlayed } | { empty: true }>}
  */
 async function buildInputs(playerId, mode) {
   const teams = await getTeams();
@@ -233,24 +215,31 @@ async function buildInputs(playerId, mode) {
     if (WNBA_LG[yr]) leagueByYear[yr] = WNBA_LG[yr];
   }
 
-  // Championship years — resolved via WNBA_CHAMPIONS + franchise-lineage aliases.
-  // tidByYear prefers regular-season team assignment; falls back to post-season.
-  // Uses current team display name (teamsById lookup) so isChampion() + FRANCHISE_ALIASES works.
-  // Players on defunct franchises (Houston Comets etc.) whose team ID is absent from teamsById
-  // will have no team name resolved and those years are silently omitted.
-  const teamNameByYear = {};
-  for (const yr of touchedYears) {
-    const tid = regTidByYear[yr] ?? postTidByYear[yr];
-    if (tid && teamsById[String(tid)]) {
-      teamNameByYear[yr] = teamsById[String(tid)].name;
-    }
-  }
-  const championships = getChampionshipsForPlayer(seasonRows, teamNameByYear);
-
-  // Individual accolades — MVP, Finals MVP, DPOY, ROY, Sixth Player, All-WNBA First Team.
+  // Individual accolades — MVP, Finals MVP, DPOY, ROY, Sixth Player, All-WNBA First Team,
+  // and championships (from WNBA_PLAYER_CHAMPIONSHIPS constant — not derived from season rows).
+  // The season-row derivation was unreliable: it missed players who sat a championship season
+  // (no ESPN row = no credit) and misfired on franchise-lineage edge cases.
   const accolades = getPlayerAccolades(player.name);
 
-  return { player, mode, seasonRows, careerRow, leagueByYear, advancedRows, championships, accolades };
+  // Championships: extracted directly from accolades (which now includes the championships field).
+  const championships = accolades.championships ?? [];
+
+  // Dev-mode championship debug log: print the resolved championship years so regressions surface
+  // immediately in server logs when running locally.
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[championships] ${player.name}: [${championships.join(', ')}]`);
+  }
+
+  // seasonsPlayed: sorted list of actual season years the player has ESPN data for, with GP > 0.
+  // Passed to the prompt so the AI can validate peakSeasons as a strict subset.
+  // GP=0 or null rows (e.g. injury seasons that ESPN records as played) are excluded so the AI
+  // cannot claim consecutive seasons through a year the player did not appear.
+  const seasonsPlayed = seasonRows
+    .filter(r => r.gp != null && Number(r.gp) > 0)
+    .map(r => Number(r.year))
+    .sort((a, b) => a - b);
+
+  return { player, mode, seasonRows, careerRow, leagueByYear, advancedRows, championships, accolades, seasonsPlayed };
 }
 
 module.exports = { buildInputs };

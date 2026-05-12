@@ -109,7 +109,11 @@ const GRADED_REPORT_TOOL = {
 
 // Bumped whenever the system prompt, tool schema, or model changes — included in the
 // sourceHash so existing cached reports regenerate on the next request.
-const PROMPT_VERSION = 3;
+// v4: Bug fixes — longevity hard-cap enforcement, peak-mode accolade scoping,
+//     playoffs peakSeasons removal, seasonsPlayed constraint for peakSeasons.
+// v5: Add league-average scope clarification — per-team totals must not be compared
+//     against per-player per-game stats.
+const PROMPT_VERSION = 5;
 
 // System prompt is static across all player calls so Anthropic can cache it.
 const SYSTEM_PROMPT_TEXT =
@@ -136,32 +140,49 @@ const SYSTEM_PROMPT_TEXT =
   'Mode-specific weighting for Overall: for Career mode, weight Efficiency/Impact and Longevity ' +
   'most heavily. For Peak mode, weight Scoring and Efficiency. For Playoffs mode, weight ' +
   'Efficiency and the sample of high-leverage games played — championship context matters here. ' +
-  'LONGEVITY GRADE FLOORS (Career and Playoffs modes only — not Peak mode): ' +
-  'A+: 18+ seasons AND 500+ GP (generational durability). ' +
-  'A: 15+ seasons OR 400+ GP (elite sustained career). ' +
-  'A-: 12+ seasons OR 320+ GP (long productive career). ' +
-  'B+: 9+ seasons OR 240+ GP (solid tenure). ' +
-  'B: 6+ seasons OR 160+ GP (established player). ' +
-  'C+: 4+ seasons OR 100+ GP (partial career). ' +
-  'C or lower: under 4 seasons or under 100 GP (limited sample). ' +
-  'These are FLOORS — a player can score lower if context warrants (e.g. 12 seasons but only ' +
-  '200 GP due to chronic injury). State the actual GP and seasons in the Longevity stats string. ' +
+  'LONGEVITY IS A HARD-CAPPED GRADE. Apply the floors STRICTLY. If the player does not meet ' +
+  'the AND/OR clause for a tier, that grade is UNAVAILABLE — drop one tier and re-check. ' +
+  'Do NOT cite a threshold the player does not meet. Do NOT write "exceeds floor" for values below the floor. ' +
+  'LONGEVITY GRADING SEQUENCE (Career and Playoffs modes only — not Peak mode): ' +
+  'Walk this list top-down. Stop at the first tier the player meets. That is the grade. ' +
+  '1. A+ requires 18+ seasons played AND 500+ GP. ' +
+  '2. A requires 15+ seasons played OR 400+ GP. ' +
+  '3. A- requires 12+ seasons played OR 320+ GP. ' +
+  '4. B+ requires 9+ seasons played OR 240+ GP. ' +
+  '5. B requires 6+ seasons played OR 160+ GP. ' +
+  '6. C+ requires 4+ seasons OR 100+ GP. ' +
+  '7. Otherwise C or below. ' +
+  'The stats string must cite the actual GP and seasons, not the threshold. ' +
+  'A player can score lower than their threshold tier if context warrants (e.g. 12 seasons but only ' +
+  '200 GP due to chronic injury). ' +
   'PEAK MODE — LONGEVITY SPECIAL RULE: in peak mode, Longevity grades the peak window only ' +
   '(not the full career). A 4-season peak window caps at A- regardless of full-career length. ' +
   'A 3-season window caps at B+. State ONLY the peak-window GP and seasons in the stats string — ' +
   'never cite career totals here. ' +
   'PEAK MODE — CONSECUTIVE SEASONS RULE: the peak window MUST be 3 to 5 CONSECUTIVE seasons. ' +
-  'Do not pick a non-consecutive set. If a player has multiple distinct eras, pick the single ' +
-  'best consecutive window. Return those years ascending in peakSeasons. ' +
-  'AWARDS AND CHAMPIONSHIPS — MANDATORY USAGE: when the user message provides championships ' +
-  'and accolades data, you MUST incorporate those facts into the relevant context paragraphs ' +
-  'and overall summary. Do not ignore provided award data. A 4-time champion\'s Playoffs Overall ' +
-  'must reflect that championship context — per-game numbers alone do not capture legacy. ' +
+  'A year is consecutive ONLY if it appears in the seasonsPlayed list provided. ' +
+  'Do NOT include any year that is not in seasonsPlayed. If the player missed a year between two ' +
+  'seasons, that breaks consecutiveness — do not bridge the gap. If a player has multiple distinct ' +
+  'eras, pick the single best consecutive window within seasonsPlayed. ' +
+  'Return those years ascending in peakSeasons. peakSeasons MUST be a strict subset of seasonsPlayed. ' +
+  'AWARDS AND CHAMPIONSHIPS IN PEAK MODE — SCOPING RULE: when mode=peak, the Overall summary ' +
+  'MUST ONLY cite championships and All-WNBA selections that occurred WITHIN the peakSeasons window. ' +
+  'Championships and All-WNBA selections from before or after the peak window MUST NOT be mentioned. ' +
+  'If the player won 0 championships in the peak window, do not write "champion" in Peak Overall. ' +
+  'Count only the accolades that fall within the chosen peakSeasons range, not career totals. ' +
+  'AWARDS AND CHAMPIONSHIPS IN CAREER AND PLAYOFFS MODES — MANDATORY USAGE: when the user message ' +
+  'provides championships and accolades data, you MUST incorporate those facts into the relevant ' +
+  'context paragraphs and overall summary. Do not ignore provided award data. A 4-time champion\'s ' +
+  'Playoffs Overall must reflect that championship context — per-game numbers alone do not capture legacy. ' +
   'A player with multiple MVP awards or All-WNBA First Team selections has a higher floor for ' +
   'the Overall grade than raw stats suggest. Cite the specific awards briefly in the summary. ' +
   'Hallucination guard: use only the numbers, league averages, championships, and accolades ' +
   'provided in the user message. Do not invent statistics or awards beyond what is provided. ' +
   'If a stat is missing, omit it from the stats string. ' +
+  'League average note: the leagueByYear values are PER-TEAM totals, not per-player averages. ' +
+  'Never compare a player\'s per-game stat directly to a league-team aggregate. ' +
+  'Only cite league context when you can derive a meaningful per-player comparison from the provided data. ' +
+  'If you cannot derive a sound comparison, omit the league-average reference entirely. ' +
   'Playoffs note: if the user message specifies mode=playoffs and total GP is under 20, ' +
   'include a small-sample warning in the overall summary. ' +
   'Output discipline: output structured JSON via the graded_player_report tool only. ' +
@@ -178,11 +199,13 @@ const REQUIRED_CATEGORIES = ['Scoring', 'Playmaking', 'Rebounding', 'Defense', '
  * Validate the structured output Claude returns via the graded_player_report tool.
  * Throws a descriptive Error on any contract violation so callers surface a 502
  * rather than caching malformed data.
+ * Logs warnings (does not throw) for soft-constraint violations that indicate prompt drift.
  *
- * @param {unknown} input  - toolUse.input from the Claude response
- * @param {string}  mode   - 'career' | 'peak' | 'playoffs'
+ * @param {unknown} input        - toolUse.input from the Claude response
+ * @param {string}  mode         - 'career' | 'peak' | 'playoffs'
+ * @param {number[]} [seasonsPlayed] - actual season years from inputs (for peak subset check)
  */
-function validateReportShape(input, mode) {
+function validateReportShape(input, mode, seasonsPlayed) {
   if (!input || typeof input !== 'object') {
     throw new Error('[gradedReportClient] tool output is not an object');
   }
@@ -229,8 +252,32 @@ function validateReportShape(input, mode) {
     throw new Error(`[gradedReportClient] volume.seasons must be an integer, got: ${input.volume.seasons}`);
   }
 
-  // peakSeasons — required only for peak mode
-  if (mode === 'peak') {
+  // Longevity grade soft-check (warn, don't throw) — catches prompt violations where the model
+  // assigns A or A+ to a player whose volume doesn't meet those thresholds.
+  // Thresholds: A requires 15+ seasons OR 400+ GP; A+ requires 18+ seasons AND 500+ GP.
+  if (mode !== 'peak') {
+    const lonGrade = input.categories?.Longevity?.grade;
+    const gp      = input.volume.gp;
+    const seasons = input.volume.seasons;
+    if ((lonGrade === 'A+' || lonGrade === 'A') && gp < 400 && seasons < 15) {
+      console.warn(
+        `[gradedReportClient] Longevity grade "${lonGrade}" assigned but player has ${gp} GP and ${seasons} seasons — ` +
+        'threshold for A is 15+ seasons OR 400+ GP. Possible prompt violation.'
+      );
+    }
+  }
+
+  // peakSeasons — required only for peak mode; must NOT appear in playoffs mode
+  if (mode === 'playoffs') {
+    if (input.peakSeasons != null) {
+      console.warn(
+        '[gradedReportClient] peakSeasons returned in playoffs mode — stripping before cache/response. ' +
+        'Playoffs mode has no peak window concept.'
+      );
+      // Strip it so the cached doc never has peakSeasons for a playoff report
+      delete input.peakSeasons;
+    }
+  } else if (mode === 'peak') {
     if (!Array.isArray(input.peakSeasons) || input.peakSeasons.length === 0) {
       throw new Error('[gradedReportClient] peakSeasons must be a non-empty array for mode=peak');
     }
@@ -239,14 +286,27 @@ function validateReportShape(input, mode) {
         throw new Error(`[gradedReportClient] peakSeasons contains invalid year: ${yr}`);
       }
     }
-    // Warn (don't throw) if seasons are not consecutive — the report is still cached, but
-    // the warning surfaces in server logs so non-consecutive picks can be investigated.
     const sorted = [...input.peakSeasons].sort((a, b) => a - b);
+
+    // Warn if seasons are not consecutive — the report is still cached so the page can render,
+    // but the warning surfaces in server logs so non-consecutive picks can be investigated.
     const isConsecutive = sorted.every((yr, i) => i === 0 || yr === sorted[i - 1] + 1);
     if (!isConsecutive) {
       console.warn(
         `[gradedReportClient] peakSeasons non-consecutive: [${sorted.join(', ')}] — prompt should enforce consecutive windows`
       );
+    }
+
+    // Warn if peakSeasons includes a year not in seasonsPlayed (AI invented a season).
+    if (Array.isArray(seasonsPlayed) && seasonsPlayed.length > 0) {
+      const playedSet = new Set(seasonsPlayed);
+      const invented = sorted.filter(yr => !playedSet.has(yr));
+      if (invented.length > 0) {
+        console.warn(
+          `[gradedReportClient] peakSeasons includes year(s) not in seasonsPlayed: [${invented.join(', ')}] ` +
+          `— seasonsPlayed: [${seasonsPlayed.join(', ')}]. AI invented a season.`
+        );
+      }
     }
   }
 }
@@ -261,7 +321,7 @@ function fmt(n, decimals = 1) {
 }
 
 function buildUserMessage(inputs) {
-  const { player, mode, seasonRows, careerRow, leagueByYear, advancedRows, championships, accolades } = inputs;
+  const { player, mode, seasonRows, careerRow, leagueByYear, advancedRows, championships, accolades, seasonsPlayed } = inputs;
 
   const lines = [
     `Player: ${player.name}`,
@@ -269,9 +329,20 @@ function buildUserMessage(inputs) {
     `Mode: ${mode}`,
   ];
 
+  // seasonsPlayed — explicit list of years the player has real data for (GP > 0).
+  // The prompt uses this to constrain peakSeasons to a strict subset and to detect gaps.
+  if (Array.isArray(seasonsPlayed) && seasonsPlayed.length > 0) {
+    lines.push(`Seasons played (actual, GP > 0): ${seasonsPlayed.join(', ')}`);
+  }
+
   // Championships and accolades — injected as fact so the model must use them.
+  // In peak mode: the AI is instructed to scope these to the chosen peakSeasons window,
+  // so we still pass the full lists and rely on the prompt constraint.
   if (championships && championships.length > 0) {
-    lines.push(`Championships: ${championships.join(', ')} (${championships.length}× WNBA Champion)`);
+    lines.push(`Championships (career): ${championships.join(', ')} (${championships.length}× WNBA Champion)`);
+    if (mode === 'peak') {
+      lines.push('Note: in peak mode, cite ONLY championships that fall within your chosen peakSeasons window in the Overall summary.');
+    }
   }
   if (accolades) {
     const accoladeParts = [];
@@ -282,7 +353,10 @@ function buildUserMessage(inputs) {
     if (accolades.sixth?.length)         accoladeParts.push(`Sixth Player: ${accolades.sixth.join(', ')}`);
     if (accolades.allWnbaFirst?.length)  accoladeParts.push(`All-WNBA First Team: ${accolades.allWnbaFirst.join(', ')} (${accolades.allWnbaFirst.length}× selection)`);
     if (accoladeParts.length > 0) {
-      lines.push(`Awards: ${accoladeParts.join(' | ')}`);
+      lines.push(`Awards (career): ${accoladeParts.join(' | ')}`);
+      if (mode === 'peak') {
+        lines.push('Note: in peak mode, cite ONLY awards that fall within your chosen peakSeasons window in the Overall summary.');
+      }
     }
   }
 
@@ -429,8 +503,8 @@ async function callClaude({ inputs, mode }) {
   }
 
   // Shape-validate before returning so a malformed Claude response surfaces as a clean 502
-  // rather than silently caching bad data.
-  validateReportShape(toolUse.input, mode);
+  // rather than silently caching bad data. Pass seasonsPlayed for peakSeasons subset check.
+  validateReportShape(toolUse.input, mode, inputs.seasonsPlayed);
 
   return toolUse.input;
 }

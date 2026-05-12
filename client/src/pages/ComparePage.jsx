@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import ComparePickerModal from '../components/ComparePickerModal';
@@ -7,8 +7,54 @@ import CompareVerdict from '../components/CompareVerdict';
 import GradeGrid from '../components/GradeGrid';
 import { initialsOf } from '../lib/initials';
 
-function PlayerHero({ player, loading, error, onChangeSide, sideB }) {
+// ESPN canonical headshot URL — used as fallback when the roster feed omits a headshot.
+function espnHeadshotUrl(id) {
+  return `https://a.espncdn.com/i/headshots/wnba/players/full/${id}.png`;
+}
+
+// Abbreviated → full team name for the teams that appear in WNBA history.
+const TEAM_ABBR_MAP = {
+  SEA: 'Seattle Storm',
+  PHX: 'Phoenix Mercury',
+  MIN: 'Minnesota Lynx',
+  IND: 'Indiana Fever',
+  NY:  'New York Liberty',
+  NYL: 'New York Liberty',
+  LVA: 'Las Vegas Aces',
+  LAS: 'Las Vegas Aces',
+  SA:  'San Antonio Stars',
+  SAS: 'San Antonio Silver Stars',
+  UTA: 'Utah Starzz',
+  LAL: 'Los Angeles Sparks',
+  LA:  'Los Angeles Sparks',
+  CON: 'Connecticut Sun',
+  ORL: 'Orlando Miracle',
+  WAS: 'Washington Mystics',
+  CHI: 'Chicago Sky',
+  ATL: 'Atlanta Dream',
+  DAL: 'Dallas Wings',
+  TUL: 'Tulsa Shock',
+  DET: 'Detroit Shock',
+  GSV: 'Golden State Valkyries',
+};
+
+// Pull the most recent season's team abbreviation from a detailed-stats response.
+// Returns the full team name (or abbreviation as fallback) or null if unavailable.
+function deriveLastTeamName(details) {
+  const rows = details?.perGame?.regular?.rows;
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  // Rows are ordered ascending by season year; last row = most recent season.
+  const lastRow = rows[rows.length - 1];
+  // Index 1 is TEAM_ABBREVIATION per ESPN_DETAILED_HEADERS.
+  const abbr = lastRow?.[1];
+  if (!abbr || abbr === '') return null;
+  return TEAM_ABBR_MAP[abbr] ?? abbr;
+}
+
+function PlayerHero({ player, loading, error, onChangeSide, sideB, finalTeamName }) {
   const sideBClass = sideB ? ' compare-hero-side-b' : '';
+  const [imgError, setImgError] = useState(false);
+
   if (loading) {
     return (
       <div className={`compare-hero-player compare-hero-skeleton${sideBClass}`}>
@@ -28,16 +74,29 @@ function PlayerHero({ player, loading, error, onChangeSide, sideB }) {
   if (!player) return null;
 
   const p = player.player ?? player;
+  const isRetired = p.retired === true;
+  const displayTeam = p.teamName ?? (isRetired ? finalTeamName : null);
+  const imgSrc = p.headshot ?? espnHeadshotUrl(p.id);
+
   return (
     <div className={`compare-hero-player${sideBClass}`}>
-      {p.headshot
-        ? <img src={p.headshot} alt={p.name} className="compare-hero-img" />
+      {!imgError
+        ? <img
+            src={imgSrc}
+            alt={p.name}
+            className="compare-hero-img"
+            onError={() => setImgError(true)}
+          />
         : <div className="compare-hero-img placeholder">{initialsOf(p.name)}</div>
       }
       <div className="compare-hero-info">
         <div className="compare-hero-meta">
           {p.jersey && <span className="player-hero-jersey">#{p.jersey}</span>}
-          {p.teamName && <span className="player-hero-team">{p.teamName}</span>}
+          {displayTeam && (
+            <span className="player-hero-team">
+              {displayTeam}{isRetired && !p.teamName && <em className="compare-hero-former"> (former)</em>}
+            </span>
+          )}
         </div>
         <h2 className="compare-hero-name">{p.name}</h2>
         <button type="button" className="compare-change-link" onClick={onChangeSide}>Change</button>
@@ -70,6 +129,13 @@ export default function ComparePage() {
   const { data: playerA, loading: loadingA, error: errorA } = useLazyFetch(`/api/players/${idA}`, true);
   const { data: playerB, loading: loadingB, error: errorB } = useLazyFetch(`/api/players/${idB}`, true);
 
+  // Detailed stats — fetched only for retired players to derive their final team name.
+  // Retired flag is not known until the profile resolves, so we enable only after.
+  const retiredA = (playerA?.player ?? playerA)?.retired === true;
+  const retiredB = (playerB?.player ?? playerB)?.retired === true;
+  const { data: detailsA } = useLazyFetch(`/api/players/${idA}/detailed-stats`, retiredA && !loadingA);
+  const { data: detailsB } = useLazyFetch(`/api/players/${idB}/detailed-stats`, retiredB && !loadingB);
+
   // Graded reports — re-fetch when mode changes (url key changes)
   const reportUrlA = `/api/players/${idA}/graded-report?mode=${mode}`;
   const reportUrlB = `/api/players/${idB}/graded-report?mode=${mode}`;
@@ -78,6 +144,9 @@ export default function ComparePage() {
 
   const nameA = playerA?.player?.name ?? playerA?.name ?? 'Player A';
   const nameB = playerB?.player?.name ?? playerB?.name ?? 'Player B';
+
+  const finalTeamNameA = useMemo(() => deriveLastTeamName(detailsA), [detailsA]);
+  const finalTeamNameB = useMemo(() => deriveLastTeamName(detailsB), [detailsB]);
 
   useEffect(() => {
     if (isSamePlayer) {
@@ -138,6 +207,7 @@ export default function ComparePage() {
               loading={loadingA}
               error={errorA}
               onChangeSide={() => openPickerFor('a')}
+              finalTeamName={finalTeamNameA}
             />
             <div className="compare-hero-vs">VS</div>
             <PlayerHero
@@ -146,6 +216,7 @@ export default function ComparePage() {
               error={errorB}
               onChangeSide={() => openPickerFor('b')}
               sideB
+              finalTeamName={finalTeamNameB}
             />
           </div>
 
@@ -154,6 +225,8 @@ export default function ComparePage() {
             onChange={setMode}
             reportA={effectiveReportA}
             reportB={effectiveReportB}
+            loadingA={loadingReportA}
+            loadingB={loadingReportB}
           />
 
           {bothUnavailable ? (

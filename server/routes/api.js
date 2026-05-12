@@ -575,6 +575,8 @@ router.get('/players/:id/graded-report', async (req, res) => {
 
   // Deterministic source hash over all data Claude will receive.
   // Sorted ascending by year so insertion order doesn't matter.
+  // seasonsPlayed is now included so that a change in the player's GP-filtered year set
+  // (e.g. ESPN adds or removes a 0-GP row) correctly invalidates the cache.
   const hashInput = JSON.stringify({
     promptVersion:  gradedReportClient.PROMPT_VERSION,
     playerId,
@@ -586,6 +588,7 @@ router.get('/players/:id/graded-report', async (req, res) => {
     leagueByYear:   Object.fromEntries(Object.entries(inputs.leagueByYear ?? {}).sort()),
     championships:  [...(inputs.championships ?? [])].sort((a, b) => a - b),
     accolades:      inputs.accolades ?? {},
+    seasonsPlayed:  [...(inputs.seasonsPlayed ?? [])].sort((a, b) => a - b),
   });
   const sourceHash = crypto.createHash('sha1').update(hashInput).digest('hex');
   const docId = `${playerId}-${mode}-${sourceHash.slice(0, 8)}`;
@@ -618,11 +621,13 @@ router.get('/players/:id/graded-report', async (req, res) => {
       const careerYearRange = years.length
         ? [Math.min(...years), Math.max(...years)]
         : null;
+      // Bug 6: playoffs mode has no peak window — never include peakSeasons in playoffs response.
+      const includePeakSeasons = mode === 'peak' && cached.data.peakSeasons;
       return res.json({
         playerId,
         playerName:  cached.data.playerName  ?? inputs.player.name,
         mode,
-        ...(cached.data.peakSeasons ? { peakSeasons: cached.data.peakSeasons } : {}),
+        ...(includePeakSeasons ? { peakSeasons: cached.data.peakSeasons } : {}),
         ...(careerYearRange ? { careerYearRange } : {}),
         categories:  cached.data.categories,
         overall:     cached.data.overall,
@@ -669,11 +674,14 @@ router.get('/players/:id/graded-report', async (req, res) => {
     ? [Math.min(...years), Math.max(...years)]
     : null;
 
+  // Bug 6: playoffs mode has no peak window concept — never include peakSeasons in playoffs response.
+  const includePeakSeasons = mode === 'peak' && reportData.peakSeasons;
+
   return res.json({
     playerId,
     playerName: inputs.player.name,
     mode,
-    ...(reportData.peakSeasons ? { peakSeasons: reportData.peakSeasons } : {}),
+    ...(includePeakSeasons ? { peakSeasons: reportData.peakSeasons } : {}),
     ...(careerYearRange ? { careerYearRange } : {}),
     categories:  reportData.categories,
     overall:     reportData.overall,

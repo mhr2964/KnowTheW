@@ -838,6 +838,12 @@ body {
   text-overflow: ellipsis;
 }
 
+.compare-hero-former {
+  font-style: italic;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
 .compare-change-link {
   background: none;
   border: none;
@@ -1366,6 +1372,17 @@ body {
   .grade-grid-expand-panel--right {
     text-align: left;
     align-items: flex-start;
+    padding: 0.6rem 0.75rem;
+  }
+
+  .grade-grid-expand-stats {
+    font-size: 0.72rem;
+    line-height: 1.35;
+  }
+
+  .grade-grid-expand-context {
+    font-size: 0.75rem;
+    line-height: 1.35;
   }
 }
 
