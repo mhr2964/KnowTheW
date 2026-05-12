@@ -43,7 +43,7 @@ function GradeGridRow({ category, catA, catB, nameA, nameB, gradeA, gradeB }) {
       <summary className="grade-grid-row-summary">
         {/* Left half — Player A's grade, right-aligned toward the center */}
         <div className="grade-grid-cell grade-grid-cell--left">
-          <GradeBadge grade={gradeA} size={aWins || cmp === 0 ? 'large' : 'small'} muted={bWins} />
+          <GradeBadge grade={gradeA} size="large" winner={aWins} />
           {aWins && <span className="grade-grid-arrow grade-grid-arrow--left" aria-hidden="true">◀</span>}
         </div>
 
@@ -56,7 +56,7 @@ function GradeGridRow({ category, catA, catB, nameA, nameB, gradeA, gradeB }) {
         {/* Right half — Player B's grade, left-aligned toward the center */}
         <div className="grade-grid-cell grade-grid-cell--right">
           {bWins && <span className="grade-grid-arrow grade-grid-arrow--right" aria-hidden="true">▶</span>}
-          <GradeBadge grade={gradeB} size={bWins || cmp === 0 ? 'large' : 'small'} muted={aWins} />
+          <GradeBadge grade={gradeB} size="large" winner={bWins} />
         </div>
       </summary>
       {expandContent}

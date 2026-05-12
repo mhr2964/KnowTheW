@@ -1079,8 +1079,8 @@ body {
   justify-content: center;
 }
 
-.grade-badge--muted {
-  opacity: 0.45;
+.grade-badge--winner {
+  box-shadow: 0 2px 0 var(--accent);
 }
 
 /* ── Grade Grid ── */
