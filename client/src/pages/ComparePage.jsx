@@ -139,8 +139,8 @@ export default function ComparePage() {
   // Graded reports — re-fetch when mode changes (url key changes)
   const reportUrlA = `/api/players/${idA}/graded-report?mode=${mode}`;
   const reportUrlB = `/api/players/${idB}/graded-report?mode=${mode}`;
-  const { data: reportA, loading: loadingReportA, error: errorReportA } = useLazyFetch(reportUrlA, reportsEnabled);
-  const { data: reportB, loading: loadingReportB, error: errorReportB } = useLazyFetch(reportUrlB, reportsEnabled);
+  const { data: reportA, loading: loadingReportA, error: errorReportA, refetch: refetchA } = useLazyFetch(reportUrlA, reportsEnabled);
+  const { data: reportB, loading: loadingReportB, error: errorReportB, refetch: refetchB } = useLazyFetch(reportUrlB, reportsEnabled);
 
   const nameA = playerA?.player?.name ?? playerA?.name ?? 'Player A';
   const nameB = playerB?.player?.name ?? playerB?.name ?? 'Player B';
@@ -250,6 +250,8 @@ export default function ComparePage() {
                 loading={bothReportsLoading}
                 errorA={errorReportA}
                 errorB={errorReportB}
+                onRetryA={refetchA}
+                onRetryB={refetchB}
               />
 
               {/* Grade grid */}

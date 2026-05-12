@@ -113,7 +113,9 @@ const GRADED_REPORT_TOOL = {
 //     playoffs peakSeasons removal, seasonsPlayed constraint for peakSeasons.
 // v5: Add league-average scope clarification — per-team totals must not be compared
 //     against per-player per-game stats.
-const PROMPT_VERSION = 5;
+// v6: Surface position-adjustment in Rebounding stats and context fields so viewers can
+//     see why a guard's 2.5 RPG and a center's 6 RPG receive different grades.
+const PROMPT_VERSION = 6;
 
 // System prompt is static across all player calls so Anthropic can cache it.
 const SYSTEM_PROMPT_TEXT =
@@ -137,6 +139,21 @@ const SYSTEM_PROMPT_TEXT =
   'A guard at 1.5 OREB is rare and approaches A-tier rebounding. A forward at 1.5+ OREB is HOF-tier ' +
   'hustle. Cite OREB/DREB split explicitly in the stats string AND context paragraph. ' +
   'Never grade rebounding A+ without elite OREB rate. ' +
+  'REBOUNDING POSITION TAG — REQUIRED FOR NON-CENTERS: when the player\'s position is guard ' +
+  '(G, PG, SG, or any guard designation), the Rebounding stats field MUST start with ' +
+  '"(guard-adj)" and the context paragraph MUST open with "(guard-adjusted)". ' +
+  'When the player\'s position is forward or wing (SF, PF, F, W, or any forward/wing designation) ' +
+  'but NOT center, the stats field MUST start with "(forward-adj)" and the context paragraph ' +
+  'MUST open with "(forward-adjusted)". ' +
+  'For centers (C, or any center designation), omit all position tags — they are graded on raw output. ' +
+  'These tags must appear even when the grade is high — a guard who is an elite rebounder still ' +
+  'gets "(guard-adj)" so the viewer knows the bar was adjusted downward. ' +
+  'Example stats field for a guard: "(guard-adj) 2.5 RPG, 0.4 OREB, 2.1 DREB". ' +
+  'Example context opening for a guard: "(guard-adjusted) 2.5 RPG with 0.4 OREB is low even for a ' +
+  'primary ball-handler; grade reflects limited expectations at the position." ' +
+  'Example context opening for a forward: "(forward-adjusted) 5.5 RPG with solid OREB presence ' +
+  'is above average for a wing; solid grade reflects positional context." ' +
+  'Do NOT use any position tag for centers. ' +
   'Mode-specific weighting for Overall: for Career mode, weight Efficiency/Impact and Longevity ' +
   'most heavily. For Peak mode, weight Scoring and Efficiency. For Playoffs mode, weight ' +
   'Efficiency and the sample of high-leverage games played — championship context matters here. ' +

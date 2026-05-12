@@ -1,17 +1,20 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 // Fetches `url` once when `enabled` becomes true. Aborts on unmount or url change.
 // Re-fetches if a previous attempt errored. Does not re-fetch on re-enables after success.
+// Returns `refetch` to manually retry after an error.
 export default function useLazyFetch(url, enabled) {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const abortRef    = useRef(null);
   const fetchedRef  = useRef(false);
 
   useEffect(() => {
     fetchedRef.current = false;
     setData(null);
+    setRetryCount(0);
   }, [url]);
 
   useEffect(() => {
@@ -43,9 +46,16 @@ export default function useLazyFetch(url, enabled) {
       controller.abort();
       if (!resolved) fetchedRef.current = false;
     };
-  }, [enabled, url]);
+  // retryCount included so bumping it re-runs the effect after an error reset
+  }, [enabled, url, retryCount]);
 
   useEffect(() => () => { abortRef.current?.abort(); }, []);
 
-  return { data, loading, error };
+  const refetch = useCallback(() => {
+    fetchedRef.current = false;
+    setError(false);
+    setRetryCount(c => c + 1);
+  }, []);
+
+  return { data, loading, error, refetch };
 }

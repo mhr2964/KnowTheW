@@ -1577,6 +1577,12 @@ body {
   border-top: 1px solid var(--border);
   padding-top: 0.5rem;
   margin-top: 0.1rem;
+  display: flex; align-items: center; gap: 0.6rem;
+}
+.compare-verdict-retry {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  flex-shrink: 0;
 }
 
 .compare-verdict--skeleton {

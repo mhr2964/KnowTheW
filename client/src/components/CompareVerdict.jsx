@@ -63,7 +63,7 @@ function computeVerdict(reportA, reportB, mode) {
   return { wonByA, wonByB, tied, overallCmp, overallMargin, overallA, overallB, volumeSignal, shortPeakWarning };
 }
 
-export default function CompareVerdict({ reportA, reportB, nameA, nameB, mode, loading, errorA, errorB }) {
+export default function CompareVerdict({ reportA, reportB, nameA, nameB, mode, loading, errorA, errorB, onRetryA, onRetryB }) {
   const verdict = useMemo(() => computeVerdict(reportA, reportB, mode), [reportA, reportB, mode]);
 
   if (loading) {
@@ -80,6 +80,7 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, mode, l
     const gradeA = reportA?.overall?.grade ?? null;
     const gradeB = reportB?.overall?.grade ?? null;
     const failingName = errorA ? nameA : nameB;
+    const onRetry = errorA ? onRetryA : onRetryB;
     return (
       <div className="compare-verdict">
         <p className="compare-verdict-label">AT A GLANCE</p>
@@ -94,7 +95,14 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, mode, l
             <span className="compare-verdict-fight-name">{nameB}</span>
           </span>
         </div>
-        <p className="compare-verdict-error-notice">Couldn&apos;t load graded report for {failingName}</p>
+        <p className="compare-verdict-error-notice">
+          Couldn&apos;t load graded report for {failingName}
+          {onRetry && (
+            <button type="button" className="btn-ghost compare-verdict-retry" onClick={onRetry}>
+              Try again
+            </button>
+          )}
+        </p>
       </div>
     );
   }
