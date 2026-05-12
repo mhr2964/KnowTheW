@@ -20,6 +20,11 @@ const { ADV_HEADERS_SRV, buildAdvancedSplit, buildAdvancedCareer,
 const { getPlayerPercentiles }                                           = require('../lib/percentileClient');
 const { isLegacyId, getLegacyPlayer, searchLegacyPlayers,
         buildLegacyProfile, buildLegacyDetailedStats }                   = require('../constants/legacyPlayerStats');
+const { LEGACY_PLAYERS_BULK, isBulkLegacyId, getBulkLegacyPlayer,
+        searchBulkLegacyPlayers, buildBulkLegacyProfile,
+        buildBulkLegacyDetailedStats }                                   = require('../constants/legacyPlayerBulk');
+const { LEGACY_DEFUNCT_TEAMS, getLegacyRoster, tricodeForEspnId,
+        tricodeForDefunctId }                                            = require('../constants/legacyTeamRosters');
 
 async function fetchPlayerSeasonData(playerId) {
   const [teams, regData, postData] = await Promise.all([
@@ -38,12 +43,52 @@ router.get('/teams', async (req, res) => {
   }
 });
 
+// GET /api/teams/legacy — returns the catalog of defunct franchises with their synthetic ids.
+// Stubbed endpoint: lets a direct URL (or future Historical Franchises UI) resolve the same id
+// the team/roster endpoint expects. TODO: surface these in the home-page team grid.
+router.get('/teams/legacy', (req, res) => {
+  const teams = Object.entries(LEGACY_DEFUNCT_TEAMS).map(([tri, t]) => ({
+    id:            t.id,
+    name:          t.name,
+    location:      t.location,
+    abbreviation:  tri,
+    activeYears:   t.activeYears,
+    defunct:       true,
+  }));
+  res.json({ teams });
+});
+
+// Build a legacy-roster response from LEGACY_PLAYERS_BULK player_IDs.
+// Used by both the numeric-ESPN-id path and the synthetic 'legacy-...' defunct-team path.
+function buildLegacyRosterResponse(team, season, playerIds) {
+  const players = playerIds.map(pid => {
+    const p = LEGACY_PLAYERS_BULK[pid];
+    if (!p) return null;                // safety: roster references a missing player
+    const seasonRow = p.seasons?.[season] ?? null;
+    return {
+      id:           p.id,
+      name:         p.name,
+      position:     p.position ?? '',
+      positionName: p.position ?? '',
+      jersey:       null,
+      headshot:     null,
+      height:       null,
+      weight:       null,
+      age:          seasonRow?.age ?? null,
+      college:      null,
+      birthPlace:   null,
+      experience:   null,
+      teamId:       team.id,
+      teamName:     team.name,
+      legacy:       true,
+      dataSource:   'legacy-bulk',
+    };
+  }).filter(Boolean);
+  return { team, players, season, dataSource: 'legacy-bulk' };
+}
+
 router.get('/teams/:id/roster', async (req, res) => {
-  // Validate :id — ESPN team IDs are integers; reject anything non-numeric.
-  if (!/^\d+$/.test(req.params.id)) {
-    return res.status(400).json({ error: 'team id must be a numeric string' });
-  }
-  const teamId = req.params.id;
+  const rawId = req.params.id;
 
   // season param: default to current calendar year; reject non-numeric / non-4-digit values.
   const currentYear = new Date().getFullYear();
@@ -56,6 +101,35 @@ router.get('/teams/:id/roster', async (req, res) => {
     return res.status(400).json({ error: 'season must be a 4-digit year (e.g. 2024)' });
   }
 
+  // Defunct-team synthetic ids ('legacy-cleveland-rockers' etc.) — resolve via LEGACY_DEFUNCT_TEAMS.
+  // These don't have ESPN ids, so the numeric-id validator below would reject them; handle first.
+  if (typeof rawId === 'string' && rawId.startsWith('legacy-')) {
+    const tricode = tricodeForDefunctId(rawId);
+    if (!tricode) return res.status(404).json({ error: 'team not found' });
+    const defunct = LEGACY_DEFUNCT_TEAMS[tricode];
+    const [startYear, endYear] = defunct.activeYears;
+    // Default season for a defunct team is the franchise's first active year — current year is meaningless.
+    const resolvedSeason = req.query.season === undefined || req.query.season === ''
+      ? startYear
+      : season;
+    if (resolvedSeason < startYear || resolvedSeason > endYear) {
+      return res.status(400).json({ error: `season must be between ${startYear} and ${endYear}` });
+    }
+    if (resolvedSeason > 2001) {
+      // Past 2001 we have no bulk data — defunct teams in 2002-2009 are out of scope for this dispatch.
+      return res.json({ team: { id: rawId, name: defunct.name, location: defunct.location }, players: [], season: resolvedSeason, dataSource: 'legacy-bulk', note: 'roster only available for 1997-2001' });
+    }
+    const ids = getLegacyRoster(tricode, resolvedSeason) ?? [];
+    const team = { id: rawId, name: defunct.name, location: defunct.location, abbreviation: tricode };
+    return res.json(buildLegacyRosterResponse(team, resolvedSeason, ids));
+  }
+
+  // Validate :id — ESPN team IDs are integers; reject anything non-numeric.
+  if (!/^\d+$/.test(rawId)) {
+    return res.status(400).json({ error: 'team id must be a numeric string' });
+  }
+  const teamId = rawId;
+
   // Reject seasons after the current year or before the franchise's founding year.
   const foundedYear = WNBA_FOUNDED[teamId] ?? 1997;
   if (season > currentYear || season < foundedYear) {
@@ -66,6 +140,17 @@ router.get('/teams/:id/roster', async (req, res) => {
     const allTeams = await getTeams();
     const team = allTeams.find(t => String(t.id) === teamId);
     if (!team) return res.status(404).json({ error: 'team not found' });
+
+    // Pre-2002 seasons: ESPN has no usable roster data. Fall back to the bulk-legacy roster
+    // when this franchise has a BBRef tricode mapping for the requested season.
+    if (season <= 2001) {
+      const tricode = tricodeForEspnId(teamId);
+      const ids = tricode ? getLegacyRoster(tricode, season) : null;
+      if (ids && ids.length > 0) {
+        return res.json(buildLegacyRosterResponse(team, season, ids));
+      }
+      // No legacy roster for this team/season — fall through to ESPN (will likely return []).
+    }
 
     let players;
     if (season === currentYear) {
@@ -318,9 +403,17 @@ router.get('/search', async (req, res) => {
 
     // Hand-curated pre-2002 legends (ESPN data is sparse before 2002). Mixed in alongside
     // active and ESPN-retired players so historical greats surface in the same search response.
-    const legacyMatches = searchLegacyPlayers(q);
+    const legacyMatches     = searchLegacyPlayers(q);
+    const bulkLegacyMatches = searchBulkLegacyPlayers(q);
 
-    const matchedPlayers = [...activePlayers, ...retiredPlayers, ...legacyMatches].slice(0, 30);
+    // De-dupe by name: when a player appears in BOTH the hand-curated set (per-game stats) and the
+    // bulk set (advanced stats), the hand-curated copy wins because it has per-game data the UI
+    // already knows how to render. The bulk copy is dropped from the same search response.
+    // TODO: reconcile into a single source of truth in a follow-up pass.
+    const handCuratedNames = new Set(legacyMatches.map(p => p.name.toLowerCase()));
+    const dedupedBulk      = bulkLegacyMatches.filter(p => !handCuratedNames.has(p.name.toLowerCase()));
+
+    const matchedPlayers = [...activePlayers, ...retiredPlayers, ...legacyMatches, ...dedupedBulk].slice(0, 30);
     res.json({ teams: matchedTeams, players: matchedPlayers });
   } catch {
     res.status(500).json({ error: 'search failed' });
@@ -330,11 +423,19 @@ router.get('/search', async (req, res) => {
 router.get('/players/:id', async (req, res) => {
   try {
     // Legacy (hand-curated, pre-2002) — short-circuit before ESPN lookup.
-    // ESPN ids are pure integers; legacy ids contain a hyphen, so no collision risk.
+    // ESPN ids are pure integers; hand-curated legacy ids contain a hyphen, so no collision risk.
     if (isLegacyId(req.params.id)) {
       const legacy = getLegacyPlayer(req.params.id);
       if (!legacy) return res.status(404).json({ error: 'player not found' });
       return res.json({ player: buildLegacyProfile(legacy), dataSource: 'legacy' });
+    }
+
+    // Bulk-legacy (BBRef CSV import) — short-circuit before ESPN. Pattern: 'staleda01w'.
+    // ESPN ids are pure integers and never end in a 'w', so no collision risk with the regex.
+    if (isBulkLegacyId(req.params.id)) {
+      const bulk = getBulkLegacyPlayer(req.params.id);
+      if (!bulk) return res.status(404).json({ error: 'player not found' });
+      return res.json({ player: buildBulkLegacyProfile(bulk), dataSource: 'legacy-bulk' });
     }
 
     const player = playerById[req.params.id];
@@ -375,6 +476,14 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
       const legacy = getLegacyPlayer(req.params.id);
       if (!legacy) return res.status(404).json({ error: 'player not found' });
       return res.json(buildLegacyDetailedStats(legacy));
+    }
+
+    // Bulk-legacy (BBRef CSV) players: advanced-only, no per-game data. The response carries
+    // advancedOnly: true so the frontend can hide the per-game tab or render an empty state.
+    if (isBulkLegacyId(req.params.id)) {
+      const bulk = getBulkLegacyPlayer(req.params.id);
+      if (!bulk) return res.status(404).json({ error: 'player not found' });
+      return res.json(buildBulkLegacyDetailedStats(bulk));
     }
 
     const { regData, postData, teamsById } = await fetchPlayerSeasonData(req.params.id);
@@ -553,11 +662,10 @@ router.get('/players/:id/percentiles', async (req, res) => {
 // 200 { empty: true } — mode=playoffs with zero playoff GP
 // 502 — Claude error or shape validation failure
 router.get('/players/:id/graded-report', async (req, res) => {
-  // Validate :id — numeric (ESPN) or legacy synthetic id (contains a hyphen).
-  // Legacy ids skirt the numeric check because they're hand-curated identifiers like
-  // 'cooper-cynthia-1963'; the buildInputs path branches on isLegacyId.
+  // Validate :id — numeric (ESPN), hand-curated legacy id (contains a hyphen), or bulk-legacy
+  // BBRef id (e.g. 'staleda01w'). buildInputs branches on each via isLegacyId / isBulkLegacyId.
   const rawId = req.params.id;
-  if (!/^\d+$/.test(rawId) && !isLegacyId(rawId)) {
+  if (!/^\d+$/.test(rawId) && !isLegacyId(rawId) && !isBulkLegacyId(rawId)) {
     return res.status(400).json({ error: 'player id must be a numeric string or legacy id' });
   }
   const playerId = rawId;

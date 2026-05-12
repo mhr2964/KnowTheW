@@ -23,6 +23,7 @@ const { ADV_HEADERS_SRV, buildAdvancedSplit, computeSeasonPBP, buildPbpSplit } =
 const { WNBA_LG } = require('../constants/leagueAverages');
 const { getPlayerAccolades } = require('../constants/wnbaAccolades');
 const { isLegacyId, getLegacyPlayer, buildLegacyDetailedStats } = require('../constants/legacyPlayerStats');
+const { isBulkLegacyId, getBulkLegacyPlayer } = require('../constants/legacyPlayerBulk');
 
 // Resolve player basics — name, position — from ESPN.
 async function fetchPlayerBasics(playerId) {
@@ -143,6 +144,89 @@ function buildLegacyInputs(playerId, mode) {
 }
 
 /**
+ * Build the input bundle for a bulk-legacy (BBRef CSV) player. Only advanced stats are available
+ * (PER, TS%, WS, USG%, etc.) — no per-game data. Playoffs mode is always empty because the CSV
+ * has no playoff splits. The prompt is told (via dataSource='legacy-bulk') to grade from advanced
+ * metrics + accolades alone and not invent per-game numbers.
+ */
+function buildBulkLegacyInputs(playerId, mode) {
+  const bulk = getBulkLegacyPlayer(playerId);
+  if (!bulk) return null;
+
+  if (mode === 'playoffs') return { empty: true };
+
+  const years = Object.keys(bulk.seasons).map(Number).sort();
+  if (years.length === 0) return null;
+
+  // advancedRows: shaped to match what advRowToObj produces, so buildUserMessage's advByYear
+  // merge can interleave these advanced fields with the (empty) seasonRows.
+  const advancedRows = years.map(y => {
+    const s = bulk.seasons[y];
+    return {
+      year:    String(y),
+      gp:      s.G,
+      tsPct:   s.TS_pct,
+      efgPct:  null,
+      usgPct:  s.USG_pct,
+      astPct:  s.AST_pct,
+      orbPct:  s.ORB_pct,
+      drbPct:  null,
+      trbPct:  s.TRB_pct,
+      stlPct:  s.STL_pct,
+      blkPct:  s.BLK_pct,
+      per:     s.PER,
+      ows:     s.OWS,
+      dws:     s.DWS,
+      ws:      s.WS,
+      wsPer48: s.WS40,
+    };
+  });
+
+  // seasonRows: we have NO per-game stats. Emit minimal rows (year, team, GP, MP) so the prompt's
+  // "Seasons played" wording still has a list to chew on; numeric per-game fields are null.
+  const seasonRows = years.map(y => {
+    const s = bulk.seasons[y];
+    return {
+      year:     String(y),
+      teamAbbr: s.team || null,
+      gp:       s.G,
+      min:      s.MP != null && s.G ? Number((s.MP / s.G).toFixed(1)) : null,
+      pts:      null, reb: null, orb: null, drb: null, ast: null, stl: null, blk: null, tov: null,
+      fgm:      null, fga: null, fgPct: null,
+      fg3m:     null, fg3a: null, fg3Pct: null,
+      ftm:      null, fta: null, ftPct: null,
+    };
+  });
+
+  const touchedYears = new Set(seasonRows.map(r => String(r.year)));
+  const leagueByYear = {};
+  for (const yr of touchedYears) {
+    if (WNBA_LG[yr]) leagueByYear[yr] = WNBA_LG[yr];
+  }
+
+  const accolades     = getPlayerAccolades(bulk.name);
+  const championships = accolades.championships ?? [];
+
+  const seasonsPlayed = seasonRows
+    .filter(r => r.gp != null && Number(r.gp) > 0)
+    .map(r => Number(r.year))
+    .sort((a, b) => a - b);
+
+  return {
+    player: { id: bulk.id, name: bulk.name, position: bulk.position || '' },
+    mode,
+    seasonRows,
+    careerRow:    null,
+    leagueByYear,
+    advancedRows,
+    championships,
+    accolades,
+    seasonsPlayed,
+    dataSource:   'legacy-bulk',
+  };
+}
+
+/**
  * Build the input bundle for gradedReportClient.
  *
  * @param {string} playerId  - ESPN athlete ID
@@ -154,6 +238,12 @@ async function buildInputs(playerId, mode) {
   // data, so playoffs mode is always empty for legacy players (Wikipedia tables don't split that out).
   if (isLegacyId(playerId)) {
     return buildLegacyInputs(playerId, mode);
+  }
+
+  // Bulk-legacy (BBRef CSV import) — advanced-only data, no per-game stats. The graded-report
+  // prompt is told to grade from advanced metrics + accolades only (no PPG/RPG to fall back on).
+  if (isBulkLegacyId(playerId)) {
+    return buildBulkLegacyInputs(playerId, mode);
   }
 
   const teams = await getTeams();
