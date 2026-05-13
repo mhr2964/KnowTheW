@@ -231,7 +231,11 @@ export default function ComparePage() {
 
           {bothUnavailable ? (
             <div className="compare-ai-unavailable">
-              <p>AI-graded reports are temporarily unavailable. Try again later or switch modes.</p>
+              <p>AI-graded reports are temporarily unavailable.</p>
+              <div className="compare-ai-unavailable-retries">
+                <button type="button" className="btn-ghost compare-verdict-retry" onClick={refetchA}>Retry {nameA}</button>
+                <button type="button" className="btn-ghost compare-verdict-retry" onClick={refetchB}>Retry {nameB}</button>
+              </div>
             </div>
           ) : (
             <>

@@ -1,0 +1,108 @@
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .header { padding: 0.75rem 1rem; gap: 0.75rem; }
+  .search-btn { padding: 0.55rem 0.75rem; }
+  .main { padding: 1.25rem 1rem; }
+  .picker-body { flex-direction: column; }
+  .picker-arrow { display: none; }
+  .premium-banner { flex-direction: column; align-items: flex-start; }
+  .premium-cta { align-items: flex-start; }
+  .team-header { padding: 1rem; }
+  .team-header-name { font-size: 0.95rem; }
+  .team-header-meta { font-size: 0.78rem; }
+  .card-field-value { font-size: 1.2rem; }
+  .study-fullscreen { padding: 1rem; }
+  .player-hero { flex-direction: column; align-items: center; text-align: center; gap: 1rem; }
+  .player-bio-grid { justify-content: center; }
+  .player-hero-meta { justify-content: center; }
+
+  .stat-type-tabs { padding: 0.5rem 0.5rem 0; gap: 0.15rem; }
+  .stat-type-tab { font-size: 0.7rem; padding: 0.32rem 0.55rem 0.42rem; }
+  .bref-table { font-size: 0.7rem; }
+  .bref-table th, .bref-table td { padding: 0.3rem 0.45rem; }
+
+  /* Compare hero — stack vertically at narrow widths */
+  .compare-hero-pair {
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.65rem 0.85rem;
+  }
+  .compare-hero-vs {
+    width: auto;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 0.25rem 0;
+    font-size: 0.62rem;
+    text-align: center;
+  }
+  /* Both sides left-aligned in stacked layout */
+  .compare-hero-player.compare-hero-side-b {
+    flex-direction: row;
+    text-align: left;
+  }
+  .compare-hero-player.compare-hero-side-b .compare-hero-info {
+    align-items: flex-start;
+  }
+  .compare-hero-name { font-size: 0.9rem; }
+  .compare-hero-img { width: 36px; height: 36px; }
+  /* Cell value size reduction */
+  .compare-cell-a, .compare-cell-b, .compare-cell-single { font-size: 0.7rem; }
+
+  .team-dashboard-grid { grid-template-columns: 1fr; }
+  .team-spoke-nav { padding: 0.5rem 0.5rem 0; gap: 0.15rem; flex-wrap: wrap; }
+  .team-spoke-tab { font-size: 0.7rem; padding: 0.875rem 0.55rem; min-width: 44px; }
+
+  .team-history-cell { padding: 0.4rem 0.55rem; font-size: 0.78rem; }
+  .team-history-cell--conf { display: none; }
+  .team-history-champs { gap: 0.5rem; }
+  .team-history-champs-text { font-size: 0.82rem; }
+}
+
+@media (max-width: 480px) {
+  .th-full { display: none; }
+  .th-short { display: inline; }
+  /* Row-level gold accent + top banner already signal championship; pill is redundant here. */
+  .team-history-champ-badge { display: none; }
+
+  .team-schedule-opp-logo { width: 20px; height: 20px; }
+  .team-schedule-final { display: none; }
+
+  /* Hide Team column on merged compare table — low-value at extreme widths */
+  .compare-team-col { display: none; }
+
+  /* Grade cards: stack panels vertically on narrow screens */
+  .compare-grade-card-panels {
+    grid-template-columns: 1fr;
+  }
+  .compare-grade-panel:first-child {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Mode toggle full-width */
+  .compare-mode-toggle { flex-wrap: wrap; }
+  .compare-mode-btn { flex: 1; text-align: center; }
+
+  /* Verdict stacks naturally — no override needed */
+
+  /* Team header stacks: logo+name row → picker → meta row */
+  .team-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .team-header-season-picker {
+    order: 3;
+    margin-left: 0;
+    width: 100%;
+    max-width: 100%;
+    min-height: 44px;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.95rem;
+  }
+  .team-header-text {
+    order: 2;
+    width: calc(100% - 68px - 1.25rem);
+  }
+  .team-header-logo { order: 1; }
+  .team-header-meta { order: 4; }
+}

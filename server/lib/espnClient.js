@@ -62,13 +62,24 @@ function tricodeFromLogo(url) {
   return m ? m[1].toUpperCase() : null;
 }
 
+// Fetches the raw standings response for a given year and returns the `children` array from ESPN.
+// Returns null on a non-2xx response; throws on network or parse error so callers' catch blocks
+// surface the failure without swallowing it silently.
+// Pass year=null (or omit) to hit the current-season endpoint (no ?season= param).
+async function fetchStandingsRaw(year) {
+  const url = year != null ? `${STANDINGS}?season=${year}` : STANDINGS;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.children ?? [];
+}
+
 async function fetchStandings() {
   try {
-    const res = await fetch(STANDINGS);
-    if (!res.ok) return null;
-    const data = await res.json();
+    const children = await fetchStandingsRaw(null);
+    if (!children) return null;
     const out = {};
-    for (const child of data.children ?? []) {
+    for (const child of children) {
       const conference = child.name;
       for (const entry of child.standings?.entries ?? []) {
         const teamId = String(entry.team?.id ?? '');
@@ -356,6 +367,7 @@ module.exports = {
   fetchTeamStats, fetchTeamStatsRaw, fetchTeamPtsAllowed, fetchTeamPtsAllowedRaw,
   fetchGameSummary,
   fetchTeamSchedule, fetchPlayoffSchedule,
+  fetchStandingsRaw,
   formatSeedLabel,
   rosterData, playerById, teamSeasonStatsCache,
 };

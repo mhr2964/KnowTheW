@@ -1,0 +1,1085 @@
+/* ── Compare Page ── */
+.compare-hero-pair {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+}
+
+.compare-hero-vs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+  width: 2.5rem;
+}
+
+.compare-hero-player {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.compare-hero-player.compare-hero-side-b {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.compare-hero-player.compare-hero-side-b .compare-hero-info {
+  align-items: flex-end;
+}
+
+.compare-hero-error {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.compare-hero-skeleton .compare-hero-img {
+  background: var(--surface-2);
+}
+.compare-hero-skeleton-name {
+  width: 8rem;
+  height: 1rem;
+  border-radius: 4px;
+  background: var(--surface-2);
+}
+
+.compare-hero-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.compare-hero-img.placeholder {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+}
+
+.compare-hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.compare-hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.compare-hero-name {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compare-hero-former {
+  font-style: italic;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.compare-change-link {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.12s;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.compare-change-link:hover { color: var(--text); }
+
+.compare-leader {
+  font-weight: 800;
+  color: var(--accent);
+}
+
+/* Season toggle row above merged table */
+.compare-season-header {
+  margin-bottom: 0.75rem;
+}
+
+/* Merged comparison table cells */
+.compare-cell-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  line-height: 1.25;
+}
+
+.compare-cell-a,
+.compare-cell-b {
+  display: block;
+  font-size: 0.78rem;
+}
+
+.compare-cell-divider {
+  display: block;
+  width: 100%;
+  height: 1px;
+  background: var(--border);
+  margin: 1px 0;
+  opacity: 0.5;
+}
+
+.compare-cell-single {
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+/* Sticky Season column on the merged table */
+.compare-merged-table th.compare-sticky-col,
+.compare-merged-table td.compare-sticky-col {
+  position: sticky;
+  left: 0;
+}
+.compare-merged-table th.compare-sticky-col {
+  background: var(--surface-2);
+  z-index: 2;
+}
+.compare-merged-table td.compare-sticky-col {
+  background: var(--bg);
+  z-index: 1;
+}
+.compare-merged-table tr:hover td.compare-sticky-col {
+  background: var(--surface);
+}
+
+/* Career row modifier (piggybacks on .career-row) */
+.compare-career-row td {
+  background: var(--surface);
+}
+
+/* Error banner above merged table */
+.compare-table-error-banner {
+  font-size: 0.8rem;
+  color: #e05555;
+  padding: 0.5rem 0;
+  margin-bottom: 0.5rem;
+}
+
+/* Skeleton state while both sides load */
+.compare-table-skeleton {
+  padding: 2rem 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* Same-player empty state */
+.compare-same-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3rem 0;
+  text-align: center;
+}
+
+/* Compare tabs — extends existing .stat-type-tabs */
+.compare-tabs {
+  margin-bottom: 1rem;
+  border-radius: var(--radius);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Compare trigger button on player page */
+.compare-trigger-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--accent);
+  padding: 0.35rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+  margin-top: 0.35rem;
+  align-self: flex-start;
+}
+.compare-trigger-btn:hover { border-color: var(--accent); background: rgba(255,107,0,0.07); }
+
+/* Compare picker modal */
+.compare-picker-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 440px;
+  max-width: 92vw;
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.compare-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.compare-picker-header h3 { font-size: 1rem; font-weight: 700; }
+
+.compare-picker-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.compare-picker-input { border-radius: var(--radius); border-right: 1px solid var(--border); }
+
+.compare-picker-results {
+  grid-template-columns: 1fr;
+  margin-bottom: 0;
+}
+
+.compare-picker-self-error {
+  font-size: 0.8rem;
+  color: #e05555;
+}
+
+.compare-picker-footer {
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── Grade Badge ── */
+.grade-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  padding: 0.18rem 0.55rem;
+  border-radius: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.grade-badge--top {
+  background: rgba(74, 222, 128, 0.18);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.35);
+}
+
+.grade-badge--high {
+  background: rgba(96, 165, 250, 0.18);
+  color: #60a5fa;
+  border: 1px solid rgba(96, 165, 250, 0.3);
+}
+
+.grade-badge--mid {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.grade-badge--low {
+  background: rgba(251, 146, 60, 0.15);
+  color: #fb923c;
+  border: 1px solid rgba(251, 146, 60, 0.3);
+}
+
+.grade-badge--bottom {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+.grade-badge--empty {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.grade-badge--large {
+  font-size: 1.1rem;
+  padding: 0.28rem 0.8rem;
+  border-radius: 6px;
+  min-width: 3rem;
+  justify-content: center;
+}
+
+.grade-badge--small {
+  font-size: 0.72rem;
+  padding: 0.14rem 0.5rem;
+  border-radius: 4px;
+  min-width: 2.2rem;
+  justify-content: center;
+}
+
+.grade-badge--winner {
+  box-shadow: 0 2px 0 var(--accent);
+}
+
+/* ── Grade Grid ── */
+.grade-grid {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+
+/* Column header strip */
+.grade-grid-header {
+  display: grid;
+  grid-template-columns: 1fr 7rem 1fr;
+  align-items: center;
+  padding: 0.45rem 1rem;
+  background: var(--surface-2);
+  border-bottom: 2px solid var(--border);
+}
+
+.grade-grid-header-name {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.grade-grid-header-name--left {
+  text-align: right;
+  padding-right: 1rem;
+}
+
+.grade-grid-header-name--right {
+  text-align: left;
+  padding-left: 1rem;
+}
+
+.grade-grid-header-sep {
+  /* spacer for the center column */
+}
+
+/* Rows */
+.grade-grid-row {
+  border-bottom: 1px solid var(--border);
+}
+.grade-grid-row:last-child {
+  border-bottom: none;
+}
+
+.grade-grid-row--overall > summary {
+  background: var(--surface);
+}
+.grade-grid-row--overall .grade-grid-row-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.grade-grid-row--overall .grade-badge--large {
+  font-size: 1.3rem;
+  padding: 0.38rem 1rem;
+}
+
+.grade-grid-row-summary {
+  display: grid;
+  grid-template-columns: 1fr 7rem 1fr;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  background: var(--surface);
+  gap: 0;
+}
+.grade-grid-row-summary::-webkit-details-marker { display: none; }
+.grade-grid-row-summary:hover { background: var(--surface-2); }
+
+/* Left cell — grade right-aligned toward center */
+.grade-grid-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.grade-grid-cell--left {
+  justify-content: flex-end;
+  padding-right: 0.6rem;
+}
+
+.grade-grid-cell--right {
+  justify-content: flex-start;
+  padding-left: 0.6rem;
+}
+
+/* Center column — stat label + chevron */
+.grade-grid-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  padding: 0.35rem 0.5rem;
+  min-height: 2.4rem;
+}
+
+.grade-grid-row-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.grade-grid-row-chevron {
+  font-size: 1rem;
+  color: var(--text-muted);
+  transition: transform 0.18s ease;
+  line-height: 1;
+}
+.grade-grid-row[open] > summary .grade-grid-row-chevron {
+  transform: rotate(180deg);
+}
+
+/* Position-adjustment tag — shown in Rebounding center column when either player is guard/fwd adjusted */
+.grade-grid-pos-adj-label {
+  font-size: 0.52rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+/* Winner arrow — lives in the center column, stacked below the stat name */
+.grade-grid-winner-arrow {
+  font-size: 1rem;
+  color: var(--accent);
+  line-height: 1;
+}
+
+/* Expand panel */
+.grade-grid-expand {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+}
+
+.grade-grid-expand-divider {
+  width: 1px;
+  background: var(--border);
+  align-self: stretch;
+}
+
+.grade-grid-expand-panel {
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.grade-grid-expand-panel--left {
+  text-align: right;
+  align-items: flex-end;
+}
+
+.grade-grid-expand-panel--right {
+  text-align: left;
+  align-items: flex-start;
+}
+
+.grade-grid-expand-name {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.grade-grid-expand-stats {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.grade-grid-expand-context {
+  font-size: 0.78rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.grade-grid-expand-unavailable {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Skeleton */
+.grade-grid--skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.grade-grid-skeleton-row {
+  height: 3.2rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.grade-grid-skeleton-row:last-child { border-bottom: none; }
+
+/* Mobile — collapse adversarial 3-col to 2-row stack */
+@media (max-width: 600px) {
+  .grade-grid-header {
+    display: none;
+  }
+
+  /* Row 1: stat label full-width; Row 2: left grade | right grade */
+  .grade-grid-row-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "center center"
+      "left   right";
+    gap: 0;
+    padding: 0.55rem 0.75rem;
+  }
+
+  .grade-grid-center {
+    grid-area: center;
+    border-left: none;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 0 0 0.35rem 0;
+    margin-bottom: 0.35rem;
+    min-height: unset;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .grade-grid-row-label {
+    font-size: 0.62rem;
+    text-align: left;
+  }
+
+  /* On mobile the center is a row; push chevron to the far right */
+  .grade-grid-center .grade-grid-row-chevron {
+    margin-left: auto;
+  }
+
+  /* Winner arrow sits inline after the label at a smaller size */
+  .grade-grid-winner-arrow {
+    font-size: 0.75rem;
+    margin-left: 0.3rem;
+  }
+
+  .grade-grid-cell--left {
+    grid-area: left;
+    justify-content: center;
+    padding: 0.25rem 0.4rem;
+    border-right: 1px solid var(--border);
+  }
+
+  .grade-grid-cell--right {
+    grid-area: right;
+    justify-content: center;
+    padding: 0.25rem 0.4rem;
+  }
+
+  .grade-badge--large {
+    font-size: 0.95rem;
+    padding: 0.22rem 0.55rem;
+    min-width: 2.5rem;
+  }
+
+  .grade-grid-expand {
+    grid-template-columns: 1fr;
+  }
+
+  .grade-grid-expand-divider {
+    width: auto;
+    height: 1px;
+    align-self: auto;
+  }
+
+  .grade-grid-expand-panel--left,
+  .grade-grid-expand-panel--right {
+    text-align: left;
+    align-items: flex-start;
+    padding: 0.6rem 0.75rem;
+  }
+
+  .grade-grid-expand-stats {
+    font-size: 0.72rem;
+    line-height: 1.35;
+  }
+
+  .grade-grid-expand-context {
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+}
+
+/* ── Mode Toggle ── */
+.compare-mode-toggle-wrap {
+  margin-bottom: 1rem;
+}
+
+.compare-mode-toggle {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.4rem;
+}
+
+.compare-mode-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.35rem 0.85rem;
+  transition: all 0.12s;
+}
+.compare-mode-btn:hover { color: var(--text); border-color: var(--text-muted); }
+.compare-mode-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.compare-mode-peak-window {
+  font-size: 0.73rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+/* ── Compare Verdict ── */
+.compare-verdict {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.compare-verdict-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Fight-night score row */
+.compare-verdict-fight {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.compare-verdict-fight-side {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1;
+}
+
+.compare-verdict-fight-side--left {
+  justify-content: flex-end;
+}
+
+.compare-verdict-fight-side--right {
+  justify-content: flex-start;
+}
+
+.compare-verdict-fight-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.compare-verdict-fight-side--winner .compare-verdict-fight-name {
+  color: var(--text);
+}
+
+.compare-verdict-score {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: var(--text-muted);
+  line-height: 1;
+  min-width: 1.4ch;
+  text-align: center;
+}
+
+.compare-verdict-score--winner {
+  color: var(--accent);
+}
+
+.compare-verdict-fight-divider {
+  font-size: 1.3rem;
+  font-weight: 300;
+  color: var(--text-muted);
+  padding: 0 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Tied categories note */
+.compare-verdict-tied {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0;
+}
+
+/* Adversarial overall grades row */
+.compare-verdict-overall-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-top: 1px solid var(--border);
+  padding-top: 0.55rem;
+}
+
+.compare-verdict-overall-side {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.compare-verdict-overall-side--left {
+  justify-content: flex-end;
+}
+
+.compare-verdict-overall-side--right {
+  justify-content: flex-start;
+}
+
+.compare-verdict-overall-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-align: center;
+  padding: 0 0.65rem;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.compare-verdict-overall-arrow {
+  font-size: 0.65rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.compare-verdict-margin {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin: 0;
+}
+
+.compare-verdict-volume {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+  margin-top: 0.1rem;
+  line-height: 1.5;
+}
+
+.compare-verdict-grade-dash {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.compare-verdict-error-notice {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+  margin-top: 0.1rem;
+  display: flex; align-items: center; gap: 0.6rem;
+}
+.compare-verdict-retry {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.compare-verdict--skeleton {
+  gap: 0.75rem;
+}
+.compare-verdict-skeleton-line {
+  height: 1rem;
+  border-radius: 4px;
+  background: var(--surface-2);
+  width: 70%;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.compare-verdict-skeleton-line--short { width: 45%; }
+
+/* ── Grade Cards ── */
+.compare-grade-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.compare-grade-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.compare-grade-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 1rem;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.compare-grade-card-category {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text);
+}
+
+.compare-grade-card-leader {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-left: auto;
+}
+
+.compare-grade-card-tie {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.compare-grade-card-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--border);
+}
+
+.compare-grade-panel {
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.compare-grade-panel:first-child {
+  border-right: 1px solid var(--border);
+}
+
+.compare-grade-panel--winner {
+  background: rgba(255, 107, 0, 0.04);
+}
+
+.compare-grade-panel-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.compare-grade-panel-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.compare-grade-panel-stats {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.compare-grade-panel-context {
+  font-size: 0.78rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.compare-grade-panel-unavailable {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.compare-grade-card-volume {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  padding: 0.5rem 1rem;
+}
+
+/* Grade card skeleton */
+.compare-grade-card--skeleton {
+  padding: 0;
+}
+.compare-grade-skeleton-header {
+  height: 2.5rem;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.compare-grade-skeleton-body {
+  height: 6rem;
+  background: var(--surface);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+/* ── Compare AI states ── */
+.compare-ai-unavailable {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin-bottom: 1.25rem;
+}
+.compare-ai-unavailable-retries {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.compare-loading-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.compare-loading-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.compare-verdict-short-peak {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.4rem;
+  font-style: italic;
+}
+
+.compare-playoffs-empty {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+}
+
+.compare-ai-disclaimer {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: 0.75rem 0 1.5rem;
+}
+
+/* ── Overall summaries ── */
+.compare-overall-summaries {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.compare-overall-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.compare-overall-summary-name {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.compare-overall-summary p {
+  font-size: 0.86rem;
+  color: var(--text);
+  line-height: 1.55;
+}
+
+/* Pulse animation for skeletons */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}

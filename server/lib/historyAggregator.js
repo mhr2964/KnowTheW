@@ -19,12 +19,27 @@
 //   schedule derivation disagrees, we trust the constant and log a warning.
 
 const { getDb }              = require('../db');
-const { STANDINGS }          = require('./espnClient');
-const { fetchPlayoffSchedule } = require('./espnClient');
+const { fetchStandingsRaw, fetchPlayoffSchedule } = require('./espnClient');
 const { WNBA_CHAMPIONS, FRANCHISE_ALIASES } = require('../constants/wnbaChampions');
 const { WNBA_FOUNDED }       = require('../constants/wnbaFounded');
 
 const HISTORY_START_YEAR = 2002;
+
+// Pre-ESPN season records for defunct franchises.
+// ESPN standings coverage starts ~2002; years before that return null from fetchStandingsByName.
+// Only includes records verified against authoritative sources. Other pre-2002 years omitted rather
+// than hard-coding uncertain data — they show the coverage note in the UI instead.
+// Championship years are the critical rows: without them the championships header has no matching
+// table row, which reads as contradictory.
+const LEGACY_SEASON_SUPPLEMENT = {
+  'Houston Comets': {
+    1997: { wins: 18, losses: 10, conference: 'Western', seed: 1, playoffResult: 'Won Finals', champion: true  },
+    1998: { wins: 27, losses:  3, conference: 'Western', seed: 1, playoffResult: 'Won Finals', champion: true  },
+    1999: { wins: 26, losses:  6, conference: 'Western', seed: 1, playoffResult: 'Won Finals', champion: true  },
+    2000: { wins: 27, losses:  5, conference: 'Western', seed: 1, playoffResult: 'Won Finals', champion: true  },
+    2001: { wins: 19, losses: 13, conference: 'Western', seed: 2, playoffResult: null,          champion: false },
+  },
+};
 
 // Returns true if the WNBA_CHAMPIONS entry for `year` belongs to `teamDisplayName` — either as a
 // direct match (current name) or through a FRANCHISE_ALIASES lineage mapping (historical name).
@@ -82,41 +97,44 @@ function derivePlayoffResult(teamId, year, events) {
   return null;
 }
 
+// Shared stat-parsing helpers used by both fetchStandingsForYear and fetchStandingsByName.
+// Derive wins and losses by summing Home + Road summary strings (e.g. "12-4" + "13-3").
+// ESPN's scalar `wins`/`losses` values are corrupted for some historic champion seasons
+// (e.g. 2002 Sparks shows 2-0 Finals-series wins instead of 25-7 regular season).
+// Home+Road sum is the authoritative regular-season record in all observed seasons.
+function statByType(entry, type) { return (entry.stats ?? []).find(s => s.type === type); }
+function parseSummary(s) {
+  if (!s?.summary) return null;
+  const parts = s.summary.split('-');
+  return parts.length === 2 ? parts.map(Number) : null;
+}
+function recordFromEntry(entry) {
+  const homeRecord = parseSummary(statByType(entry, 'home'));
+  const roadRecord = parseSummary(statByType(entry, 'road'));
+  const w = (homeRecord && roadRecord) ? homeRecord[0] + roadRecord[0] : null;
+  const l = (homeRecord && roadRecord) ? homeRecord[1] + roadRecord[1] : null;
+  const seedStat = (entry.stats ?? []).find(s => s.name === 'playoffSeed');
+  const seed = seedStat ? seedStat.value : null;
+  return {
+    wins:   typeof w    === 'number' && !isNaN(w) ? Math.round(w)   : null,
+    losses: typeof l    === 'number' && !isNaN(l) ? Math.round(l)   : null,
+    seed:   typeof seed === 'number'              ? Math.round(seed) : null,
+  };
+}
+
 // Fetches standings for a single year and returns a map of teamId → { wins, losses, seed, conference }.
 // Returns null on network or parse failure so the caller can skip the year non-fatally.
 async function fetchStandingsForYear(year) {
   try {
-    const res = await fetch(`${STANDINGS}?season=${year}`);
-    if (!res.ok) return null;
-    const data = await res.json();
+    const children = await fetchStandingsRaw(year);
+    if (!children) return null;
     const out = {};
-    for (const child of data.children ?? []) {
+    for (const child of children) {
       const conference = child.name;
       for (const entry of child.standings?.entries ?? []) {
         const teamId = String(entry.team?.id ?? '');
         if (!teamId) continue;
-        // Derive wins and losses by summing Home + Road summary strings (e.g. "12-4" + "13-3").
-        // ESPN's scalar `wins`/`losses` values are corrupted for some historic champion seasons
-        // (e.g. 2002 Sparks shows 2-0 Finals-series wins instead of 25-7 regular season).
-        // Home+Road sum is the authoritative regular-season record in all observed seasons.
-        const statByType = (type) => (entry.stats ?? []).find(s => s.type === type);
-        const parseSummary = (s) => {
-          if (!s?.summary) return null;
-          const parts = s.summary.split('-');
-          return parts.length === 2 ? parts.map(Number) : null;
-        };
-        const homeRecord = parseSummary(statByType('home'));
-        const roadRecord = parseSummary(statByType('road'));
-        const w = (homeRecord && roadRecord) ? homeRecord[0] + roadRecord[0] : null;
-        const l = (homeRecord && roadRecord) ? homeRecord[1] + roadRecord[1] : null;
-        const seedStat = (entry.stats ?? []).find(s => s.name === 'playoffSeed');
-        const seed = seedStat ? seedStat.value : null;
-        out[teamId] = {
-          conference,
-          wins:   typeof w    === 'number' && !isNaN(w) ? Math.round(w)    : null,
-          losses: typeof l    === 'number' && !isNaN(l) ? Math.round(l)    : null,
-          seed:   typeof seed === 'number'              ? Math.round(seed)  : null,
-        };
+        out[teamId] = { conference, ...recordFromEntry(entry) };
       }
     }
     return out;
@@ -355,7 +373,125 @@ async function buildHistory(teamObj) {
   return updatedResult;
 }
 
-// fetchStandingsForYear and isChampion are also exported for use by seasonInfo.js.
-// Dependency note: seasonInfo.js relies on fetchStandingsForYear for the pre-2003 corrupted
-// ESPN scalar fix (Home+Road sum) — do not duplicate that logic there.
-module.exports = { buildHistory, fetchStandingsForYear, isChampion };
+// Fetch all standings entries for a year, indexed by team displayName.
+// Used by buildLegacyHistory — defunct teams have no ESPN numeric ID in this codebase,
+// so name-matching is the only way to retrieve their historical records.
+async function fetchStandingsByName(year) {
+  try {
+    const children = await fetchStandingsRaw(year);
+    if (!children) return null;
+    const out = {};
+    for (const child of children) {
+      const conference = child.name;
+      for (const entry of child.standings?.entries ?? []) {
+        const name = entry.team?.displayName ?? '';
+        if (!name) continue;
+        out[name] = { conference, ...recordFromEntry(entry) };
+      }
+    }
+    return out;
+  } catch (err) {
+    console.error(`fetchStandingsByName year=${year}:`, err.message);
+    return null;
+  }
+}
+
+// Aggregate history for a defunct franchise. teamObj must have { id, name, activeYears }.
+// Iterates activeYears newest-first; ESPN returns data for years it has coverage (typically 2002+).
+// Years ESPN doesn't cover are skipped non-fatally — the caller renders whatever comes back.
+async function aggregateLegacyHistory(teamObj) {
+  const [startYear, endYear] = teamObj.activeYears;
+  const teamName = teamObj.name;
+  const teamId   = teamObj.id;
+  const seasons  = [];
+
+  for (let year = endYear; year >= startYear; year--) {
+    try {
+      const standings = await fetchStandingsByName(year);
+      if (!standings) continue;
+      const entry = standings[teamName];
+      if (!entry) continue;
+
+      const constantSaysChampion = isChampion(year, teamName);
+      seasons.push({
+        year,
+        wins:          entry.wins,
+        losses:        entry.losses,
+        conference:    entry.conference,
+        seed:          entry.seed,
+        playoffResult: constantSaysChampion ? 'Won Finals' : null,
+        champion:      constantSaysChampion,
+      });
+    } catch (err) {
+      console.error(`aggregateLegacyHistory: year=${year} team=${teamName}:`, err.message);
+    }
+  }
+
+  // Merge supplement rows for years ESPN doesn't cover (typically pre-2002).
+  // ESPN data takes precedence — supplement only fills gaps, never overwrites.
+  const supplement = LEGACY_SEASON_SUPPLEMENT[teamName] ?? {};
+  for (const [yearStr, row] of Object.entries(supplement)) {
+    const year = Number(yearStr);
+    if (!seasons.find(s => s.year === year)) {
+      seasons.push({ year, ...row });
+    }
+  }
+  seasons.sort((a, b) => b.year - a.year); // maintain newest-first order
+
+  return {
+    teamId,
+    team:          { id: teamId, name: teamName },
+    founded:       startYear,
+    dissolved:     endYear,
+    championships: getChampionships(teamName),
+    coaches:       [],
+    seasons,
+  };
+}
+
+// Returns the /history response for a defunct franchise, using MongoDB cache when available.
+// Defunct teams are immutable once dissolved, so the cache is permanent (no re-fetch needed).
+async function buildLegacyHistory(teamObj) {
+  const teamId = teamObj.id;
+  const db     = getDb();
+
+  if (!db) return aggregateLegacyHistory(teamObj);
+
+  const coll = db.collection('teamHistories');
+  let cached;
+  try {
+    cached = await coll.findOne({ _id: teamId });
+  } catch (err) {
+    console.error(`buildLegacyHistory: mongo read failed teamId=${teamId}:`, err.message);
+    cached = null;
+  }
+
+  if (cached) {
+    return {
+      teamId:        cached.teamId,
+      team:          cached.team,
+      founded:       cached.founded,
+      dissolved:     cached.dissolved ?? teamObj.activeYears[1],
+      championships: cached.championships,
+      coaches:       cached.coaches ?? [],
+      seasons:       cached.seasons ?? [],
+    };
+  }
+
+  const result = await aggregateLegacyHistory(teamObj);
+  try {
+    await coll.replaceOne(
+      { _id: teamId },
+      { _id: teamId, ...result, generatedAt: new Date().toISOString() },
+      { upsert: true }
+    );
+  } catch (err) {
+    console.error(`buildLegacyHistory: mongo write failed teamId=${teamId}:`, err.message);
+  }
+  return result;
+}
+
+// fetchStandingsForYear and isChampion are exported for use by seasonInfo.js.
+// Dependency note: seasonInfo.js relies on fetchStandingsForYear for the pre-2003 ESPN corrupted-
+// scalar fix (Home+Road sum via recordFromEntry) — do not duplicate that logic there.
+module.exports = { buildHistory, buildLegacyHistory, fetchStandingsForYear, isChampion };

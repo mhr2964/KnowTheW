@@ -19,7 +19,6 @@ function conferenceShort(conf) {
 
 export default function TeamHistoryPage() {
   const { team } = useOutletContext() ?? {};
-  const isDefunct = !!team?.defunct;
 
   const [historyData, setHistoryData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -30,7 +29,7 @@ export default function TeamHistoryPage() {
   const [narrativeState, setNarrativeState] = useState(null);
 
   useEffect(() => {
-    if (!team?.id || isDefunct) return;
+    if (!team?.id) return;
     const controller = new AbortController();
     setHistoryData(null);
     setError(false);
@@ -45,10 +44,10 @@ export default function TeamHistoryPage() {
         }
       });
     return () => controller.abort();
-  }, [team?.id, isDefunct]);
+  }, [team?.id]);
 
   useEffect(() => {
-    if (!team?.id || isDefunct) return;
+    if (!team?.id) return;
     const controller = new AbortController();
     setNarrative(null);
     setNarrativeState(null);
@@ -75,13 +74,7 @@ export default function TeamHistoryPage() {
         }
       });
     return () => controller.abort();
-  }, [team?.id, isDefunct]);
-
-  if (isDefunct) return (
-    <div className="team-spoke-content">
-      <p className="status-msg">Season-by-season history is not available for historical franchises.</p>
-    </div>
-  );
+  }, [team?.id]);
 
   if (loading) return (
     <div className="team-spoke-content">
@@ -97,7 +90,7 @@ export default function TeamHistoryPage() {
 
   if (!historyData) return null;
 
-  const { founded, championships = [], seasons = [] } = historyData;
+  const { founded, dissolved, championships = [], seasons = [] } = historyData;
 
   if (seasons.length === 0) return (
     <div className="team-spoke-content">
@@ -110,9 +103,13 @@ export default function TeamHistoryPage() {
       <h3 className="team-stats-season">Franchise History</h3>
 
       <div className="team-history-meta">
-        {founded != null && <span>Est. {founded}</span>}
+        {founded != null && (
+          dissolved != null
+            ? <span>{founded}–{dissolved}</span>
+            : <span>Est. {founded}</span>
+        )}
         {founded != null && <span className="team-history-meta-sep">·</span>}
-        <span>{seasons.length} seasons</span>
+        <span>{seasons.length} season{seasons.length !== 1 ? 's' : ''}</span>
       </div>
 
       {championships.length > 0 ? (
@@ -131,6 +128,12 @@ export default function TeamHistoryPage() {
         <div className="team-history-champs team-history-champs--none" role="region" aria-label="No championships yet">
           <span className="team-history-champs-text">Chasing their first championship</span>
         </div>
+      )}
+
+      {dissolved != null && founded != null && seasons.length < (dissolved - founded + 1) && (
+        <p className="team-history-coverage-note">
+          Season records shown for {seasons.length > 0 ? `${seasons[seasons.length - 1].year}–${seasons[0].year}` : 'available years'}. Earlier seasons are not in ESPN&apos;s historical data.
+        </p>
       )}
 
       <div className="team-history-table-wrap">

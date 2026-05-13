@@ -8,7 +8,7 @@ const { ESPN_WEB, getTeams, getRoster, fetchSeasonRoster, fetchTeamStats, fetchT
         fetchTeamPtsAllowed, fetchTeamPtsAllowedRaw, fetchTeamSchedule,
         rosterData, playerById, teamSeasonStatsCache }                   = require('../lib/espnClient');
 const { WNBA_FOUNDED }                                                   = require('../constants/wnbaFounded');
-const { buildHistory }                                                   = require('../lib/historyAggregator');
+const { buildHistory, buildLegacyHistory }                               = require('../lib/historyAggregator');
 const { buildSeasonInfo }                                                = require('../lib/seasonInfo');
 const { readOrFetch }                                                    = require('../lib/teamSeasonCache');
 const narrativeClient                                                    = require('../lib/narrativeClient');
@@ -290,6 +290,19 @@ router.get('/teams/:id/stats', async (req, res) => {
 });
 
 router.get('/teams/:id/history', async (req, res) => {
+  // Defunct-team synthetic ids — route to legacy history builder (ESPN data by name-match).
+  if (typeof req.params.id === 'string' && req.params.id.startsWith('legacy-')) {
+    const tricode = tricodeForDefunctId(req.params.id);
+    if (!tricode) return res.status(404).json({ error: 'team not found' });
+    const defunct = LEGACY_DEFUNCT_TEAMS[tricode];
+    try {
+      return res.json(await buildLegacyHistory(defunct));
+    } catch (err) {
+      console.error(`teams/${req.params.id}/history:`, err.message);
+      return res.status(502).json({ error: 'upstream error building legacy team history' });
+    }
+  }
+
   if (!/^\d+$/.test(req.params.id)) {
     return res.status(400).json({ error: 'team id must be a numeric string' });
   }
@@ -536,6 +549,8 @@ router.get('/players/:id/gamelog', async (req, res) => {
     res.status(500).json({ error: 'failed to load gamelog' });
   }
 });
+
+
 
 router.get('/players/:id/advanced-pbp-all', async (req, res) => {
   try {
@@ -806,21 +821,38 @@ router.get('/players/:id/graded-report', async (req, res) => {
 });
 
 router.get('/teams/:id/narrative', async (req, res) => {
-  if (!/^\d+$/.test(req.params.id)) {
-    return res.status(400).json({ error: 'team id must be a numeric string' });
-  }
-  const teamId = req.params.id;
-
   if (!narrativeClient.enabled) {
     return res.status(503).json({ error: 'narrative service unavailable' });
   }
 
-  try {
-    const allTeams = await getTeams();
-    const team = allTeams.find(t => String(t.id) === teamId);
-    if (!team) return res.status(404).json({ error: 'team not found' });
+  const rawId  = req.params.id;
+  const teamId = rawId; // used as MongoDB _id and in log messages for both active and legacy teams
 
-    const history = await buildHistory(team);
+  let team, history;
+
+  try {
+    if (typeof rawId === 'string' && rawId.startsWith('legacy-')) {
+      // Defunct franchise — resolve via LEGACY_DEFUNCT_TEAMS, build history by ESPN name-match.
+      const tricode = tricodeForDefunctId(rawId);
+      if (!tricode) return res.status(404).json({ error: 'team not found' });
+      const defunct = LEGACY_DEFUNCT_TEAMS[tricode];
+      team    = { id: defunct.id, name: defunct.name };
+      history = await buildLegacyHistory(defunct);
+    } else {
+      if (!/^\d+$/.test(rawId)) {
+        return res.status(400).json({ error: 'team id must be a numeric string' });
+      }
+      const allTeams = await getTeams();
+      team = allTeams.find(t => String(t.id) === rawId);
+      if (!team) return res.status(404).json({ error: 'team not found' });
+      history = await buildHistory(team);
+    }
+  } catch (err) {
+    console.error(`teams/${rawId}/narrative (team/history resolve):`, err.message);
+    return res.status(502).json({ error: 'upstream error generating narrative' });
+  }
+
+  try {
 
     // Deterministic source hash over the data Claude will receive.
     // Includes teamName and current-record fields so a mid-season record update (wins/losses/seed
@@ -917,7 +949,7 @@ router.get('/teams/:id/narrative', async (req, res) => {
 
     return res.json({ data, generatedAt: generatedAt.toISOString(), sourceHash });
   } catch (err) {
-    console.error(`teams/${teamId}/narrative:`, err.message);
+    console.error(`teams/${rawId}/narrative:`, err.message);
     res.status(502).json({ error: 'upstream error generating narrative' });
   }
 });

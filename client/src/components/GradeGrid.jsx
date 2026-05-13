@@ -3,12 +3,18 @@ import { compareGrades } from '../lib/gradeUtils';
 
 const CATEGORIES = ['Scoring', 'Playmaking', 'Rebounding', 'Defense', 'Efficiency', 'Longevity'];
 
+const POS_ADJ_RE = /^\((guard|forward)-adj\)/;
+
 function GradeGridRow({ category, catA, catB, nameA, nameB, gradeA, gradeB }) {
   const cmp = gradeA && gradeB ? compareGrades(gradeA, gradeB) : 0;
 
   // cmp > 0 → A wins, cmp < 0 → B wins, 0 → tie / no data
   const aWins = cmp > 0;
   const bWins = cmp < 0;
+
+  const hasPosAdj = category === 'Rebounding' && (
+    POS_ADJ_RE.test(catA?.stats ?? '') || POS_ADJ_RE.test(catB?.stats ?? '')
+  );
 
   const expandContent = (
     <div className="grade-grid-expand">
@@ -49,6 +55,7 @@ function GradeGridRow({ category, catA, catB, nameA, nameB, gradeA, gradeB }) {
         {/* Center — stat label, winner arrow, expand chevron */}
         <div className="grade-grid-center">
           <span className="grade-grid-row-label">{category.toUpperCase()}</span>
+          {hasPosAdj && <span className="grade-grid-pos-adj-label">pos-adj</span>}
           {(aWins || bWins) && (
             <span className="grade-grid-winner-arrow" aria-hidden="true">
               {aWins ? '◀' : '▶'}

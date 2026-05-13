@@ -1223,6 +1223,16 @@ body {
   transform: rotate(180deg);
 }
 
+/* Position-adjustment tag — shown in Rebounding center column when either player is guard/fwd adjusted */
+.grade-grid-pos-adj-label {
+  font-size: 0.52rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
 /* Winner arrow — lives in the center column, stacked below the stat name */
 .grade-grid-winner-arrow {
   font-size: 1rem;
@@ -1741,6 +1751,12 @@ body {
   font-size: 0.88rem;
   margin-bottom: 1.25rem;
 }
+.compare-ai-unavailable-retries {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
 
 .compare-loading-hint {
   display: flex;
@@ -2035,6 +2051,13 @@ body {
   font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.7);
 }
 .team-history-meta-sep { color: var(--border); }
+
+.team-history-coverage-note {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-bottom: 0.5rem;
+}
 
 .team-history-champs {
   display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;

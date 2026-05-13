@@ -13,7 +13,13 @@ import PlayerRoutePage from './pages/PlayerRoutePage';
 import SearchPage from './pages/SearchPage';
 import ComparePage from './pages/ComparePage';
 import NotFoundPage from './pages/NotFoundPage';
-import './App.css';
+import './styles/global.css';
+import './styles/layout.css';
+import './styles/shared.css';
+import './styles/player.css';
+import './styles/compare.css';
+import './styles/team.css';
+import './styles/responsive.css';
 
 function RedirectToPlayer() {
   const { idA } = useParams();

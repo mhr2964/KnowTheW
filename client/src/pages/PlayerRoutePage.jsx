@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import PlayerPage from '../components/PlayerPage';
+import useLazyFetch from '../hooks/useLazyFetch';
 
 const VALID_TABS = new Set(['totals', 'per36', 'per100', 'advanced', 'gamelog']);
 
@@ -8,19 +9,10 @@ export default function PlayerRoutePage({ onSaveDeck }) {
   const { id, tab } = useParams();
   const navigate = useNavigate();
 
-  const [playerData, setPlayerData] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setPlayerData(null);
-    setLoading(true);
-    fetch(`/api/players/${id}`, { signal: controller.signal })
-      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(data => { setPlayerData(data); setLoading(false); })
-      .catch(err => { if (err.name !== 'AbortError') setLoading(false); });
-    return () => controller.abort();
-  }, [id]);
+  const { data: playerData, loading, error: loadError, refetch } = useLazyFetch(
+    `/api/players/${id}`,
+    true
+  );
 
   useEffect(() => {
     if (playerData?.player?.name) document.title = `${playerData.player.name} — KnowTheW`;
@@ -35,7 +27,12 @@ export default function PlayerRoutePage({ onSaveDeck }) {
   const initialTab = (tab && VALID_TABS.has(tab)) ? tab : 'perGame';
 
   if (loading) return <p className="status-msg">Loading player...</p>;
-  if (!playerData) return <p className="status-msg">Could not load player data.</p>;
+  if (loadError || !playerData) return (
+    <p className="status-msg error" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '2rem 0' }}>
+      Could not load player data.
+      {loadError && <button type="button" className="btn-ghost compare-verdict-retry" onClick={refetch}>Try again</button>}
+    </p>
+  );
 
   function handleBack() {
     // react-router-dom v6 stores its navigation index on history.state.idx
