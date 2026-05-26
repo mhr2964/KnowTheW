@@ -23,6 +23,7 @@ const { LEGACY_PLAYERS_BULK, isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyI
         buildBulkLegacyDetailedStats }                                   = require('../constants/legacyPlayerBulk');
 const { LEGACY_DEFUNCT_TEAMS, getLegacyRoster, tricodeForEspnId,
         tricodeForDefunctId }                                            = require('../constants/legacyTeamRosters');
+const { getProvider }                                                    = require('../providers');
 
 async function fetchPlayerSeasonData(playerId) {
   const [teams, regData, postData] = await Promise.all([
@@ -35,7 +36,7 @@ async function fetchPlayerSeasonData(playerId) {
 
 router.get('/teams', async (req, res) => {
   try {
-    res.json(await getTeams());
+    res.json(await getProvider().getTeams());
   } catch {
     res.status(500).json({ error: 'failed to load teams' });
   }

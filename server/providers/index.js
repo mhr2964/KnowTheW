@@ -9,6 +9,7 @@ const PROVIDERS = {
 
 let cached = null;
 let cachedKey = null;
+let override = null;
 
 /**
  * @returns {import('./SportsDataProvider').SportsDataProvider} the active data-source provider.
@@ -16,6 +17,7 @@ let cachedKey = null;
  * falling back to a source the operator didn't ask for).
  */
 function getProvider() {
+  if (override) return override;
   const key = (process.env.STATS_PROVIDER || 'espn').toLowerCase();
   if (cached && cachedKey === key) return cached;
   const load = PROVIDERS[key];
@@ -29,7 +31,9 @@ function getProvider() {
   return cached;
 }
 
-// Test-only: reset the memoized instance so a test can flip STATS_PROVIDER between cases.
-function _resetProviderCache() { cached = null; cachedKey = null; }
+// Test-only: inject a fake provider so route tests can run without a live source.
+function _setProviderForTest(p) { override = p; }
+// Test-only: reset memoized instance + any injected override (call in test teardown).
+function _resetProviderCache() { cached = null; cachedKey = null; override = null; }
 
-module.exports = { getProvider, _resetProviderCache };
+module.exports = { getProvider, _setProviderForTest, _resetProviderCache };
