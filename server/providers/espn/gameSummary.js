@@ -9,7 +9,7 @@
 // computeOnCourtStats / extractBoxscoreTeamStats are exported for characterization testing against a
 // captured summary fixture — that's the regression net for this numerically-sensitive code.
 
-const espn = require('../../lib/espnClient');
+const espn = require('./client');
 
 // Find the target player's team ID from the boxscore players array.
 function findTargetTeamId(summary, pid) {

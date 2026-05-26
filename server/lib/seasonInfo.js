@@ -21,7 +21,7 @@
 'use strict';
 
 const { fetchStandingsForYear, isChampion } = require('./historyAggregator');
-const { formatSeedLabel }                   = require('./espnClient');
+const { formatSeedLabel }                   = require('./ordinal');
 const { getFranchiseIdentity }              = require('../constants/wnbaFranchiseLineage');
 
 // Assembles the season-info response for a given team and season.

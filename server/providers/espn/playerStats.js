@@ -6,7 +6,7 @@
 // normalizing the season-stats payload (so raw ESPN JSON stops crossing the boundary) is deferred
 // to a later milestone; for now this just consolidates WHERE the fetch happens, not its shape.
 
-const { ESPN_WEB } = require('../../lib/espnClient');
+const { ESPN_WEB } = require('./client');
 
 /** Minimal player identity used by the graded-report builder: { id, name, position } or null. */
 async function getPlayerBasics(playerId) {

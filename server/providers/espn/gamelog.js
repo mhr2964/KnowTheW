@@ -9,7 +9,7 @@
 // captured fixture without a network call (the exact stat order + the 0-100 percent values that the
 // client renders as 3-dp fractions are the regression-prone bits).
 
-const { ESPN_WEB } = require('../../lib/espnClient');
+const { ESPN_WEB } = require('./client');
 
 // Presentation metadata for ESPN's gamelog stat keys. `kind` drives client formatting:
 // 'pct' values are 0-100 and render as a 3-dp fraction (e.g. 60.0 -> ".600"); 'num' renders as-is.

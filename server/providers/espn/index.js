@@ -1,16 +1,13 @@
-// ESPN implementation of the SportsDataProvider contract.
+// ESPN implementation of the SportsDataProvider contract — the Facade over the ESPN provider's
+// pieces. It maps the contract method names onto ./client (the HTTP/cache layer, formerly
+// server/lib/espnClient) and the ./*.js submodules (playerStats, gamelog, gameSummary, leagueStats).
+// Active players are exposed source-neutrally via getActivePlayers()/findActivePlayer() so no
+// in-memory cache object crosses the contract.
 //
-// M1 stage: this is a thin adapter over the existing server/lib/espnClient.js — it renames the
-// functions to the interface method names and exposes the module's shared mutable caches
-// (playerById / rosterData / teamSeasonStatsCache) via accessors so consumers can stop importing
-// espnClient's internals directly. The actual ESPN fetch/parse code still lives in espnClient.js
-// for now; later milestones move it into this directory (http.js, teams.js, ...) and absorb the
-// rogue fetches that currently bypass espnClient.
-//
-// The startup prefetch side-effect still fires from espnClient.js on require — keeping it there
-// (rather than moving it here) means import-time behavior is unchanged during the migration.
+// The startup prefetch side-effect fires from ./client on require, so import-time behavior is
+// unchanged by the M9 relocation.
 
-const espn = require('../../lib/espnClient');
+const espn = require('./client');
 const playerStats = require('./playerStats');
 const gamelog = require('./gamelog');
 const gameSummary = require('./gameSummary');
@@ -54,9 +51,6 @@ class EspnProvider extends SportsDataProvider {
   // ESPN serves these from its startup-prefetch caches; that's an implementation detail.
   getActivePlayers() { return Object.values(espn.rosterData).flat(); }
   findActivePlayer(id) { return espn.playerById[id]; }
-
-  // --- Pass-through helpers that aren't source fetches ---
-  formatSeedLabel(n) { return espn.formatSeedLabel(n); }
 }
 
 // Wrapped so every normalized return is validated at the boundary (silent-drift alarm for the

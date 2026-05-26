@@ -251,7 +251,7 @@ router.get('/teams/:id/stats', async (req, res) => {
   try {
     if (season === currentYear) {
       // Current season: use in-process caches (mutable mid-season). Same path as before.
-      // espnClient wraps each in withCache internally.
+      // the ESPN provider's client wraps each in withCache internally.
       const [rawStats, oppPpg] = await Promise.all([
         fetchTeamStats(teamId, season),
         fetchTeamPtsAllowed(teamId, season).catch(err => {

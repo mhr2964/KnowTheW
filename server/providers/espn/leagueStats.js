@@ -7,7 +7,7 @@
 // mapLeagueStatLine + the extract* functions are exported pure so the index mapping can be
 // characterization-tested against a fixture without a network call.
 
-const espn = require('../../lib/espnClient');
+const espn = require('./client');
 const { ESPN_WEB } = espn;
 const { parseStatMap } = require('../../lib/statsParser');
 

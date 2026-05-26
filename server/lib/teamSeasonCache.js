@@ -10,7 +10,7 @@
 // Design decisions:
 //   - String _id keys match the teamHistories / teamNarratives pattern.
 //   - Single-tier cache (no in-process L1 over MongoDB L2) for past seasons. Current season uses
-//     the existing in-process caches in espnClient.js — those remain unchanged.
+//     the existing in-process caches in the ESPN provider's client — those remain unchanged.
 //   - getDb() null → bypass cache, call fetchFn directly. Identical degradation to historyAggregator.
 //   - Write is fire-and-forget — a failed write logs a warning but does not break the response.
 //   - Write is gated: writes on non-null non-empty responses, AND on `{ empty: true, confirmedEmpty: true }`

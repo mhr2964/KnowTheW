@@ -1,5 +1,5 @@
 // Smoke test: prove the Express app boots and serves a request without hitting ESPN.
-// NODE_ENV=test is set BEFORE requiring the app so espnClient skips its startup prefetch.
+// NODE_ENV=test is set BEFORE requiring the app so the ESPN client skips its startup prefetch.
 // We listen on port 0 (OS-assigned ephemeral port) to avoid colliding with the dev server.
 
 process.env.NODE_ENV = 'test';

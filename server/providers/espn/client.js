@@ -1,3 +1,10 @@
+// ESPN provider's low-level HTTP layer: base URLs, fetch+cache helpers, the in-memory team/roster
+// caches, and the startup prefetch. The provider methods in ./index.js and the ./*.js submodules
+// delegate here. Relocated from server/lib/espnClient.js at M9 — it's source-specific, so it belongs
+// inside the ESPN provider, not in the shared lib/.
+
+const { formatSeedLabel } = require('../../lib/ordinal');
+
 const ESPN      = 'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba';
 const ESPN_WEB  = 'https://site.web.api.espn.com/apis/common/v3/sports/basketball/wnba';
 const STANDINGS = 'https://site.api.espn.com/apis/v2/sports/basketball/wnba/standings';
@@ -98,13 +105,6 @@ async function fetchStandings() {
   } catch {
     return null;
   }
-}
-
-function formatSeedLabel(n) {
-  if (typeof n !== 'number' || !Number.isFinite(n)) return null;
-  const v = n % 100;
-  const suffix = (v >= 11 && v <= 13) ? 'th' : (['th','st','nd','rd'][n % 10] || 'th');
-  return `${n}${suffix}`;
 }
 
 async function fetchRoster(teamId, teamName) {
@@ -371,6 +371,5 @@ module.exports = {
   fetchGameSummary,
   fetchTeamSchedule, fetchPlayoffSchedule,
   fetchStandingsRaw,
-  formatSeedLabel,
   rosterData, playerById, teamSeasonStatsCache,
 };
