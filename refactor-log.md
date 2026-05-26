@@ -69,3 +69,16 @@ Categories: 1 I/O & Perf · 2 Error Handling & Correctness · 3 Security · 4 Re
 - **`server/providers/schemas.js`**, **`server/providers/validation.js`** — M7 Zod schemas + the `withValidation` Proxy decorator; covered by `validation.test.js`. Clean.
 - **`server/db.js`** — Singleton Mongo getter with test-skip + graceful-null degradation. Clean.
 - **`server/index.js`** — minimal Express bootstrap. Verified the production static path `../client/build` matches `vite.config.js` `build.outDir: 'build'` (not a `dist` mismatch). Clean.
+
+---
+
+## Area 3 — Server `constants/`
+
+No code changes — static frozen data + clean helper functions.
+
+### Reviewed and unchanged
+- **`server/constants/legacyPlayerBulk.js`** (4312L) — bulk historical dataset + helpers (`isBulkLegacyId`, `resolveLegacyId`, `searchBulkLegacyPlayers`, `buildBulkLegacyProfile`, `buildBulkLegacyDetailedStats`). Helpers are clear and single-purpose; the per-game/career row builders mirror the ESPN table shape deliberately. No findings.
+- **`server/constants/wnbaAccolades.js`** — award maps + `getPlayerAccolades` (name-alias + last-first fallback matching) + a documented dev-mode `verifyAllWnbaFirstTeam` data-integrity guard. Clean.
+- **`server/constants/wnbaChampions.js`** — champions map + `deriveAliasesFromLineage` cross-checked against an `EXPECTED_ALIAS_SNAPSHOT` (intentional boot-time data guard). Clean.
+- **`server/constants/wnbaFranchiseLineage.js`**, **`wnbaFounded.js`**, **`leagueAverages.js`**, **`legacyTeamRosters.js`** — frozen lookup tables + small pure resolvers. Clean.
+- **Cat 7 observation (logged, not changed):** several constants are exported but consumed only inside their defining module — `LEGACY_ID_REDIRECTS` (legacyPlayerBulk), `nameForYear` (franchiseLineage), and `LEGACY_TEAM_ROSTERS`/`BBREF_TO_ESPN`/`ESPN_TO_BBREF`/`DEFUNCT_ID_TO_TRICODE` (legacyTeamRosters) have zero external importers (grep-verified). Trimming the export surface is safe but near-zero-value churn on frozen data, so left as-is per the plan's "constants expected unchanged."
