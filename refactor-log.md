@@ -131,3 +131,33 @@ The client is exceptionally consistent. **Verification method:** grep-swept *eve
 
 ### Reviewed and unchanged
 - The live `styles/*.css` already use the `:root` palette pervasively (var references: compare 155, team 101, shared 67, etc.), so most Cat-8 literal-promotion was already done. The remaining hardcoded hexes are genuine one-offs (`#fff`, dark gradient endpoints like `#1f1208`, single-use grade-band shades). **Not deeply audited:** exhaustive dead-rule detection (cross-referencing every selector against dynamic `className` usage) — high effort, high false-positive risk on dynamically-composed class names; left for a focused pass if needed.
+
+---
+
+## Area 7 — `test/`
+
+Reviewed, no changes. The 7 test files (`smoke`, `teams-route`, `providers`, `validation`, `gamelog-normalize`, `leaguestats-map`, `pbp-extract`) are clear, well-commented characterization + contract tests — the safety net for this whole pass. The only repetition is standard per-file boilerplate (`process.env.NODE_ENV='test'`, the `node:test`/`assert` requires), which is intentionally kept so each file runs independently. Touching passing tests to dedupe boilerplate would weaken the net for no real gain.
+
+---
+
+## Summary
+
+First `>>refactor` pass on KnowTheW (no prior pass to compare against — convergence note N/A). The codebase was found **exceptionally clean** — unsurprising, since the server `providers/` tree was just rebuilt in the M0–M9 swappability refactor and the client follows one disciplined pattern throughout. The high-value findings were concentrated, not scattered.
+
+**Files changed: 13 (+1 new, −1 deleted). Reviewed-and-unchanged: ~60.**
+
+Findings applied, by category:
+- **Cat 1 (I/O & Perf):** 1 — hoisted `VALID_REPORT_MODES` Set to a module constant (api.js).
+- **Cat 2 (Error/Correctness):** 0 changes — **verified clean**: every `fetch()` (server provider + every client site) guards `res.ok`; every client effect aborts via `AbortController` with a cleanup return.
+- **Cat 3 (Security):** folded into Cat 5 — the timing-safe admin-refresh check now lives in one place (`authorizeAdminRefresh`).
+- **Cat 4 (React hooks):** 0 changes — hooks already correct (`useLazyFetch` cleanup, `useCallback` where it matters, hoisted option/constant objects).
+- **Cat 5 (DRY & Cohesion):** 5 extractions — `server/lib/anthropic.js` (shared client + `callWithRetry`, killing two verbatim copies), `parseSeasonQuery` (3 route handlers), `authorizeAdminRefresh` (2 handlers), `buildSeasonRecord` (historyAggregator cold+warm), `fetchAthlete` (playerStats).
+- **Cat 6 (Naming/Clarity):** 1 — ComparePage magic index `row[1]` → name-based `headers.indexOf('TEAM_ABBREVIATION')`.
+- **Cat 7 (Dead code):** 1 major — deleted `client/src/App.css` (2,625 orphaned lines). Logged-not-changed: over-broad constant exports.
+- **Cat 8 (CSS):** semantic color custom properties (`--win/--loss/--error/--champion/--champion-text`) extracted from literals repeated across 3+ files; one `--surface` gradient fix. (Palette was already well-established.)
+- **Cat 9 (HTML/a11y):** 0 changes — **verified clean**: every `<button>` typed, every `<img>` has deliberate `alt`/`aria-hidden`, no deprecated JSX props.
+- **Cat 10 (Server/API):** 0 changes — route ordering + status codes already correct (literal `/teams/legacy` before dynamic segments; 400/404/502 used deliberately).
+- **Cat 11 (Architecture):** 0 changes — the `providers/` tree was just deliberately structured (Facade + Strategy + Factory + Adapter + Decorator); per plan, no re-architecture.
+- **Cat 12 (Design Patterns):** 1 implemented (Singleton — shared Anthropic client). Logged-not-implemented (proportionality): the in-flight cache-dedup Proxy in `leagueStats`/`percentileClient`, and the advanced-row builder shared between `api.js` and `gradedReportInputs`.
+
+Net effect: ~2,650 fewer lines (almost all the dead App.css), several duplications collapsed to single sources of truth (notably the Anthropic client and the security-sensitive admin check), and one client→server coupling (column ordering) removed — with no behavior change, gate green at every area, and a full Playwright smoke at the end.
