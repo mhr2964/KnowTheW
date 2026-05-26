@@ -41,12 +41,15 @@ const TEAM_ABBR_MAP = {
 // Pull the most recent season's team abbreviation from a detailed-stats response.
 // Returns the full team name (or abbreviation as fallback) or null if unavailable.
 function deriveLastTeamName(details) {
-  const rows = details?.perGame?.regular?.rows;
+  const table = details?.perGame?.regular;
+  const rows = table?.rows;
   if (!Array.isArray(rows) || rows.length === 0) return null;
   // Rows are ordered ascending by season year; last row = most recent season.
   const lastRow = rows[rows.length - 1];
-  // Index 1 is TEAM_ABBREVIATION per ESPN_DETAILED_HEADERS.
-  const abbr = lastRow?.[1];
+  // Resolve the team-abbreviation column by NAME from the response's own headers, rather than a
+  // hardcoded positional index — the client shouldn't depend on the server's column ordering.
+  const abbrIdx = table.headers?.indexOf('TEAM_ABBREVIATION') ?? -1;
+  const abbr = abbrIdx >= 0 ? lastRow?.[abbrIdx] : null;
   if (!abbr || abbr === '') return null;
   return TEAM_ABBR_MAP[abbr] ?? abbr;
 }

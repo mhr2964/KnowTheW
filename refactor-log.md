@@ -82,3 +82,35 @@ No code changes — static frozen data + clean helper functions.
 - **`server/constants/wnbaChampions.js`** — champions map + `deriveAliasesFromLineage` cross-checked against an `EXPECTED_ALIAS_SNAPSHOT` (intentional boot-time data guard). Clean.
 - **`server/constants/wnbaFranchiseLineage.js`**, **`wnbaFounded.js`**, **`leagueAverages.js`**, **`legacyTeamRosters.js`** — frozen lookup tables + small pure resolvers. Clean.
 - **Cat 7 observation (logged, not changed):** several constants are exported but consumed only inside their defining module — `LEGACY_ID_REDIRECTS` (legacyPlayerBulk), `nameForYear` (franchiseLineage), and `LEGACY_TEAM_ROSTERS`/`BBREF_TO_ESPN`/`ESPN_TO_BBREF`/`DEFUNCT_ID_TO_TRICODE` (legacyTeamRosters) have zero external importers (grep-verified). Trimming the export surface is safe but near-zero-value churn on frozen data, so left as-is per the plan's "constants expected unchanged."
+
+---
+
+## Area 4 — Client `lib/` + `hooks/` + entry
+
+No code changes — pure utilities and a textbook fetch hook.
+
+### Reviewed and unchanged
+- **`client/src/hooks/useLazyFetch.js`** — the shared fetch hook. **Correct `AbortController` cleanup** (abort on unmount/url change, plus a dedicated unmount-only effect), **`res.ok` guard before `.json()`**, functional `refetch` via `useCallback`, and a `fetchedRef` guard against refetch-after-success. Cat 2 + Cat 4 fully satisfied — this is the reference implementation other components should match.
+- **`client/src/hooks/useRecentDecks.js`** — localStorage-backed; lazy `useState(load)` initializer, functional `setDecks` updates, `useCallback`-wrapped `saveDeck`. Clean.
+- **`client/src/lib/{statsColumns,compareStats,statFormatters,currentSeason,gradeUtils,initials,statDefinitions}.js`** — pure, single-purpose modules with named lookup sets/maps. No findings. (`statsColumns.js` holds the client-side stat label/`PCT_COLS` knowledge that the plan's deferred "server emits `columns`/`STAT_COLUMNS`" decoupling would later relocate — out of scope for this pass.)
+- **`client/src/main.jsx`** — standard React 18 `createRoot` + `BrowserRouter` + `StrictMode`. Clean.
+- **`client/src/constants/{wnbaFoundedClient,wnbaFranchiseLineageClient}.js`** — frozen data **intentionally mirrored** from `server/constants/` (header comment says "update both"). Cross-tier duplication (Cat 5) is unavoidable without a shared package — client is ESM/Vite, server is CJS/Node. Logged, not changed.
+
+---
+
+## Area 5 — Client `components/` + `pages/` (JSX)
+
+The client is exceptionally consistent. **Verification method:** grep-swept *every* `.jsx` for the cross-cutting concerns — raw `fetch(`, `<button`, `target=`, `<img`, deprecated JSX props, `dangerouslySetInnerHTML` — and read the large/complex/interactive components in full (App, TeamDashboard, ComparePage, GameLogTab, StudyFlow, HeaderTooltip). Findings below; one fix.
+
+### `client/src/pages/ComparePage.jsx` — CHANGED
+- `deriveLastTeamName` read the team abbreviation via the **magic positional index** `lastRow?.[1]` (with a comment "Index 1 is TEAM_ABBREVIATION per ESPN_DETAILED_HEADERS"). Replaced with a **name-based lookup off the response's own `headers`**: `table.headers?.indexOf('TEAM_ABBREVIATION')`. *Cat 6.*
+- **Reasoning:** removes the client's dependency on the server's column *ordering* (a silent-break risk if headers are ever reordered). Behavior-identical today (`indexOf` returns 1). Distinct from — and a safe subset of — the plan's deferred "server emits an explicit `teamAbbr` field" decoupling.
+- **Potential Issues:** none. Both the ESPN (`ESPN_DETAILED_HEADERS`) and bulk-legacy (`BULK_PG_HEADERS`) detailed-stats payloads carry `headers` with `TEAM_ABBREVIATION`; an absent header yields `idx = -1` → `null`, the same fallback as before.
+
+### Reviewed and unchanged (highlights)
+- **Cat 2 — every raw `fetch()` is correct.** All non-`useLazyFetch` fetches (App, TeamDashboard ×4, TeamStatsPage, TeamSchedulePage, TeamHistoryPage ×2, TeamRosterPage, SearchPage, GameLogTab, ComparePickerModal) use the same `r => { if (!r.ok) throw new Error(); return r.json() }` guard, an `AbortController` with a `controller.abort()` cleanup return, and `err.name !== 'AbortError'` filtering. No missing `res.ok`, no missing cleanup.
+- **Cat 9 — every `<button>` carries an explicit `type`** (grep-verified across all JSX), and every `<img>` has either descriptive `alt` or `alt=""`+`aria-hidden` for decorative logos/headshots. No deprecated JSX props, no `dangerouslySetInnerHTML`.
+- **Cat 4** — `StudyFlow` `useCallback`s `next`/`prev` (consumed by the keydown effect) and cleans up its listener; `useLazyFetch`/`useRecentDecks` covered in Area 4. No callbacks leak unstable refs into memoized children (the app doesn't lean on `React.memo`). Module-level constants (`STAT_GROUPS`, `GL_PAGE_SIZES`, `MONTH_NAMES`, `TEAM_ABBR_MAP`) are already hoisted.
+- **`GameLogTab.jsx`** — custom multi-season fetch-cache (fetch-once-per-season keyed by a `Set`); richer than `useLazyFetch`'s single-URL model, so not a dedup candidate. Correct abort/res.ok/cleanup.
+- **`HeaderTooltip.jsx`** — `useId` + full aria (`aria-label`/`aria-expanded`/`aria-describedby`/`role="tooltip"`) + portal + outside-click cleanup. Exemplary.
+- The remaining presentational components (GradeGrid, GradeCard, BrefTable, ScheduleTable, CompareVerdict, CompareModeToggle, ComparePickerModal, RosterTable, AdvancedTab, RecentDecks, PremiumBanner, PlayerPage) and thin route pages (HomePage, SearchPage, TeamPage, Team{Roster,Stats,Schedule,History}Page, PlayerRoutePage, NotFoundPage) — grep-verified clean on all cross-cutting concerns; no findings.
