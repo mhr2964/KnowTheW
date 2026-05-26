@@ -243,10 +243,13 @@ async function buildInputs(playerId, mode) {
       ? (pgPostTable?.rows ?? []).map(r => ({ year: String(r[IPost.SEASON_ID]), tid: regTidByYear[String(r[IPost.SEASON_ID])] ?? postTidByYear[String(r[IPost.SEASON_ID])] }))
       : pgTable.rows.map(r => ({ year: String(r[I.SEASON_ID]), tid: regTidByYear[String(r[I.SEASON_ID])] }));
 
-    await Promise.all(
-      seasonsNeeded
-        .filter(({ tid }) => !!tid)
-        .map(({ tid, year }) => fetchTeamStats(tid, year))
+    // Plain {teamId-year: stats} map for buildAdvancedSplit (no reach into the provider's cache).
+    const teamStatsByKey = Object.fromEntries(
+      await Promise.all(
+        seasonsNeeded
+          .filter(({ tid }) => !!tid)
+          .map(async ({ tid, year }) => [`${tid}-${year}`, await fetchTeamStats(tid, year)])
+      )
     );
 
     const totByYear = {};
@@ -271,7 +274,7 @@ async function buildInputs(playerId, mode) {
         return result ? { season, row: result.row, pbpGames: result.pbpGames } : null;
       }));
       const validReg = regResults.filter(Boolean);
-      const advSplit = validReg.length ? buildPbpSplit(validReg, pgTable.rows, I) : buildAdvancedSplit(detailed.perGame.regular, regTidByYear, getProvider().getTeamSeasonStatsCache(), detailed.totals.regular);
+      const advSplit = validReg.length ? buildPbpSplit(validReg, pgTable.rows, I) : buildAdvancedSplit(detailed.perGame.regular, regTidByYear, teamStatsByKey, detailed.totals.regular);
       if (advSplit?.rows) {
         advancedRows = advSplit.rows.map(r => advRowToObj(ADV_HEADERS_SRV, r));
       }

@@ -42,12 +42,10 @@ class EspnProvider extends SportsDataProvider {
   getGameLogEvents(playerId, season, seasontype) { return gamelog.getGameLogEvents(playerId, season, seasontype); }
   getGamePbpStats(eventId, playerId) { return gameSummary.getGamePbpStats(eventId, playerId); }
 
-  // --- Shared-state accessors (replace direct espnClient internal imports) ---
-  /** @param {string|number} id */
-  getPlayerById(id) { return espn.playerById[id]; }
-  getRosterData() { return espn.rosterData; }
-  getPlayerIndex() { return espn.playerById; }
-  getTeamSeasonStatsCache() { return espn.teamSeasonStatsCache; }
+  // --- Active players (source-neutral list/lookup of the current player pool) ---
+  // ESPN serves these from its startup-prefetch caches; that's an implementation detail.
+  getActivePlayers() { return Object.values(espn.rosterData).flat(); }
+  findActivePlayer(id) { return espn.playerById[id]; }
 
   // --- Pass-through helpers that aren't source fetches ---
   formatSeedLabel(n) { return espn.formatSeedLabel(n); }

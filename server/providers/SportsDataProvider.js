@@ -66,19 +66,11 @@ class SportsDataProvider {
   /** getGamePbpStats(eventId, playerId) → {fetched, onCourt, boxscore} (raw summary stays in provider). */
   getGamePbpStats() { return this._notImplemented('getGamePbpStats'); }
 
-  // --- In-memory active-player index accessors ---
-  // NOTE: these expose ESPN's startup-prefetch caches (active rosters + a player lookup). They are a
-  // pragmatic seam for the migration; a later milestone should replace them with source-neutral
-  // contract methods (e.g. getActivePlayers() / findCachedPlayer(id)) so a source without a prefetch
-  // step can still satisfy the contract.
-  /** getPlayerById(id) → the cached active-player record, or undefined. */
-  getPlayerById() { return this._notImplemented('getPlayerById'); }
-  /** @returns {Object<string, import('./types').RosterPlayer[]>} teamId → cached roster. */
-  getRosterData() { return this._notImplemented('getRosterData'); }
-  /** @returns {Object<string, import('./types').RosterPlayer>} the cached id → player index. */
-  getPlayerIndex() { return this._notImplemented('getPlayerIndex'); }
-  /** @returns {Object} the mutable current-season team-stats cache (passed into stat builders). */
-  getTeamSeasonStatsCache() { return this._notImplemented('getTeamSeasonStatsCache'); }
+  // --- Active players (source-neutral: list/look up the current player pool) ---
+  /** getActivePlayers() → import('./types').RosterPlayer[] for the current pool (active-player search). */
+  getActivePlayers() { return this._notImplemented('getActivePlayers'); }
+  /** findActivePlayer(id) → the active player's record, or undefined. */
+  findActivePlayer() { return this._notImplemented('findActivePlayer'); }
 }
 
 module.exports = { SportsDataProvider, NotImplementedError };

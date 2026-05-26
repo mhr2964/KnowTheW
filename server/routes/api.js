@@ -404,8 +404,7 @@ router.get('/search', async (req, res) => {
       t => t.name.toLowerCase().includes(q) || t.abbreviation.toLowerCase().includes(q)
     );
 
-    const activePlayers = Object.values(getProvider().getRosterData())
-      .flat()
+    const activePlayers = getProvider().getActivePlayers()
       .filter(p => p.name.toLowerCase().includes(q));
     const activeIds = new Set(activePlayers.map(p => p.id));
 
@@ -446,7 +445,7 @@ router.get('/players/:id', async (req, res) => {
       return res.json({ player: buildBulkLegacyProfile(bulk), dataSource: 'legacy-bulk' });
     }
 
-    const player = getProvider().getPlayerById(playerId);
+    const player = getProvider().findActivePlayer(playerId);
     if (player) return res.json({ player });
 
     // Not in active roster — try the source on-demand (retired player).
@@ -484,13 +483,16 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
       ...Object.entries(regTidByYear).map(([y, t])  => [`${t}-${y}`, { t, y }]),
       ...Object.entries(postTidByYear).map(([y, t]) => [`${t}-${y}`, { t, y }]),
     ]);
-    await Promise.all([...allPairs.values()].map(({ t, y }) => fetchTeamStats(t, y)));
-    const teamStatsCache = getProvider().getTeamSeasonStatsCache();
+    // Build a plain {teamId-year: stats} map from the provider; buildAdvancedSplit just indexes it,
+    // so we never reach into the provider's internal cache.
+    const teamStatsByKey = Object.fromEntries(
+      await Promise.all([...allPairs.values()].map(async ({ t, y }) => [`${t}-${y}`, await fetchTeamStats(t, y)]))
+    );
 
     result.advanced = {
-      regular:       buildAdvancedSplit(result.perGame.regular,       regTidByYear,  teamStatsCache, result.totals.regular),
+      regular:       buildAdvancedSplit(result.perGame.regular,       regTidByYear,  teamStatsByKey, result.totals.regular),
       regularCareer: buildAdvancedCareer(result.perGame.regularCareer, result.totals.regularCareer),
-      playoffs:      buildAdvancedSplit(result.perGame.playoffs,      postTidByYear, teamStatsCache, result.totals.playoffs),
+      playoffs:      buildAdvancedSplit(result.perGame.playoffs,      postTidByYear, teamStatsByKey, result.totals.playoffs),
       playoffCareer: buildAdvancedCareer(result.perGame.playoffCareer, result.totals.playoffCareer),
     };
 
@@ -917,12 +919,13 @@ router.get('/teams/:id/narrative', async (req, res) => {
 });
 
 router.get('/status', (req, res) => {
+  const activePlayers = getProvider().getActivePlayers();
   res.json({
     status: 'ok',
     app: 'KnowTheW',
     teamsLoaded: true,
-    rostersCached: Object.keys(getProvider().getRosterData()).length,
-    playersCached: Object.keys(getProvider().getPlayerIndex()).length,
+    rostersCached: new Set(activePlayers.map(p => p.teamId)).size,
+    playersCached: activePlayers.length,
   });
 });
 
