@@ -22,7 +22,7 @@ Then M7 (Zod boundary validation), M8 (`STATS_PROVIDER=sportradar` leak-test + S
 - **Tests must not hit ESPN/Atlas.** `NODE_ENV=test` is set at the top of each test file *before* requiring the app; it gates the espnClient startup prefetch (`server/lib/espnClient.js`) and the Mongo connect (`server/db.js`). Keep that pattern in new test files, and listen on port `0`.
 - **`teamSeasonStatsCache` is a live mutable object.** `getProvider().getTeamSeasonStatsCache()` returns the same reference espnClient mutates; stat builders read it after `fetchTeamStats` populates it. Don't copy it.
 - **Season-stats payloads are still ESPN-raw** (`getPlayerSeasonStats` returns `{regData, postData}` raw JSON) because `statsParser.parseESPNSeasonData` consumes that shape. Normalizing it (so no raw JSON crosses the boundary) is a later tightening, not M4.
-- **The in-memory cache accessors** (`getPlayerById/getRosterData/getPlayerIndex/getTeamSeasonStatsCache`) are an ESPN-specific migration seam, flagged in `SportsDataProvider.js` for replacement with source-neutral methods (e.g. `getActivePlayers()`). Don't bake more dependence on them.
+- **Active players** are exposed source-neutrally as `getActivePlayers()` / `findActivePlayer(id)` (no cache objects cross the contract anymore). Advanced-stats callers build a plain `{teamId-year: stats}` map from `getTeamStats()` and pass it to `buildAdvancedSplit` — don't reintroduce a shared mutable cache across the boundary.
 - Branch is **`master`**, not `main`. Commits are **not pushed** (per user). Identity-tag + EXPECTED/VERIFIED-BY per `System/CLAUDE/multi-model.md`.
 
 ## Do not touch
