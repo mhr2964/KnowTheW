@@ -47,3 +47,25 @@ Categories: 1 I/O & Perf · 2 Error Handling & Correctness · 3 Security · 4 Re
 - **`server/lib/gradedReportInputs.js`** — clean. Its advanced-row build mirrors `api.js` /advanced-pbp-all but the two have deliberately diverged (prompt bundle vs display payload); unifying would be a large, risky cross-file change in fetch-coupled, untested code → **logged as opportunity, not implemented** per Cat 12 proportionality.
 - **`server/lib/seasonInfo.js`**, **`server/lib/ordinal.js`** — pure, single-responsibility, freshly organized in M9. No findings.
 - **`server/lib/teamSeasonCache.js`** — clean cache-aside helper; the write-gate logic is well-documented. No findings.
+
+---
+
+## Area 2 — Server `providers/**` + `db.js` + `index.js`
+
+### `server/providers/espn/playerStats.js` — CHANGED
+- Extracted **`fetchAthlete(playerId)`** — `getPlayerBasics` and `getRetiredPlayer` opened with the identical 5-line fetch (`${ESPN_WEB}/athletes/${playerId}` → `res.ok` guard → `data.athlete ?? null`). Both now build their (different) shapes from the shared fetch. *Cat 5.*
+- **Reasoning:** real duplication, mechanical and safe. **Potential Issues:** none; the two callers keep their distinct field mapping (basics has the `fullName`/`'Unknown'` fallback; retired does not).
+
+### Reviewed and unchanged
+- **`server/providers/espn/client.js`** — the HTTP layer. **Every `fetch()` has its `res.ok` guard before `.json()` (Cat 2 satisfied)**; `withCache` is the already-extracted Proxy helper; cache-staleness/refresh on `getTeams` is correct. URL params are built with template literals but every value (teamId, season, seasontype, eventId) is numeric and validated at the route boundary, so the Cat-2 "use URLSearchParams" point is a non-issue here — logged, not changed.
+- **`server/providers/espn/gamelog.js`** — uses `URL`/`searchParams` for query building; pure transforms (`normalizeGameLog`, `extractGameLogEvents`) split out for characterization tests. Clean.
+- **`server/providers/espn/gameSummary.js`** — the absorbed PBP/boxscore extraction; WNBA play-detection rules documented + characterization-tested. Clean.
+- **`server/providers/espn/leagueStats.js`** — the fragile byathlete positional-index coupling, fully documented + characterization-tested; `fetchWithTimeout` uses AbortController correctly. The in-flight cache-dedup boilerplate repeats twice here (and once, with different null-caching, in `percentileClient.getOrBuildDistribution`) — a **Cat 12 Proxy/memoization opportunity logged but NOT implemented**: it's just-written code, the win is ~10 lines, the three instances differ in caching behavior, and the cache mechanics aren't test-covered (only the index mapping is), so a subtle dedup bug wouldn't be caught.
+- **`server/providers/espn/index.js`** — the Facade mapping the contract onto `./client` + submodules; wraps with `withValidation` (M7). Clean (M9-current header).
+- **`server/providers/index.js`** — Factory (`getProvider`) with memoization + fail-fast on unknown `STATS_PROVIDER`; test override seam. Clean.
+- **`server/providers/SportsDataProvider.js`** — contract base class with throwing defaults (the M8 leak-test safety net). Clean.
+- **`server/providers/sportradar/index.js`** — stub inheriting all throwing defaults. Clean.
+- **`server/providers/types.js`** — JSDoc typedefs + `PBP_OC_KEYS` contract export. Clean.
+- **`server/providers/schemas.js`**, **`server/providers/validation.js`** — M7 Zod schemas + the `withValidation` Proxy decorator; covered by `validation.test.js`. Clean.
+- **`server/db.js`** — Singleton Mongo getter with test-skip + graceful-null degradation. Clean.
+- **`server/index.js`** — minimal Express bootstrap. Verified the production static path `../client/build` matches `vite.config.js` `build.outDir: 'build'` (not a `dist` mismatch). Clean.

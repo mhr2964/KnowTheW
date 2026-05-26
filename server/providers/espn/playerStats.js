@@ -8,12 +8,18 @@
 
 const { ESPN_WEB } = require('./client');
 
-/** Minimal player identity used by the graded-report builder: { id, name, position } or null. */
-async function getPlayerBasics(playerId) {
+// Fetch the ESPN athlete record once; both player-profile shapes below build from it. Returns the
+// `athlete` object or null (non-2xx response or missing athlete).
+async function fetchAthlete(playerId) {
   const r = await fetch(`${ESPN_WEB}/athletes/${playerId}`);
   if (!r.ok) return null;
   const data = await r.json();
-  const a = data.athlete;
+  return data.athlete ?? null;
+}
+
+/** Minimal player identity used by the graded-report builder: { id, name, position } or null. */
+async function getPlayerBasics(playerId) {
+  const a = await fetchAthlete(playerId);
   if (!a) return null;
   return {
     id:       String(a.id),
@@ -24,10 +30,7 @@ async function getPlayerBasics(playerId) {
 
 /** Full retired-player profile (not in the active-roster cache), or null if ESPN has no record. */
 async function getRetiredPlayer(playerId) {
-  const r = await fetch(`${ESPN_WEB}/athletes/${playerId}`);
-  if (!r.ok) return null;
-  const data = await r.json();
-  const a = data.athlete;
+  const a = await fetchAthlete(playerId);
   if (!a) return null;
   return {
     id:           String(a.id),
