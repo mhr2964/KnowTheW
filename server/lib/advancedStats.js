@@ -1,13 +1,11 @@
 const { GAME_MINUTES, WNBA_LG } = require('../constants/leagueAverages');
-const { ESPN_WEB } = require('./espnClient');
 const { getProvider } = require('../providers');
+const { PBP_OC_KEYS } = require('../providers/types');
 // Source access via the active provider; thin locals keep call sites below unchanged.
 const getTeams            = (...a) => getProvider().getTeams(...a);
 const fetchTeamStats      = (...a) => getProvider().getTeamStats(...a);
 const fetchTeamPtsAllowed = (...a) => getProvider().getTeamPointsAllowed(...a);
-const fetchGameSummary    = (...a) => getProvider().getGameSummary(...a);
 const { computeBasicRatioStats, computePER, computeWinShares } = require('./statFormulas');
-const { PBP_OC_KEYS, computeOnCourtStats, extractBoxscoreTeamStats } = require('./pbpExtractor');
 const { getCached, writeCache } = require('./teamSeasonCache');
 
 const ADV_HEADERS_SRV = [
@@ -170,51 +168,39 @@ function buildAdvancedCareer(pgSrc, totSrc) {
 // only when every eventId returned a non-null summary (no ESPN failures mid-fetch). Partial
 // results are still returned to the caller for display but must not be persisted to the cache.
 async function computeSeasonPBPUncached(playerId, season, playerRow, I, teamId, totRow, seasontype = 2) {
-  const glData = await fetch(
-    `${ESPN_WEB}/athletes/${playerId}/gamelog?season=${season}&seasontype=${seasontype}`
-  ).then(r => r.ok ? r.json() : null);
-  if (!glData) return null;
+  const events = await getProvider().getGameLogEvents(playerId, season, seasontype);
+  if (!events) return null;
 
   // ESPN returns all season types regardless of the seasontype param — filter to the right one.
   // Also exclude All-Star/exhibition events: they appear under "Regular Season" but involve
   // non-franchise teams. Commissioner's Cup games have eventNote too — keep those (real games).
   // Use the live franchise list so future expansion team IDs (e.g. 129689) are not excluded.
   const stFilter = seasontype === 2 ? 'Regular Season' : 'Postseason';
-  const eventMeta = glData.events || {};
   const franchiseIds = new Set((await getTeams()).map(t => String(t.id)));
-  const eventIds = [];
-  (glData.seasonTypes || []).forEach(st => {
-    if (!st.displayName?.includes(stFilter)) return;
-    (st.categories || []).forEach(cat => {
-      (cat.events || []).forEach(evt => {
-        if (!evt.eventId) return;
-        const meta = eventMeta[evt.eventId];
-        if (meta?.eventNote?.toLowerCase().includes('all-star')) return;
-        const oppId = String(meta?.opponent?.id ?? '');
-        if (oppId && !franchiseIds.has(oppId)) return;
-        eventIds.push(evt.eventId);
-      });
-    });
-  });
+  const eventIds = events
+    .filter(e => e.seasonTypeName?.includes(stFilter))
+    .filter(e => !e.eventNote?.toLowerCase().includes('all-star'))
+    .filter(e => !e.opponentId || franchiseIds.has(e.opponentId))
+    .map(e => e.eventId);
   if (!eventIds.length) return null;
 
-  const summaries = await Promise.all(eventIds.map(id => fetchGameSummary(id)));
+  const pbpResults = await Promise.all(eventIds.map(id => getProvider().getGamePbpStats(id, playerId)));
   // Track how many ESPN fetches succeeded. complete = true when every eventId returned a
   // non-null summary, meaning no ESPN 4xx/5xx/network failures occurred mid-fetch.
-  // Games where computeOnCourtStats returns null (no PBP data) are still counted as fetched.
-  const fetchedCount = summaries.filter(s => s !== null).length;
+  // Games where on-court stats come back null (no PBP data) are still counted as fetched.
+  const fetchedCount = pbpResults.filter(r => r.fetched).length;
   const totOC = Object.fromEntries(PBP_OC_KEYS.map(k => [k, 0]));
   const totTm = { fga: 0, fgm: 0, fg3m: 0, fta: 0, ftm: 0, pts: 0, orb: 0, drb: 0, tov: 0, ast: 0 };
   let pbpGames = 0, wsGames = 0;
 
-  for (const summary of summaries) {
-    if (!summary) continue;
-    const oc = computeOnCourtStats(summary, playerId);
+  for (const r of pbpResults) {
+    if (!r.fetched) continue;
+    const oc = r.onCourt;
     if (!oc) continue;
     pbpGames++;
     for (const k of PBP_OC_KEYS) totOC[k] += oc[k];
 
-    const gs = extractBoxscoreTeamStats(summary, playerId);
+    const gs = r.boxscore;
     if (gs) {
       wsGames++;
       for (const k of Object.keys(totTm)) totTm[k] += gs.tm[k] ?? 0;

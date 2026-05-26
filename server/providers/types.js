@@ -96,6 +96,18 @@
  * @property {string|null} [headshot]
  */
 
-// No runtime exports yet — this module is JSDoc-only. Importing it is a no-op that documents intent
-// and gives `import('./types').Team` references a home. STAT_COLUMNS and Zod schemas land later.
-module.exports = {};
+/**
+ * @typedef {Object} OnCourtStats  Team + opponent counting stats accumulated while the target
+ *   player is on the floor (from play-by-play). Keys listed in PBP_OC_KEYS.
+ */
+
+/**
+ * The key set of an OnCourtStats object (team stats + opponent `o*` stats). Part of the contract so
+ * consumers (advancedStats) can iterate it without importing a source-specific module.
+ */
+const PBP_OC_KEYS = [
+  'fga', 'fgm', 'fg3a', 'fta', 'ftm', 'orb', 'drb', 'tov', 'ast',
+  'oFga', 'oFgm', 'oFg3a', 'oFta', 'oOrb', 'oDrb', 'oTov',
+];
+
+module.exports = { PBP_OC_KEYS };

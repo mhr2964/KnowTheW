@@ -13,6 +13,7 @@
 const espn = require('../../lib/espnClient');
 const playerStats = require('./playerStats');
 const gamelog = require('./gamelog');
+const gameSummary = require('./gameSummary');
 const { SportsDataProvider } = require('../SportsDataProvider');
 
 class EspnProvider extends SportsDataProvider {
@@ -34,11 +35,12 @@ class EspnProvider extends SportsDataProvider {
   getStandingsRaw(year) { return espn.fetchStandingsRaw(year); }
 
   // --- Player ---
-  getGameSummary(eventId) { return espn.fetchGameSummary(eventId); }
   getPlayerBasics(playerId) { return playerStats.getPlayerBasics(playerId); }
   getRetiredPlayer(playerId) { return playerStats.getRetiredPlayer(playerId); }
   getPlayerSeasonStats(playerId) { return playerStats.getPlayerSeasonStats(playerId); }
   getPlayerGameLog(playerId, season) { return gamelog.getPlayerGameLog(playerId, season); }
+  getGameLogEvents(playerId, season, seasontype) { return gamelog.getGameLogEvents(playerId, season, seasontype); }
+  getGamePbpStats(eventId, playerId) { return gameSummary.getGamePbpStats(eventId, playerId); }
 
   // --- Shared-state accessors (replace direct espnClient internal imports) ---
   /** @param {string|number} id */

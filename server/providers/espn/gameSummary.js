@@ -1,11 +1,21 @@
-const PBP_OC_KEYS = ['fga','fgm','fg3a','fta','ftm','orb','drb','tov','ast',
-                     'oFga','oFgm','oFg3a','oFta','oOrb','oDrb','oTov'];
+// ESPN play-by-play / boxscore extraction (absorbed from the former server/lib/pbpExtractor.js).
+//
+// These walk ESPN's raw game `summary` object, which must NOT escape the provider boundary — so the
+// public method getGamePbpStats fetches the summary internally and returns only the derived numbers.
+// The WNBA-specific play-detection rules (FT = pointsAttempted===1, FG = shootingPlay+scoreValue,
+// 3PT via scoreValue/text, team-rebound exclusion when participants.length===0) are ESPN-PBP
+// specifics and stay here verbatim; a future Sportradar provider must NOT assume them.
+//
+// computeOnCourtStats / extractBoxscoreTeamStats are exported for characterization testing against a
+// captured summary fixture — that's the regression net for this numerically-sensitive code.
 
-// Shared helper — find the team ID for the target player from the boxscore players array.
+const espn = require('../../lib/espnClient');
+
+// Find the target player's team ID from the boxscore players array.
 function findTargetTeamId(summary, pid) {
   for (const teamData of summary.boxscore?.players ?? []) {
     for (const sg of teamData.statistics ?? []) {
-      if (sg.athletes?.some(a => String(a.athlete.id) === pid)) {
+      if (sg.athletes?.some((a) => String(a.athlete.id) === pid)) {
         return String(teamData.team.id);
       }
     }
@@ -13,9 +23,7 @@ function findTargetTeamId(summary, pid) {
   return null;
 }
 
-// Walk ESPN PBP to accumulate team and opponent stats while target player is on court.
-// Returns { fga, fgm, fg3a, ftm, fta, orb, drb, tov, ast,
-//           oFga, oFgm, oFg3a, oFta, oOrb, oDrb, oTov } or null if player not found.
+// Walk ESPN PBP to accumulate team and opponent stats while the target player is on court.
 function computeOnCourtStats(summary, targetPlayerId) {
   const pid = String(targetPlayerId);
   const targetTeamId = findTargetTeamId(summary, pid);
@@ -90,20 +98,18 @@ function computeOnCourtStats(summary, targetPlayerId) {
 }
 
 // Extract team and opponent stats from the official ESPN boxscore (not PBP).
-// Unlike the PBP-based approach, boxscore data is complete regardless of play-log quality.
-// Returns { tm: {fgm,fga,fg3m,ftm,fta,orb,drb,tov,ast,pts}, oppPts } or null.
 function extractBoxscoreTeamStats(summary, targetPlayerId) {
   const pid = String(targetPlayerId);
   const targetTeamId = findTargetTeamId(summary, pid);
   if (!targetTeamId) return null;
 
   const boxTeams = summary.boxscore?.teams ?? [];
-  const tmBox  = boxTeams.find(t => String(t.team.id) === targetTeamId);
-  const oppBox = boxTeams.find(t => String(t.team.id) !== targetTeamId);
+  const tmBox  = boxTeams.find((t) => String(t.team.id) === targetTeamId);
+  const oppBox = boxTeams.find((t) => String(t.team.id) !== targetTeamId);
   if (!tmBox) return null;
 
   function readTeamBox(teamBox) {
-    const byName = Object.fromEntries((teamBox.statistics ?? []).map(s => [s.name, s]));
+    const byName = Object.fromEntries((teamBox.statistics ?? []).map((s) => [s.name, s]));
 
     function getMadeAtt(name) {
       const s = byName[name];
@@ -145,4 +151,26 @@ function extractBoxscoreTeamStats(summary, targetPlayerId) {
   return { tm, oppPts: opp?.pts ?? null };
 }
 
-module.exports = { PBP_OC_KEYS, computeOnCourtStats, extractBoxscoreTeamStats };
+/**
+ * Fetch one game summary and return the PBP-derived stats for the target player.
+ * @returns {Promise<{fetched:boolean, onCourt:object|null, boxscore:object|null}>}
+ *   fetched=false means the source returned no summary (ESPN failure); distinct from a fetched
+ *   summary with no usable PBP (onCourt=null). The raw summary never leaves this function.
+ */
+async function getGamePbpStats(eventId, playerId) {
+  const summary = await espn.fetchGameSummary(eventId);
+  if (!summary) return { fetched: false, onCourt: null, boxscore: null };
+  return {
+    fetched: true,
+    onCourt: computeOnCourtStats(summary, playerId),
+    boxscore: extractBoxscoreTeamStats(summary, playerId),
+  };
+}
+
+module.exports = {
+  getGamePbpStats,
+  // exported for characterization tests:
+  computeOnCourtStats,
+  extractBoxscoreTeamStats,
+  findTargetTeamId,
+};

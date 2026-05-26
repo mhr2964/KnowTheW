@@ -53,8 +53,6 @@ class SportsDataProvider {
   getStandingsRaw() { return this._notImplemented('getStandingsRaw'); }
 
   // --- Player ---
-  /** getGameSummary(eventId) → raw game summary (PBP). Normalized at the boundary in a later milestone. */
-  getGameSummary() { return this._notImplemented('getGameSummary'); }
   /** getPlayerBasics(playerId) → minimal { id, name, position } | null. */
   getPlayerBasics() { return this._notImplemented('getPlayerBasics'); }
   /** getRetiredPlayer(playerId) → full retired-player profile | null (not in the active cache). */
@@ -63,6 +61,10 @@ class SportsDataProvider {
   getPlayerSeasonStats() { return this._notImplemented('getPlayerSeasonStats'); }
   /** getPlayerGameLog(playerId, season) → { columns:[{key,label,kind}], games:[...] } | null. */
   getPlayerGameLog() { return this._notImplemented('getPlayerGameLog'); }
+  /** getGameLogEvents(playerId, season, seasontype) → [{eventId,seasonTypeName,eventNote,opponentId}] | null. */
+  getGameLogEvents() { return this._notImplemented('getGameLogEvents'); }
+  /** getGamePbpStats(eventId, playerId) → {fetched, onCourt, boxscore} (raw summary stays in provider). */
+  getGamePbpStats() { return this._notImplemented('getGamePbpStats'); }
 
   // --- In-memory active-player index accessors ---
   // NOTE: these expose ESPN's startup-prefetch caches (active rosters + a player lookup). They are a

@@ -72,4 +72,39 @@ async function getPlayerGameLog(playerId, season) {
   return normalizeGameLog(await raw.json());
 }
 
-module.exports = { getPlayerGameLog, normalizeGameLog };
+/**
+ * Pure transform: flatten ESPN's gamelog into per-event metadata used to select which games to pull
+ * play-by-play for. Returns [{ eventId, seasonTypeName, eventNote, opponentId }]. Filtering (season
+ * type, all-star exclusion, franchise opponents) is the caller's job — it needs the team list.
+ */
+function extractGameLogEvents(data) {
+  const eventMeta = data.events || {};
+  const out = [];
+  (data.seasonTypes || []).forEach((st) => {
+    (st.categories || []).forEach((cat) => {
+      (cat.events || []).forEach((evt) => {
+        if (!evt.eventId) return;
+        const meta = eventMeta[evt.eventId];
+        out.push({
+          eventId: evt.eventId,
+          seasonTypeName: st.displayName ?? '',
+          eventNote: meta?.eventNote ?? '',
+          opponentId: String(meta?.opponent?.id ?? ''),
+        });
+      });
+    });
+  });
+  return out;
+}
+
+/** Fetch the gamelog and return per-event metadata for PBP selection. Null on non-2xx. */
+async function getGameLogEvents(playerId, season, seasontype) {
+  const url = new URL(`${ESPN_WEB}/athletes/${playerId}/gamelog`);
+  if (season) url.searchParams.set('season', season);
+  if (seasontype) url.searchParams.set('seasontype', seasontype);
+  const raw = await fetch(url.toString());
+  if (!raw.ok) return null;
+  return extractGameLogEvents(await raw.json());
+}
+
+module.exports = { getPlayerGameLog, normalizeGameLog, getGameLogEvents, extractGameLogEvents };
