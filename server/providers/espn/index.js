@@ -16,6 +16,7 @@ const gamelog = require('./gamelog');
 const gameSummary = require('./gameSummary');
 const leagueStats = require('./leagueStats');
 const { SportsDataProvider } = require('../SportsDataProvider');
+const { withValidation } = require('../validation');
 
 class EspnProvider extends SportsDataProvider {
   get name() { return 'espn'; }
@@ -58,4 +59,7 @@ class EspnProvider extends SportsDataProvider {
   formatSeedLabel(n) { return espn.formatSeedLabel(n); }
 }
 
-module.exports = new EspnProvider();
+// Wrapped so every normalized return is validated at the boundary (silent-drift alarm for the
+// undocumented source). Test code injects un-wrapped mock providers via _setProviderForTest, so this
+// only validates real ESPN output.
+module.exports = withValidation(new EspnProvider());
