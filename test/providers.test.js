@@ -10,6 +10,18 @@ const assert = require('node:assert');
 const { getProvider, _resetProviderCache } = require('../server/providers');
 const { SportsDataProvider, NotImplementedError } = require('../server/providers/SportsDataProvider');
 
+// The full data-source contract surface. The two tests below form the leak detector: ESPN must
+// override every method, and the not-yet-built Sportradar provider must throw on every method —
+// so any consumer reaching past the provider would show up as "works under sportradar".
+const CONTRACT_METHODS = [
+  'getTeams', 'getRoster', 'getHistoricalRoster', 'getSeasonRoster',
+  'getTeamStats', 'getTeamStatsRaw', 'getTeamPointsAllowed', 'getTeamPointsAllowedRaw',
+  'getTeamSchedule', 'getPlayoffSchedule', 'getStandingsRaw',
+  'getPlayerBasics', 'getRetiredPlayer', 'getPlayerSeasonStats', 'getPlayerGameLog',
+  'getGameLogEvents', 'getGamePbpStats', 'getActivePlayers', 'findActivePlayer',
+  'getLeagueStatLines', 'getLeagueReboundFoulStats', 'getPlayerSeasonAverages', 'getLeaguePlayerIndex',
+];
+
 afterEach(() => {
   delete process.env.STATS_PROVIDER;
   _resetProviderCache();
@@ -46,16 +58,23 @@ test('the ESPN provider implements every contract method (no throwing defaults l
   process.env.STATS_PROVIDER = 'espn';
   _resetProviderCache();
   const provider = getProvider();
-  for (const method of [
-    'getTeams', 'getRoster', 'getHistoricalRoster', 'getSeasonRoster',
-    'getTeamStats', 'getTeamStatsRaw', 'getTeamPointsAllowed', 'getTeamPointsAllowedRaw',
-    'getTeamSchedule', 'getPlayoffSchedule', 'getStandingsRaw',
-    'getPlayerBasics', 'getRetiredPlayer', 'getPlayerSeasonStats', 'getPlayerGameLog',
-    'getGameLogEvents', 'getGamePbpStats', 'getActivePlayers', 'findActivePlayer',
-    'getLeagueStatLines', 'getLeagueReboundFoulStats', 'getPlayerSeasonAverages', 'getLeaguePlayerIndex',
-  ]) {
+  for (const method of CONTRACT_METHODS) {
     assert.strictEqual(typeof provider[method], 'function', `missing ${method}`);
     // If a method weren't overridden, provider[method] would resolve to the base's throwing stub.
     assert.notStrictEqual(provider[method], SportsDataProvider.prototype[method], `${method} not overridden`);
+  }
+});
+
+test('M8 leak test: the Sportradar stub throws NotImplementedError on EVERY contract method', () => {
+  process.env.STATS_PROVIDER = 'sportradar';
+  _resetProviderCache();
+  const provider = getProvider();
+  assert.strictEqual(provider.name, 'sportradar');
+  for (const method of CONTRACT_METHODS) {
+    assert.throws(
+      () => provider[method](),
+      (err) => err instanceof NotImplementedError && err.method === method,
+      `${method} should throw NotImplementedError under the sportradar stub`
+    );
   }
 });

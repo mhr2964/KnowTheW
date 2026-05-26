@@ -25,9 +25,11 @@ Client runs on `http://localhost:3051`, server on `http://localhost:5051`. (See 
 | `npm run client` | Start Vite dev server |
 | `npm run build` | Build client for production |
 | `npm run lint` | Lint server and client |
-| `npm test` | Run linter (CI) |
+| `npm test` | Run the `node:test` suite |
+| `npm run check` | Lint + tests (the gate run before every commit) |
 
 ## Notes
 
 - `.env` is gitignored — copy the structure from `.env` and fill in values locally
 - Production build is served statically from `client/build` by the Express server
+- **Data source** is swappable behind `server/providers/` (a `SportsDataProvider` contract). `STATS_PROVIDER` selects the implementation (`espn`, default; `sportradar`, stubbed). All external-source access goes through `getProvider()` — see `server/providers/SportsDataProvider.js` for the contract.
