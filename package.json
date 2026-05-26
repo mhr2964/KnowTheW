@@ -7,8 +7,9 @@
     "client": "npm start --prefix client",
     "build": "npm run build --prefix client",
     "heroku-postbuild": "npm install --include=dev --prefix client && npm run build --prefix client",
-    "lint": "eslint server/ && npm run lint --prefix client",
-    "test": "npm run lint",
+    "lint": "eslint server/ test/ && npm run lint --prefix client",
+    "test": "node --test \"test/**/*.test.js\"",
+    "check": "npm run lint && npm test",
     "install-all": "npm install && npm install --prefix client"
   },
   "dependencies": {

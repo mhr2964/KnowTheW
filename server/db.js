@@ -4,7 +4,9 @@ let db = null;
 let _resolveConnected;
 const connectedPromise = new Promise(resolve => { _resolveConnected = resolve; });
 
-if (process.env.MONGODB_URI) {
+// Skip the real DB connection under test: it keeps an open handle (hanging the test runner) and
+// tests must not depend on Atlas. Routes already degrade gracefully when getDb() returns null.
+if (process.env.MONGODB_URI && process.env.NODE_ENV !== 'test') {
   MongoClient.connect(process.env.MONGODB_URI)
     .then(client => {
       db = client.db('knowthew');

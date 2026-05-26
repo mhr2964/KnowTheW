@@ -354,12 +354,15 @@ async function fetchGameSummary(eventId) {
   }
 }
 
-// Prefetch all teams and rosters on startup so first requests are fast
-getTeams()
-  .then(teams => Promise.all(
-    teams.map(t => getRoster(t.id, t.name).catch(err => console.error(`Roster failed ${t.name}:`, err.message)))
-  ))
-  .catch(err => console.error('Startup prefetch failed:', err.message));
+// Prefetch all teams and rosters on startup so first requests are fast.
+// Skipped under NODE_ENV=test so the test harness can import the app without hitting ESPN.
+if (process.env.NODE_ENV !== 'test') {
+  getTeams()
+    .then(teams => Promise.all(
+      teams.map(t => getRoster(t.id, t.name).catch(err => console.error(`Roster failed ${t.name}:`, err.message)))
+    ))
+    .catch(err => console.error('Startup prefetch failed:', err.message));
+}
 
 module.exports = {
   ESPN, ESPN_WEB, STANDINGS, withCache,
