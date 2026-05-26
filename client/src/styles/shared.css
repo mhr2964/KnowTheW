@@ -17,7 +17,7 @@
 
 /* ── Premium Banner ── */
 .premium-banner {
-  background: linear-gradient(135deg, #1a1a1a 0%, #1f1208 100%);
+  background: linear-gradient(135deg, var(--surface) 0%, #1f1208 100%);
   border: 1px solid #3a2800; border-left: 4px solid var(--accent);
   border-radius: var(--radius); padding: 1.5rem 2rem;
   display: flex; align-items: center; justify-content: space-between;

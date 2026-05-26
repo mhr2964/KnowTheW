@@ -114,3 +114,20 @@ The client is exceptionally consistent. **Verification method:** grep-swept *eve
 - **`GameLogTab.jsx`** — custom multi-season fetch-cache (fetch-once-per-season keyed by a `Set`); richer than `useLazyFetch`'s single-URL model, so not a dedup candidate. Correct abort/res.ok/cleanup.
 - **`HeaderTooltip.jsx`** — `useId` + full aria (`aria-label`/`aria-expanded`/`aria-describedby`/`role="tooltip"`) + portal + outside-click cleanup. Exemplary.
 - The remaining presentational components (GradeGrid, GradeCard, BrefTable, ScheduleTable, CompareVerdict, CompareModeToggle, ComparePickerModal, RosterTable, AdvancedTab, RecentDecks, PremiumBanner, PlayerPage) and thin route pages (HomePage, SearchPage, TeamPage, Team{Roster,Stats,Schedule,History}Page, PlayerRoutePage, NotFoundPage) — grep-verified clean on all cross-cutting concerns; no findings.
+
+---
+
+## Area 6 — Client CSS
+
+### `client/src/App.css` — DELETED (Cat 7, the largest single finding)
+- Removed 2,625 lines of **orphaned dead CSS**. `App.css` is imported by nothing (`App.jsx` imports only `./styles/*.css`; grep across `.jsx/.js/.html/.css` found zero references), and git history shows it predates the CSS split in commit `c2fd366` ("refactor … CSS"). Its selectors are duplicated by the live `styles/*.css`.
+- **Reasoning:** because it's never imported, none of its rules ever reached the DOM — deleting it provably cannot change rendering. Notably the live `styles/` total only 2,619 lines, so App.css was effectively a full stale duplicate of the entire stylesheet.
+- **Potential Issues:** none for current behavior (verified by the post-deletion Playwright smoke — the app already rendered entirely from `styles/`). Recovery is `git show` if ever needed.
+
+### `client/src/styles/global.css` + `player/team/compare/layout/shared.css` — CHANGED (Cat 8)
+- Added five **semantic color custom properties** to `:root` (`--win`, `--loss`, `--error`, `--champion`, `--champion-text`) and replaced the repeated literals with them: `#4ade80` (win) and `#f87171` (loss) each appeared in 3 files (team/player/compare), `#e05555` (error) in 3 places (compare ×2, layout), and the champion golds `#c8960c`/`#e8c84a` across team.css. Also fixed one palette literal: a `#1a1a1a` gradient stop in shared.css → `var(--surface)`.
+- **Reasoning:** these are values-that-must-stay-in-sync across files — the exact Cat-8 signal. A design tweak to the win-green or loss-red now happens in one place. Values are byte-identical, so rendering is unchanged.
+- **Potential Issues:** none expected; confirmed visually via the final Playwright smoke (win/loss colors on gamelog + schedule, error states, champion rows on team history).
+
+### Reviewed and unchanged
+- The live `styles/*.css` already use the `:root` palette pervasively (var references: compare 155, team 101, shared 67, etc.), so most Cat-8 literal-promotion was already done. The remaining hardcoded hexes are genuine one-offs (`#fff`, dark gradient endpoints like `#1f1208`, single-use grade-band shades). **Not deeply audited:** exhaustive dead-rule detection (cross-referencing every selector against dynamic `className` usage) — high effort, high false-positive risk on dynamically-composed class names; left for a focused pass if needed.

@@ -10,6 +10,13 @@
   --text-muted: #888;
   --border: #2a2a2a;
   --radius: 8px;
+  /* Semantic colors repeated across schedule/gamelog/compare/history — kept here so a palette
+     tweak stays in one place rather than scattered literals. */
+  --win: #4ade80;
+  --loss: #f87171;
+  --error: #e05555;
+  --champion: #c8960c;
+  --champion-text: #e8c84a;
 }
 
 body {

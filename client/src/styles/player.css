@@ -188,8 +188,8 @@
   font-size: 0.85rem;
 }
 
-.gl-win  { color: #4ade80; }
-.gl-loss { color: #f87171; }
+.gl-win  { color: var(--win); }
+.gl-loss { color: var(--loss); }
 
 .gl-controls {
   display: flex; align-items: center; gap: 0.75rem;
