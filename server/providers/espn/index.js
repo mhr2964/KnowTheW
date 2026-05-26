@@ -11,6 +11,7 @@
 // (rather than moving it here) means import-time behavior is unchanged during the migration.
 
 const espn = require('../../lib/espnClient');
+const playerStats = require('./playerStats');
 const { SportsDataProvider } = require('../SportsDataProvider');
 
 class EspnProvider extends SportsDataProvider {
@@ -33,6 +34,9 @@ class EspnProvider extends SportsDataProvider {
 
   // --- Player ---
   getGameSummary(eventId) { return espn.fetchGameSummary(eventId); }
+  getPlayerBasics(playerId) { return playerStats.getPlayerBasics(playerId); }
+  getRetiredPlayer(playerId) { return playerStats.getRetiredPlayer(playerId); }
+  getPlayerSeasonStats(playerId) { return playerStats.getPlayerSeasonStats(playerId); }
 
   // --- Shared-state accessors (replace direct espnClient internal imports) ---
   /** @param {string|number} id */

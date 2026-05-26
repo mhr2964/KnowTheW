@@ -55,6 +55,12 @@ class SportsDataProvider {
   // --- Player ---
   /** getGameSummary(eventId) → raw game summary (PBP). Normalized at the boundary in a later milestone. */
   getGameSummary() { return this._notImplemented('getGameSummary'); }
+  /** getPlayerBasics(playerId) → minimal { id, name, position } | null. */
+  getPlayerBasics() { return this._notImplemented('getPlayerBasics'); }
+  /** getRetiredPlayer(playerId) → full retired-player profile | null (not in the active cache). */
+  getRetiredPlayer() { return this._notImplemented('getRetiredPlayer'); }
+  /** getPlayerSeasonStats(playerId) → { regData, postData } season-stats payloads. */
+  getPlayerSeasonStats() { return this._notImplemented('getPlayerSeasonStats'); }
 
   // --- In-memory active-player index accessors ---
   // NOTE: these expose ESPN's startup-prefetch caches (active rosters + a player lookup). They are a

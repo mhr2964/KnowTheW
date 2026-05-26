@@ -50,6 +50,7 @@ test('the ESPN provider implements every contract method (no throwing defaults l
     'getTeams', 'getRoster', 'getHistoricalRoster', 'getSeasonRoster',
     'getTeamStats', 'getTeamStatsRaw', 'getTeamPointsAllowed', 'getTeamPointsAllowedRaw',
     'getTeamSchedule', 'getPlayoffSchedule', 'getStandingsRaw', 'getGameSummary',
+    'getPlayerBasics', 'getRetiredPlayer', 'getPlayerSeasonStats',
   ]) {
     assert.strictEqual(typeof provider[method], 'function', `missing ${method}`);
     // If a method weren't overridden, provider[method] would resolve to the base's throwing stub.

@@ -36,10 +36,9 @@ const fetchTeamPtsAllowedRaw  = (...a) => getProvider().getTeamPointsAllowedRaw(
 const fetchTeamSchedule       = (...a) => getProvider().getTeamSchedule(...a);
 
 async function fetchPlayerSeasonData(playerId) {
-  const [teams, regData, postData] = await Promise.all([
+  const [teams, { regData, postData }] = await Promise.all([
     getTeams(),
-    fetch(`${ESPN_WEB}/athletes/${playerId}/stats?seasontype=2`).then(r => r.ok ? r.json() : null),
-    fetch(`${ESPN_WEB}/athletes/${playerId}/stats?seasontype=3`).then(r => r.ok ? r.json() : null),
+    getProvider().getPlayerSeasonStats(playerId),
   ]);
   return { teams, regData, postData, teamsById: Object.fromEntries(teams.map(t => [t.id, t])) };
 }
@@ -451,29 +450,10 @@ router.get('/players/:id', async (req, res) => {
     const player = getProvider().getPlayerById(playerId);
     if (player) return res.json({ player });
 
-    // Not in active roster — try ESPN on-demand (retired player)
-    const r = await fetch(`${ESPN_WEB}/athletes/${playerId}`);
-    if (!r.ok) return res.status(404).json({ error: 'player not found' });
-    const data = await r.json();
-    const a = data.athlete;
-    if (!a) return res.status(404).json({ error: 'player not found' });
-    res.json({ player: {
-      id:           String(a.id),
-      name:         a.displayName,
-      position:     a.position?.abbreviation ?? '',
-      positionName: a.position?.displayName  ?? '',
-      jersey:       a.jersey ?? null,
-      headshot:     a.headshot?.href ?? null,
-      height:       a.height ?? null,
-      weight:       a.weight ?? null,
-      age:          a.age    ?? null,
-      college:      a.college?.name ?? null,
-      birthPlace:   null,
-      experience:   a.experience?.years ?? null,
-      teamId:       null,
-      teamName:     null,
-      retired:      true,
-    }});
+    // Not in active roster — try the source on-demand (retired player).
+    const retired = await getProvider().getRetiredPlayer(playerId);
+    if (!retired) return res.status(404).json({ error: 'player not found' });
+    res.json({ player: retired });
   } catch {
     res.status(500).json({ error: 'failed to load player' });
   }

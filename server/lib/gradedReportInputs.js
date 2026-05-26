@@ -17,7 +17,6 @@
 
 'use strict';
 
-const { ESPN_WEB } = require('./espnClient');
 const { getProvider } = require('../providers');
 // Source access via the active provider; thin locals keep call sites below unchanged.
 const getTeams       = (...a) => getProvider().getTeams(...a);
@@ -27,20 +26,6 @@ const { ADV_HEADERS_SRV, buildAdvancedSplit, computeSeasonPBP, buildPbpSplit } =
 const { WNBA_LG } = require('../constants/leagueAverages');
 const { getPlayerAccolades } = require('../constants/wnbaAccolades');
 const { isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyId } = require('../constants/legacyPlayerBulk');
-
-// Resolve player basics — name, position — from ESPN.
-async function fetchPlayerBasics(playerId) {
-  const r = await fetch(`${ESPN_WEB}/athletes/${playerId}`);
-  if (!r.ok) return null;
-  const data = await r.json();
-  const a = data.athlete;
-  if (!a) return null;
-  return {
-    id:       String(a.id),
-    name:     a.displayName ?? a.fullName ?? 'Unknown',
-    position: a.position?.abbreviation ?? '',
-  };
-}
 
 // Convert a per-game row (array aligned to ESPN_HEADERS) into a labelled object for the prompt.
 function rowToObj(headers, row) {
@@ -212,10 +197,9 @@ async function buildInputs(playerId, mode) {
   const teams = await getTeams();
   const teamsById = Object.fromEntries(teams.map(t => [String(t.id), t]));
 
-  const [player, regData, postData] = await Promise.all([
-    fetchPlayerBasics(playerId),
-    fetch(`${ESPN_WEB}/athletes/${playerId}/stats?seasontype=2`).then(r => r.ok ? r.json() : null),
-    fetch(`${ESPN_WEB}/athletes/${playerId}/stats?seasontype=3`).then(r => r.ok ? r.json() : null),
+  const [player, { regData, postData }] = await Promise.all([
+    getProvider().getPlayerBasics(playerId),
+    getProvider().getPlayerSeasonStats(playerId),
   ]);
 
   if (!player) return null;
