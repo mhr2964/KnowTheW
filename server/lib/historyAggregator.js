@@ -19,7 +19,10 @@
 //   schedule derivation disagrees, we trust the constant and log a warning.
 
 const { getDb }              = require('../db');
-const { fetchStandingsRaw, fetchPlayoffSchedule } = require('./espnClient');
+const { getProvider }        = require('../providers');
+// Source access via the active provider; thin locals keep call sites unchanged.
+const fetchStandingsRaw    = (...a) => getProvider().getStandingsRaw(...a);
+const fetchPlayoffSchedule = (...a) => getProvider().getPlayoffSchedule(...a);
 const { WNBA_CHAMPIONS, FRANCHISE_ALIASES } = require('../constants/wnbaChampions');
 const { WNBA_FOUNDED }       = require('../constants/wnbaFounded');
 
