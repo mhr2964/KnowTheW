@@ -42,6 +42,37 @@ async function fetchPlayerSeasonData(playerId) {
   return { teams, regData, postData, teamsById: Object.fromEntries(teams.map(t => [t.id, t])) };
 }
 
+// Valid modes for the graded-report route. Module-level so the Set isn't rebuilt per request.
+const VALID_REPORT_MODES = new Set(['career', 'peak', 'playoffs']);
+
+// Parse the optional ?season query param shared by the roster, season-info, and team-stats routes:
+// default to the current year, accept any 4-digit year, reject everything else. Returns
+// { season, currentYear } on success or { error } carrying the 400 message. The schedule route has
+// stricter rules (season required, 1997 floor) and deliberately does not use this.
+function parseSeasonQuery(req) {
+  const currentYear = new Date().getFullYear();
+  const raw = req.query.season;
+  if (raw === undefined || raw === '') return { season: currentYear, currentYear };
+  if (/^\d{4}$/.test(raw)) return { season: parseInt(raw, 10), currentYear };
+  return { error: 'season must be a 4-digit year (e.g. 2024)' };
+}
+
+// Constant-time check for the admin-gated ?refresh=1 trigger shared by the graded-report and
+// narrative routes. Returns true only when refresh=1 AND the x-admin-token header matches the
+// ADMIN_TOKEN env var. Timing-safe compare prevents a length/byte oracle that would expose a
+// cache-flush vector (each successful guess also triggers a paid Claude call). Fail-closed when
+// ADMIN_TOKEN is unset.
+function authorizeAdminRefresh(req) {
+  if (req.query.refresh !== '1') return false;
+  const adminToken  = process.env.ADMIN_TOKEN;
+  const headerToken = req.headers['x-admin-token'];
+  if (!adminToken || !headerToken) return false;
+  const aBuf = Buffer.from(adminToken,  'utf8');
+  const bBuf = Buffer.from(headerToken, 'utf8');
+  if (aBuf.length !== bBuf.length) return false; // timingSafeEqual requires equal-length buffers
+  return crypto.timingSafeEqual(aBuf, bBuf);
+}
+
 router.get('/teams', async (req, res) => {
   try {
     res.json(await getProvider().getTeams());
@@ -97,16 +128,9 @@ function buildLegacyRosterResponse(team, season, playerIds) {
 router.get('/teams/:id/roster', async (req, res) => {
   const rawId = req.params.id;
 
-  // season param: default to current calendar year; reject non-numeric / non-4-digit values.
-  const currentYear = new Date().getFullYear();
-  let season;
-  if (req.query.season === undefined || req.query.season === '') {
-    season = currentYear;
-  } else if (/^\d{4}$/.test(req.query.season)) {
-    season = parseInt(req.query.season, 10);
-  } else {
-    return res.status(400).json({ error: 'season must be a 4-digit year (e.g. 2024)' });
-  }
+  const sp = parseSeasonQuery(req);
+  if (sp.error) return res.status(400).json({ error: sp.error });
+  const { season, currentYear } = sp;
 
   // Defunct-team synthetic ids ('legacy-cleveland-rockers' etc.) — resolve via LEGACY_DEFUNCT_TEAMS.
   // These don't have ESPN ids, so the numeric-id validator below would reject them; handle first.
@@ -190,15 +214,9 @@ router.get('/teams/:id/season-info', async (req, res) => {
   }
   const teamId = req.params.id;
 
-  const currentYear = new Date().getFullYear();
-  let season;
-  if (req.query.season === undefined || req.query.season === '') {
-    season = currentYear;
-  } else if (/^\d{4}$/.test(req.query.season)) {
-    season = parseInt(req.query.season, 10);
-  } else {
-    return res.status(400).json({ error: 'season must be a 4-digit year (e.g. 2024)' });
-  }
+  const sp = parseSeasonQuery(req);
+  if (sp.error) return res.status(400).json({ error: sp.error });
+  const { season, currentYear } = sp;
 
   const foundedYear = WNBA_FOUNDED[teamId] ?? 1997;
   if (season > currentYear || season < foundedYear) {
@@ -237,16 +255,9 @@ router.get('/teams/:id/stats', async (req, res) => {
   }
   const teamId = req.params.id;
 
-  // season param: default to current calendar year; reject non-numeric / non-4-digit values.
-  const currentYear = new Date().getFullYear();
-  let season;
-  if (req.query.season === undefined || req.query.season === '') {
-    season = currentYear;
-  } else if (/^\d{4}$/.test(req.query.season)) {
-    season = parseInt(req.query.season, 10);
-  } else {
-    return res.status(400).json({ error: 'season must be a 4-digit year (e.g. 2026)' });
-  }
+  const sp = parseSeasonQuery(req);
+  if (sp.error) return res.status(400).json({ error: sp.error });
+  const { season, currentYear } = sp;
 
   try {
     if (season === currentYear) {
@@ -634,11 +645,10 @@ router.get('/players/:id/graded-report', async (req, res) => {
 
   // Validate mode (default 'career')
   const modeRaw = req.query.mode;
-  const VALID_MODES = new Set(['career', 'peak', 'playoffs']);
   let mode;
   if (modeRaw === undefined || modeRaw === '') {
     mode = 'career';
-  } else if (VALID_MODES.has(modeRaw)) {
+  } else if (VALID_REPORT_MODES.has(modeRaw)) {
     mode = modeRaw;
   } else {
     return res.status(400).json({ error: 'mode must be one of: career, peak, playoffs' });
@@ -688,17 +698,8 @@ router.get('/players/:id/graded-report', async (req, res) => {
 
   const db = getDb();
 
-  // Admin-gated manual refresh — mirrors narrative route exactly.
-  const adminToken  = process.env.ADMIN_TOKEN;
-  const headerToken = req.headers['x-admin-token'];
-  let forceRefresh  = false;
-  if (req.query.refresh === '1' && adminToken && headerToken) {
-    const aBuf = Buffer.from(adminToken,  'utf8');
-    const bBuf = Buffer.from(headerToken, 'utf8');
-    if (aBuf.length === bBuf.length) {
-      forceRefresh = crypto.timingSafeEqual(aBuf, bBuf);
-    }
-  }
+  // Admin-gated manual refresh — see authorizeAdminRefresh (shared with the narrative route).
+  const forceRefresh = authorizeAdminRefresh(req);
 
   // Cache lookup — skip when Mongo unavailable or forced refresh
   if (db && !forceRefresh) {
@@ -858,23 +859,8 @@ router.get('/teams/:id/narrative', async (req, res) => {
 
     const coll = db.collection('teamNarratives');
 
-    // Admin-gated manual refresh: ?refresh=1 + x-admin-token header must match ADMIN_TOKEN env var.
-    // If ADMIN_TOKEN is unset, the trigger is unavailable — fail-closed default.
-    //
-    // Timing-safe comparison is required here: a naive === leaks timing info that lets an attacker
-    // infer token length and content byte-by-byte, which would expose a cache-flush vector that
-    // also triggers a paid Claude call on each successful guess.
-    const adminToken   = process.env.ADMIN_TOKEN;
-    const headerToken  = req.headers['x-admin-token'];
-    let forceRefresh   = false;
-    if (req.query.refresh === '1' && adminToken && headerToken) {
-      // Different lengths → reject immediately (timingSafeEqual requires equal-length buffers).
-      const aBuf = Buffer.from(adminToken,  'utf8');
-      const bBuf = Buffer.from(headerToken, 'utf8');
-      if (aBuf.length === bBuf.length) {
-        forceRefresh = crypto.timingSafeEqual(aBuf, bBuf);
-      }
-    }
+    // Admin-gated manual refresh — see authorizeAdminRefresh (shared with the graded-report route).
+    const forceRefresh = authorizeAdminRefresh(req);
 
     if (!forceRefresh) {
       let cached;

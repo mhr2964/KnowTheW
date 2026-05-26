@@ -147,6 +147,63 @@ async function fetchStandingsForYear(year) {
   }
 }
 
+// Builds one team's season record for a single year — the per-year work shared by the cold-build
+// (aggregateHistory) and warm-cache-refresh (buildHistory) paths. Returns a tagged result so each
+// caller can apply its own control flow:
+//   { status: 'no-standings' } — standings fetch failed/empty for the year
+//   { status: 'no-entry' }     — team not present in that year's standings
+//   { status: 'ok', record }   — the season record
+// WNBA_CHAMPIONS is authoritative: when it marks this team/year a champion, playoffResult is forced
+// to 'Won Finals' regardless of ESPN's playoff-schedule derivation. warnOnMismatch logs when the
+// constant and the ESPN-derived result disagree (cold path only, matching prior behavior).
+async function buildSeasonRecord(teamId, teamName, year, { warnOnMismatch = false } = {}) {
+  const standings = await fetchStandingsForYear(year);
+  if (!standings) return { status: 'no-standings' };
+
+  const entry = standings[teamId];
+  if (!entry) return { status: 'no-entry' };
+
+  // Fetch playoff events whenever ESPN populated a seed (needed to discover if games exist).
+  // A populated seed alone does not mean the team played — ESPN seeds all teams from standings.
+  let playoffResult = null;
+  if (entry.seed != null) {
+    try {
+      const events = await fetchPlayoffSchedule(teamId, year);
+      if (events && events.length > 0) {
+        playoffResult = derivePlayoffResult(teamId, year, events);
+      }
+    } catch (err) {
+      console.warn(`historyAggregator: playoff fetch failed teamId=${teamId} year=${year}:`, err.message);
+    }
+  }
+
+  const constantSaysChampion = isChampion(year, teamName);
+  if (warnOnMismatch) {
+    const playoffSaysChampion = playoffResult === 'Won Finals';
+    if (constantSaysChampion !== playoffSaysChampion && entry.seed != null && playoffResult !== null) {
+      console.warn(
+        `historyAggregator: champion mismatch year=${year} teamId=${teamId} ` +
+        `constant=${constantSaysChampion} playoffDerived=${playoffSaysChampion} — trusting constant`
+      );
+    }
+  }
+
+  return {
+    status: 'ok',
+    record: {
+      year,
+      wins:          entry.wins,
+      losses:        entry.losses,
+      conference:    entry.conference,
+      seed:          entry.seed,
+      // Constant is truth: old playoff games often surface with round label "Standard" which derives
+      // to a nonsense result — force "Won Finals" when WNBA_CHAMPIONS marks the title.
+      playoffResult: constantSaysChampion ? 'Won Finals' : playoffResult,
+      champion:      constantSaysChampion,
+    },
+  };
+}
+
 // Aggregates all seasons for a team. teamObj must have { id, name }.
 // Returns the full /history response shape (no caching concern — caller handles that).
 async function aggregateHistory(teamObj) {
@@ -158,62 +215,14 @@ async function aggregateHistory(teamObj) {
 
   for (let year = currentYear; year >= HISTORY_START_YEAR; year--) {
     try {
-      const standings = await fetchStandingsForYear(year);
-      if (!standings) {
+      const result = await buildSeasonRecord(teamId, teamName, year, { warnOnMismatch: true });
+      if (result.status === 'no-standings') {
         // Network/parse failure — skip this year non-fatally
         console.warn(`historyAggregator: standings unavailable for year=${year}, skipping`);
         continue;
       }
-
-      const entry = standings[teamId];
-      if (!entry) {
-        // Team didn't exist or wasn't in WNBA this year — skip silently
-        continue;
-      }
-
-      // Fetch playoff events whenever ESPN populated a seed (needed to discover if games exist).
-      // Only set playoffResult when actual playoff events came back — a populated seed alone
-      // does not mean the team played (ESPN populates playoffSeed for all teams based on standings).
-      let playoffResult = null;
-      if (entry.seed != null) {
-        try {
-          const events = await fetchPlayoffSchedule(teamId, year);
-          if (events && events.length > 0) {
-            playoffResult = derivePlayoffResult(teamId, year, events);
-          }
-        } catch (err) {
-          console.warn(`historyAggregator: playoff fetch failed teamId=${teamId} year=${year}:`, err.message);
-        }
-      }
-
-      // Champion determination: primary source is WNBA_CHAMPIONS constant.
-      // Cross-check: if playoffResult says "Won Finals" but constant disagrees (or vice-versa),
-      // trust the constant and log a warning so we can investigate.
-      // isChampion() resolves franchise lineage aliases (e.g. Dallas Wings ← Detroit Shock).
-      const constantSaysChampion = isChampion(year, teamName);
-      const playoffSaysChampion  = playoffResult === 'Won Finals';
-
-      if (constantSaysChampion !== playoffSaysChampion && entry.seed != null && playoffResult !== null) {
-        console.warn(
-          `historyAggregator: champion mismatch year=${year} teamId=${teamId} ` +
-          `constant=${constantSaysChampion} playoffDerived=${playoffSaysChampion} — trusting constant`
-        );
-      }
-
-      // Constant is truth — when WNBA_CHAMPIONS marks this year, force playoffResult to "Won Finals"
-      // regardless of what ESPN's playoff-schedule derivation produced. Old playoff games often
-      // surface with round label "Standard" which derives to "Lost in Standard" — wrong for titles.
-      const finalPlayoffResult = constantSaysChampion ? 'Won Finals' : playoffResult;
-
-      seasons.push({
-        year,
-        wins:        entry.wins,
-        losses:      entry.losses,
-        conference:  entry.conference,
-        seed:        entry.seed,
-        playoffResult: finalPlayoffResult,
-        champion:    constantSaysChampion,
-      });
+      if (result.status === 'no-entry') continue; // team didn't exist / not in WNBA this year
+      seasons.push(result.record);
     } catch (err) {
       // Per-year errors are non-fatal — log and continue
       console.error(`historyAggregator: unexpected error year=${year} teamId=${teamId}:`, err.message);
@@ -292,35 +301,9 @@ async function buildHistory(teamObj) {
 
   for (const year of yearsToRefetch) {
     try {
-      const standings = await fetchStandingsForYear(year);
-      if (!standings) continue;
-
-      const entry = standings[teamId];
-      if (!entry) continue;
-
-      let playoffResult = null;
-      if (entry.seed != null) {
-        try {
-          const events = await fetchPlayoffSchedule(teamId, year);
-          if (events && events.length > 0) {
-            playoffResult = derivePlayoffResult(teamId, year, events);
-          }
-        } catch (err) {
-          console.warn(`historyAggregator cache refresh: playoff fetch failed teamId=${teamId} year=${year}:`, err.message);
-        }
-      }
-
-      const constantSaysChampion = isChampion(year, teamObj.name);
-      const finalPlayoffResult   = constantSaysChampion ? 'Won Finals' : playoffResult;
-      const newRecord = {
-        year,
-        wins:        entry.wins,
-        losses:      entry.losses,
-        conference:  entry.conference,
-        seed:        entry.seed,
-        playoffResult: finalPlayoffResult,
-        champion:    constantSaysChampion,
-      };
+      const result = await buildSeasonRecord(teamId, teamObj.name, year);
+      if (result.status !== 'ok') continue;
+      const newRecord = result.record;
 
       // Splice: remove existing record for this year (if any) and insert updated one
       const existingIdx = seasons.findIndex(s => s.year === year);

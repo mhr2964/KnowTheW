@@ -1,8 +1,7 @@
-// gradedReportClient.js — wraps Anthropic SDK to generate AI-graded player reports.
+// gradedReportClient.js — generates AI-graded player reports via the shared Anthropic client.
 //
-// Defensive init: checks ANTHROPIC_API_KEY at module load. Sets `enabled = false` and logs a
-// warning when the key is absent. Route handler checks `enabled` before calling and returns
-// 503 rather than letting the call reach here.
+// The SDK client, enabled flag, and transient-retry helper come from ./anthropic (one client for
+// all AI features). Route handler checks `enabled` before calling and returns 503 otherwise.
 //
 // Output is forced via tool_choice so the response is always structured JSON — no prose-parsing.
 // System prompt is cached with cache_control: { type: 'ephemeral' } since it is identical for
@@ -10,27 +9,7 @@
 
 'use strict';
 
-// ---------------------------------------------------------------------------
-// Defensive init
-// ---------------------------------------------------------------------------
-
-let anthropic = null;
-let enabled   = false;
-
-(function initClient() {
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) {
-    console.warn('[gradedReportClient] ANTHROPIC_API_KEY is not set — graded-report route will return 503');
-    return;
-  }
-  try {
-    const Anthropic = require('@anthropic-ai/sdk');
-    anthropic = new Anthropic({ apiKey: key });
-    enabled   = true;
-  } catch (err) {
-    console.error('[gradedReportClient] failed to initialise Anthropic SDK:', err.message);
-  }
-}());
+const { getClient, callWithRetry, enabled } = require('./anthropic');
 
 // ---------------------------------------------------------------------------
 // Tool definition — forces structured output
@@ -463,26 +442,6 @@ function buildUserMessage(inputs) {
 }
 
 // ---------------------------------------------------------------------------
-// Retry helper
-// ---------------------------------------------------------------------------
-
-/**
- * Call an async fn, retrying once on transient errors (5xx, ETIMEDOUT, ECONNRESET).
- * 4xx errors are not retried — they won't improve and the user should see them immediately.
- */
-async function callWithRetry(fn, { retries = 1, delayMs = 1500 } = {}) {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      return await fn();
-    } catch (err) {
-      const transient = err.status >= 500 || err.code === 'ETIMEDOUT' || err.code === 'ECONNRESET' || /timeout/i.test(err.message ?? '');
-      if (!transient || attempt === retries) throw err;
-      await new Promise(r => setTimeout(r, delayMs));
-    }
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -498,6 +457,7 @@ async function callWithRetry(fn, { retries = 1, delayMs = 1500 } = {}) {
  * @throws  On any SDK or parse error — caller translates to 502.
  */
 async function callClaude({ inputs, mode }) {
+  const anthropic = getClient();
   if (!anthropic) {
     throw new Error('Anthropic client not initialised');
   }
@@ -537,3 +497,5 @@ async function callClaude({ inputs, mode }) {
 }
 
 module.exports = { callClaude, validateReportShape, PROMPT_VERSION, get enabled() { return enabled; } };
+// `enabled` is re-exported from ./anthropic so the route's `gradedReportClient.enabled` check is
+// unchanged; it reflects the shared client's live state.
