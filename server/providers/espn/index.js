@@ -38,6 +38,7 @@ class EspnProvider extends SportsDataProvider {
   /** @param {string|number} id */
   getPlayerById(id) { return espn.playerById[id]; }
   getRosterData() { return espn.rosterData; }
+  getPlayerIndex() { return espn.playerById; }
   getTeamSeasonStatsCache() { return espn.teamSeasonStatsCache; }
 
   // --- Pass-through helpers that aren't source fetches ---

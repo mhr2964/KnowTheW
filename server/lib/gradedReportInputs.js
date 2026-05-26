@@ -17,7 +17,11 @@
 
 'use strict';
 
-const { ESPN_WEB, getTeams, fetchTeamStats, teamSeasonStatsCache } = require('./espnClient');
+const { ESPN_WEB } = require('./espnClient');
+const { getProvider } = require('../providers');
+// Source access via the active provider; thin locals keep call sites below unchanged.
+const getTeams       = (...a) => getProvider().getTeams(...a);
+const fetchTeamStats = (...a) => getProvider().getTeamStats(...a);
 const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats } = require('./statsParser');
 const { ADV_HEADERS_SRV, buildAdvancedSplit, computeSeasonPBP, buildPbpSplit } = require('./advancedStats');
 const { WNBA_LG } = require('../constants/leagueAverages');
@@ -283,7 +287,7 @@ async function buildInputs(playerId, mode) {
         return result ? { season, row: result.row, pbpGames: result.pbpGames } : null;
       }));
       const validReg = regResults.filter(Boolean);
-      const advSplit = validReg.length ? buildPbpSplit(validReg, pgTable.rows, I) : buildAdvancedSplit(detailed.perGame.regular, regTidByYear, teamSeasonStatsCache, detailed.totals.regular);
+      const advSplit = validReg.length ? buildPbpSplit(validReg, pgTable.rows, I) : buildAdvancedSplit(detailed.perGame.regular, regTidByYear, getProvider().getTeamSeasonStatsCache(), detailed.totals.regular);
       if (advSplit?.rows) {
         advancedRows = advSplit.rows.map(r => advRowToObj(ADV_HEADERS_SRV, r));
       }

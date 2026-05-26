@@ -4,9 +4,7 @@ const router  = express.Router();
 const crypto                                                             = require('crypto');
 const { getDb }                                                          = require('../db');
 const { WNBA_LG }                                                        = require('../constants/leagueAverages');
-const { ESPN_WEB, getTeams, getRoster, fetchSeasonRoster, fetchTeamStats, fetchTeamStatsRaw,
-        fetchTeamPtsAllowed, fetchTeamPtsAllowedRaw, fetchTeamSchedule,
-        rosterData, playerById, teamSeasonStatsCache }                   = require('../lib/espnClient');
+const { ESPN_WEB }                                                       = require('../lib/espnClient');
 const { WNBA_FOUNDED }                                                   = require('../constants/wnbaFounded');
 const { buildHistory, buildLegacyHistory }                               = require('../lib/historyAggregator');
 const { buildSeasonInfo }                                                = require('../lib/seasonInfo');
@@ -24,6 +22,18 @@ const { LEGACY_PLAYERS_BULK, isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyI
 const { LEGACY_DEFUNCT_TEAMS, getLegacyRoster, tricodeForEspnId,
         tricodeForDefunctId }                                            = require('../constants/legacyTeamRosters');
 const { getProvider }                                                    = require('../providers');
+
+// Data-source access goes through the active provider (see server/providers). These thin locals
+// keep the call sites below unchanged while removing the direct espnClient import; each resolves
+// the provider lazily per call so STATS_PROVIDER / test overrides take effect.
+const getTeams                = (...a) => getProvider().getTeams(...a);
+const getRoster               = (...a) => getProvider().getRoster(...a);
+const fetchSeasonRoster       = (...a) => getProvider().getSeasonRoster(...a);
+const fetchTeamStats          = (...a) => getProvider().getTeamStats(...a);
+const fetchTeamStatsRaw       = (...a) => getProvider().getTeamStatsRaw(...a);
+const fetchTeamPtsAllowed     = (...a) => getProvider().getTeamPointsAllowed(...a);
+const fetchTeamPtsAllowedRaw  = (...a) => getProvider().getTeamPointsAllowedRaw(...a);
+const fetchTeamSchedule       = (...a) => getProvider().getTeamSchedule(...a);
 
 async function fetchPlayerSeasonData(playerId) {
   const [teams, regData, postData] = await Promise.all([
@@ -396,7 +406,7 @@ router.get('/search', async (req, res) => {
       t => t.name.toLowerCase().includes(q) || t.abbreviation.toLowerCase().includes(q)
     );
 
-    const activePlayers = Object.values(rosterData)
+    const activePlayers = Object.values(getProvider().getRosterData())
       .flat()
       .filter(p => p.name.toLowerCase().includes(q));
     const activeIds = new Set(activePlayers.map(p => p.id));
@@ -438,7 +448,7 @@ router.get('/players/:id', async (req, res) => {
       return res.json({ player: buildBulkLegacyProfile(bulk), dataSource: 'legacy-bulk' });
     }
 
-    const player = playerById[playerId];
+    const player = getProvider().getPlayerById(playerId);
     if (player) return res.json({ player });
 
     // Not in active roster — try ESPN on-demand (retired player)
@@ -496,11 +506,12 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
       ...Object.entries(postTidByYear).map(([y, t]) => [`${t}-${y}`, { t, y }]),
     ]);
     await Promise.all([...allPairs.values()].map(({ t, y }) => fetchTeamStats(t, y)));
+    const teamStatsCache = getProvider().getTeamSeasonStatsCache();
 
     result.advanced = {
-      regular:       buildAdvancedSplit(result.perGame.regular,       regTidByYear,  teamSeasonStatsCache, result.totals.regular),
+      regular:       buildAdvancedSplit(result.perGame.regular,       regTidByYear,  teamStatsCache, result.totals.regular),
       regularCareer: buildAdvancedCareer(result.perGame.regularCareer, result.totals.regularCareer),
-      playoffs:      buildAdvancedSplit(result.perGame.playoffs,      postTidByYear, teamSeasonStatsCache, result.totals.playoffs),
+      playoffs:      buildAdvancedSplit(result.perGame.playoffs,      postTidByYear, teamStatsCache, result.totals.playoffs),
       playoffCareer: buildAdvancedCareer(result.perGame.playoffCareer, result.totals.playoffCareer),
     };
 
@@ -960,8 +971,8 @@ router.get('/status', (req, res) => {
     status: 'ok',
     app: 'KnowTheW',
     teamsLoaded: true,
-    rostersCached: Object.keys(rosterData).length,
-    playersCached: Object.keys(playerById).length,
+    rostersCached: Object.keys(getProvider().getRosterData()).length,
+    playersCached: Object.keys(getProvider().getPlayerIndex()).length,
   });
 });
 

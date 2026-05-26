@@ -1,5 +1,11 @@
 const { GAME_MINUTES, WNBA_LG } = require('../constants/leagueAverages');
-const { ESPN_WEB, fetchGameSummary, fetchTeamStats, fetchTeamPtsAllowed, getTeams } = require('./espnClient');
+const { ESPN_WEB } = require('./espnClient');
+const { getProvider } = require('../providers');
+// Source access via the active provider; thin locals keep call sites below unchanged.
+const getTeams            = (...a) => getProvider().getTeams(...a);
+const fetchTeamStats      = (...a) => getProvider().getTeamStats(...a);
+const fetchTeamPtsAllowed = (...a) => getProvider().getTeamPointsAllowed(...a);
+const fetchGameSummary    = (...a) => getProvider().getGameSummary(...a);
 const { computeBasicRatioStats, computePER, computeWinShares } = require('./statFormulas');
 const { PBP_OC_KEYS, computeOnCourtStats, extractBoxscoreTeamStats } = require('./pbpExtractor');
 const { getCached, writeCache } = require('./teamSeasonCache');
