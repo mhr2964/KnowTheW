@@ -4,10 +4,24 @@
 // schemas mirroring these get added at the provider boundary in M7 to catch silent source drift.
 //
 // As later milestones absorb the leaky boundaries, their shapes get added here:
-//   - GameLogResponse / GameLogColumn  (M4)
 //   - GameSummary / OnCourtStats       (M5)
 //   - LeagueStatLine / PercentileEntry (M6)
 //   - STAT_COLUMNS column metadata      (client-decoupling milestone)
+
+/**
+ * @typedef {Object} GameLogColumn
+ * @property {string} key    Stat identifier (also the key under each game's `stats`).
+ * @property {string} label  Display label, e.g. "PTS".
+ * @property {'pct'|'num'} kind  'pct' values are 0-100 (client renders as a 3-dp fraction).
+ */
+
+/**
+ * @typedef {Object} GameLogResponse
+ * @property {GameLogColumn[]} columns  Render order + presentation metadata for the stat columns.
+ * @property {Array<{date:string, opponent:string, atVs:'vs'|'@', result:string,
+ *   teamScore:number, oppScore:number, stats:Object<string,*>}>} games  Sorted ascending by date;
+ *   each game's `stats` is keyed by column key (no positional arrays).
+ */
 
 /**
  * @typedef {Object} Team

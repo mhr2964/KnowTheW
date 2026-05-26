@@ -12,6 +12,7 @@
 
 const espn = require('../../lib/espnClient');
 const playerStats = require('./playerStats');
+const gamelog = require('./gamelog');
 const { SportsDataProvider } = require('../SportsDataProvider');
 
 class EspnProvider extends SportsDataProvider {
@@ -37,6 +38,7 @@ class EspnProvider extends SportsDataProvider {
   getPlayerBasics(playerId) { return playerStats.getPlayerBasics(playerId); }
   getRetiredPlayer(playerId) { return playerStats.getRetiredPlayer(playerId); }
   getPlayerSeasonStats(playerId) { return playerStats.getPlayerSeasonStats(playerId); }
+  getPlayerGameLog(playerId, season) { return gamelog.getPlayerGameLog(playerId, season); }
 
   // --- Shared-state accessors (replace direct espnClient internal imports) ---
   /** @param {string|number} id */

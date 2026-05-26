@@ -61,6 +61,8 @@ class SportsDataProvider {
   getRetiredPlayer() { return this._notImplemented('getRetiredPlayer'); }
   /** getPlayerSeasonStats(playerId) → { regData, postData } season-stats payloads. */
   getPlayerSeasonStats() { return this._notImplemented('getPlayerSeasonStats'); }
+  /** getPlayerGameLog(playerId, season) → { columns:[{key,label,kind}], games:[...] } | null. */
+  getPlayerGameLog() { return this._notImplemented('getPlayerGameLog'); }
 
   // --- In-memory active-player index accessors ---
   // NOTE: these expose ESPN's startup-prefetch caches (active rosters + a player lookup). They are a

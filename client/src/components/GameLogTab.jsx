@@ -2,23 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import HeaderTooltip from './HeaderTooltip';
 import { STAT_DEFINITIONS } from '../lib/statDefinitions';
 
-const GAMELOG_LABELS = {
-  minutes: 'MP', points: 'PTS', totalRebounds: 'REB',
-  assists: 'AST', steals: 'STL', blocks: 'BLK', turnovers: 'TOV',
-  'fieldGoalsMade-fieldGoalsAttempted': 'FG',
-  fieldGoalPct: 'FG%',
-  'threePointFieldGoalsMade-threePointFieldGoalsAttempted': '3P',
-  threePointPct: '3P%',
-  'freeThrowsMade-freeThrowsAttempted': 'FT',
-  freeThrowPct: 'FT%',
-  fouls: 'PF',
-};
-const GAMELOG_PCT = new Set(['fieldGoalPct', 'threePointPct', 'freeThrowPct']);
 const GL_PAGE_SIZES = [10, 25, 50];
 
-function fmtGame(name, val) {
+// Server supplies column metadata ({key,label,kind}); the client just formats by kind.
+// 'pct' values are 0-100 and render as a 3-dp fraction (60.0 -> ".600").
+function fmtGame(kind, val) {
   if (val === null || val === undefined || val === '') return '—';
-  if (GAMELOG_PCT.has(name)) {
+  if (kind === 'pct') {
     const n = parseFloat(val);
     if (isNaN(n)) return '—';
     return (n / 100).toFixed(3).replace(/^0\./, '.');
@@ -27,8 +17,8 @@ function fmtGame(name, val) {
 }
 
 function GameLogTable({ log, games }) {
-  if (!log?.names?.length || !games?.length) return <p className="stats-na">No games logged yet.</p>;
-  const { names } = log;
+  if (!log?.columns?.length || !games?.length) return <p className="stats-na">No games logged yet.</p>;
+  const { columns } = log;
   return (
     <div className="bref-wrap">
       <table className="bref-table">
@@ -37,9 +27,9 @@ function GameLogTable({ log, games }) {
             <th>Date</th>
             <th>Opp</th>
             <th>Result</th>
-            {names.map(n => (
-              <th key={n}>
-                <HeaderTooltip label={GAMELOG_LABELS[n] ?? n} definition={STAT_DEFINITIONS[n]} />
+            {columns.map(col => (
+              <th key={col.key}>
+                <HeaderTooltip label={col.label} definition={STAT_DEFINITIONS[col.key]} />
               </th>
             ))}
           </tr>
@@ -55,8 +45,8 @@ function GameLogTable({ log, games }) {
                 <td className="td-l">{dateStr}</td>
                 <td className="td-l">{oppStr}</td>
                 <td className={`td-l gl-${g.result === 'W' ? 'win' : 'loss'}`}>{resultStr}</td>
-                {g.stats.map((val, si) => (
-                  <td key={si}>{fmtGame(names[si], val)}</td>
+                {columns.map(col => (
+                  <td key={col.key}>{fmtGame(col.kind, g.stats[col.key])}</td>
                 ))}
               </tr>
             );
