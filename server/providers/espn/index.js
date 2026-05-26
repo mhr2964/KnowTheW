@@ -14,6 +14,7 @@ const espn = require('../../lib/espnClient');
 const playerStats = require('./playerStats');
 const gamelog = require('./gamelog');
 const gameSummary = require('./gameSummary');
+const leagueStats = require('./leagueStats');
 const { SportsDataProvider } = require('../SportsDataProvider');
 
 class EspnProvider extends SportsDataProvider {
@@ -41,6 +42,12 @@ class EspnProvider extends SportsDataProvider {
   getPlayerGameLog(playerId, season) { return gamelog.getPlayerGameLog(playerId, season); }
   getGameLogEvents(playerId, season, seasontype) { return gamelog.getGameLogEvents(playerId, season, seasontype); }
   getGamePbpStats(eventId, playerId) { return gameSummary.getGamePbpStats(eventId, playerId); }
+
+  // --- League-wide stats (percentile system) ---
+  getLeagueStatLines(season, mode) { return leagueStats.getLeagueStatLines(season, mode); }
+  getLeagueReboundFoulStats(season) { return leagueStats.getLeagueReboundFoulStats(season); }
+  getPlayerSeasonAverages(playerId) { return leagueStats.getPlayerSeasonAverages(playerId); }
+  getLeaguePlayerIndex(seasons) { return leagueStats.getLeaguePlayerIndex(seasons); }
 
   // --- Active players (source-neutral list/lookup of the current player pool) ---
   // ESPN serves these from its startup-prefetch caches; that's an implementation detail.

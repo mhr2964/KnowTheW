@@ -66,6 +66,16 @@ class SportsDataProvider {
   /** getGamePbpStats(eventId, playerId) → {fetched, onCourt, boxscore} (raw summary stays in provider). */
   getGamePbpStats() { return this._notImplemented('getGamePbpStats'); }
 
+  // --- League-wide stats (percentile system) ---
+  /** getLeagueStatLines(season, mode) → normalized {pos, PTS, ...} entries for qualified players. */
+  getLeagueStatLines() { return this._notImplemented('getLeagueStatLines'); }
+  /** getLeagueReboundFoulStats(season) → [{pos, gp, mpg, OREB, DREB, PF}] for distribution enrichment. */
+  getLeagueReboundFoulStats() { return this._notImplemented('getLeagueReboundFoulStats'); }
+  /** getPlayerSeasonAverages(playerId) → { pos, statsByModeBySeason: {[year]:{PerGame,Totals,Per36}} } | null. */
+  getPlayerSeasonAverages() { return this._notImplemented('getPlayerSeasonAverages'); }
+  /** getLeaguePlayerIndex(seasons) → deduped [{id, name, position, headshot}] for the search index. */
+  getLeaguePlayerIndex() { return this._notImplemented('getLeaguePlayerIndex'); }
+
   // --- Active players (source-neutral: list/look up the current player pool) ---
   /** getActivePlayers() → import('./types').RosterPlayer[] for the current pool (active-player search). */
   getActivePlayers() { return this._notImplemented('getActivePlayers'); }
