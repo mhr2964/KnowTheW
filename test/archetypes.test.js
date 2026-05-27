@@ -205,6 +205,19 @@ test('buildDescriptor — a named prototype with no >=65 dim still names its top
   );
 });
 
+test('buildDescriptor — suppresses position-expected limitations', () => {
+  // A big with low playmaking shouldn't read "isn't a primary creator" (expected for a big) — it
+  // falls to the next real limitation (shooting 26).
+  const big = dimsOf({ scoring: 80, rebounding: 85, defense: 70, shooting: 26, playmaking: 10 });
+  const d1 = buildDescriptor(big, { archetype: { key: 'interior-anchor' } }, 'C');
+  assert.ok(!d1.includes('primary creator'), d1);
+  assert.ok(d1.includes('rarely shoots'), d1);
+  // A guard with low rebounding shouldn't read "doesn't crash the glass" (expected for a guard).
+  const guard = dimsOf({ scoring: 80, shooting: 75, playmaking: 70, defense: 55, rebounding: 12 });
+  const d2 = buildDescriptor(guard, { archetype: { key: 'combo-guard' } }, 'G');
+  assert.ok(!d2.includes('crash the glass'), d2);
+});
+
 test('confidenceFor — tier boundaries', () => {
   assert.strictEqual(confidenceFor({ totalMinutes: 3000, seasonsCovered: 3 }), 'high');
   assert.strictEqual(confidenceFor({ totalMinutes: 3000, seasonsCovered: 2 }), 'medium');

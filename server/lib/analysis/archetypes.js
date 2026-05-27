@@ -251,6 +251,11 @@ const LIMIT_PHRASE = {
   defense: 'low defensive activity',
 };
 const LIMIT_MAX = 28;     // a dimension at/below this is a genuine, statable limitation
+// Position-EXPECTED lows are suppressed as limitations — flagging "a center isn't a primary creator"
+// or "a guard doesn't crash the glass" states the obvious and reads as a blanket weakness. We only
+// surface limitations that are notable for the player's position.
+const EXPECTED_LOW_GUARD = new Set(['rebounding']);
+const EXPECTED_LOW_BIG = new Set(['playmaking']);
 
 function joinList(items) {
   if (items.length <= 1) return items[0] ?? '';
@@ -267,9 +272,10 @@ function tierWord(v) {
  * STRONG_DIM threshold the archetype fallback uses, so the two can't contradict.
  * @param {Array<{key:string,value:number|null}>} dimensions  buildDimensions() output
  * @param {{archetype:{key:string}|null}} assignment  the assignArchetype() result
+ * @param {string} [pos]  position abbreviation (G/F/C) — gates position-expected limitations
  * @returns {string}
  */
-function buildDescriptor(dimensions, assignment) {
+function buildDescriptor(dimensions, assignment, pos = '') {
   const archetype = assignment?.archetype;
   if (!archetype) return '';
 
@@ -298,10 +304,11 @@ function buildDescriptor(dimensions, assignment) {
   strengths = strengths.slice(0, 3);
 
   const lead = `${tierWord(strengths[0].value)} ${joinList(strengths.map(d => STRENGTH_PHRASE[d.key]))}`;
-  const limit = byStrong[byStrong.length - 1];
-  if (limit && limit.value <= LIMIT_MAX && !strengths.includes(limit)) {
-    return `${lead}, but ${LIMIT_PHRASE[limit.key]}.`;
-  }
+  // Lowest genuinely-low dimension that is NOT a strength and NOT position-expected.
+  const expected = /G/i.test(String(pos)) ? EXPECTED_LOW_GUARD : EXPECTED_LOW_BIG;
+  const limit = [...byStrong].reverse()
+    .find(d => d.value <= LIMIT_MAX && !strengths.includes(d) && !expected.has(d.key));
+  if (limit) return `${lead}, but ${LIMIT_PHRASE[limit.key]}.`;
   return `${lead}.`;
 }
 
