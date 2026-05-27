@@ -15,6 +15,7 @@ const {
   buildFingerprint,
   fingerprintDistance,
   buildDimensions,
+  normalizeAstTo,
 } = require('../server/lib/analysis/playerFingerprint');
 
 // A season percentile object with every axis populated to distinct values, so a wrong stat/mode
@@ -159,4 +160,40 @@ test('buildDimensions — skips null members; all-null dimension is null', () =>
   const byKey = Object.fromEntries(dims.map(d => [d.key, d.value]));
   assert.strictEqual(byKey.rebounding, 70);  // averages the one non-null member
   assert.strictEqual(byKey.scoring, null);   // no scoring axes present at all
+});
+
+test('buildDimensions — Playmaking blends assist volume with AST/TO quality when provided', () => {
+  const pm = (dims) => dims.find(d => d.key === 'playmaking').value;
+  // 0.6*80 (volume) + 0.4*90 (quality) = 84
+  assert.strictEqual(pm(buildDimensions({ playmaking: 80 }, { playmakingQuality: 90 })), 84);
+  // No advanced signal -> falls back to the assist-volume axis alone.
+  assert.strictEqual(pm(buildDimensions({ playmaking: 80 })), 80);
+});
+
+test('normalizeAstTo — maps AST/TO to 0-100 on the fixed scale, clamped', () => {
+  assert.strictEqual(normalizeAstTo(0.8), 0);     // low anchor
+  assert.strictEqual(normalizeAstTo(2.8), 100);   // high anchor
+  assert.strictEqual(normalizeAstTo(1.8), 50);    // midpoint
+  assert.strictEqual(normalizeAstTo(0.4), 0);     // clamp low
+  assert.strictEqual(normalizeAstTo(4.0), 100);   // clamp high
+  assert.strictEqual(normalizeAstTo(null), null);
+  assert.strictEqual(normalizeAstTo(Infinity), null);
+});
+
+test('buildFingerprint — computes career AST/TO + playmakingQuality from season totals', () => {
+  const result = buildFingerprint({
+    percentiles: { 2024: FULL_SEASON },
+    seasonAverages: { statsByModeBySeason: { 2024: { Totals: { MIN: 800, AST: 200, TOV: 80 } } } },
+  });
+  assert.strictEqual(result.advanced.astTo, 2.5);             // 200 / 80
+  assert.strictEqual(result.advanced.playmakingQuality, 85);  // (2.5-0.8)/2.0*100
+});
+
+test('buildFingerprint — zero turnovers leaves AST/TO + quality null (no divide-by-zero)', () => {
+  const result = buildFingerprint({
+    percentiles: { 2024: FULL_SEASON },
+    seasonAverages: { statsByModeBySeason: { 2024: { Totals: { MIN: 800, AST: 200, TOV: 0 } } } },
+  });
+  assert.strictEqual(result.advanced.astTo, null);
+  assert.strictEqual(result.advanced.playmakingQuality, null);
 });

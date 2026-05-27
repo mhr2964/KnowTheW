@@ -57,11 +57,14 @@ const AXIS_KEYS = AXES.map(a => a.key);
 //   - Defense = `max` of steals/rim-protection. They're positionally exclusive (guards steal, bigs
 //     block); averaging makes every specialist look merely average, so the dimension takes the
 //     player's dominant defensive tool.
-// `agg` defaults to 'mean'.
+// `agg` defaults to 'mean'. Playmaking additionally blends in assist-control quality (see
+// PLAYMAKING_VOLUME_WEIGHT / normalizeAstTo below and buildDimensions).
+const PLAYMAKING_VOLUME_WEIGHT = 0.6;  // 60% assist volume / 40% AST-to-TO control
 const DIMENSIONS = [
   { key: 'scoring',    label: 'Scoring',    axes: ['scoringVolume', 'finishing', 'rimPressure'] },
   { key: 'shooting',   label: 'Shooting',   axes: ['threeVolume', 'threeAccuracy', 'ftShooting'] },
-  { key: 'playmaking', label: 'Playmaking', axes: ['playmaking'] },
+  { key: 'playmaking', label: 'Playmaking', axes: ['playmaking'],
+    blend: { quality: 'playmakingQuality', volumeWeight: PLAYMAKING_VOLUME_WEIGHT } },
   { key: 'rebounding', label: 'Rebounding', axes: ['offRebounding', 'defRebounding'] },
   { key: 'defense',    label: 'Defense',    axes: ['steals', 'rimProtection'], agg: 'max' },
   { key: 'activity',   label: 'Activity',   axes: ['workload'] },
@@ -70,10 +73,14 @@ const DIMENSIONS = [
 /**
  * Collapse a career axis vector into the 6 composite play dimensions (radar spokes).
  * @param {Object<string, number|null>} axes  the `axes` field of a fingerprint
+ * @param {Object<string, number|null>} [advanced]  advanced signals (e.g. playmakingQuality) used by
+ *   dimensions with a `blend`; when absent, those dimensions fall back to their axis aggregate.
  * @returns {Array<{key:string, label:string, value:number|null}>} in DIMENSIONS order; value is the
- *   rounded aggregate (mean, or max for `agg:'max'`) of non-null member axes, or null if none.
+ *   rounded aggregate (mean, or max for `agg:'max'`) of non-null member axes — then, for a `blend`
+ *   dimension with its quality signal present, a weighted mix of that aggregate (volume) and the
+ *   signal (quality). null if no member axis is present.
  */
-function buildDimensions(axes) {
+function buildDimensions(axes, advanced = {}) {
   return DIMENSIONS.map(dim => {
     const vals = dim.axes
       .map(k => axes?.[k])
@@ -84,6 +91,14 @@ function buildDimensions(axes) {
         ? Math.max(...vals)
         : Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
     }
+    // Blend in an advanced quality signal (e.g. playmaking: assist volume + AST/TO control).
+    if (dim.blend && typeof value === 'number') {
+      const quality = advanced?.[dim.blend.quality];
+      if (typeof quality === 'number') {
+        const w = dim.blend.volumeWeight;
+        value = Math.round(w * value + (1 - w) * quality);
+      }
+    }
     return { key: dim.key, label: dim.label, value };
   });
 }
@@ -92,6 +107,21 @@ function buildDimensions(axes) {
 // season below 10 GP / 10 MPG before it ever reaches the percentile pipeline), so this floor only
 // guards against a career too thin to characterize — a handful of qualifying minutes total.
 const MIN_CAREER_MINUTES = 500;
+
+// Playmaking blends assist VOLUME (the era-normalized axis) with assist CONTROL (career assist-to-
+// turnover ratio). Raw turnover rate alone unfairly punishes high-usage creators (their turnovers
+// are the cost of their assists); AST/TO credits the assists, so an elite-volume passer who is also
+// efficient reads as elite even with a high raw turnover count. AST/TO is mapped 0-100 on a fixed,
+// era-stable scale (~0.8 → 0, ~2.8 → 100) — a later refinement could percentile it like the axes.
+const AST_TO_LO = 0.8;
+const AST_TO_HI = 2.8;
+
+/** Map a career assist-to-turnover ratio to a 0-100 quality score (clamped), or null if unknown. */
+function normalizeAstTo(astTo) {
+  if (typeof astTo !== 'number' || !Number.isFinite(astTo)) return null;
+  const pct = ((astTo - AST_TO_LO) / (AST_TO_HI - AST_TO_LO)) * 100;
+  return Math.round(Math.max(0, Math.min(100, pct)));
+}
 
 /**
  * Pull each axis from the right mode's percentile vector for a single season.
@@ -148,6 +178,8 @@ function buildFingerprint({ percentiles, seasonAverages } = {}) {
   const totalsBySeason = seasonAverages.statsByModeBySeason ?? {};
   const seasonFps = [];
   let totalMinutes = 0;
+  let careerAst = 0;
+  let careerTov = 0;
 
   for (const season of Object.keys(percentiles)) {
     // Weight by actual minutes that season; without a minutes figure we can't weight it, so skip.
@@ -155,14 +187,21 @@ function buildFingerprint({ percentiles, seasonAverages } = {}) {
     if (typeof minutes !== 'number' || minutes <= 0) continue;
     seasonFps.push({ season, minutes, fingerprint: buildSeasonFingerprint(percentiles[season]) });
     totalMinutes += minutes;
+    // Accumulate raw season totals for career AST/TO (the advanced playmaking-control signal).
+    const tot = totalsBySeason[season]?.Totals;
+    if (typeof tot?.AST === 'number') careerAst += tot.AST;
+    if (typeof tot?.TOV === 'number') careerTov += tot.TOV;
   }
 
   if (!seasonFps.length || totalMinutes < MIN_CAREER_MINUTES) {
     return { insufficient: true, reason: 'sample', totalMinutes, seasonsCovered: seasonFps.length };
   }
 
+  const astTo = careerTov > 0 ? careerAst / careerTov : null;
+
   return {
     axes: aggregateFingerprint(seasonFps),
+    advanced: { astTo, playmakingQuality: normalizeAstTo(astTo) },
     seasonsCovered: seasonFps.length,
     totalMinutes,
     perSeason: seasonFps.map(s => ({ season: s.season, minutes: s.minutes, axes: s.fingerprint })),
@@ -219,6 +258,7 @@ module.exports = {
   DIMENSIONS,
   MIN_CAREER_MINUTES,
   buildDimensions,
+  normalizeAstTo,
   buildSeasonFingerprint,
   aggregateFingerprint,
   buildFingerprint,

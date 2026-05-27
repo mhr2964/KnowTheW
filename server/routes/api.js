@@ -651,7 +651,7 @@ router.get('/players/:id/archetype', async (req, res) => {
     const axes = fingerprint.axes
       ? AXES.map(a => ({ key: a.key, label: a.label, value: fingerprint.axes[a.key] }))
       : null;
-    const dimensions = fingerprint.axes ? buildDimensions(fingerprint.axes) : null;
+    const dimensions = fingerprint.axes ? buildDimensions(fingerprint.axes, fingerprint.advanced) : null;
     const descriptor = dimensions ? buildDescriptor(dimensions, assignment.archetype) : null;
     res.json({
       ...assignment,
