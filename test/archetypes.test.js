@@ -116,6 +116,16 @@ test('assignArchetype — position gates out cross-position prototypes', () => {
   assert.notStrictEqual(asGuard.archetype.key, 'stretch-big');
 });
 
+test('assignArchetype — rejects a prototype when the top dimension contradicts its theme', () => {
+  // Axes match Slashing Creator, but the dimensions say this player is rebounding-dominant
+  // (the Angel Reese case): a rebounder shouldn't read as a Slashing Creator.
+  const axes = axesWith(45, { scoringVolume: 82, rimPressure: 82, playmaking: 80, threeVolume: 18 });
+  const dims = dimsOf({ scoring: 60, rebounding: 95, defense: 66 });
+  const res = assignArchetype(fp(axes, { pos: 'F' }), dims);
+  assert.notStrictEqual(res.archetype.key, 'slashing-creator');
+  assert.strictEqual(res.fallback, true);
+});
+
 test('assignArchetype — Point Forward for a playmaking + rebounding forward (the AT shape)', () => {
   const res = assignArchetype(fp(axesWith(45, {
     playmaking: 89, defRebounding: 72, steals: 84, scoringVolume: 60, rimPressure: 82, threeVolume: 9,

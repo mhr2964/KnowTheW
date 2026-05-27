@@ -86,6 +86,26 @@ const STRONG_DIM = 65;           // a play DIMENSION at/above this is a genuine 
 const ELITE_AXIS = 85;           // standout AXES surfaced as trait modifiers (detail highlights).
 const MAX_MODIFIERS = 2;
 
+// Each prototype's PRIMARY play dimension — what it's fundamentally about. A prototype match is
+// rejected if the player's top dimension beats this primary by >= PRIMARY_GAP, i.e. the label would
+// misrepresent them (a rebounding-dominant forward isn't a "Slashing Creator"; a defense-first wing
+// whose shooting is weak isn't a "3-and-D Wing"). Rejected players fall to the dimension fallback.
+const PROTOTYPE_PRIMARY = {
+  'three-level-scorer': 'scoring',
+  'floor-general': 'playmaking',
+  'combo-guard': 'scoring',
+  'three-and-d-wing': 'shooting',
+  'sharpshooter': 'shooting',
+  'slashing-creator': 'scoring',
+  'connector': 'playmaking',
+  'two-way-forward': 'scoring',
+  'point-forward': 'playmaking',
+  'interior-anchor': 'rebounding',
+  'stretch-big': 'shooting',
+  'glass-cleaning-big': 'rebounding',
+};
+const PRIMARY_GAP = 25;
+
 const FALLBACK_VERSATILE = { key: 'versatile', name: 'Versatile' };
 const FALLBACK_ROLE = { key: 'role-player', name: 'Role Player' };
 // When no prototype fits and exactly ONE dimension is strong, the player is a specialist named by
@@ -165,17 +185,30 @@ function assignArchetype(fingerprint, dimensions) {
 
   const best = ranked[0] ?? null;
 
-  if (best && best.distance <= ASSIGN_MAX_DISTANCE) {
-    const runnerUp = ranked[1]
-      ? { key: ranked[1].proto.key, name: ranked[1].proto.name, distance: round1(ranked[1].distance) }
-      : null;
+  // Dominant-dimension consistency: skip a prototype whose primary theme is far below what the
+  // player is actually best at, so the nearest *credible* prototype wins (not just the nearest).
+  const dimVal = (k) => {
+    const d = (dimensions ?? []).find(x => x.key === k);
+    return typeof d?.value === 'number' ? d.value : null;
+  };
+  const topDim = Math.max(0, ...(dimensions ?? []).map(d => (typeof d.value === 'number' ? d.value : 0)));
+  const consistent = (proto) => {
+    const primary = PROTOTYPE_PRIMARY[proto.key];
+    if (!primary) return true;
+    return topDim - (dimVal(primary) ?? 0) < PRIMARY_GAP;
+  };
+
+  const matchIdx = ranked.findIndex(r => r.distance <= ASSIGN_MAX_DISTANCE && consistent(r.proto));
+  if (matchIdx !== -1) {
+    const m = ranked[matchIdx];
+    const ru = ranked[matchIdx + 1];
     return {
-      archetype: { key: best.proto.key, name: best.proto.name },
+      archetype: { key: m.proto.key, name: m.proto.name },
       fallback: false,
       confidence,
-      distance: round1(best.distance),
+      distance: round1(m.distance),
       modifiers,
-      runnerUp,
+      runnerUp: ru ? { key: ru.proto.key, name: ru.proto.name, distance: round1(ru.distance) } : null,
     };
   }
 
