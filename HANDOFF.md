@@ -4,7 +4,7 @@ Forward-looking handoff for the active work-stream. **Overwrite** each session; 
 
 ```yaml
 last-model: claude-opus-4.7
-last-session: 2026-05-26
+last-session: 2026-05-27
 state: green
 ```
 
@@ -14,13 +14,18 @@ Full plan: `C:/Users/Owner/.claude/plans/groovy-meandering-parasol.md` (refactor
 
 ## Next action
 
-**The 3 features** (build against `getProvider()`, never raw ESPN). Dependency order: build the shared `server/lib/analysis/playerFingerprint.js` backbone FIRST, then it powers both Archetype Badges and Cross-Era Similarity; On/Off-Court Impact is independent and uses `getGamePbpStats`.
+**Player Archetype Badges is DONE** (5 commits `1bb2e9e`→`8b5812b`, not pushed). Remaining of the 3 features, in order:
 
-- **Player Archetype Badges** is the user's headline ask. Critical design constraints (from the user's critique of the Reddit roles paper): readable archetype names, no blanket weaknesses a player doesn't actually have, no forcing dissimilar players into one bucket. Method = continuous 13-axis fingerprint + prototype-anchored assignment + trait modifiers + "versatile/all-around" fallback + sample gating; hover card shows the player's OWN fingerprint so the label is visibly justified. Accuracy gate: a known-player truth set (incl. hard cases like Alyssa Thomas) must pass before ship. See the plan file Part 2 Feature A for the full spec.
-- **Cross-Era Similarity** ("players like X") reuses the fingerprint, era-normalized; pure distance math.
-- **On/Off-Court Impact** = team net rating on vs off; PBP data already in `getGamePbpStats`.
+- **Cross-Era Similarity** ("players like X") — NEXT. Reuses the now-built fingerprint: `fingerprintDistance(a, b)` from `server/lib/analysis/playerFingerprint.js` already gives the era-normalized RMS distance / `similarity` 0-100. Build = rank a candidate pool by distance to the target's career fingerprint (pure math; the hard part is choosing/iterating the candidate set, likely the player index). Era-normalization is already free (percentiles are vs-league).
+- **On/Off-Court Impact** = team net rating on vs off; PBP data already in `getGamePbpStats`. Independent of the fingerprint.
 
-Run `>>think` before building the fingerprint module (new module, multi-file blast radius, backs two features).
+### Player Archetype Badges — what shipped
+- `playerFingerprint.js` — 13 continuous era-normalized axes (per-36 volume + efficiency, sourced from the existing percentile pipeline so era-normalization is free), minutes-weighted career aggregation, sample gating (500 career min), RMS distance. Pure core split from the async `getPlayerFingerprint(playerId)` assembler.
+- `archetypes.js` — 12 prototypes (sparse anchors on defining axes), **position-gated** (G/F/C — a guard can't be a Big), nearest-within-`ASSIGN_MAX_DISTANCE=25` assignment, tiered fallback (insufficient → no badge; multi-strength → Versatile; flat → Role Player), strengths-only trait modifiers, confidence tier. `ASSIGN_MAX_DISTANCE` is the primary tuning knob.
+- `GET /api/players/:id/archetype` → assignment + the player's own ordered axes.
+- `ArchetypeBadge.jsx` in the player hero — pill + hover card with the 13-axis bars; elite traits gold-highlighted, runner-up shown.
+- **Truth set (live, 7 players):** A'ja Wilson → Interior Anchor, Ionescu → Combo Guard, Alyssa Thomas → Point Forward (the hard case, d7.8, no false weakness), Plum → Three-Level Scorer, Stewart → Two-Way Forward. All sensible.
+- **Open calibration (minor, not bugs):** Griner → Glass-Cleaning Big edges Interior Anchor by a hair; Bonner → Stretch Big at a loose d17.4. Revisit ASSIGN_MAX_DISTANCE / anchors after seeing more players. The known-player set should become a committed test once it can run without live ESPN.
 
 ### Done since last handoff (M7 + M9, pushed)
 - **M7 (`9bcc966`)** — Zod boundary validation. `server/providers/schemas.js` (schemas mirroring types.js typedefs) + `server/providers/validation.js` (`withValidation` Decorator/Proxy over a provider). Wired in `providers/espn/index.js` (`module.exports = withValidation(new EspnProvider())`). Throws `ProviderShapeError` in dev/test, logs + passes through in prod. `test/validation.test.js` covers it. Only normalized returns are validated (the `*Raw` / season-stats / numeric league maps are intentionally unvalidated — add to `SCHEMA_BY_METHOD` when normalized).
