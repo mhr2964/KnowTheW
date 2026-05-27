@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import FingerprintRadar from './FingerprintRadar';
+import ArchetypeBadge from './ArchetypeBadge';
 import { initialsOf } from '../lib/initials';
 
 // Cross-Era Similarity surface: a ranked list of the most alike players by era-normalized, absolute
@@ -98,22 +99,30 @@ export default function SimilarPlayersSection({ playerId, playerName }) {
           const confLabel = conf ? conf.charAt(0).toUpperCase() + conf.slice(1) : '';
           return (
             <li key={p.id} className="similar-row">
-              <button
-                type="button"
+              {/* Row is a div-button (not <button>) so the hoverable ArchetypeBadge — itself a
+                  button — can nest beside the name without invalid button-in-button markup; the
+                  badge stops its own clicks from bubbling here, so opening the card never expands
+                  the compare card. */}
+              <div
+                role="button"
+                tabIndex={0}
                 className={`search-player-row-btn similar-row-btn${open ? ' is-open' : ''}${conf === 'loose' ? ' is-loose' : ''}`}
                 aria-expanded={open}
                 onClick={() => setPinnedId(open ? null : p.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPinnedId(open ? null : p.id); }
+                }}
               >
                 <PlayerImg src={p.headshot} name={p.name} className="similar-row-img" />
                 <span className="similar-row-main">
                   <span className="similar-row-name">{p.name ?? 'Unknown'}</span>
-                  {p.archetype && <span className="similar-pill similar-row-pill">{p.archetype}</span>}
+                  {p.archetype && <ArchetypeBadge playerId={p.id} name={p.archetype} confidence={p.archetypeConfidence} />}
                 </span>
                 <span className="similar-row-stat">
                   {p.pos ? `${p.pos} · ` : ''}{p.similarity}%
                   {confLabel && <span className={`similar-conf-tag conf-${conf}`}>{confLabel}</span>}
                 </span>
-              </button>
+              </div>
 
               {open && (
                 <div className="similar-card" role="region" aria-label={`How ${p.name} compares`}>

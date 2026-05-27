@@ -16,6 +16,9 @@
 'use strict';
 
 const { weightedFingerprintDistance, buildDimensions } = require('./playerFingerprint');
+// Aliased: this module already has its own confidenceFor (similarity tier); this one is the archetype
+// sample-size tier (archetypes.js, pure module) used to seed the row badge's dot.
+const { confidenceFor: archetypeConfidenceFor } = require('./archetypes');
 
 const POS_RANK = { G: 0, F: 1, C: 2 };
 
@@ -138,6 +141,10 @@ function rankSimilar(target, candidates = [], { limit = SIMILAR_LIMIT, minAxes =
       headshot: c.headshot ?? null,   // real headshot URL (null → client renders initials, no 404)
       pos: c.pos ?? null,
       archetype: c.archetype ?? null, // position-pooled label (matches the player's own badge)
+      // Archetype confidence (sample-size tier) so the row badge shows its dot without a hover fetch.
+      archetypeConfidence: c.archetype
+        ? archetypeConfidenceFor({ totalMinutes: c.totalMinutes, seasonsCovered: c.seasonsCovered })
+        : null,
       stats: c.stats ?? null,         // career per-game { ppg, rpg, apg, gp }
       similarity,
       distance: Math.round(distance * 10) / 10, // raw fingerprint distance (secondary sort; not shown)

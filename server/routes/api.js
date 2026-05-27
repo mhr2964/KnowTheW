@@ -16,7 +16,7 @@ const { ADV_HEADERS_SRV, buildAdvancedSplit, buildAdvancedCareer,
         computeSeasonPBP, buildPbpSplit }                                = require('../lib/advancedStats');
 const { getPlayerPercentiles, loadFingerprintIndex }                     = require('../lib/percentileClient');
 const { getPlayerFingerprint, AXES, buildDimensions }                    = require('../lib/analysis/playerFingerprint');
-const { assignArchetype, buildDescriptor }                               = require('../lib/analysis/archetypes');
+const { assignArchetype, buildDescriptor, confidenceFor }                = require('../lib/analysis/archetypes');
 const { rankSimilar }                                                    = require('../lib/analysis/similarity');
 const { LEGACY_PLAYERS_BULK, isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyId,
         searchBulkLegacyPlayers, buildBulkLegacyProfile,
@@ -128,6 +128,29 @@ function buildLegacyRosterResponse(team, season, playerIds) {
   return { team, players, season, dataSource: 'legacy-bulk' };
 }
 
+// Tag each player with the archetype label the player page would show, sourced from the precomputed
+// fingerprint cache in ONE Mongo read (vs. a /archetype call per player). Lets the roster render the
+// same hoverable badge; players under the fingerprint sample gate aren't in the cache → no badge.
+// Best-effort: a cache miss/hiccup leaves the roster untouched rather than failing the request.
+async function attachArchetypeNames(players) {
+  if (!Array.isArray(players) || players.length === 0) return players;
+  try {
+    const index = await loadFingerprintIndex();
+    // Carry both the label and its confidence (derived from the cached sample size, same rule the
+    // /archetype card uses) so the roster badge can show its confidence dot without a hover fetch.
+    const byId = new Map(index.map(f => [String(f.id), {
+      name: f.archetype,
+      confidence: f.archetype ? confidenceFor({ totalMinutes: f.totalMinutes, seasonsCovered: f.seasonsCovered }) : null,
+    }]));
+    return players.map(p => {
+      const a = byId.get(String(p.id));
+      return { ...p, archetypeName: a?.name ?? null, archetypeConfidence: a?.confidence ?? null };
+    });
+  } catch {
+    return players;
+  }
+}
+
 router.get('/teams/:id/roster', async (req, res) => {
   const rawId = req.params.id;
 
@@ -196,6 +219,7 @@ router.get('/teams/:id/roster', async (req, res) => {
       players = await fetchSeasonRoster(team.id, season, team.name);
     }
 
+    players = await attachArchetypeNames(players);
     res.json({ team, players, season });
   } catch (err) {
     console.error(`teams/${teamId}/roster season=${season}:`, err.message);

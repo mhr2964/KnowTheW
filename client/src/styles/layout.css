@@ -139,12 +139,17 @@
 
 .data-table {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); overflow: hidden; margin-bottom: 2.5rem;
+  border-radius: var(--radius);
+  /* overflow visible (not hidden) so a row's archetype hover card can escape the table; the head and
+     last row carry the corner rounding overflow:hidden used to do (backgrounds clip to their own
+     border-radius, so corners stay clean). */
+  overflow: visible; margin-bottom: 2.5rem;
 }
 .data-table-head {
   display: grid; grid-template-columns: 52px 1fr 60px 60px;
   padding: 0.6rem 1rem; background: var(--surface-2);
   border-bottom: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
   font-size: 0.7rem; font-weight: 700; color: var(--text-muted);
   text-transform: uppercase; letter-spacing: 0.08em;
 }
@@ -153,7 +158,7 @@
   padding: 0.55rem 1rem; align-items: center;
   border-bottom: 1px solid var(--border); font-size: 0.88rem;
 }
-.data-table-row:last-child { border-bottom: none; }
+.data-table-row:last-child { border-bottom: none; border-radius: 0 0 var(--radius) var(--radius); }
 .data-table-row:hover { background: var(--surface-2); }
 .data-table-head > span:not(:last-child),
 .data-table-row > *:not(:last-child) { border-right: 1px solid rgba(255,255,255,0.04); }

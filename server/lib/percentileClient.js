@@ -341,7 +341,9 @@ async function loadFingerprintIndex() {
   return db.collection(FINGERPRINT_COLLECTION)
     .find(
       { season: latestCompletedSeason(), axesVersion: AXES_VERSION, axes: { $ne: null } },
-      { projection: { _id: 0, id: 1, name: 1, headshot: 1, pos: 1, axes: 1, advanced: 1, stats: 1, archetype: 1 } },
+      // totalMinutes/seasonsCovered are projected so read-side callers can derive archetype confidence
+      // (confidenceFor) without a re-seed — same value the /archetype hover card reports.
+      { projection: { _id: 0, id: 1, name: 1, headshot: 1, pos: 1, axes: 1, advanced: 1, stats: 1, archetype: 1, totalMinutes: 1, seasonsCovered: 1 } },
     )
     .toArray();
 }

@@ -334,6 +334,23 @@
   color: var(--text-muted);
 }
 
+/* Compact badge when it sits inside a dense list row (Similar Players rows, roster rows) rather than
+   the player hero — smaller pill, no hero margin. The card keeps its full size. */
+.similar-row-main .archetype-badge,
+.roster-name-cell .archetype-badge { margin: 0; flex-shrink: 0; }
+.similar-row-main .archetype-pill,
+.roster-name-cell .archetype-pill { font-size: 0.68rem; padding: 0.1rem 0.5rem; gap: 0.3rem; }
+.similar-row-main .archetype-conf-dot,
+.roster-name-cell .archetype-conf-dot { width: 6px; height: 6px; }
+/* Name + badge share the roster's name cell. */
+.roster-name-cell { display: inline-flex; align-items: center; gap: 0.5rem; min-width: 0; }
+/* Narrow viewports: drop the in-row badge (matches the old pill behavior; rows get tight and there's
+   no hover on touch). The hero badge and the page-level badges are unaffected. */
+@media (max-width: 560px) {
+  .similar-row-main .archetype-badge,
+  .roster-name-cell .archetype-badge { display: none; }
+}
+
 /* Plain-language playstyle sentence — the at-a-glance read above the radar. */
 .archetype-descriptor {
   margin: 0 0 0.6rem;
@@ -447,14 +464,13 @@
 }
 .similar-row-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.55rem; }
 .similar-row-name { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* Static archetype label pill (matches the player's badge); hidden when the row gets narrow. */
+/* Static archetype label pill — now only inside the opened compare card (the row uses the hoverable
+   ArchetypeBadge instead). */
 .similar-pill {
   font-size: 0.68rem; font-weight: 600; white-space: nowrap;
   color: var(--text-muted); background: var(--surface-2);
   border: 1px solid var(--border); border-radius: 999px; padding: 0.1rem 0.5rem;
 }
-.similar-row-pill { flex-shrink: 0; }
-@media (max-width: 560px) { .similar-row-pill { display: none; } }
 .similar-row-stat {
   display: inline-flex;
   align-items: center;
