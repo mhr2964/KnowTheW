@@ -440,19 +440,21 @@
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
-/* Loose matches: de-emphasize the whole row and the score, and tag it so the weak comp is honest. */
+/* Match-strength tier shown on every row; loose rows are also de-emphasized so weak comps read honestly. */
 .similar-row-btn.is-loose { opacity: 0.6; }
 .similar-row-btn.is-loose .similar-row-stat { color: var(--text-muted); }
 .similar-conf-tag {
   font-size: 0.66rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--text-muted);
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 0.05rem 0.3rem;
 }
+.similar-conf-tag.conf-strong   { color: var(--win); border-color: color-mix(in srgb, var(--win) 45%, transparent); }
+.similar-conf-tag.conf-moderate { color: var(--text); }
+.similar-conf-tag.conf-loose    { color: var(--text-muted); }
 
 .similar-card {
   border: 1px solid var(--accent);

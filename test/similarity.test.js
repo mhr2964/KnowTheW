@@ -10,7 +10,7 @@ const assert = require('node:assert');
 
 const { AXIS_KEYS } = require('../server/lib/analysis/playerFingerprint');
 const {
-  rankSimilar, positionsAdjacent, posRank, confidenceFor, CONF_STRONG, CONF_MODERATE, CROSS_POS_PENALTY,
+  rankSimilar, positionsAdjacent, posRank, spreadSimilarity, confidenceFor, CONF_STRONG, CONF_MODERATE,
 } = require('../server/lib/analysis/similarity');
 
 // Full 13-axis vector at `base`, with per-axis overrides.
@@ -111,13 +111,28 @@ test('rankSimilar — sharedTraits never empty for two modest, overlapping role 
   assert.ok(match.sharedTraits.length > 0, 'modest profiles still get a shared-traits line');
 });
 
-test('rankSimilar — cross-position comps are docked CROSS_POS_PENALTY in the shown similarity', () => {
+test('rankSimilar — sharedTraits fallback fires when every dimension is below the floor', () => {
+  // Deep-bench case: all dims well under TRAIT_PRESENT_FLOOR (35) in both players — the floor filter
+  // is empty, so the fallback names the single closest shared dimension (line is never empty).
+  const target = { id: 'T', pos: 'F', axes: axesWith(20) };
+  const [match] = rankSimilar(target, [c('bench', axesWith(22), 'F')]);
+  assert.strictEqual(match.sharedTraits.length, 1, 'fallback gives exactly one shared dimension');
+});
+
+test('spreadSimilarity — perfect comp reads 100, monotonic, and widens the field', () => {
+  assert.strictEqual(spreadSimilarity(100), 100, 'a perfect match still reads 100');
+  assert.ok(spreadSimilarity(90) > spreadSimilarity(70), 'monotonic');
+  // The compressed raw range is widened: a 20-point raw gap becomes a larger display gap.
+  assert.ok(spreadSimilarity(90) - spreadSimilarity(70) > 90 - 70, 'spread amplifies differences');
+});
+
+test('rankSimilar — cross-position comps read lower than an identical same-position comp', () => {
   const ax = axesWith(50, { scoringVolume: 80 });
   const target = { id: 'T', pos: 'G', axes: ax };
   const res = rankSimilar(target, [c('g', ax, 'G'), c('f', ax, 'F')]); // identical axes, differ only in pos
   const g = res.find(r => r.id === 'g'), f = res.find(r => r.id === 'f');
-  assert.strictEqual(g.similarity, 100, 'identical same-position comp scores 100');
-  assert.strictEqual(f.similarity, 100 - CROSS_POS_PENALTY, 'identical cross-position comp is penalized');
+  assert.strictEqual(g.similarity, 100, 'identical same-position comp reads 100');
+  assert.ok(f.similarity < g.similarity, 'identical cross-position comp is docked below it');
   assert.strictEqual(res[0].id, 'g', 'same position leads');
 });
 

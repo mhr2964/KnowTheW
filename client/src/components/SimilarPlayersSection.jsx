@@ -65,19 +65,20 @@ export default function SimilarPlayersSection({ playerId, playerName }) {
         {data.similar.map(p => {
           const open = pinnedId === p.id;
           const traits = Array.isArray(p.sharedTraits) ? p.sharedTraits : [];
-          const loose = p.confidence === 'loose';
+          const conf = p.confidence; // 'strong' | 'moderate' | 'loose'
+          const confLabel = conf ? conf.charAt(0).toUpperCase() + conf.slice(1) : '';
           return (
             <li key={p.id} className="similar-row">
               <button
                 type="button"
-                className={`search-player-row-btn similar-row-btn${open ? ' is-open' : ''}${loose ? ' is-loose' : ''}`}
+                className={`search-player-row-btn similar-row-btn${open ? ' is-open' : ''}${conf === 'loose' ? ' is-loose' : ''}`}
                 aria-expanded={open}
                 onClick={() => setPinnedId(open ? null : p.id)}
               >
                 <span className="similar-row-name">{p.name ?? 'Unknown'}</span>
                 <span className="similar-row-stat">
-                  {p.pos ? `${p.pos} · ` : ''}{p.similarity}% match
-                  {loose && <span className="similar-conf-tag">loose match</span>}
+                  {p.pos ? `${p.pos} · ` : ''}{p.similarity}%
+                  {confLabel && <span className={`similar-conf-tag conf-${conf}`}>{confLabel}</span>}
                 </span>
               </button>
 

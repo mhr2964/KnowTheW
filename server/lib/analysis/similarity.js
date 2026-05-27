@@ -31,12 +31,18 @@ const MAX_SHARED_TRAITS = 3;    // cap on the "most alike on: …" list
 // position mismatch. An all-around guard whose forward comps were only marginally closer now leads
 // with guards; a true tweener (no strong same-position comp) still surfaces analogues, just lower.
 const CROSS_POS_PENALTY = 7;
-// Confidence tiers on the (signature-weighted) similarity, tuned to the observed per-match
-// distribution (p05 77 / median 84 / p75 86). 'loose' (<79) flags the genuinely weak tails — e.g.
-// a unique player like Alyssa Thomas whose comps bottom out at 73-78 — so they don't masquerade as
-// real matches; 'strong' (>=84) is roughly the top half of displayed comps.
-const CONF_STRONG = 84;
-const CONF_MODERATE = 79;
+// Display spread: the raw signature-weighted similarity is naturally compressed (era-normalized
+// percentiles cluster, so even loose comps sit ~70-92), which makes a weak match read deceptively
+// high. Remap the meaningful range onto a wider, more intuitive 0-100 so a top comp reads ~90 and a
+// weak one ~45. Monotonic ⇒ ranking is unchanged. SIM_SCALE is set so a perfect comp still reads 100
+// ((100-SIM_FLOOR)*SIM_SCALE >= 100).
+const SIM_FLOOR = 56;
+const SIM_SCALE = 2.6;
+// Confidence tiers on the SPREAD (displayed) similarity, so the tier word shown on each row matches
+// the number. Tuned to the spread distribution (all-match p25/p75 ≈ 60/73): 'strong' ≈ top quarter
+// (a genuinely good comp), 'loose' (<55) ≈ the weak tail that shouldn't masquerade as a real match.
+const CONF_STRONG = 73;
+const CONF_MODERATE = 55;
 
 /** Primary-position rank from a position string ('G', 'F', 'C', or 'G-F' → first letter). null if unknown. */
 function posRank(pos) {
@@ -52,7 +58,12 @@ function positionsAdjacent(a, b) {
   return Math.abs(ra - rb) <= 1;
 }
 
-/** Match-strength tier from the similarity score, so the UI can flag loose comps honestly. */
+/** Remap a compressed raw similarity (~56-100) onto a spread, intuitive 0-100 display scale. Monotonic. */
+function spreadSimilarity(raw) {
+  return Math.max(0, Math.min(100, Math.round((raw - SIM_FLOOR) * SIM_SCALE)));
+}
+
+/** Match-strength tier from the (spread) similarity score, so the UI can flag loose comps honestly. */
 function confidenceFor(similarity) {
   if (similarity >= CONF_STRONG) return 'strong';
   if (similarity >= CONF_MODERATE) return 'moderate';
@@ -68,17 +79,22 @@ function confidenceFor(similarity) {
  */
 function sharedTraits(aDims, bDims, floor = TRAIT_PRESENT_FLOOR, max = MAX_SHARED_TRAITS) {
   const bByKey = new Map(bDims.map(d => [d.key, d]));
-  return aDims
+  // Every dimension both players rate (non-null), scored by shared strength = the weaker of the two.
+  const present = aDims
     .map(d => {
       const o = bByKey.get(d.key);
       if (!o || typeof d.value !== 'number' || typeof o.value !== 'number') return null;
-      if (d.value < floor || o.value < floor) return null;
       return { key: d.key, label: d.label, strength: Math.min(d.value, o.value), gap: Math.abs(d.value - o.value) };
     })
     .filter(Boolean)
-    .sort((x, y) => y.strength - x.strength || x.gap - y.gap)
-    .slice(0, max)
-    .map(({ key, label }) => ({ key, label }));
+    .sort((x, y) => y.strength - x.strength || x.gap - y.gap);
+
+  const strong = present.filter(p => p.strength >= floor).slice(0, max);
+  // Fallback so the "Most alike on" line is never empty: if nothing clears the floor (deep-bench
+  // players with no dimension >= 35 in both), name the single closest shared dimension. The
+  // confidence tier still conveys that the overall match is loose.
+  const chosen = strong.length ? strong : present.slice(0, 1);
+  return chosen.map(({ key, label }) => ({ key, label }));
 }
 
 /**
@@ -109,9 +125,11 @@ function rankSimilar(target, candidates = [], { limit = SIMILAR_LIMIT, minAxes =
 
     // Position-adjusted similarity: dock cross-position analogues so a competitive same-position comp
     // leads. posGap is 0 (same pos) or 1 (one-off G↔F / F↔C); unknown position on either side ⇒ 0.
+    // Then spread the compressed raw range onto an intuitive 0-100 for display (monotonic, so the
+    // penalty's ordering is preserved).
     const candRank = posRank(c.pos);
     const posGap = (targetRank !== null && candRank !== null) ? Math.abs(targetRank - candRank) : 0;
-    const similarity = Math.max(0, raw - CROSS_POS_PENALTY * posGap);
+    const similarity = spreadSimilarity(raw - CROSS_POS_PENALTY * posGap);
 
     const dimensions = buildDimensions(c.axes, c.advanced, c.pos);
     scored.push({
@@ -143,6 +161,7 @@ module.exports = {
   CONF_MODERATE,
   posRank,
   positionsAdjacent,
+  spreadSimilarity,
   confidenceFor,
   sharedTraits,
   rankSimilar,
