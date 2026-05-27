@@ -15,6 +15,8 @@ const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats }   = requi
 const { ADV_HEADERS_SRV, buildAdvancedSplit, buildAdvancedCareer,
         computeSeasonPBP, buildPbpSplit }                                = require('../lib/advancedStats');
 const { getPlayerPercentiles }                                           = require('../lib/percentileClient');
+const { getPlayerFingerprint, AXES }                                     = require('../lib/analysis/playerFingerprint');
+const { assignArchetype }                                                = require('../lib/analysis/archetypes');
 const { LEGACY_PLAYERS_BULK, isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyId,
         searchBulkLegacyPlayers, buildBulkLegacyProfile,
         buildBulkLegacyDetailedStats }                                   = require('../constants/legacyPlayerBulk');
@@ -633,6 +635,34 @@ router.get('/players/:id/percentiles', async (req, res) => {
 // 400 — invalid id or mode
 // 200 { empty: true } — mode=playoffs with zero playoff GP
 // 502 — Claude error or shape validation failure
+// GET /api/players/:id/archetype
+//
+// Player Archetype Badge: the nearest prototype (or the Versatile/Role-Player/none fallback) plus
+// the player's OWN 13-axis fingerprint, so the hover card can show why the label was assigned.
+// Always 200 when reachable — a player with too thin a sample returns { archetype: null, reason }
+// (the client shows no badge) rather than a 404, since the player record itself may well exist.
+router.get('/players/:id/archetype', async (req, res) => {
+  try {
+    const fingerprint = await getPlayerFingerprint(req.params.id);
+    const assignment = assignArchetype(fingerprint);
+    // Emit axes in canonical order with labels so the client renders the profile without its own
+    // copy of the axis list (same server-owns-presentation pattern as the gamelog columns).
+    const axes = fingerprint.axes
+      ? AXES.map(a => ({ key: a.key, label: a.label, value: fingerprint.axes[a.key] }))
+      : null;
+    res.json({
+      ...assignment,
+      pos: fingerprint.pos ?? null,
+      axes,
+      seasonsCovered: fingerprint.seasonsCovered ?? 0,
+      totalMinutes: fingerprint.totalMinutes ?? 0,
+    });
+  } catch (err) {
+    console.error('archetype:', err.message);
+    res.status(500).json({ error: 'failed to compute archetype' });
+  }
+});
+
 router.get('/players/:id/graded-report', async (req, res) => {
   // Validate :id — numeric (ESPN), retired synthetic id (e.g. 'cooper-cynthia-1963'), or bulk-legacy
   // BBRef id (e.g. 'staleda01w'). Synthetic ids resolve to BBRef via resolveLegacyId, after which
