@@ -136,23 +136,29 @@ test('fingerprintDistance — no overlap returns nulls', () => {
   assert.deepStrictEqual(res, { distance: null, similarity: null, axesUsed: 0 });
 });
 
-test('buildDimensions — groups into 6 dimensions; mean members, but Defense=max, Playmaking=assists', () => {
+test('buildDimensions — 5 play dimensions (no Activity); Defense position-aware, Playmaking=assists', () => {
   const axes = {
     scoringVolume: 60, finishing: 90, rimPressure: 30,   // scoring  -> mean 60
     threeVolume: 10, threeAccuracy: 20, ftShooting: 60,  // shooting -> mean 30
-    playmaking: 80, ballSecurity: 40,                    // playmaking -> 80 (assists only; TOV ignored)
+    playmaking: 80, ballSecurity: 40,                    // playmaking -> 80 (assists; TOV ignored, no advanced)
     offRebounding: 70, defRebounding: 50,                // rebounding -> mean 60
-    steals: 88, rimProtection: 12,                       // defense -> max 88 (dominant tool)
-    workload: 75,                                        // activity -> 75
+    steals: 88, rimProtection: 12,                       // defense (guard) -> 0.65*88 + 0.35*12 = 61
+    workload: 75,                                        // NOT a dimension anymore (stays a 13-bar axis)
   };
-  assert.deepStrictEqual(buildDimensions(axes), [
+  assert.deepStrictEqual(buildDimensions(axes, {}, 'G'), [
     { key: 'scoring',    label: 'Scoring',    value: 60 },
     { key: 'shooting',   label: 'Shooting',   value: 30 },
     { key: 'playmaking', label: 'Playmaking', value: 80 },
     { key: 'rebounding', label: 'Rebounding', value: 60 },
-    { key: 'defense',    label: 'Defense',    value: 88 },
-    { key: 'activity',   label: 'Activity',   value: 75 },
+    { key: 'defense',    label: 'Defense',    value: 61 },
   ]);
+});
+
+test('buildDimensions — Defense leads with the position\'s tool (guard steals vs big blocks)', () => {
+  const axes = { steals: 88, rimProtection: 12 };
+  const defOf = (pos) => buildDimensions(axes, {}, pos).find(d => d.key === 'defense').value;
+  assert.strictEqual(defOf('G'), 61); // 0.65*88 + 0.35*12
+  assert.strictEqual(defOf('C'), 39); // 0.65*12 + 0.35*88
 });
 
 test('buildDimensions — skips null members; all-null dimension is null', () => {

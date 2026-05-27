@@ -44,7 +44,7 @@ const PROTOTYPES = [
   { key: 'three-level-scorer', name: 'Three-Level Scorer', pos: ['G', 'F'],
     target: { scoringVolume: H, finishing: H, threeAccuracy: H, rimPressure: H } },
   { key: 'floor-general', name: 'Floor General', pos: ['G'],
-    target: { playmaking: H, ballSecurity: H, workload: H, scoringVolume: M } },
+    target: { playmaking: H, scoringVolume: L } },
   { key: 'combo-guard', name: 'Combo Guard', pos: ['G'],
     target: { scoringVolume: H, playmaking: H, threeVolume: H, threeAccuracy: M } },
   { key: 'three-and-d-wing', name: '3-and-D Wing', pos: ['G', 'F'],
@@ -78,16 +78,25 @@ function eligiblePrototypes(pos) {
 }
 
 // Assignment knobs (tunable against the truth set — the whole point of keeping them as named data).
-const ASSIGN_MAX_DISTANCE = 25;  // RMS over a prototype's defining axes; beyond this, no prototype fits.
-                                 // THE primary knob — loose buckets everyone, tight over-uses the
-                                 // Versatile/Role-Player fallback. Tune against the truth set.
-const ELEVATED_AXIS = 65;        // an axis at/above this is a genuine strength.
-const VERSATILE_MIN_ELEVATED = 3; // this many strengths with no prototype fit => Versatile, else Role Player.
-const ELITE_AXIS = 85;           // standout axes surfaced as trait modifiers.
+const ASSIGN_MAX_DISTANCE = 20;  // RMS over a prototype's defining axes; beyond this, no prototype fits.
+                                 // Tightened from 25 so loose mis-fits fall to the dimension-driven
+                                 // fallback (Specialist/Versatile/Role Player) instead of a wrong bucket.
+const STRONG_DIM = 65;           // a play DIMENSION at/above this is a genuine strength. Drives BOTH
+                                 // the fallback ladder and the descriptor, so they can't contradict.
+const ELITE_AXIS = 85;           // standout AXES surfaced as trait modifiers (detail highlights).
 const MAX_MODIFIERS = 2;
 
 const FALLBACK_VERSATILE = { key: 'versatile', name: 'Versatile' };
 const FALLBACK_ROLE = { key: 'role-player', name: 'Role Player' };
+// When no prototype fits and exactly ONE dimension is strong, the player is a specialist named by
+// that dimension (gives defensive guards / pure rebounders a real home instead of "Versatile").
+const SPECIALIST_BY_DIM = {
+  scoring:    { key: 'volume-scorer',         name: 'Volume Scorer' },
+  shooting:   { key: 'floor-spacer',          name: 'Floor Spacer' },
+  playmaking: { key: 'playmaker',             name: 'Playmaker' },
+  rebounding: { key: 'rebounding-specialist', name: 'Rebounding Specialist' },
+  defense:    { key: 'defensive-specialist',  name: 'Defensive Specialist' },
+};
 
 /**
  * Distance from a player's axes to one prototype, measured ONLY over the prototype's defining axes.
@@ -121,15 +130,24 @@ function traitModifiers(axes) {
     .map(([key]) => ({ key, label: AXIS_LABEL[key] }));
 }
 
+/** Play dimensions at/above STRONG_DIM, strongest first (the shared notion of a "strength"). */
+function strongDimensions(dimensions) {
+  return (dimensions ?? [])
+    .filter(d => typeof d.value === 'number' && d.value >= STRONG_DIM)
+    .sort((a, b) => b.value - a.value);
+}
+
 /**
- * Assign an archetype to a fingerprint.
- * @param {Object} fingerprint  buildFingerprint() result — either { insufficient, ... } or
- *   { axes, totalMinutes, seasonsCovered, ... }.
+ * Assign an archetype to a fingerprint, using the 5 play dimensions for the fallback so the label
+ * and the descriptor (which reads the same dimensions) can never contradict.
+ * @param {Object} fingerprint  buildFingerprint() result ({ axes, pos, totalMinutes, ... } or
+ *   { insufficient, reason }).
+ * @param {Array<{key,value}>} dimensions  buildDimensions() output for this player.
  * @returns {{archetype:null, reason:string}
- *   | {archetype:{key,name}, fallback?:boolean, confidence:string, distance:number|null,
+ *   | {archetype:{key,name}, fallback:boolean, confidence:string, distance:number|null,
  *      modifiers:Array<{key,label}>, runnerUp:{key,name,distance:number}|null}}
  */
-function assignArchetype(fingerprint) {
+function assignArchetype(fingerprint, dimensions) {
   if (!fingerprint || fingerprint.insufficient || !fingerprint.axes) {
     return { archetype: null, reason: fingerprint?.reason ?? 'no-data' };
   }
@@ -161,11 +179,16 @@ function assignArchetype(fingerprint) {
     };
   }
 
-  // No prototype fits: Versatile (earned, multi-skill) vs Role Player (flat/low), by strength count.
-  const elevated = Object.values(axes).filter(v => typeof v === 'number' && v >= ELEVATED_AXIS).length;
-  const fallback = elevated >= VERSATILE_MIN_ELEVATED ? FALLBACK_VERSATILE : FALLBACK_ROLE;
+  // No prototype fits — label by dimensional strengths: 2+ -> Versatile, exactly 1 -> Specialist
+  // named by that dimension, 0 -> Role Player.
+  const strengths = strongDimensions(dimensions);
+  let fb;
+  if (strengths.length >= 2) fb = FALLBACK_VERSATILE;
+  else if (strengths.length === 1) fb = SPECIALIST_BY_DIM[strengths[0].key] ?? FALLBACK_VERSATILE;
+  else fb = FALLBACK_ROLE;
+
   return {
-    archetype: { key: fallback.key, name: fallback.name },
+    archetype: { key: fb.key, name: fb.name },
     fallback: true,
     confidence,
     distance: best ? round1(best.distance) : null,
@@ -187,8 +210,7 @@ const LIMIT_PHRASE = {
   playmaking: "isn't a primary creator", rebounding: "doesn't crash the glass",
   defense: 'low defensive activity',
 };
-const STRENGTH_MIN = 65;  // a dimension at/above this is a real strength
-const LIMIT_MAX = 28;     // at/below this is a genuine, statable limitation
+const LIMIT_MAX = 28;     // a dimension at/below this is a genuine, statable limitation
 
 function joinList(items) {
   if (items.length <= 1) return items[0] ?? '';
@@ -196,35 +218,48 @@ function joinList(items) {
   return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
 }
 
+function tierWord(v) {
+  return v >= 85 ? 'Elite' : v >= 72 ? 'Strong' : 'Solid';
+}
+
 /**
- * One-sentence playstyle descriptor from the composite dimensions.
+ * One-sentence playstyle descriptor from the composite dimensions. Reads the SAME dimensions +
+ * STRONG_DIM threshold the archetype fallback uses, so the two can't contradict.
  * @param {Array<{key:string,value:number|null}>} dimensions  buildDimensions() output
- * @param {{key:string}|null} archetype  the assigned archetype ({key,name}) or null
+ * @param {{archetype:{key:string}|null}} assignment  the assignArchetype() result
  * @returns {string}
  */
-function buildDescriptor(dimensions, archetype) {
-  const play = (dimensions ?? [])
-    .filter(d => d.key !== 'activity' && typeof d.value === 'number');
-  const byStrong = [...play].sort((a, b) => b.value - a.value);
+function buildDescriptor(dimensions, assignment) {
+  const archetype = assignment?.archetype;
+  if (!archetype) return '';
 
-  // Versatile fallback: name the top dimensions, no single dominant skill.
-  if (archetype?.key === 'versatile') {
-    const top = byStrong.filter(d => d.value >= 55).slice(0, 3).map(d => STRENGTH_PHRASE[d.key]);
-    return top.length
+  const byStrong = (dimensions ?? [])
+    .filter(d => typeof d.value === 'number')
+    .sort((a, b) => b.value - a.value);
+  let strengths = byStrong.filter(d => d.value >= STRONG_DIM);
+
+  // Versatile fallback: multi-skill, no single dominant (≥2 strengths by construction).
+  if (archetype.key === 'versatile') {
+    const top = strengths.slice(0, 3).map(d => STRENGTH_PHRASE[d.key]);
+    return top.length >= 2
       ? `Versatile across ${joinList(top)} with no single dominant skill.`
       : 'Versatile contributor with no single dominant skill.';
   }
+  // Role Player: nothing stands out.
+  if (archetype.key === 'role-player') {
+    return 'Balanced contributor without a standout dimension.';
+  }
 
-  const strengths = byStrong.filter(d => d.value >= STRENGTH_MIN).slice(0, 3);
-
-  // Role Player / flat profile: nothing stands out.
+  // Specialist or matched prototype: describe the strong dimensions. Consistency guard — a NAMED
+  // archetype with no dimension ≥ STRONG_DIM still names its top dimension, so it never reads
+  // "no standout" while wearing a specific label.
+  if (!strengths.length) strengths = byStrong.slice(0, 1);
   if (!strengths.length) return 'Balanced contributor without a standout dimension.';
+  strengths = strengths.slice(0, 3);
 
-  const tier = strengths[0].value >= 85 ? 'Elite' : strengths[0].value >= 72 ? 'Strong' : 'Solid';
-  const lead = `${tier} ${joinList(strengths.map(d => STRENGTH_PHRASE[d.key]))}`;
-
+  const lead = `${tierWord(strengths[0].value)} ${joinList(strengths.map(d => STRENGTH_PHRASE[d.key]))}`;
   const limit = byStrong[byStrong.length - 1];
-  if (limit && limit.value <= LIMIT_MAX) {
+  if (limit && limit.value <= LIMIT_MAX && !strengths.includes(limit)) {
     return `${lead}, but ${LIMIT_PHRASE[limit.key]}.`;
   }
   return `${lead}.`;
@@ -237,9 +272,9 @@ function round1(n) {
 module.exports = {
   PROTOTYPES,
   ASSIGN_MAX_DISTANCE,
-  ELEVATED_AXIS,
-  VERSATILE_MIN_ELEVATED,
+  STRONG_DIM,
   ELITE_AXIS,
+  SPECIALIST_BY_DIM,
   assignArchetype,
   buildDescriptor,
   // exported for tests / tuning

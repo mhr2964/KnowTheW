@@ -51,45 +51,63 @@ const AXIS_KEYS = AXES.map(a => a.key);
 // order. 'Activity' (workload/role size) is a real signal but not a playstyle trait, so the
 // descriptor (in archetypes.js) ignores it even though the radar shows it.
 //
-// Aggregation matters: a plain mean MASKS signature traits. Two deliberate choices —
-//   - Playmaking = assists only. Pairing it with ball-security (turnovers) buried elite passers
-//     (a high-usage creator naturally turns it over), so turnovers stay in the detail bars instead.
-//   - Defense = `max` of steals/rim-protection. They're positionally exclusive (guards steal, bigs
-//     block); averaging makes every specialist look merely average, so the dimension takes the
-//     player's dominant defensive tool.
-// `agg` defaults to 'mean'. Playmaking additionally blends in assist-control quality (see
-// PLAYMAKING_VOLUME_WEIGHT / normalizeAstTo below and buildDimensions).
+// Aggregation matters: a plain mean MASKS signature traits. Deliberate choices —
+//   - Playmaking = assists only (volume), blended with assist-control quality (AST/TO). Pairing it
+//     with raw turnover rate buried elite passers, so control enters via the AST/TO ratio instead.
+//   - Defense = position-aware + tempered (agg:'defense'). Steals and blocks are positionally
+//     exclusive (guards steal, bigs block), so the dimension leads with the player's expected tool
+//     for their position; a plain `max` over-credited steal-happy gamblers as "elite defense".
+//   - 'Activity'/workload is intentionally NOT a dimension — it's role size, not playstyle; it stays
+//     a fingerprint axis (shown in the 13-bar detail), keeping the radar to 5 playstyle spokes.
+// `agg` defaults to 'mean'.
 const PLAYMAKING_VOLUME_WEIGHT = 0.6;  // 60% assist volume / 40% AST-to-TO control
+const DEFENSE_DOMINANT_WEIGHT = 0.65;  // 65% the position's main defensive tool / 35% the other
 const DIMENSIONS = [
   { key: 'scoring',    label: 'Scoring',    axes: ['scoringVolume', 'finishing', 'rimPressure'] },
   { key: 'shooting',   label: 'Shooting',   axes: ['threeVolume', 'threeAccuracy', 'ftShooting'] },
   { key: 'playmaking', label: 'Playmaking', axes: ['playmaking'],
     blend: { quality: 'playmakingQuality', volumeWeight: PLAYMAKING_VOLUME_WEIGHT } },
   { key: 'rebounding', label: 'Rebounding', axes: ['offRebounding', 'defRebounding'] },
-  { key: 'defense',    label: 'Defense',    axes: ['steals', 'rimProtection'], agg: 'max' },
-  { key: 'activity',   label: 'Activity',   axes: ['workload'] },
+  { key: 'defense',    label: 'Defense',    axes: ['steals', 'rimProtection'], agg: 'defense' },
 ];
 
 /**
- * Collapse a career axis vector into the 6 composite play dimensions (radar spokes).
+ * Defense dimension: lead with the position's expected tool (guards steal, bigs block), tempered so
+ * one elite stat can't max it out. `0.65·dominant + 0.35·other`. Guard = pos contains 'G'.
+ * @returns {number|null} 0-100, or null if neither steals nor blocks is present.
+ */
+function aggregateDefense(axes, pos) {
+  const steals = axes?.steals;
+  const blocks = axes?.rimProtection;
+  const isGuard = /G/i.test(String(pos ?? ''));
+  const [dominant, other] = isGuard ? [steals, blocks] : [blocks, steals];
+  const d = typeof dominant === 'number' ? dominant : null;
+  const o = typeof other === 'number' ? other : null;
+  if (d === null && o === null) return null;
+  if (d === null) return Math.round(o);
+  if (o === null) return Math.round(d);
+  return Math.round(DEFENSE_DOMINANT_WEIGHT * d + (1 - DEFENSE_DOMINANT_WEIGHT) * o);
+}
+
+/**
+ * Collapse a career axis vector into the 5 composite play dimensions (radar spokes).
  * @param {Object<string, number|null>} axes  the `axes` field of a fingerprint
  * @param {Object<string, number|null>} [advanced]  advanced signals (e.g. playmakingQuality) used by
  *   dimensions with a `blend`; when absent, those dimensions fall back to their axis aggregate.
+ * @param {string} [pos]  position abbreviation (G/F/C) — used by the position-aware Defense agg.
  * @returns {Array<{key:string, label:string, value:number|null}>} in DIMENSIONS order; value is the
- *   rounded aggregate (mean, or max for `agg:'max'`) of non-null member axes — then, for a `blend`
- *   dimension with its quality signal present, a weighted mix of that aggregate (volume) and the
- *   signal (quality). null if no member axis is present.
+ *   rounded aggregate (mean, or the position-aware Defense blend) of member axes — then, for a
+ *   `blend` dimension with its quality signal present, a weighted mix of that aggregate (volume) and
+ *   the signal (quality). null if no member axis is present.
  */
-function buildDimensions(axes, advanced = {}) {
+function buildDimensions(axes, advanced = {}, pos = '') {
   return DIMENSIONS.map(dim => {
-    const vals = dim.axes
-      .map(k => axes?.[k])
-      .filter(v => typeof v === 'number');
-    let value = null;
-    if (vals.length) {
-      value = dim.agg === 'max'
-        ? Math.max(...vals)
-        : Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+    let value;
+    if (dim.agg === 'defense') {
+      value = aggregateDefense(axes, pos);
+    } else {
+      const vals = dim.axes.map(k => axes?.[k]).filter(v => typeof v === 'number');
+      value = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
     }
     // Blend in an advanced quality signal (e.g. playmaking: assist volume + AST/TO control).
     if (dim.blend && typeof value === 'number') {

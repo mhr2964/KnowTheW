@@ -644,15 +644,17 @@ router.get('/players/:id/percentiles', async (req, res) => {
 router.get('/players/:id/archetype', async (req, res) => {
   try {
     const fingerprint = await getPlayerFingerprint(req.params.id);
-    const assignment = assignArchetype(fingerprint);
-    // Emit axes in canonical order with labels so the client renders the profile without its own
-    // copy of the axis list (same server-owns-presentation pattern as the gamelog columns).
-    // `dimensions` (6 composite spokes) drives the radar; `descriptor` is the at-a-glance sentence.
+    // Compute the play dimensions once (position-aware for the Defense spoke); they drive the
+    // archetype fallback, the descriptor, AND the radar — one source of truth so the label can't
+    // contradict the sentence. Axes feed the 13-bar detail (server owns presentation).
+    const dimensions = fingerprint.axes
+      ? buildDimensions(fingerprint.axes, fingerprint.advanced, fingerprint.pos)
+      : null;
+    const assignment = assignArchetype(fingerprint, dimensions);
+    const descriptor = dimensions ? buildDescriptor(dimensions, assignment) : null;
     const axes = fingerprint.axes
       ? AXES.map(a => ({ key: a.key, label: a.label, value: fingerprint.axes[a.key] }))
       : null;
-    const dimensions = fingerprint.axes ? buildDimensions(fingerprint.axes, fingerprint.advanced) : null;
-    const descriptor = dimensions ? buildDescriptor(dimensions, assignment.archetype) : null;
     res.json({
       ...assignment,
       pos: fingerprint.pos ?? null,
