@@ -12,6 +12,7 @@ import TeamSchedulePage from './pages/TeamSchedulePage';
 import PlayerRoutePage from './pages/PlayerRoutePage';
 import SearchPage from './pages/SearchPage';
 import ComparePage from './pages/ComparePage';
+import SimilarPlayersPage from './pages/SimilarPlayersPage';
 import NotFoundPage from './pages/NotFoundPage';
 import './styles/global.css';
 import './styles/layout.css';
@@ -165,6 +166,10 @@ export default function App() {
           <Route
             path="/compare/:idA"
             element={<RedirectToPlayer />}
+          />
+          <Route
+            path="/similar/:id"
+            element={<SimilarPlayersPage />}
           />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

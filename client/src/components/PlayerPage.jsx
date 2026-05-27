@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import DetailedStats from './DetailedStats';
 import ComparePickerModal from './ComparePickerModal';
 import ArchetypeBadge from './ArchetypeBadge';
-import SimilarPlayersSection from './SimilarPlayersSection';
 import { initialsOf } from '../lib/initials';
 
 export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onTabChange }) {
@@ -48,17 +47,24 @@ export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onT
               ))}
             </div>
           )}
-          <button
-            type="button"
-            className="compare-trigger-btn"
-            onClick={() => setPickerOpen(true)}
-          >
-            Compare with...
-          </button>
+          <div className="player-hero-actions">
+            <button
+              type="button"
+              className="compare-trigger-btn"
+              onClick={() => setPickerOpen(true)}
+            >
+              Compare with...
+            </button>
+            <button
+              type="button"
+              className="compare-trigger-btn"
+              onClick={() => navigate(`/similar/${player.id}`)}
+            >
+              Similar players →
+            </button>
+          </div>
         </div>
       </div>
-
-      <SimilarPlayersSection playerId={player.id} playerName={player.name} />
 
       <DetailedStats
         playerId={player.id}

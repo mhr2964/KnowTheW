@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { initialsOf } from '../lib/initials';
 
-export default function ComparePickerModal({ currentPlayerId, onPick, onClose }) {
+export default function ComparePickerModal({ currentPlayerId, onPick, onClose, title = 'Compare with...' }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -55,10 +55,10 @@ export default function ComparePickerModal({ currentPlayerId, onPick, onClose })
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Compare with another player"
+        aria-label={title}
       >
         <div className="compare-picker-header">
-          <h3>Compare with...</h3>
+          <h3>{title}</h3>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">✕</button>
         </div>
 

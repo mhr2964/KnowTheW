@@ -20,6 +20,14 @@
 }
 .player-hero-team { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
 .player-hero-name { font-size: 2rem; font-weight: 800; line-height: 1.1; }
+/* Sibling hero actions (Compare with... / Similar players →) sit in a wrapping row. */
+.player-hero-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.35rem; }
+
+/* "Players like X" target header on the dedicated Similar Players page. */
+.similar-target-eyebrow {
+  font-size: 0.72rem; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
 
 .player-bio-grid {
   display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-top: 0.25rem;
