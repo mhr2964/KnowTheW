@@ -24,7 +24,13 @@ const SIMILAR_LIMIT = 8;        // how many comparables to return
 const MIN_SHARED_AXES = 8;      // both players must overlap on >= this many of the 13 axes
 const TRAIT_PRESENT_FLOOR = 35; // a dimension is eligible to be a "shared trait" only if both >= this
 const MAX_SHARED_TRAITS = 3;    // cap on the "most alike on: …" list
-const SAME_POS_BONUS = 3;       // ranking nudge (not displayed) toward exact same-position comps
+// Cross-position matches ("positional analogues") are valid but a looser answer to "players like X",
+// so dock the similarity score per step of position distance (one-off gate ⇒ gap is 0 or 1). This
+// is baked into the DISPLAYED similarity (not just the sort), so same-position comps lead when they
+// are competitive, the list stays monotonic in the shown %, and the confidence tier reflects the
+// position mismatch. An all-around guard whose forward comps were only marginally closer now leads
+// with guards; a true tweener (no strong same-position comp) still surfaces analogues, just lower.
+const CROSS_POS_PENALTY = 7;
 // Confidence tiers on the (signature-weighted) similarity, tuned to the observed per-match
 // distribution (p05 77 / median 84 / p75 86). 'loose' (<79) flags the genuinely weak tails — e.g.
 // a unique player like Alyssa Thomas whose comps bottom out at 73-78 — so they don't masquerade as
@@ -81,7 +87,8 @@ function sharedTraits(aDims, bDims, floor = TRAIT_PRESENT_FLOOR, max = MAX_SHARE
  * @param {Array<{id, name?, pos?, axes:Object, advanced?:Object}>} candidates  pool (axes==null skipped)
  * @param {{limit?:number, minAxes?:number}} [opts]
  * @returns {Array<{id, name, pos, similarity, distance, axesUsed, confidence, dimensions, sharedTraits}>}
- *   sorted most-similar first (same-position softly preferred). Empty if the target isn't fingerprintable.
+ *   sorted most-similar first (same-position preferred). `similarity` is position-adjusted (a
+ *   cross-position analogue is docked CROSS_POS_PENALTY per step). Empty if the target isn't fingerprintable.
  */
 function rankSimilar(target, candidates = [], { limit = SIMILAR_LIMIT, minAxes = MIN_SHARED_AXES } = {}) {
   if (!target || !target.axes) return [];
@@ -97,42 +104,41 @@ function rankSimilar(target, candidates = [], { limit = SIMILAR_LIMIT, minAxes =
     if (String(c.id) === targetId) continue;                 // never compare a player to themselves
     if (!positionsAdjacent(target.pos, c.pos)) continue;      // one-off position gate
 
-    const { distance, similarity, axesUsed } = weightedFingerprintDistance(target.axes, c.axes);
-    if (similarity === null || axesUsed < minAxes) continue;  // thin overlaps don't earn a match
+    const { distance, similarity: raw, axesUsed } = weightedFingerprintDistance(target.axes, c.axes);
+    if (raw === null || axesUsed < minAxes) continue;         // thin overlaps don't earn a match
+
+    // Position-adjusted similarity: dock cross-position analogues so a competitive same-position comp
+    // leads. posGap is 0 (same pos) or 1 (one-off G↔F / F↔C); unknown position on either side ⇒ 0.
+    const candRank = posRank(c.pos);
+    const posGap = (targetRank !== null && candRank !== null) ? Math.abs(targetRank - candRank) : 0;
+    const similarity = Math.max(0, raw - CROSS_POS_PENALTY * posGap);
 
     const dimensions = buildDimensions(c.axes, c.advanced, c.pos);
-    // Soft same-position preference: nudge exact same-position comps up the ORDER only; the displayed
-    // similarity stays the true score. A clearly-closer cross-position match still wins.
-    const samePos = targetRank !== null && targetRank === posRank(c.pos);
     scored.push({
       id: c.id,
       name: c.name ?? null,
       pos: c.pos ?? null,
       similarity,
-      distance: Math.round(distance * 10) / 10,
+      distance: Math.round(distance * 10) / 10, // raw fingerprint distance (secondary sort; not shown)
       axesUsed,
       confidence: confidenceFor(similarity),
-      sortScore: similarity + (samePos ? SAME_POS_BONUS : 0),
       dimensions,
       sharedTraits: sharedTraits(targetDims, dimensions),
     });
   }
 
   scored.sort((a, b) =>
-    b.sortScore - a.sortScore ||
+    b.similarity - a.similarity ||
     a.distance - b.distance ||
     String(a.name).localeCompare(String(b.name)));
-  // sortScore is an internal ranking aid (same-position bonus) — strip it from the API payload.
-  const ranked = scored.slice(0, limit);
-  for (const r of ranked) delete r.sortScore;
-  return ranked;
+  return scored.slice(0, limit);
 }
 
 module.exports = {
   POS_RANK,
   SIMILAR_LIMIT,
   MIN_SHARED_AXES,
-  SAME_POS_BONUS,
+  CROSS_POS_PENALTY,
   CONF_STRONG,
   CONF_MODERATE,
   posRank,

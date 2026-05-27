@@ -10,7 +10,7 @@ const assert = require('node:assert');
 
 const { AXIS_KEYS } = require('../server/lib/analysis/playerFingerprint');
 const {
-  rankSimilar, positionsAdjacent, posRank, confidenceFor, CONF_STRONG, CONF_MODERATE,
+  rankSimilar, positionsAdjacent, posRank, confidenceFor, CONF_STRONG, CONF_MODERATE, CROSS_POS_PENALTY,
 } = require('../server/lib/analysis/similarity');
 
 // Full 13-axis vector at `base`, with per-axis overrides.
@@ -111,18 +111,28 @@ test('rankSimilar — sharedTraits never empty for two modest, overlapping role 
   assert.ok(match.sharedTraits.length > 0, 'modest profiles still get a shared-traits line');
 });
 
-test('rankSimilar — soft same-position preference flips a near-tie, but a clear cross-pos still wins', () => {
+test('rankSimilar — cross-position comps are docked CROSS_POS_PENALTY in the shown similarity', () => {
+  const ax = axesWith(50, { scoringVolume: 80 });
+  const target = { id: 'T', pos: 'G', axes: ax };
+  const res = rankSimilar(target, [c('g', ax, 'G'), c('f', ax, 'F')]); // identical axes, differ only in pos
+  const g = res.find(r => r.id === 'g'), f = res.find(r => r.id === 'f');
+  assert.strictEqual(g.similarity, 100, 'identical same-position comp scores 100');
+  assert.strictEqual(f.similarity, 100 - CROSS_POS_PENALTY, 'identical cross-position comp is penalized');
+  assert.strictEqual(res[0].id, 'g', 'same position leads');
+});
+
+test('rankSimilar — position penalty: same-pos wins a near-tie; a clearly-better cross-pos still leads', () => {
   const target = { id: 'T', pos: 'G', axes: axesWith(50, { scoringVolume: 80 }) };
-  // Near-tie: cross-pos is marginally closer, but the same-pos bonus should rank the guard first.
+  // Near-tie: the forward is marginally closer raw, but the penalty drops it below the guard.
   const sameNear = c('sameNear', axesWith(50, { scoringVolume: 74 }), 'G');
   const crossNear = c('crossNear', axesWith(50, { scoringVolume: 76 }), 'F');
   const near = rankSimilar(target, [crossNear, sameNear]);
   assert.strictEqual(near[0].id, 'sameNear', 'same position wins a near-tie');
-  assert.ok(near.find(r => r.id === 'crossNear').similarity >= near[0].similarity,
-    'displayed similarity stays truthful (cross-pos still shows the higher raw score)');
+  assert.ok(near.find(r => r.id === 'crossNear').similarity < near.find(r => r.id === 'sameNear').similarity,
+    'cross-position similarity is docked below the same-position comp');
 
-  // Clear gap: an exact cross-pos match should still beat a worse same-pos one despite the bonus.
-  const sameFar = c('sameFar', axesWith(50, { scoringVolume: 70 }), 'G');
+  // A clearly-better cross-pos (exact match) still beats a much worse same-pos comp despite the penalty.
+  const sameFar = c('sameFar', axesWith(50, { scoringVolume: 50 }), 'G');
   const crossExact = c('crossExact', axesWith(50, { scoringVolume: 80 }), 'F');
   assert.strictEqual(rankSimilar(target, [sameFar, crossExact])[0].id, 'crossExact');
 });
