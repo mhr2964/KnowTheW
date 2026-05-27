@@ -1,0 +1,183 @@
+// Player fingerprint — the shared, era-normalized profile vector behind Archetype Badges and
+// Cross-Era Similarity. WHY this shape:
+//
+//   - Era-normalization is the hard requirement (comparing a 2013 player to a 2025 one fairly).
+//     The percentile system already solves it: getPlayerPercentiles returns each season's stats as
+//     0-100 percentiles AGAINST THAT SEASON'S LEAGUE (position-pooled). So a fingerprint built from
+//     those percentiles is era-fair by construction — no second normalization pipeline needed.
+//   - Continuous, not bucketed. The fingerprint is 13 independent 0-100 axes. Archetype assignment
+//     (a sibling module) reads this vector; it does NOT collapse players into binary axes first,
+//     which is the failure mode of the Reddit roles paper (dissimilar players forced into one
+//     cryptic bucket). Keeping the axes continuous is what lets the hover card SHOW the player's
+//     own profile so the eventual label is visibly justified.
+//   - Pure core, thin I/O. buildFingerprint / fingerprintDistance are pure functions over already-
+//     fetched inputs, so the known-player truth set can test the math with synthetic vectors and no
+//     network. getPlayerFingerprint is the only async part (it just fetches + delegates).
+//
+// Axes are sourced ONLY from stats the percentile pipeline already distributes (see
+// percentileClient.PERCENTILE_STATS), so v1 adds zero new league-wide data plumbing. If the truth
+// set later fails on playstyle nuance (e.g. high-volume-inefficient scorers, or usage), the planned
+// upgrade is to add advanced-rate axes (USG%/TS%/AST%) — see the project plan's hybrid option.
+
+'use strict';
+
+const { getProvider } = require('../../providers');
+const { getPlayerPercentiles } = require('../percentileClient');
+
+// The 13 axes. `mode` keys match getPlayerPercentiles output ('perGame' | 'per36' | 'totals');
+// `stat` is a PERCENTILE_STATS key. Per-36 is used for volume axes so a high-minute starter and a
+// bench player are compared by RATE, not raw counting totals. TOV is already inverted upstream
+// (INVERTED_STATS), so a high percentile means GOOD ball security — direction is correct as-is.
+const AXES = [
+  { key: 'scoringVolume', label: 'Scoring Volume',  stat: 'PTS',     mode: 'per36' },
+  { key: 'finishing',     label: 'Finishing',       stat: 'FG_PCT',  mode: 'perGame' },
+  { key: 'threeVolume',   label: '3PT Volume',      stat: 'FG3A',    mode: 'per36' },
+  { key: 'threeAccuracy', label: '3PT Accuracy',    stat: 'FG3_PCT', mode: 'perGame' },
+  { key: 'rimPressure',   label: 'Rim Pressure',    stat: 'FTA',     mode: 'per36' },
+  { key: 'playmaking',    label: 'Playmaking',      stat: 'AST',     mode: 'per36' },
+  { key: 'ballSecurity',  label: 'Ball Security',   stat: 'TOV',     mode: 'per36' },
+  { key: 'offRebounding', label: 'Off. Rebounding', stat: 'OREB',    mode: 'per36' },
+  { key: 'defRebounding', label: 'Def. Rebounding', stat: 'DREB',    mode: 'per36' },
+  { key: 'steals',        label: 'Steals',          stat: 'STL',     mode: 'per36' },
+  { key: 'rimProtection', label: 'Rim Protection',  stat: 'BLK',     mode: 'per36' },
+  { key: 'ftShooting',    label: 'FT Shooting',     stat: 'FT_PCT',  mode: 'perGame' },
+  { key: 'workload',      label: 'Workload',        stat: 'MIN',     mode: 'perGame' },
+];
+
+const AXIS_KEYS = AXES.map(a => a.key);
+
+// Career-level sample gate. Per-season samples are already gated upstream (the provider drops any
+// season below 10 GP / 10 MPG before it ever reaches the percentile pipeline), so this floor only
+// guards against a career too thin to characterize — a handful of qualifying minutes total.
+const MIN_CAREER_MINUTES = 500;
+
+/**
+ * Pull each axis from the right mode's percentile vector for a single season.
+ * @param {{perGame?:Object, per36?:Object, totals?:Object}|null} seasonPercentiles
+ * @returns {Object<string, number|null>} axisKey -> 0-100, or null where the source was missing.
+ */
+function buildSeasonFingerprint(seasonPercentiles) {
+  const fp = {};
+  for (const axis of AXES) {
+    const modeVec = seasonPercentiles?.[axis.mode] ?? null;
+    const v = modeVec ? modeVec[axis.stat] : null;
+    fp[axis.key] = typeof v === 'number' ? v : null;
+  }
+  return fp;
+}
+
+/**
+ * Minutes-weighted career vector across seasons. A bigger season pulls each axis harder; null axis
+ * values are skipped (don't dilute the mean toward 0). An axis with no data in any season -> null.
+ * @param {Array<{minutes:number, fingerprint:Object<string,number|null>}>} seasonFps
+ * @returns {Object<string, number|null>}
+ */
+function aggregateFingerprint(seasonFps) {
+  const axes = {};
+  for (const key of AXIS_KEYS) {
+    let weighted = 0;
+    let weight = 0;
+    for (const s of seasonFps) {
+      const v = s.fingerprint[key];
+      const m = s.minutes;
+      if (typeof v === 'number' && typeof m === 'number' && m > 0) {
+        weighted += v * m;
+        weight += m;
+      }
+    }
+    axes[key] = weight > 0 ? Math.round(weighted / weight) : null;
+  }
+  return axes;
+}
+
+/**
+ * Assemble a career fingerprint from already-fetched inputs (pure — the testable core).
+ * @param {{percentiles:Object|null, seasonAverages:{statsByModeBySeason:Object}|null}} input
+ *   percentiles: getPlayerPercentiles output ({ [season]: {perGame,per36,totals} }).
+ *   seasonAverages: getPlayerSeasonAverages output — used only for the per-season minutes weight.
+ * @returns {{axes:Object, seasonsCovered:number, totalMinutes:number, perSeason:Array}
+ *           | {insufficient:true, reason:string, totalMinutes:number, seasonsCovered:number}}
+ */
+function buildFingerprint({ percentiles, seasonAverages } = {}) {
+  if (!percentiles || !seasonAverages) {
+    return { insufficient: true, reason: 'no-data', totalMinutes: 0, seasonsCovered: 0 };
+  }
+
+  const totalsBySeason = seasonAverages.statsByModeBySeason ?? {};
+  const seasonFps = [];
+  let totalMinutes = 0;
+
+  for (const season of Object.keys(percentiles)) {
+    // Weight by actual minutes that season; without a minutes figure we can't weight it, so skip.
+    const minutes = totalsBySeason[season]?.Totals?.MIN ?? null;
+    if (typeof minutes !== 'number' || minutes <= 0) continue;
+    seasonFps.push({ season, minutes, fingerprint: buildSeasonFingerprint(percentiles[season]) });
+    totalMinutes += minutes;
+  }
+
+  if (!seasonFps.length || totalMinutes < MIN_CAREER_MINUTES) {
+    return { insufficient: true, reason: 'sample', totalMinutes, seasonsCovered: seasonFps.length };
+  }
+
+  return {
+    axes: aggregateFingerprint(seasonFps),
+    seasonsCovered: seasonFps.length,
+    totalMinutes,
+    perSeason: seasonFps.map(s => ({ season: s.season, minutes: s.minutes, axes: s.fingerprint })),
+  };
+}
+
+/**
+ * Distance between two career axis vectors. RMS over the shared (both non-null) axes keeps the
+ * result on the same 0-100 scale no matter how many axes overlapped — so a cross-era pair missing
+ * a few axes (e.g. pre-3pt-era volume) isn't penalized just for having fewer comparable dimensions.
+ * @param {Object<string,number|null>} a  axes vector (the `axes` field of a fingerprint)
+ * @param {Object<string,number|null>} b
+ * @returns {{distance:number|null, similarity:number|null, axesUsed:number}}
+ *   distance 0 (identical) .. 100; similarity = 100 - distance (higher = more alike); both null if
+ *   no axis overlapped.
+ */
+function fingerprintDistance(a, b) {
+  let sumSq = 0;
+  let used = 0;
+  for (const key of AXIS_KEYS) {
+    const va = a?.[key];
+    const vb = b?.[key];
+    if (typeof va === 'number' && typeof vb === 'number') {
+      const d = va - vb;
+      sumSq += d * d;
+      used += 1;
+    }
+  }
+  if (used === 0) return { distance: null, similarity: null, axesUsed: 0 };
+  const rms = Math.sqrt(sumSq / used);
+  return { distance: rms, similarity: Math.round(100 - rms), axesUsed: used };
+}
+
+/**
+ * Fetch + assemble a player's career fingerprint via the active provider.
+ * Note: getPlayerPercentiles already fetches season averages internally, so this makes a second
+ * getPlayerSeasonAverages call for the minutes weights — a known minor redundancy. Threading
+ * minutes out of the percentile call would remove it; deferred until it shows up as a hotspot.
+ * @param {string|number} playerId
+ * @returns {Promise<Object>} buildFingerprint result, plus { playerId, pos }.
+ */
+async function getPlayerFingerprint(playerId) {
+  const [percentiles, seasonAverages] = await Promise.all([
+    getPlayerPercentiles(playerId),
+    getProvider().getPlayerSeasonAverages(playerId),
+  ]);
+  const result = buildFingerprint({ percentiles, seasonAverages });
+  return { playerId: String(playerId), pos: seasonAverages?.pos ?? null, ...result };
+}
+
+module.exports = {
+  AXES,
+  AXIS_KEYS,
+  MIN_CAREER_MINUTES,
+  buildSeasonFingerprint,
+  aggregateFingerprint,
+  buildFingerprint,
+  fingerprintDistance,
+  getPlayerFingerprint,
+};
