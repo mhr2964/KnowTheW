@@ -14,6 +14,7 @@ const {
   aggregateFingerprint,
   buildFingerprint,
   fingerprintDistance,
+  buildDimensions,
 } = require('../server/lib/analysis/playerFingerprint');
 
 // A season percentile object with every axis populated to distinct values, so a wrong stat/mode
@@ -132,4 +133,30 @@ test('fingerprintDistance — only axes present in BOTH count', () => {
 test('fingerprintDistance — no overlap returns nulls', () => {
   const res = fingerprintDistance({ scoringVolume: 50 }, { playmaking: 50 });
   assert.deepStrictEqual(res, { distance: null, similarity: null, axesUsed: 0 });
+});
+
+test('buildDimensions — groups into 6 dimensions; mean members, but Defense=max, Playmaking=assists', () => {
+  const axes = {
+    scoringVolume: 60, finishing: 90, rimPressure: 30,   // scoring  -> mean 60
+    threeVolume: 10, threeAccuracy: 20, ftShooting: 60,  // shooting -> mean 30
+    playmaking: 80, ballSecurity: 40,                    // playmaking -> 80 (assists only; TOV ignored)
+    offRebounding: 70, defRebounding: 50,                // rebounding -> mean 60
+    steals: 88, rimProtection: 12,                       // defense -> max 88 (dominant tool)
+    workload: 75,                                        // activity -> 75
+  };
+  assert.deepStrictEqual(buildDimensions(axes), [
+    { key: 'scoring',    label: 'Scoring',    value: 60 },
+    { key: 'shooting',   label: 'Shooting',   value: 30 },
+    { key: 'playmaking', label: 'Playmaking', value: 80 },
+    { key: 'rebounding', label: 'Rebounding', value: 60 },
+    { key: 'defense',    label: 'Defense',    value: 88 },
+    { key: 'activity',   label: 'Activity',   value: 75 },
+  ]);
+});
+
+test('buildDimensions — skips null members; all-null dimension is null', () => {
+  const dims = buildDimensions({ offRebounding: 70, defRebounding: null }); // one rebounding member
+  const byKey = Object.fromEntries(dims.map(d => [d.key, d.value]));
+  assert.strictEqual(byKey.rebounding, 70);  // averages the one non-null member
+  assert.strictEqual(byKey.scoring, null);   // no scoring axes present at all
 });

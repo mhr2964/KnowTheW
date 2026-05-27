@@ -46,6 +46,48 @@ const AXES = [
 
 const AXIS_KEYS = AXES.map(a => a.key);
 
+// Composite "play dimensions" — the 13 axes collapsed into 6 buckets for the radar so a profile
+// reads as a SHAPE at a glance (13 equal bars have no gestalt). Order here is the radar's spoke
+// order. 'Activity' (workload/role size) is a real signal but not a playstyle trait, so the
+// descriptor (in archetypes.js) ignores it even though the radar shows it.
+//
+// Aggregation matters: a plain mean MASKS signature traits. Two deliberate choices —
+//   - Playmaking = assists only. Pairing it with ball-security (turnovers) buried elite passers
+//     (a high-usage creator naturally turns it over), so turnovers stay in the detail bars instead.
+//   - Defense = `max` of steals/rim-protection. They're positionally exclusive (guards steal, bigs
+//     block); averaging makes every specialist look merely average, so the dimension takes the
+//     player's dominant defensive tool.
+// `agg` defaults to 'mean'.
+const DIMENSIONS = [
+  { key: 'scoring',    label: 'Scoring',    axes: ['scoringVolume', 'finishing', 'rimPressure'] },
+  { key: 'shooting',   label: 'Shooting',   axes: ['threeVolume', 'threeAccuracy', 'ftShooting'] },
+  { key: 'playmaking', label: 'Playmaking', axes: ['playmaking'] },
+  { key: 'rebounding', label: 'Rebounding', axes: ['offRebounding', 'defRebounding'] },
+  { key: 'defense',    label: 'Defense',    axes: ['steals', 'rimProtection'], agg: 'max' },
+  { key: 'activity',   label: 'Activity',   axes: ['workload'] },
+];
+
+/**
+ * Collapse a career axis vector into the 6 composite play dimensions (radar spokes).
+ * @param {Object<string, number|null>} axes  the `axes` field of a fingerprint
+ * @returns {Array<{key:string, label:string, value:number|null}>} in DIMENSIONS order; value is the
+ *   rounded aggregate (mean, or max for `agg:'max'`) of non-null member axes, or null if none.
+ */
+function buildDimensions(axes) {
+  return DIMENSIONS.map(dim => {
+    const vals = dim.axes
+      .map(k => axes?.[k])
+      .filter(v => typeof v === 'number');
+    let value = null;
+    if (vals.length) {
+      value = dim.agg === 'max'
+        ? Math.max(...vals)
+        : Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+    }
+    return { key: dim.key, label: dim.label, value };
+  });
+}
+
 // Career-level sample gate. Per-season samples are already gated upstream (the provider drops any
 // season below 10 GP / 10 MPG before it ever reaches the percentile pipeline), so this floor only
 // guards against a career too thin to characterize — a handful of qualifying minutes total.
@@ -174,7 +216,9 @@ async function getPlayerFingerprint(playerId) {
 module.exports = {
   AXES,
   AXIS_KEYS,
+  DIMENSIONS,
   MIN_CAREER_MINUTES,
+  buildDimensions,
   buildSeasonFingerprint,
   aggregateFingerprint,
   buildFingerprint,

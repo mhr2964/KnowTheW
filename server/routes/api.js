@@ -15,8 +15,8 @@ const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats }   = requi
 const { ADV_HEADERS_SRV, buildAdvancedSplit, buildAdvancedCareer,
         computeSeasonPBP, buildPbpSplit }                                = require('../lib/advancedStats');
 const { getPlayerPercentiles }                                           = require('../lib/percentileClient');
-const { getPlayerFingerprint, AXES }                                     = require('../lib/analysis/playerFingerprint');
-const { assignArchetype }                                                = require('../lib/analysis/archetypes');
+const { getPlayerFingerprint, AXES, buildDimensions }                    = require('../lib/analysis/playerFingerprint');
+const { assignArchetype, buildDescriptor }                               = require('../lib/analysis/archetypes');
 const { LEGACY_PLAYERS_BULK, isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyId,
         searchBulkLegacyPlayers, buildBulkLegacyProfile,
         buildBulkLegacyDetailedStats }                                   = require('../constants/legacyPlayerBulk');
@@ -647,12 +647,17 @@ router.get('/players/:id/archetype', async (req, res) => {
     const assignment = assignArchetype(fingerprint);
     // Emit axes in canonical order with labels so the client renders the profile without its own
     // copy of the axis list (same server-owns-presentation pattern as the gamelog columns).
+    // `dimensions` (6 composite spokes) drives the radar; `descriptor` is the at-a-glance sentence.
     const axes = fingerprint.axes
       ? AXES.map(a => ({ key: a.key, label: a.label, value: fingerprint.axes[a.key] }))
       : null;
+    const dimensions = fingerprint.axes ? buildDimensions(fingerprint.axes) : null;
+    const descriptor = dimensions ? buildDescriptor(dimensions, assignment.archetype) : null;
     res.json({
       ...assignment,
       pos: fingerprint.pos ?? null,
+      descriptor,
+      dimensions,
       axes,
       seasonsCovered: fingerprint.seasonsCovered ?? 0,
       totalMinutes: fingerprint.totalMinutes ?? 0,

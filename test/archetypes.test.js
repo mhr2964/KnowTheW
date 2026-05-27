@@ -12,7 +12,13 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 
 const { AXIS_KEYS } = require('../server/lib/analysis/playerFingerprint');
-const { assignArchetype, confidenceFor } = require('../server/lib/analysis/archetypes');
+const { assignArchetype, confidenceFor, buildDescriptor } = require('../server/lib/analysis/archetypes');
+
+// Build a 6-dimension array (buildDimensions shape) from value overrides; unspecified -> null.
+function dimsOf(overrides) {
+  return ['scoring', 'shooting', 'playmaking', 'rebounding', 'defense', 'activity']
+    .map(key => ({ key, value: key in overrides ? overrides[key] : null }));
+}
 
 // Full axis vector at a base level, with overrides — so a partial spec means "average elsewhere".
 function axesWith(base, overrides = {}) {
@@ -121,6 +127,43 @@ test('assignArchetype — Combo Guard for a scoring + playmaking + shooting guar
     scoringVolume: 80, playmaking: 89, threeVolume: 90, threeAccuracy: 75, ftShooting: 89,
   }), { pos: 'G' }));
   assert.strictEqual(res.archetype.key, 'combo-guard');
+});
+
+test('buildDescriptor — Elite tier, top-3 strengths, real limitation (the AT shape)', () => {
+  const dims = dimsOf({ playmaking: 89, rebounding: 75, defense: 70, scoring: 55, shooting: 8, activity: 86 });
+  assert.strictEqual(
+    buildDescriptor(dims, { key: 'point-forward' }),
+    'Elite playmaking, rebounding, and defense, but rarely shoots from outside.',
+  );
+});
+
+test('buildDescriptor — no limitation clause when nothing is genuinely low', () => {
+  const dims = dimsOf({ scoring: 90, shooting: 70, playmaking: 66, rebounding: 50, defense: 55, activity: 80 });
+  assert.strictEqual(
+    buildDescriptor(dims, { key: 'three-level-scorer' }),
+    'Elite scoring, outside shooting, and playmaking.',
+  );
+});
+
+test('buildDescriptor — Solid tier when the top strength is modest', () => {
+  const dims = dimsOf({ defense: 67, rebounding: 66, scoring: 45, shooting: 40, playmaking: 45, activity: 60 });
+  assert.strictEqual(buildDescriptor(dims, { key: 'interior-anchor' }), 'Solid defense and rebounding.');
+});
+
+test('buildDescriptor — Role Player / flat profile has no standout', () => {
+  const dims = dimsOf({ scoring: 50, shooting: 45, playmaking: 48, rebounding: 52, defense: 50, activity: 55 });
+  assert.strictEqual(
+    buildDescriptor(dims, { key: 'role-player' }),
+    'Balanced contributor without a standout dimension.',
+  );
+});
+
+test('buildDescriptor — Versatile names its top dimensions, no dominant skill', () => {
+  const dims = dimsOf({ playmaking: 70, rebounding: 68, defense: 66, scoring: 60, shooting: 30, activity: 50 });
+  assert.strictEqual(
+    buildDescriptor(dims, { key: 'versatile' }),
+    'Versatile across playmaking, rebounding, and defense with no single dominant skill.',
+  );
 });
 
 test('confidenceFor — tier boundaries', () => {

@@ -325,3 +325,60 @@
   font-size: 0.72rem;
   color: var(--text-muted);
 }
+
+/* Plain-language playstyle sentence — the at-a-glance read above the radar. */
+.archetype-descriptor {
+  margin: 0 0 0.6rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+/* Radar: the shape IS the playstyle. Single-accent fill keeps it calm; labels are muted. */
+.fp-radar {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  margin: 0 auto 0.4rem;
+  overflow: visible;
+}
+.fp-radar-grid {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.fp-radar-axis {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.fp-radar-area {
+  fill: var(--accent);
+  fill-opacity: 0.22;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.fp-radar-dot { fill: var(--accent); }
+.fp-radar-label {
+  fill: var(--text-muted);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+/* "All 13 stats" disclosure — keeps the detail bars one click away, not in your face. */
+.archetype-detail-toggle {
+  display: block;
+  width: 100%;
+  margin-top: 0.3rem;
+  padding: 0.3rem 0;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  text-align: left;
+  cursor: pointer;
+}
+.archetype-detail-toggle:hover,
+.archetype-detail-toggle:focus-visible { color: var(--accent); }
+.archetype-detail-toggle[aria-expanded='true'] { margin-bottom: 0.4rem; }

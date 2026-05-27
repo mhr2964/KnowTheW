@@ -174,6 +174,62 @@ function assignArchetype(fingerprint) {
   };
 }
 
+// Plain-language descriptor built from the 6 composite dimensions (see playerFingerprint.DIMENSIONS).
+// Templated, not AI — must be instant and deterministic. 'Activity' is excluded (role size, not a
+// playstyle trait). Limitations are stated ONLY when a dimension is genuinely low, framed as how the
+// player plays ("rarely shoots from outside"), never an imposed/blanket weakness.
+const STRENGTH_PHRASE = {
+  scoring: 'scoring', shooting: 'outside shooting', playmaking: 'playmaking',
+  rebounding: 'rebounding', defense: 'defense',
+};
+const LIMIT_PHRASE = {
+  shooting: 'rarely shoots from outside', scoring: "isn't a volume scorer",
+  playmaking: "isn't a primary creator", rebounding: "doesn't crash the glass",
+  defense: 'low defensive activity',
+};
+const STRENGTH_MIN = 65;  // a dimension at/above this is a real strength
+const LIMIT_MAX = 28;     // at/below this is a genuine, statable limitation
+
+function joinList(items) {
+  if (items.length <= 1) return items[0] ?? '';
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+}
+
+/**
+ * One-sentence playstyle descriptor from the composite dimensions.
+ * @param {Array<{key:string,value:number|null}>} dimensions  buildDimensions() output
+ * @param {{key:string}|null} archetype  the assigned archetype ({key,name}) or null
+ * @returns {string}
+ */
+function buildDescriptor(dimensions, archetype) {
+  const play = (dimensions ?? [])
+    .filter(d => d.key !== 'activity' && typeof d.value === 'number');
+  const byStrong = [...play].sort((a, b) => b.value - a.value);
+
+  // Versatile fallback: name the top dimensions, no single dominant skill.
+  if (archetype?.key === 'versatile') {
+    const top = byStrong.filter(d => d.value >= 55).slice(0, 3).map(d => STRENGTH_PHRASE[d.key]);
+    return top.length
+      ? `Versatile across ${joinList(top)} with no single dominant skill.`
+      : 'Versatile contributor with no single dominant skill.';
+  }
+
+  const strengths = byStrong.filter(d => d.value >= STRENGTH_MIN).slice(0, 3);
+
+  // Role Player / flat profile: nothing stands out.
+  if (!strengths.length) return 'Balanced contributor without a standout dimension.';
+
+  const tier = strengths[0].value >= 85 ? 'Elite' : strengths[0].value >= 72 ? 'Strong' : 'Solid';
+  const lead = `${tier} ${joinList(strengths.map(d => STRENGTH_PHRASE[d.key]))}`;
+
+  const limit = byStrong[byStrong.length - 1];
+  if (limit && limit.value <= LIMIT_MAX) {
+    return `${lead}, but ${LIMIT_PHRASE[limit.key]}.`;
+  }
+  return `${lead}.`;
+}
+
 function round1(n) {
   return Math.round(n * 10) / 10;
 }
@@ -185,6 +241,7 @@ module.exports = {
   VERSATILE_MIN_ELEVATED,
   ELITE_AXIS,
   assignArchetype,
+  buildDescriptor,
   // exported for tests / tuning
   eligiblePrototypes,
   distanceToPrototype,
