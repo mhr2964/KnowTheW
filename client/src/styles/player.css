@@ -220,3 +220,108 @@
   background: var(--accent); color: #fff;
   padding: 0.15rem 0.5rem; border-radius: 4px; white-space: nowrap;
 }
+
+/* ── Archetype badge + fingerprint hover card (player hero) ───────────────── */
+.archetype-badge {
+  position: relative;
+  display: inline-block;
+  margin: 0.4rem 0 0.15rem;
+}
+.archetype-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.28rem 0.75rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.archetype-pill:hover,
+.archetype-pill:focus-visible {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.archetype-conf-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.archetype-conf-dot.conf-high   { background: var(--win); }
+.archetype-conf-dot.conf-medium { background: var(--champion-text); }
+.archetype-conf-dot.conf-low    { background: var(--text-muted); }
+
+.archetype-card {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 40;
+  width: 320px;
+  max-width: 90vw;
+  padding: 0.85rem 0.95rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.archetype-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+.archetype-card-name { font-size: 1rem; font-weight: 700; color: var(--text); }
+.archetype-card-conf { font-size: 0.72rem; white-space: nowrap; }
+.archetype-card-conf.conf-high   { color: var(--win); }
+.archetype-card-conf.conf-medium { color: var(--champion-text); }
+.archetype-card-conf.conf-low    { color: var(--text-muted); }
+.archetype-mods {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 0.65rem;
+}
+.archetype-axes { display: flex; flex-direction: column; gap: 0.28rem; }
+.archetype-axis {
+  display: grid;
+  grid-template-columns: 6.4rem 1fr 1.8rem;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+}
+.archetype-axis-label {
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.archetype-axis.is-elite .archetype-axis-label { color: var(--champion-text); font-weight: 700; }
+.archetype-axis-track {
+  height: 7px;
+  background: var(--surface-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.archetype-axis-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+}
+.archetype-axis.is-elite .archetype-axis-fill { background: var(--champion-text); }
+.archetype-axis-val {
+  text-align: right;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.archetype-foot {
+  margin-top: 0.6rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
