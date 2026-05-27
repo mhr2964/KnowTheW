@@ -696,13 +696,22 @@ router.get('/players/:id/similar', async (req, res) => {
       if (live.insufficient || !live.axes) {
         return res.json({ target: { id, insufficient: true, reason: live.reason ?? 'no-data' }, similar: [] });
       }
-      target = { id, pos: live.pos || null, axes: live.axes, advanced: live.advanced };
+      // The archetype label is position-pooled (matches the player's badge) — compute it from a
+      // position-pooled fingerprint, not the league-wide similarity axes.
+      const fpPos = await getPlayerFingerprint(id, { pool: 'position' });
+      const archetype = (!fpPos.insufficient && fpPos.axes)
+        ? assignArchetype(fpPos, buildDimensions(fpPos.axes, fpPos.advanced, fpPos.pos))?.archetype?.name ?? null
+        : null;
+      target = { id, headshot: null, pos: live.pos || null, axes: live.axes, advanced: live.advanced, stats: live.stats ?? null, archetype };
     }
     const similar = rankSimilar(target, candidates);
     res.json({
       target: {
         id,
+        headshot: target.headshot ?? null,
         pos: target.pos ?? null,
+        archetype: target.archetype ?? null,
+        stats: target.stats ?? null,
         // Same dimensions the radar overlay draws under each comparison, so target + candidate
         // shapes share one source of truth (buildDimensions).
         dimensions: buildDimensions(target.axes, target.advanced, target.pos),

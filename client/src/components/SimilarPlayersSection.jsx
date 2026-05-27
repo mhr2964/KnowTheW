@@ -2,14 +2,44 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import FingerprintRadar from './FingerprintRadar';
+import { initialsOf } from '../lib/initials';
 
-// Cross-Era Similarity surface on the player page: a ranked list of the most alike players by
-// era-normalized fingerprint. Clicking a row pins an inline card (one open at a time) with the
-// shared-trait summary and a radar that overlays this player's shape under the comparable's, so
-// "how alike" reads as two superimposed shapes. The "View →" link navigates — kept explicit inside
-// the card so a row click only ever expands, never the old hover/click conflict that closed cards.
-//
-// No section renders for a too-thin player (server returns similar: []), mirroring the badge.
+// Cross-Era Similarity surface: a ranked list of the most alike players by era-normalized, absolute
+// playstyle. Each row shows a headshot + archetype; clicking it pins an inline card (one open at a
+// time) that puts both players side by side — headshots, archetype, career per-game stats — flanking
+// a radar that overlays this player's shape under the comparable's. The "View →" link navigates
+// (explicit, so a row click only ever expands). No section renders for a too-thin player (similar: []).
+
+// Headshot from the real ESPN URL the payload carries; initials fallback when there's no URL (so we
+// never request an image we know doesn't exist) or if it fails to load.
+function PlayerImg({ src, name, className }) {
+  const [err, setErr] = useState(false);
+  if (err || !src) return <div className={`${className} placeholder`}>{initialsOf(name)}</div>;
+  return <img src={src} alt={name ?? ''} className={className} onError={() => setErr(true)} />;
+}
+
+function StatLine({ stats }) {
+  if (!stats) return null;
+  return (
+    <div className="similar-statline">
+      <span>{stats.ppg}<em>PPG</em></span>
+      <span>{stats.rpg}<em>RPG</em></span>
+      <span>{stats.apg}<em>APG</em></span>
+    </div>
+  );
+}
+
+// One side of the comparison card: headshot + name + archetype + career per-game line.
+function ComparePlayer({ headshot, name, archetype, stats, sideClass }) {
+  return (
+    <div className={`similar-cmp-side ${sideClass}`}>
+      <PlayerImg src={headshot} name={name} className="similar-cmp-img" />
+      <span className="similar-cmp-name">{name}</span>
+      {archetype && <span className="similar-pill">{archetype}</span>}
+      <StatLine stats={stats} />
+    </div>
+  );
+}
 
 export default function SimilarPlayersSection({ playerId, playerName }) {
   const navigate = useNavigate();
@@ -53,14 +83,13 @@ export default function SimilarPlayersSection({ playerId, playerName }) {
   }
   if (!data || !Array.isArray(data.similar) || !data.similar.length) return null;
 
-  const targetDims = data.target?.dimensions ?? null;
+  const target = data.target ?? {};
+  const targetDims = target.dimensions ?? null;
 
   return (
     <section className="similar-players-section" ref={wrapRef}>
       <h2 className="section-title">Similar Players</h2>
-      <p className="similar-subtitle">
-        Closest career profiles, era-normalized. Position-aware, so comparisons stay within reach.
-      </p>
+      <p className="similar-subtitle">Closest career profiles, era-normalized.</p>
       <ul className="similar-list">
         {data.similar.map(p => {
           const open = pinnedId === p.id;
@@ -75,7 +104,11 @@ export default function SimilarPlayersSection({ playerId, playerName }) {
                 aria-expanded={open}
                 onClick={() => setPinnedId(open ? null : p.id)}
               >
-                <span className="similar-row-name">{p.name ?? 'Unknown'}</span>
+                <PlayerImg src={p.headshot} name={p.name} className="similar-row-img" />
+                <span className="similar-row-main">
+                  <span className="similar-row-name">{p.name ?? 'Unknown'}</span>
+                  {p.archetype && <span className="similar-pill similar-row-pill">{p.archetype}</span>}
+                </span>
                 <span className="similar-row-stat">
                   {p.pos ? `${p.pos} · ` : ''}{p.similarity}%
                   {confLabel && <span className={`similar-conf-tag conf-${conf}`}>{confLabel}</span>}
@@ -90,13 +123,24 @@ export default function SimilarPlayersSection({ playerId, playerName }) {
                     </p>
                   )}
 
-                  {targetDims && Array.isArray(p.dimensions) && (
-                    <FingerprintRadar dimensions={p.dimensions} overlay={targetDims} />
-                  )}
-
-                  <div className="similar-legend">
-                    <span className="similar-legend-item is-target">{playerName}</span>
-                    <span className="similar-legend-item is-comp">{p.name}</span>
+                  <div className="similar-compare">
+                    <ComparePlayer
+                      headshot={target.headshot} name={playerName}
+                      archetype={target.archetype} stats={target.stats} sideClass="is-target"
+                    />
+                    <div className="similar-cmp-center">
+                      {targetDims && Array.isArray(p.dimensions) && (
+                        <FingerprintRadar dimensions={p.dimensions} overlay={targetDims} />
+                      )}
+                      <div className="similar-legend">
+                        <span className="similar-legend-item is-target">{playerName}</span>
+                        <span className="similar-legend-item is-comp">{p.name}</span>
+                      </div>
+                    </div>
+                    <ComparePlayer
+                      headshot={p.headshot} name={p.name}
+                      archetype={p.archetype} stats={p.stats} sideClass="is-comp"
+                    />
                   </div>
 
                   <button

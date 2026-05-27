@@ -135,7 +135,10 @@ function rankSimilar(target, candidates = [], { limit = SIMILAR_LIMIT, minAxes =
     scored.push({
       id: c.id,
       name: c.name ?? null,
+      headshot: c.headshot ?? null,   // real headshot URL (null → client renders initials, no 404)
       pos: c.pos ?? null,
+      archetype: c.archetype ?? null, // position-pooled label (matches the player's own badge)
+      stats: c.stats ?? null,         // career per-game { ppg, rpg, apg, gp }
       similarity,
       distance: Math.round(distance * 10) / 10, // raw fingerprint distance (secondary sort; not shown)
       axesUsed,

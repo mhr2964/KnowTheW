@@ -271,11 +271,12 @@ async function mapWithConcurrency(items, limit, fn) {
 async function buildFingerprintIndex() {
   const db = getDb();
   if (!db) return;
-  const { getPlayerFingerprint, AXES_VERSION } = require('./analysis/playerFingerprint');
+  const { getPlayerFingerprint, AXES_VERSION, buildDimensions } = require('./analysis/playerFingerprint');
+  const { assignArchetype } = require('./analysis/archetypes');
 
   const season = latestCompletedSeason();
   const indexed = await db.collection('playerIndex')
-    .find({}, { projection: { _id: 0, id: 1, name: 1, position: 1 } }).toArray();
+    .find({}, { projection: { _id: 0, id: 1, name: 1, position: 1, headshot: 1 } }).toArray();
 
   const docs = await mapWithConcurrency(indexed, FINGERPRINT_BUILD_CONCURRENCY, async (p) => {
     try {
@@ -283,15 +284,31 @@ async function buildFingerprintIndex() {
       // on playstyle, not "good for your position".
       const fp = await getPlayerFingerprint(p.id, { pool: 'all' });
       const ok = !fp.insufficient && fp.axes;
+
+      // The archetype label shown on the similar list must match the player's real badge, which is
+      // POSITION-pooled — compute it from a position-pooled fingerprint (the cache axes above are
+      // league-wide, for similarity). stats are raw per-game (pool-independent) so come from `fp`.
+      let archetype = null;
+      if (ok) {
+        const fpPos = await getPlayerFingerprint(p.id, { pool: 'position' });
+        if (!fpPos.insufficient && fpPos.axes) {
+          const dims = buildDimensions(fpPos.axes, fpPos.advanced, fpPos.pos);
+          archetype = assignArchetype(fpPos, dims)?.archetype?.name ?? null;
+        }
+      }
+
       return {
         id: p.id,
         name: p.name ?? null,
+        headshot: p.headshot ?? null, // real ESPN headshot URL (null → client shows initials, no 404)
         // The season-averages feed often returns an empty/'NA' pos for older players; the index
         // carries a reliable G/F/C for nearly all of them, and resolvePos backfills the last few from
         // POSITION_OVERRIDES. Without this, position-less players slip past the similarity gate.
         pos: resolvePos(fp.pos, p.position, p.id),
         axes: ok ? fp.axes : null,
         advanced: ok ? fp.advanced : null,
+        stats: ok ? (fp.stats ?? null) : null,
+        archetype,
         totalMinutes: fp.totalMinutes ?? 0,
         seasonsCovered: fp.seasonsCovered ?? 0,
         season,
@@ -324,7 +341,7 @@ async function loadFingerprintIndex() {
   return db.collection(FINGERPRINT_COLLECTION)
     .find(
       { season: latestCompletedSeason(), axesVersion: AXES_VERSION, axes: { $ne: null } },
-      { projection: { _id: 0, id: 1, name: 1, pos: 1, axes: 1, advanced: 1 } },
+      { projection: { _id: 0, id: 1, name: 1, headshot: 1, pos: 1, axes: 1, advanced: 1, stats: 1, archetype: 1 } },
     )
     .toArray();
 }

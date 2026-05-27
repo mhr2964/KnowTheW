@@ -207,6 +207,10 @@ function buildFingerprint({ percentiles, seasonAverages } = {}) {
   let totalMinutes = 0;
   let careerAst = 0;
   let careerTov = 0;
+  // Career counting totals + games, to derive headline per-game stats (PPG/RPG/APG) for the UI.
+  let careerPts = 0;
+  let careerReb = 0;
+  let careerGames = 0;
 
   for (const season of Object.keys(percentiles)) {
     // Weight by actual minutes that season; without a minutes figure we can't weight it, so skip.
@@ -214,10 +218,15 @@ function buildFingerprint({ percentiles, seasonAverages } = {}) {
     if (typeof minutes !== 'number' || minutes <= 0) continue;
     seasonFps.push({ season, minutes, fingerprint: buildSeasonFingerprint(percentiles[season]) });
     totalMinutes += minutes;
-    // Accumulate raw season totals for career AST/TO (the advanced playmaking-control signal).
+    // Accumulate raw season totals for career AST/TO (the advanced playmaking-control signal) + the
+    // headline per-game line. Games are derived as season minutes / MPG (GP isn't surfaced directly).
     const tot = totalsBySeason[season]?.Totals;
-    if (typeof tot?.AST === 'number') careerAst += tot.AST;
+    const mpg = totalsBySeason[season]?.PerGame?.MIN;
+    if (typeof tot?.AST === 'number') { careerAst += tot.AST; }
     if (typeof tot?.TOV === 'number') careerTov += tot.TOV;
+    if (typeof tot?.PTS === 'number') careerPts += tot.PTS;
+    if (typeof tot?.REB === 'number') careerReb += tot.REB;
+    if (typeof mpg === 'number' && mpg > 0) careerGames += minutes / mpg;
   }
 
   if (!seasonFps.length || totalMinutes < MIN_CAREER_MINUTES) {
@@ -225,10 +234,15 @@ function buildFingerprint({ percentiles, seasonAverages } = {}) {
   }
 
   const astTo = careerTov > 0 ? careerAst / careerTov : null;
+  const r1 = v => Math.round(v * 10) / 10;
+  const stats = careerGames >= 1
+    ? { ppg: r1(careerPts / careerGames), rpg: r1(careerReb / careerGames), apg: r1(careerAst / careerGames), gp: Math.round(careerGames) }
+    : null;
 
   return {
     axes: aggregateFingerprint(seasonFps),
     advanced: { astTo, playmakingQuality: normalizeAstTo(astTo) },
+    stats,
     seasonsCovered: seasonFps.length,
     totalMinutes,
     perSeason: seasonFps.map(s => ({ season: s.season, minutes: s.minutes, axes: s.fingerprint })),
