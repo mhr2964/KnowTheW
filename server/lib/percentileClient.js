@@ -123,10 +123,15 @@ function computePercentile(sortedAsc, value, inverted) {
 const DIST_MODES = ['PerGame', 'Per36', 'Totals'];
 const MODE_KEY   = { PerGame: 'perGame', Per36: 'per36', Totals: 'totals' };
 
-function computeSeasonPercentiles(playerStats, fullDist, playerPos) {
+// `pool`: 'position' (default) ranks a player within their G/F/C pool ("good for your position" —
+// used by archetypes); 'all' ranks against the whole league ("absolute playstyle" — used by Cross-Era
+// Similarity, so a guard's tiny block rate isn't inflated to "elite for a guard" and matched to a big).
+function computeSeasonPercentiles(playerStats, fullDist, playerPos, pool = 'position') {
   if (!fullDist || !playerStats) return null;
   const posPool = fullDist[playerPos]?.PTS?.length ?? 0;
-  const dist = posPool >= POSITION_MIN_BUCKET ? fullDist[playerPos] : fullDist['all'];
+  const dist = pool === 'all'
+    ? fullDist['all']
+    : (posPool >= POSITION_MIN_BUCKET ? fullDist[playerPos] : fullDist['all']);
   if (!dist) return null;
 
   const out = {};
@@ -137,7 +142,8 @@ function computeSeasonPercentiles(playerStats, fullDist, playerPos) {
 }
 
 // Returns { "2025": { perGame: { PTS: 98, ... }, per36: { ... }, totals: { ... } }, ... }
-async function getPlayerPercentiles(playerId) {
+// `pool` ('position' | 'all') chooses the comparison group — see computeSeasonPercentiles.
+async function getPlayerPercentiles(playerId, { pool = 'position' } = {}) {
   const inputs = await getProvider().getPlayerSeasonAverages(playerId);
   if (!inputs) return null;
   const { statsByModeBySeason } = inputs;
@@ -155,7 +161,7 @@ async function getPlayerPercentiles(playerId) {
     const seasonResult = {};
     for (const mode of DIST_MODES) {
       const fullDist = distributionCache[`${season}:${mode}`] ?? null;
-      const computed = computeSeasonPercentiles(statsByModeBySeason[season]?.[mode] ?? null, fullDist, playerPos);
+      const computed = computeSeasonPercentiles(statsByModeBySeason[season]?.[mode] ?? null, fullDist, playerPos, pool);
       if (computed) seasonResult[MODE_KEY[mode]] = computed;
     }
     if (Object.keys(seasonResult).length) result[season] = seasonResult;
@@ -273,7 +279,9 @@ async function buildFingerprintIndex() {
 
   const docs = await mapWithConcurrency(indexed, FINGERPRINT_BUILD_CONCURRENCY, async (p) => {
     try {
-      const fp = await getPlayerFingerprint(p.id);
+      // 'all' pool → league-wide absolute playstyle (see computeSeasonPercentiles); similarity ranks
+      // on playstyle, not "good for your position".
+      const fp = await getPlayerFingerprint(p.id, { pool: 'all' });
       const ok = !fp.insufficient && fp.axes;
       return {
         id: p.id,

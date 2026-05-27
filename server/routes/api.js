@@ -690,8 +690,9 @@ router.get('/players/:id/similar', async (req, res) => {
     const candidates = await loadFingerprintIndex();
     let target = candidates.find(c => String(c.id) === id); // cached fingerprintable docs only
     if (!target) {
-      // Not in the cache (e.g. a brand-new player) — compute live as a fallback.
-      const live = await getPlayerFingerprint(id);
+      // Not in the cache (e.g. a brand-new player) — compute live as a fallback. Must use the same
+      // 'all' (league-wide) pool the cache is built with, or the target wouldn't be comparable.
+      const live = await getPlayerFingerprint(id, { pool: 'all' });
       if (live.insufficient || !live.axes) {
         return res.json({ target: { id, insufficient: true, reason: live.reason ?? 'no-data' }, similar: [] });
       }

@@ -46,12 +46,14 @@ const AXES = [
 
 const AXIS_KEYS = AXES.map(a => a.key);
 
-// Schema version of the axis set. The fingerprint cache (playerFingerprints collection, built by
-// percentileClient.buildFingerprintIndex) stamps every doc with this. Cross-Era Similarity reads
-// only docs matching the CURRENT version, so a cached vector built against an older axis definition
-// is ignored rather than silently compared. BUMP THIS whenever AXES changes (add/remove/reorder an
-// axis, or change a stat/mode) — old caches then fall out of use until re-seeded.
-const AXES_VERSION = 1;
+// Schema version of the cached similarity fingerprint. The cache (playerFingerprints, built by
+// percentileClient.buildFingerprintIndex) stamps every doc with this; Cross-Era Similarity reads only
+// docs matching the CURRENT version, so vectors built against an older definition fall out of use until
+// re-seeded. BUMP THIS whenever the cached axes' MEANING changes — adding/removing/reordering an axis,
+// changing a stat/mode, OR changing the percentile POOL the similarity fingerprint is built against.
+// v2: similarity fingerprint switched from position-pooled to league-wide ('all') percentiles so
+// matching reflects absolute playstyle (a guard's blocks aren't inflated "for a guard" and matched to a big).
+const AXES_VERSION = 2;
 
 // Composite "play dimensions" — the 13 axes collapsed into 6 buckets for the radar so a profile
 // reads as a SHAPE at a glance (13 equal bars have no gestalt). Order here is the radar's spoke
@@ -303,11 +305,13 @@ function weightedFingerprintDistance(target, cand) {
  * getPlayerSeasonAverages call for the minutes weights — a known minor redundancy. Threading
  * minutes out of the percentile call would remove it; deferred until it shows up as a hotspot.
  * @param {string|number} playerId
+ * @param {{pool?: 'position'|'all'}} [opts] percentile pool: 'position' (default, for archetypes) or
+ *   'all' (league-wide absolute playstyle, used to build the Cross-Era Similarity cache).
  * @returns {Promise<Object>} buildFingerprint result, plus { playerId, pos }.
  */
-async function getPlayerFingerprint(playerId) {
+async function getPlayerFingerprint(playerId, { pool = 'position' } = {}) {
   const [percentiles, seasonAverages, pos] = await Promise.all([
-    getPlayerPercentiles(playerId),
+    getPlayerPercentiles(playerId, { pool }),
     getProvider().getPlayerSeasonAverages(playerId),
     resolvePlayerPos(playerId), // stable G/F/C (playerIndex), NOT the prefetch-timing-dependent feed pos
   ]);
