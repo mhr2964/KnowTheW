@@ -1,0 +1,173 @@
+// Archetype assignment — turns a continuous fingerprint (see playerFingerprint.js) into a readable
+// badge. WHY the design is shaped this way (it's a direct response to the failure modes of the
+// Reddit roles paper this feature is inspired by):
+//
+//   - Prototype-ANCHORED, not bucketed. Each archetype is an anchor point defined only on its few
+//     DEFINING axes (a sparse target vector). A player is assigned the nearest anchor — but only if
+//     they're actually close (ASSIGN_MAX_DISTANCE). This is what stops dissimilar players being
+//     forced into one cryptic bucket: if nobody's prototype fits, you fall through to the ladder
+//     rather than getting mislabeled.
+//   - No blanket weaknesses. We never tag a player with something they're bad at. The label states
+//     what they ARE (nearest prototype) and trait MODIFIERS add what they're elite at — strengths
+//     only. A prototype's low-axis targets are used to DISTINGUISH it (a Sharpshooter is low rim
+//     pressure), never surfaced as "this player is weak at X".
+//   - Tiered fallback for thin / undifferentiated profiles (the rookie / low-usage question):
+//       insufficient sample          -> null badge (don't assert what we can't support)
+//       elevated on multiple axes     -> 'Versatile' (earned — multi-skill, no textbook bucket)
+//       flat / low across the board   -> 'Role Player' (so 'Versatile' never flatters a bench piece)
+//   - Confidence is reported, not hidden. A one-season rookie gets a badge tagged 'low' confidence
+//     so the UI can show "small sample" rather than withholding or over-claiming.
+//
+// Pure module: assignArchetype takes a fingerprint object (the buildFingerprint result) and returns
+// a plain descriptor. No I/O. The known-player truth set (incl. Alyssa Thomas) validates it against
+// live data as a pre-ship gate; the unit tests here lock the assignment LOGIC with synthetic axes.
+
+'use strict';
+
+const { AXES, fingerprintDistance } = require('./playerFingerprint');
+
+const AXIS_LABEL = Object.fromEntries(AXES.map(a => [a.key, a.label]));
+
+// Target levels for a prototype's defining axes. H/L are what the archetype is known FOR / known to
+// LACK (the lack only sharpens the match, it's never shown as a weakness); M is a mild lean.
+const H = 80;
+const M = 55;
+const L = 20;
+
+// The 10 prototypes (the roster the user approved). Each lists ONLY its defining axes — distance is
+// measured over these axes alone, so an archetype isn't penalized on dimensions it doesn't define.
+const PROTOTYPES = [
+  { key: 'three-level-scorer', name: 'Three-Level Scorer',
+    target: { scoringVolume: H, finishing: H, threeAccuracy: H, rimPressure: H } },
+  { key: 'floor-general', name: 'Floor General',
+    target: { playmaking: H, ballSecurity: H, workload: H, scoringVolume: M } },
+  { key: 'three-and-d-wing', name: '3-and-D Wing',
+    target: { threeVolume: H, threeAccuracy: H, steals: H, scoringVolume: L } },
+  { key: 'sharpshooter', name: 'Sharpshooter',
+    target: { threeVolume: H, threeAccuracy: H, ftShooting: H, playmaking: L, rimPressure: L } },
+  { key: 'interior-anchor', name: 'Interior Anchor',
+    target: { rimProtection: H, defRebounding: H, finishing: H, threeVolume: L } },
+  { key: 'stretch-big', name: 'Stretch Big',
+    target: { threeVolume: H, threeAccuracy: H, defRebounding: H, rimProtection: M } },
+  { key: 'glass-cleaning-big', name: 'Glass-Cleaning Big',
+    target: { offRebounding: H, defRebounding: H, rimProtection: H, rimPressure: H, threeVolume: L } },
+  { key: 'two-way-forward', name: 'Two-Way Forward',
+    target: { scoringVolume: H, steals: H, defRebounding: H, finishing: H } },
+  { key: 'connector', name: 'Connector',
+    target: { playmaking: H, ballSecurity: H, steals: H, scoringVolume: L } },
+  { key: 'slashing-creator', name: 'Slashing Creator',
+    target: { scoringVolume: H, rimPressure: H, playmaking: H, threeVolume: L } },
+];
+
+// Assignment knobs (tunable against the truth set — the whole point of keeping them as named data).
+const ASSIGN_MAX_DISTANCE = 25;  // RMS over a prototype's defining axes; beyond this, no prototype fits.
+                                 // THE primary knob — loose buckets everyone, tight over-uses the
+                                 // Versatile/Role-Player fallback. Tune against the truth set.
+const ELEVATED_AXIS = 65;        // an axis at/above this is a genuine strength.
+const VERSATILE_MIN_ELEVATED = 3; // this many strengths with no prototype fit => Versatile, else Role Player.
+const ELITE_AXIS = 85;           // standout axes surfaced as trait modifiers.
+const MAX_MODIFIERS = 2;
+
+const FALLBACK_VERSATILE = { key: 'versatile', name: 'Versatile' };
+const FALLBACK_ROLE = { key: 'role-player', name: 'Role Player' };
+
+/**
+ * Distance from a player's axes to one prototype, measured ONLY over the prototype's defining axes.
+ * Reuses fingerprintDistance by projecting both vectors onto the target's axis set.
+ */
+function distanceToPrototype(axes, target) {
+  const a = {};
+  const b = {};
+  for (const key of Object.keys(target)) {
+    if (typeof axes[key] === 'number') {
+      a[key] = axes[key];
+      b[key] = target[key];
+    }
+  }
+  return fingerprintDistance(a, b); // { distance, similarity, axesUsed }
+}
+
+/** Confidence in the read, from career sample size. Reported so the UI can caveat thin samples. */
+function confidenceFor({ totalMinutes, seasonsCovered }) {
+  if (totalMinutes >= 3000 && seasonsCovered >= 3) return 'high';
+  if (totalMinutes >= 1200) return 'medium';
+  return 'low';
+}
+
+/** Up to MAX_MODIFIERS strengths (axes >= ELITE_AXIS), strongest first — strengths only, never weaknesses. */
+function traitModifiers(axes) {
+  return Object.entries(axes)
+    .filter(([, v]) => typeof v === 'number' && v >= ELITE_AXIS)
+    .sort((x, y) => y[1] - x[1])
+    .slice(0, MAX_MODIFIERS)
+    .map(([key]) => ({ key, label: AXIS_LABEL[key] }));
+}
+
+/**
+ * Assign an archetype to a fingerprint.
+ * @param {Object} fingerprint  buildFingerprint() result — either { insufficient, ... } or
+ *   { axes, totalMinutes, seasonsCovered, ... }.
+ * @returns {{archetype:null, reason:string}
+ *   | {archetype:{key,name}, fallback?:boolean, confidence:string, distance:number|null,
+ *      modifiers:Array<{key,label}>, runnerUp:{key,name,distance:number}|null}}
+ */
+function assignArchetype(fingerprint) {
+  if (!fingerprint || fingerprint.insufficient || !fingerprint.axes) {
+    return { archetype: null, reason: fingerprint?.reason ?? 'no-data' };
+  }
+
+  const { axes } = fingerprint;
+  const confidence = confidenceFor(fingerprint);
+  const modifiers = traitModifiers(axes);
+
+  // Rank prototypes by distance over their own defining axes; ignore any we couldn't measure.
+  const ranked = PROTOTYPES
+    .map(p => ({ proto: p, ...distanceToPrototype(axes, p.target) }))
+    .filter(r => r.distance !== null)
+    .sort((a, b) => a.distance - b.distance);
+
+  const best = ranked[0] ?? null;
+
+  if (best && best.distance <= ASSIGN_MAX_DISTANCE) {
+    const runnerUp = ranked[1]
+      ? { key: ranked[1].proto.key, name: ranked[1].proto.name, distance: round1(ranked[1].distance) }
+      : null;
+    return {
+      archetype: { key: best.proto.key, name: best.proto.name },
+      fallback: false,
+      confidence,
+      distance: round1(best.distance),
+      modifiers,
+      runnerUp,
+    };
+  }
+
+  // No prototype fits: Versatile (earned, multi-skill) vs Role Player (flat/low), by strength count.
+  const elevated = Object.values(axes).filter(v => typeof v === 'number' && v >= ELEVATED_AXIS).length;
+  const fallback = elevated >= VERSATILE_MIN_ELEVATED ? FALLBACK_VERSATILE : FALLBACK_ROLE;
+  return {
+    archetype: { key: fallback.key, name: fallback.name },
+    fallback: true,
+    confidence,
+    distance: best ? round1(best.distance) : null,
+    modifiers,
+    runnerUp: null,
+  };
+}
+
+function round1(n) {
+  return Math.round(n * 10) / 10;
+}
+
+module.exports = {
+  PROTOTYPES,
+  ASSIGN_MAX_DISTANCE,
+  ELEVATED_AXIS,
+  VERSATILE_MIN_ELEVATED,
+  ELITE_AXIS,
+  assignArchetype,
+  // exported for tests / tuning
+  distanceToPrototype,
+  confidenceFor,
+  traitModifiers,
+};
