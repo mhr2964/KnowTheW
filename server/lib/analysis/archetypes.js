@@ -105,6 +105,7 @@ const PROTOTYPE_PRIMARY = {
   'glass-cleaning-big': 'rebounding',
 };
 const PRIMARY_GAP = 25;
+const DOMINANT_GAP = 15;  // in the fallback, a top dim leading the 2nd by this much => Specialist, not Versatile
 
 const FALLBACK_VERSATILE = { key: 'versatile', name: 'Versatile' };
 const FALLBACK_ROLE = { key: 'role-player', name: 'Role Player' };
@@ -212,13 +213,19 @@ function assignArchetype(fingerprint, dimensions) {
     };
   }
 
-  // No prototype fits — label by dimensional strengths: 2+ -> Versatile, exactly 1 -> Specialist
-  // named by that dimension, 0 -> Role Player.
+  // No prototype fits — label by dimensional strengths. Specialist when there's a single dominant
+  // strength (only one strong dim, OR a clearly-leading one), so "Versatile" is reserved for
+  // genuinely balanced multi-skill profiles and never gets slapped on a player with an obvious #1
+  // (e.g. Vandersloot, playmaking 93 + defense 73 -> Playmaker, not "no single dominant skill").
   const strengths = strongDimensions(dimensions);
   let fb;
-  if (strengths.length >= 2) fb = FALLBACK_VERSATILE;
-  else if (strengths.length === 1) fb = SPECIALIST_BY_DIM[strengths[0].key] ?? FALLBACK_VERSATILE;
-  else fb = FALLBACK_ROLE;
+  if (strengths.length === 0) {
+    fb = FALLBACK_ROLE;
+  } else if (strengths.length === 1 || strengths[0].value - strengths[1].value >= DOMINANT_GAP) {
+    fb = SPECIALIST_BY_DIM[strengths[0].key] ?? FALLBACK_VERSATILE;
+  } else {
+    fb = FALLBACK_VERSATILE;
+  }
 
   return {
     archetype: { key: fb.key, name: fb.name },

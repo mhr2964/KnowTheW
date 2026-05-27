@@ -63,10 +63,16 @@ test('assignArchetype — reports a runnerUp prototype', () => {
   assert.notStrictEqual(res.runnerUp.key, res.archetype.key);
 });
 
-test('assignArchetype — no prototype + 2+ strong dimensions => Versatile', () => {
+test('assignArchetype — no prototype + 2+ balanced strong dims => Versatile', () => {
   const res = assignArchetype(fp(NO_MATCH), dimsOf({ rebounding: 72, defense: 70 }));
   assert.strictEqual(res.archetype.key, 'versatile');
   assert.strictEqual(res.fallback, true);
+});
+
+test('assignArchetype — no prototype + a clearly dominant strength => Specialist (not Versatile)', () => {
+  // Vandersloot shape: elite playmaking + good defense -> Playmaker, not "no single dominant skill".
+  const res = assignArchetype(fp(NO_MATCH), dimsOf({ playmaking: 90, defense: 72 }));
+  assert.strictEqual(res.archetype.key, 'playmaker');
 });
 
 test('assignArchetype — no prototype + exactly 1 strong dimension => Specialist named by it', () => {
