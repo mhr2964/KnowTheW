@@ -105,6 +105,7 @@ const PROTOTYPE_PRIMARY = {
   'glass-cleaning-big': 'rebounding',
 };
 const PRIMARY_GAP = 25;
+const PRIMARY_FLOOR = 58;  // a prototype's defining skill must be at least above-average (58th pct)
 const DOMINANT_GAP = 15;  // in the fallback, a top dim leading the 2nd by this much => Specialist, not Versatile
 
 const FALLBACK_VERSATILE = { key: 'versatile', name: 'Versatile' };
@@ -193,12 +194,17 @@ function assignArchetype(fingerprint, dimensions) {
     return typeof d?.value === 'number' ? d.value : null;
   };
   const topDim = Math.max(0, ...(dimensions ?? []).map(d => (typeof d.value === 'number' ? d.value : 0)));
+  // A prototype is credible only if its DEFINING skill is actually present (primary dim >= floor)
+  // and isn't dwarfed by a different dimension. This stops a wing with mediocre shooting reading
+  // "3-and-D Wing", without bluntly demoting every above-average-but-sub-65 player to Role Player.
   const consistent = (proto) => {
     const primary = PROTOTYPE_PRIMARY[proto.key];
     if (!primary) return true;
-    return topDim - (dimVal(primary) ?? 0) < PRIMARY_GAP;
+    const pv = dimVal(primary) ?? 0;
+    return pv >= PRIMARY_FLOOR && topDim - pv < PRIMARY_GAP;
   };
 
+  const strengths = strongDimensions(dimensions);  // used by the fallback below
   const matchIdx = ranked.findIndex(r => r.distance <= ASSIGN_MAX_DISTANCE && consistent(r.proto));
   if (matchIdx !== -1) {
     const m = ranked[matchIdx];
@@ -217,7 +223,6 @@ function assignArchetype(fingerprint, dimensions) {
   // strength (only one strong dim, OR a clearly-leading one), so "Versatile" is reserved for
   // genuinely balanced multi-skill profiles and never gets slapped on a player with an obvious #1
   // (e.g. Vandersloot, playmaking 93 + defense 73 -> Playmaker, not "no single dominant skill").
-  const strengths = strongDimensions(dimensions);
   let fb;
   if (strengths.length === 0) {
     fb = FALLBACK_ROLE;

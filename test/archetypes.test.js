@@ -9,8 +9,15 @@ process.env.NODE_ENV = 'test';
 const { test } = require('node:test');
 const assert = require('node:assert');
 
-const { AXIS_KEYS } = require('../server/lib/analysis/playerFingerprint');
+const { AXIS_KEYS, buildDimensions } = require('../server/lib/analysis/playerFingerprint');
 const { assignArchetype, confidenceFor, buildDescriptor } = require('../server/lib/analysis/archetypes');
+
+// Assign from axes, computing the real dimensions the route would pass (so prototype matching sees
+// the player's actual strengths). Pass `dims` explicitly to test the fallback with decoupled dims.
+function assign(axes, extra = {}, dims) {
+  const f = { axes, totalMinutes: 4000, seasonsCovered: 5, ...extra };
+  return assignArchetype(f, dims ?? buildDimensions(axes, f.advanced, extra.pos));
+}
 
 // Build the 5-dimension array (buildDimensions shape) from value overrides; unspecified -> null.
 function dimsOf(overrides) {
@@ -34,31 +41,31 @@ function fp(axes, extra = {}) {
 const NO_MATCH = axesWith(45);
 
 test('assignArchetype — matches the nearest prototype when close on its defining axes', () => {
-  const res = assignArchetype(fp(axesWith(50, {
+  const res = assign(axesWith(50, {
     scoringVolume: 82, finishing: 84, threeAccuracy: 80, rimPressure: 78,
-  })));
+  }));
   assert.strictEqual(res.archetype.key, 'three-level-scorer');
   assert.strictEqual(res.fallback, false);
 });
 
 test('assignArchetype — Glass-Cleaning Big from rebounding + rim signature', () => {
-  const res = assignArchetype(fp(axesWith(50, {
+  const res = assign(axesWith(50, {
     offRebounding: 80, defRebounding: 82, rimProtection: 80, rimPressure: 78, threeVolume: 18,
-  })));
+  }));
   assert.strictEqual(res.archetype.key, 'glass-cleaning-big');
 });
 
 test('assignArchetype — Floor General = pass-first PG (elite assists + low scoring volume)', () => {
   // Low scoring on purpose — the prototype ({playmaking H, scoringVolume L}) captures the pure
   // orchestrator (Vandersloot type) that a scoring-volume requirement used to exclude.
-  const res = assignArchetype(fp(axesWith(40, { playmaking: 90 }), { pos: 'G' }));
+  const res = assign(axesWith(40, { playmaking: 90 }), { pos: 'G' });
   assert.strictEqual(res.archetype.key, 'floor-general');
 });
 
 test('assignArchetype — reports a runnerUp prototype', () => {
-  const res = assignArchetype(fp(axesWith(50, {
+  const res = assign(axesWith(50, {
     scoringVolume: 82, finishing: 84, threeAccuracy: 80, rimPressure: 78,
-  })));
+  }));
   assert.ok(res.runnerUp);
   assert.notStrictEqual(res.runnerUp.key, res.archetype.key);
 });
@@ -116,7 +123,7 @@ test('assignArchetype — position gates out cross-position prototypes', () => {
   const bigProfile = axesWith(45, {
     threeVolume: 80, threeAccuracy: 80, defRebounding: 80, rimProtection: 55,
   });
-  assert.strictEqual(assignArchetype(fp(bigProfile, { pos: 'F' })).archetype.key, 'stretch-big');
+  assert.strictEqual(assign(bigProfile, { pos: 'F' }).archetype.key, 'stretch-big');
   // A guard can't be a Stretch Big — no guard prototype fits -> falls to a fallback label.
   const asGuard = assignArchetype(fp(bigProfile, { pos: 'G' }), dimsOf({ shooting: 75, rebounding: 70 }));
   assert.notStrictEqual(asGuard.archetype.key, 'stretch-big');
@@ -133,16 +140,17 @@ test('assignArchetype — rejects a prototype when the top dimension contradicts
 });
 
 test('assignArchetype — Point Forward for a playmaking + rebounding forward (the AT shape)', () => {
-  const res = assignArchetype(fp(axesWith(45, {
+  const res = assign(axesWith(45, {
     playmaking: 89, defRebounding: 72, steals: 84, scoringVolume: 60, rimPressure: 82, threeVolume: 9,
-  }), { pos: 'F' }));
+  }), { pos: 'F' });
   assert.strictEqual(res.archetype.key, 'point-forward');
 });
 
 test('assignArchetype — Combo Guard for a scoring + playmaking + shooting guard (the Ionescu shape)', () => {
-  const res = assignArchetype(fp(axesWith(45, {
-    scoringVolume: 80, playmaking: 89, threeVolume: 90, threeAccuracy: 75, ftShooting: 89,
-  }), { pos: 'G' }));
+  const res = assign(axesWith(45, {
+    scoringVolume: 80, finishing: 64, rimPressure: 62, playmaking: 80,
+    threeVolume: 85, threeAccuracy: 72, ftShooting: 80,
+  }), { pos: 'G' });
   assert.strictEqual(res.archetype.key, 'combo-guard');
 });
 
