@@ -2,32 +2,40 @@ import { useState, useRef, useEffect } from 'react';
 import useLazyFetch from '../hooks/useLazyFetch';
 import FingerprintRadar from './FingerprintRadar';
 
-// Archetype badge for the player hero. The pill names the archetype; hovering/focusing/tapping it
-// opens a card that reads playstyle at a glance: a one-line descriptor + a radar SHAPE over 6 play
-// dimensions, with the full 13-axis breakdown one click away. No badge for a too-thin sample
-// (server returns archetype:null) — we don't assert an identity we can't support.
+// Archetype badge for the player hero. The pill names the archetype; the card (radar + descriptor +
+// expandable 13-bar detail) opens on hover/focus and can be PINNED open by click/tap.
+//
+// Open model uses two independent signals so they can't fight each other (the old single-`open`
+// state had hover, focus, and click all writing it — a click after hovering closed the just-opened
+// card): `hovered` (mouse/focus) OR `pinned` (click/tap) shows the card. Escape and outside-click
+// clear both. No badge renders for a too-thin sample (server returns archetype:null).
 
 const CONF_LABEL = { high: 'High confidence', medium: 'Medium confidence', low: 'Small sample' };
 
 export default function ArchetypeBadge({ playerId }) {
-  const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [pinned, setPinned] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const wrapRef = useRef(null);
   // Eager fetch on mount; useLazyFetch guards res.ok and aborts on unmount/id change.
   const { data } = useLazyFetch(`/api/players/${playerId}/archetype`, true);
 
-  // Escape and outside-click close a tap-pinned card (mouseleave handles the hover case).
+  const show = hovered || pinned;
+
+  // Escape and outside-click dismiss the card entirely (covers the pinned/keyboard cases that
+  // mouseleave doesn't).
   useEffect(() => {
-    if (!open) return undefined;
-    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
-    const onDown = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    if (!show) return undefined;
+    const dismiss = () => { setPinned(false); setHovered(false); };
+    const onKey = (e) => { if (e.key === 'Escape') dismiss(); };
+    const onDown = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) dismiss(); };
     document.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onDown);
     return () => {
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('mousedown', onDown);
     };
-  }, [open]);
+  }, [show]);
 
   if (!data || !data.archetype) return null;
 
@@ -39,22 +47,22 @@ export default function ArchetypeBadge({ playerId }) {
     <div
       className="archetype-badge"
       ref={wrapRef}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       <button
         type="button"
         className="archetype-pill"
-        aria-expanded={open}
+        aria-expanded={show}
         aria-label={`Archetype: ${archetype.name}. ${confLabel}. Show fingerprint.`}
-        onClick={() => setOpen(o => !o)}
-        onFocus={() => setOpen(true)}
+        onClick={() => setPinned(p => !p)}
+        onFocus={() => setHovered(true)}
       >
         <span className={`archetype-conf-dot conf-${confidence}`} aria-hidden="true" />
         {archetype.name}
       </button>
 
-      {open && (
+      {show && (
         <div className="archetype-card" role="dialog" aria-label={`${archetype.name} fingerprint`}>
           <div className="archetype-card-head">
             <span className="archetype-card-name">{archetype.name}</span>
