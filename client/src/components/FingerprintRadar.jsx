@@ -3,6 +3,11 @@
 // visibly different shapes, so playstyle reads in one look instead of from 13 equal bars. Decorative
 // for sighted users (role="img" + aria-label carries the values; the expandable bars carry detail).
 // Spoke count follows `dimensions.length` (currently 5 playstyle dimensions → a pentagon).
+//
+// `overlay` (optional) draws a SECOND series behind the main one — used by Cross-Era Similarity to
+// superimpose the page player's shape under a comparable's, so "how alike" reads as two shapes. The
+// overlay is matched to the main spoke order by dimension key (both come from buildDimensions, so
+// the keys align); callers render their own legend. Single-series callers omit it and are unchanged.
 
 const SIZE = 200;
 const CX = 100;
@@ -17,21 +22,32 @@ function polar(i, n, pct) {
   return [CX + r * Math.cos(angle), CY + r * Math.sin(angle)];
 }
 
-export default function FingerprintRadar({ dimensions }) {
+const val = (d) => (typeof d?.value === 'number' ? d.value : 0);
+
+export default function FingerprintRadar({ dimensions, overlay = null }) {
   if (!Array.isArray(dimensions) || dimensions.length < 3) return null;
   const n = dimensions.length;
 
-  const val = (d) => (typeof d.value === 'number' ? d.value : 0);
   const ringPoints = (pct) => dimensions.map((_, i) => polar(i, n, pct).join(',')).join(' ');
   const dataPoints = dimensions.map((d, i) => polar(i, n, val(d)).join(',')).join(' ');
   const summary = dimensions.map(d => `${d.label} ${d.value ?? 0}`).join(', ');
+
+  // Align the overlay to the main spoke order by key (both series come from buildDimensions).
+  const overlayByKey = Array.isArray(overlay) ? new Map(overlay.map(d => [d.key, d])) : null;
+  const overlayPoints = overlayByKey
+    ? dimensions.map((d, i) => polar(i, n, val(overlayByKey.get(d.key))).join(',')).join(' ')
+    : null;
 
   return (
     <svg
       className="fp-radar"
       viewBox={`0 0 ${SIZE} ${SIZE}`}
       role="img"
-      aria-label={`Play profile out of 100 — ${summary}.`}
+      aria-label={
+        overlayPoints
+          ? `Play profile comparison out of 100 — comparable: ${summary}.`
+          : `Play profile out of 100 — ${summary}.`
+      }
     >
       {RINGS.map(pct => (
         <polygon key={`ring-${pct}`} className="fp-radar-grid" points={ringPoints(pct)} />
@@ -40,6 +56,9 @@ export default function FingerprintRadar({ dimensions }) {
         const [x, y] = polar(i, n, 100);
         return <line key={`axis-${d.key}`} className="fp-radar-axis" x1={CX} y1={CY} x2={x} y2={y} />;
       })}
+
+      {/* Overlay (page player) sits behind the main series (the comparable) so the comparable reads as the focus. */}
+      {overlayPoints && <polygon className="fp-radar-area fp-radar-area-overlay" points={overlayPoints} />}
 
       <polygon className="fp-radar-area" points={dataPoints} />
 

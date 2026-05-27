@@ -14,9 +14,10 @@ const { buildInputs: buildReportInputs }                                 = requi
 const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats }   = require('../lib/statsParser');
 const { ADV_HEADERS_SRV, buildAdvancedSplit, buildAdvancedCareer,
         computeSeasonPBP, buildPbpSplit }                                = require('../lib/advancedStats');
-const { getPlayerPercentiles }                                           = require('../lib/percentileClient');
+const { getPlayerPercentiles, loadFingerprintIndex }                     = require('../lib/percentileClient');
 const { getPlayerFingerprint, AXES, buildDimensions }                    = require('../lib/analysis/playerFingerprint');
 const { assignArchetype, buildDescriptor }                               = require('../lib/analysis/archetypes');
+const { rankSimilar }                                                    = require('../lib/analysis/similarity');
 const { LEGACY_PLAYERS_BULK, isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyId,
         searchBulkLegacyPlayers, buildBulkLegacyProfile,
         buildBulkLegacyDetailedStats }                                   = require('../constants/legacyPlayerBulk');
@@ -667,6 +668,49 @@ router.get('/players/:id/archetype', async (req, res) => {
   } catch (err) {
     console.error('archetype:', err.message);
     res.status(500).json({ error: 'failed to compute archetype' });
+  }
+});
+
+// GET /api/players/:id/similar
+//
+// Cross-Era Similarity ("players like X"): the most alike players by era-normalized fingerprint
+// distance, gated to adjacent positions because the axes are position-pooled (see similarity.js).
+// Candidates come from the precomputed fingerprint cache (loadFingerprintIndex) so this is one Mongo
+// read plus pure math, not ~700 live ESPN calls.
+//
+// The TARGET is also read from the cache when present, NOT recomputed live: a live fingerprint is
+// currently non-deterministic (a distribution-build race jitters the percentiles between calls), so a
+// live target would (a) make "players like X" change between page loads and (b) be compared on a
+// different snapshot than the cached candidates. Using the cached target keeps the target and the pool
+// on one consistent, stable basis. Live compute is the fallback only for a player not yet in the cache.
+// Always 200 when reachable — a too-thin target returns { target: { insufficient }, similar: [] }.
+router.get('/players/:id/similar', async (req, res) => {
+  try {
+    const id = String(req.params.id);
+    const candidates = await loadFingerprintIndex();
+    let target = candidates.find(c => String(c.id) === id); // cached fingerprintable docs only
+    if (!target) {
+      // Not in the cache (e.g. a brand-new player) — compute live as a fallback.
+      const live = await getPlayerFingerprint(id);
+      if (live.insufficient || !live.axes) {
+        return res.json({ target: { id, insufficient: true, reason: live.reason ?? 'no-data' }, similar: [] });
+      }
+      target = { id, pos: live.pos || null, axes: live.axes, advanced: live.advanced };
+    }
+    const similar = rankSimilar(target, candidates);
+    res.json({
+      target: {
+        id,
+        pos: target.pos ?? null,
+        // Same dimensions the radar overlay draws under each comparison, so target + candidate
+        // shapes share one source of truth (buildDimensions).
+        dimensions: buildDimensions(target.axes, target.advanced, target.pos),
+      },
+      similar,
+    });
+  } catch (err) {
+    console.error('similar:', err.message);
+    res.status(500).json({ error: 'failed to compute similar players' });
   }
 });
 

@@ -7,6 +7,8 @@
     "client": "npm start --prefix client",
     "build": "npm run build --prefix client",
     "heroku-postbuild": "npm install --include=dev --prefix client && npm run build --prefix client",
+    "seed": "node scripts/seed-distributions.js",
+    "seed:fingerprints": "node scripts/seed-fingerprints.js",
     "lint": "eslint server/ test/ && npm run lint --prefix client",
     "test": "node --test \"test/**/*.test.js\"",
     "check": "npm run lint && npm test",

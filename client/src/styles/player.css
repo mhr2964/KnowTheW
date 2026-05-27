@@ -359,6 +359,15 @@
   stroke-linejoin: round;
 }
 .fp-radar-dot { fill: var(--accent); }
+/* Similarity overlay: the page player's shape, drawn behind the comparable in a cool, muted tone so
+   the comparable (accent) stays the focus. Outline-forward (low fill) to keep both shapes legible. */
+.fp-radar-area-overlay {
+  fill: #5b8fb0;
+  fill-opacity: 0.12;
+  stroke: #7fb3d4;
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+}
 .fp-radar-label {
   fill: var(--text-muted);
   font-size: 9px;
@@ -382,3 +391,109 @@
 .archetype-detail-toggle:hover,
 .archetype-detail-toggle:focus-visible { color: var(--accent); }
 .archetype-detail-toggle[aria-expanded='true'] { margin-bottom: 0.4rem; }
+
+/* ── Cross-Era Similarity ─────────────────────────────────────────────────────
+   Ranked comparables below the hero. Each row click expands an inline card (one open at a time)
+   with the shared-trait line + a radar overlaying this player's shape under the comparable's. */
+.similar-players-section { margin-bottom: 2.5rem; }
+.similar-subtitle {
+  margin: -0.5rem 0 1rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.similar-status,
+.similar-retry {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.similar-retry {
+  background: none; border: none; padding: 0; cursor: pointer; text-align: left;
+}
+.similar-retry:hover { color: var(--accent); }
+
+.similar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.similar-row { display: flex; flex-direction: column; }
+
+/* Reuses .search-player-row-btn (shared.css) for the base look; this lays out name vs. match %. */
+.similar-row-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.7rem 1rem;
+}
+.similar-row-btn.is-open { border-color: var(--accent); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.similar-row-name { font-weight: 600; color: var(--text); }
+.similar-row-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--accent);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* Loose matches: de-emphasize the whole row and the score, and tag it so the weak comp is honest. */
+.similar-row-btn.is-loose { opacity: 0.6; }
+.similar-row-btn.is-loose .similar-row-stat { color: var(--text-muted); }
+.similar-conf-tag {
+  font-size: 0.66rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+}
+
+.similar-card {
+  border: 1px solid var(--accent);
+  border-top: none;
+  border-bottom-left-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
+  background: var(--surface);
+  padding: 0.85rem 0.95rem;
+}
+.similar-traits {
+  margin: 0 0 0.6rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--text);
+}
+.similar-legend {
+  display: flex;
+  justify-content: center;
+  gap: 1.1rem;
+  margin: 0.2rem 0 0.7rem;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+.similar-legend-item { display: inline-flex; align-items: center; gap: 0.35rem; }
+.similar-legend-item::before {
+  content: '';
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+}
+.similar-legend-item.is-target::before { background: #7fb3d4; }
+.similar-legend-item.is-comp::before   { background: var(--accent); }
+.similar-view-link {
+  display: inline-block;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.similar-view-link:hover { text-decoration: underline; }

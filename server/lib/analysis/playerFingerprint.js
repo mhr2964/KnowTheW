@@ -22,7 +22,7 @@
 'use strict';
 
 const { getProvider } = require('../../providers');
-const { getPlayerPercentiles } = require('../percentileClient');
+const { getPlayerPercentiles, resolvePlayerPos } = require('../percentileClient');
 
 // The 13 axes. `mode` keys match getPlayerPercentiles output ('perGame' | 'per36' | 'totals');
 // `stat` is a PERCENTILE_STATS key. Per-36 is used for volume axes so a high-minute starter and a
@@ -45,6 +45,13 @@ const AXES = [
 ];
 
 const AXIS_KEYS = AXES.map(a => a.key);
+
+// Schema version of the axis set. The fingerprint cache (playerFingerprints collection, built by
+// percentileClient.buildFingerprintIndex) stamps every doc with this. Cross-Era Similarity reads
+// only docs matching the CURRENT version, so a cached vector built against an older axis definition
+// is ignored rather than silently compared. BUMP THIS whenever AXES changes (add/remove/reorder an
+// axis, or change a stat/mode) — old caches then fall out of use until re-seeded.
+const AXES_VERSION = 1;
 
 // Composite "play dimensions" — the 13 axes collapsed into 6 buckets for the radar so a profile
 // reads as a SHAPE at a glance (13 equal bars have no gestalt). Order here is the radar's spoke
@@ -253,6 +260,43 @@ function fingerprintDistance(a, b) {
   return { distance: rms, similarity: Math.round(100 - rms), axesUsed: used };
 }
 
+// Cross-Era Similarity uses a SIGNATURE-weighted distance instead of the plain RMS above (which is
+// kept as-is for archetype prototype matching). Plain RMS treats all 13 axes equally, so two players
+// read "close" by sharing middling axes — a shooter ends up matched to rebounders on shared
+// averageness, and scores compress. Weighting each axis by how far the TARGET sits from the 50th
+// percentile makes the target's defining skills dominate the comparison ("players like X" = like X
+// on what makes X distinctive). The floor keeps every axis contributing a little so two flat role
+// players aren't compared on pure noise. Asymmetric (weights come from the target) — correct here.
+const SALIENCE_FLOOR = 0.2;
+
+/**
+ * Signature-weighted distance from `target` to `cand` over their shared (both non-null) axes.
+ * Weight per axis = SALIENCE_FLOOR + |target_i - 50| / 50, so the target's extreme (elite or low)
+ * axes drive the match. Same 0-100 scale + return contract as fingerprintDistance.
+ * @param {Object<string,number|null>} target  the reference player's axes (weights come from here)
+ * @param {Object<string,number|null>} cand
+ * @returns {{distance:number|null, similarity:number|null, axesUsed:number}}
+ */
+function weightedFingerprintDistance(target, cand) {
+  let sumSq = 0;
+  let sumW = 0;
+  let used = 0;
+  for (const key of AXIS_KEYS) {
+    const vt = target?.[key];
+    const vc = cand?.[key];
+    if (typeof vt === 'number' && typeof vc === 'number') {
+      const w = SALIENCE_FLOOR + Math.abs(vt - 50) / 50;
+      const d = vt - vc;
+      sumSq += w * d * d;
+      sumW += w;
+      used += 1;
+    }
+  }
+  if (used === 0) return { distance: null, similarity: null, axesUsed: 0 };
+  const rms = Math.sqrt(sumSq / sumW);
+  return { distance: rms, similarity: Math.round(100 - rms), axesUsed: used };
+}
+
 /**
  * Fetch + assemble a player's career fingerprint via the active provider.
  * Note: getPlayerPercentiles already fetches season averages internally, so this makes a second
@@ -262,17 +306,19 @@ function fingerprintDistance(a, b) {
  * @returns {Promise<Object>} buildFingerprint result, plus { playerId, pos }.
  */
 async function getPlayerFingerprint(playerId) {
-  const [percentiles, seasonAverages] = await Promise.all([
+  const [percentiles, seasonAverages, pos] = await Promise.all([
     getPlayerPercentiles(playerId),
     getProvider().getPlayerSeasonAverages(playerId),
+    resolvePlayerPos(playerId), // stable G/F/C (playerIndex), NOT the prefetch-timing-dependent feed pos
   ]);
   const result = buildFingerprint({ percentiles, seasonAverages });
-  return { playerId: String(playerId), pos: seasonAverages?.pos ?? null, ...result };
+  return { playerId: String(playerId), pos: pos ?? null, ...result };
 }
 
 module.exports = {
   AXES,
   AXIS_KEYS,
+  AXES_VERSION,
   DIMENSIONS,
   MIN_CAREER_MINUTES,
   buildDimensions,
@@ -281,5 +327,6 @@ module.exports = {
   aggregateFingerprint,
   buildFingerprint,
   fingerprintDistance,
+  weightedFingerprintDistance,
   getPlayerFingerprint,
 };

@@ -14,9 +14,17 @@ const {
   aggregateFingerprint,
   buildFingerprint,
   fingerprintDistance,
+  weightedFingerprintDistance,
   buildDimensions,
   normalizeAstTo,
 } = require('../server/lib/analysis/playerFingerprint');
+
+// Full 13-axis vector at `base` with overrides (local helper for the weighted-distance tests).
+function axesAt(base, overrides = {}) {
+  const a = {};
+  for (const k of AXIS_KEYS) a[k] = base;
+  return { ...a, ...overrides };
+}
 
 // A season percentile object with every axis populated to distinct values, so a wrong stat/mode
 // wiring shows up as a swapped number.
@@ -134,6 +142,30 @@ test('fingerprintDistance — only axes present in BOTH count', () => {
 test('fingerprintDistance — no overlap returns nulls', () => {
   const res = fingerprintDistance({ scoringVolume: 50 }, { playmaking: 50 });
   assert.deepStrictEqual(res, { distance: null, similarity: null, axesUsed: 0 });
+});
+
+test('weightedFingerprintDistance — flat target weights all axes equally (== plain RMS)', () => {
+  // Target sits at 50 on every axis → every weight is just the floor → uniform, so it matches RMS.
+  const t = axesAt(50);
+  const c = axesAt(60); // every diff 10
+  assert.strictEqual(weightedFingerprintDistance(t, c).distance, 10);
+  assert.strictEqual(weightedFingerprintDistance(t, c).similarity, 90);
+});
+
+test("weightedFingerprintDistance — the target's signature axis dominates the match", () => {
+  // Target's signature is elite scoring; everything else average. A candidate that nails scoring but
+  // is off on a non-signature axis should read CLOSER than one that misses scoring but matches the
+  // rest — the OPPOSITE of plain RMS, proving the weighting bites.
+  const target = axesAt(50, { scoringVolume: 95 });
+  const matchesSignature = axesAt(50, { scoringVolume: 95, playmaking: 10 }); // nails signature, off elsewhere
+  const missesSignature = axesAt(50, { scoringVolume: 70 });                  // misses signature, perfect elsewhere
+
+  // Plain RMS ranks the signature-misser closer...
+  assert.ok(fingerprintDistance(target, missesSignature).distance
+          < fingerprintDistance(target, matchesSignature).distance);
+  // ...but the weighted distance flips it: matching the signature wins.
+  assert.ok(weightedFingerprintDistance(target, matchesSignature).distance
+          < weightedFingerprintDistance(target, missesSignature).distance);
 });
 
 test('buildDimensions — 5 play dimensions (no Activity); Defense position-aware, Playmaking=assists', () => {

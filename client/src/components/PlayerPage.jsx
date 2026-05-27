@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import DetailedStats from './DetailedStats';
 import ComparePickerModal from './ComparePickerModal';
 import ArchetypeBadge from './ArchetypeBadge';
+import SimilarPlayersSection from './SimilarPlayersSection';
 import { initialsOf } from '../lib/initials';
 
 export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onTabChange }) {
@@ -56,6 +57,8 @@ export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onT
           </button>
         </div>
       </div>
+
+      <SimilarPlayersSection playerId={player.id} playerName={player.name} />
 
       <DetailedStats
         playerId={player.id}
