@@ -10,6 +10,7 @@
 const espn = require('./client');
 const { ESPN_WEB } = espn;
 const { parseStatMap } = require('../../lib/statsParser');
+const { latestCompletedSeason } = require('../../lib/seasonWindow');
 
 const ESPN_BYATHLETE = 'https://site.api.espn.com/apis/common/v3/sports/basketball/wnba/statistics/byathlete';
 
@@ -278,7 +279,11 @@ async function getPlayerSeasonAverages(playerId) {
   const avgCat = data?.categories?.find(c => c.name === 'averages');
   if (!avgCat?.statistics?.length) return null;
 
-  const seasons = [...new Set(avgCat.statistics.map(e => String(e.season?.year)).filter(Boolean))];
+  // Exclude the in-progress season — its live stats change game-to-game and would make the
+  // fingerprint jitter between restarts (see seasonWindow.js).
+  const cap = latestCompletedSeason();
+  const seasons = [...new Set(avgCat.statistics.map(e => String(e.season?.year)).filter(Boolean))]
+    .filter(s => Number(s) <= cap);
   if (!seasons.length) return null;
 
   const statsByModeBySeason = {};

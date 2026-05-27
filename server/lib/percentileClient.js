@@ -6,6 +6,7 @@
 
 const { getDb } = require('../db');
 const { getProvider } = require('../providers');
+const { latestCompletedSeason } = require('./seasonWindow');
 
 const DIST_CACHE_COLLECTION = 'distributionCache';
 const DIST_TTL_MS = 24 * 60 * 60 * 1000;
@@ -29,9 +30,11 @@ async function getOrBuildDistribution(season, mode = 'PerGame') {
     if (dbRead) {
       const doc = await dbRead.collection(DIST_CACHE_COLLECTION).findOne({ season, mode });
       if (doc) {
-        const currentYear = new Date().getFullYear();
-        const isRecent = Number(season) >= currentYear - 1;
-        if (!isRecent || Date.now() - doc.cachedAt < DIST_TTL_MS) {
+        // We only ever build COMPLETED seasons (see seasonWindow.js), whose stats are stable, so a
+        // cached distribution is always reusable. The TTL only guards the (now-excluded) in-progress
+        // season, so in practice the cache is reused without rebuild churn.
+        const isInProgress = Number(season) > latestCompletedSeason();
+        if (!isInProgress || Date.now() - doc.cachedAt < DIST_TTL_MS) {
           distributionCache[key] = doc.distribution;
           return doc.distribution;
         }
@@ -160,9 +163,9 @@ async function getPlayerPercentiles(playerId) {
 }
 
 async function warmDistributionCache() {
-  const currentYear = new Date().getFullYear();
+  const lastSeason = latestCompletedSeason(); // exclude the in-progress season (jitter source)
   const seasons = [];
-  for (let y = 2011; y <= currentYear; y++) seasons.push(String(y));
+  for (let y = 2011; y <= lastSeason; y++) seasons.push(String(y));
   await Promise.all(
     seasons.flatMap(season => DIST_MODES.map(mode => getOrBuildDistribution(season, mode).catch(() => null)))
   );
@@ -172,9 +175,9 @@ async function buildPlayerIndex() {
   const db = getDb();
   if (!db) return;
 
-  const currentYear = new Date().getFullYear();
+  const lastSeason = latestCompletedSeason();
   const seasons = [];
-  for (let y = 2011; y <= currentYear; y++) seasons.push(String(y));
+  for (let y = 2011; y <= lastSeason; y++) seasons.push(String(y));
 
   const players = await getProvider().getLeaguePlayerIndex(seasons);
   const upserts = players.map(p => ({
