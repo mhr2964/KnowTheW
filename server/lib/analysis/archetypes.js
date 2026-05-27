@@ -34,30 +34,48 @@ const H = 80;
 const M = 55;
 const L = 20;
 
-// The 10 prototypes (the roster the user approved). Each lists ONLY its defining axes — distance is
-// measured over these axes alone, so an archetype isn't penalized on dimensions it doesn't define.
+// The prototype roster. Each lists ONLY its defining axes — distance is measured over those axes
+// alone, so an archetype isn't penalized on dimensions it doesn't define. `pos` gates eligibility
+// by position group (G/F/C): the percentiles are position-POOLED, so a guard's axis value is
+// relative to guards — matching a guard against a "Big" prototype is both semantically wrong and
+// statistically apples-to-oranges. Gating is what stopped a guard reading as a Stretch Big and a
+// scoring forward reading as a Floor General (the truth-set misses that drove this).
 const PROTOTYPES = [
-  { key: 'three-level-scorer', name: 'Three-Level Scorer',
+  { key: 'three-level-scorer', name: 'Three-Level Scorer', pos: ['G', 'F'],
     target: { scoringVolume: H, finishing: H, threeAccuracy: H, rimPressure: H } },
-  { key: 'floor-general', name: 'Floor General',
+  { key: 'floor-general', name: 'Floor General', pos: ['G'],
     target: { playmaking: H, ballSecurity: H, workload: H, scoringVolume: M } },
-  { key: 'three-and-d-wing', name: '3-and-D Wing',
+  { key: 'combo-guard', name: 'Combo Guard', pos: ['G'],
+    target: { scoringVolume: H, playmaking: H, threeVolume: H, threeAccuracy: M } },
+  { key: 'three-and-d-wing', name: '3-and-D Wing', pos: ['G', 'F'],
     target: { threeVolume: H, threeAccuracy: H, steals: H, scoringVolume: L } },
-  { key: 'sharpshooter', name: 'Sharpshooter',
+  { key: 'sharpshooter', name: 'Sharpshooter', pos: ['G', 'F'],
     target: { threeVolume: H, threeAccuracy: H, ftShooting: H, playmaking: L, rimPressure: L } },
-  { key: 'interior-anchor', name: 'Interior Anchor',
-    target: { rimProtection: H, defRebounding: H, finishing: H, threeVolume: L } },
-  { key: 'stretch-big', name: 'Stretch Big',
-    target: { threeVolume: H, threeAccuracy: H, defRebounding: H, rimProtection: M } },
-  { key: 'glass-cleaning-big', name: 'Glass-Cleaning Big',
-    target: { offRebounding: H, defRebounding: H, rimProtection: H, rimPressure: H, threeVolume: L } },
-  { key: 'two-way-forward', name: 'Two-Way Forward',
-    target: { scoringVolume: H, steals: H, defRebounding: H, finishing: H } },
-  { key: 'connector', name: 'Connector',
-    target: { playmaking: H, ballSecurity: H, steals: H, scoringVolume: L } },
-  { key: 'slashing-creator', name: 'Slashing Creator',
+  { key: 'slashing-creator', name: 'Slashing Creator', pos: ['G', 'F'],
     target: { scoringVolume: H, rimPressure: H, playmaking: H, threeVolume: L } },
+  { key: 'connector', name: 'Connector', pos: ['G', 'F'],
+    target: { playmaking: H, ballSecurity: H, steals: H, scoringVolume: L } },
+  { key: 'two-way-forward', name: 'Two-Way Forward', pos: ['F'],
+    target: { scoringVolume: H, steals: H, defRebounding: H, finishing: H } },
+  { key: 'point-forward', name: 'Point Forward', pos: ['F'],
+    target: { playmaking: H, defRebounding: H, steals: H, scoringVolume: M, threeVolume: L } },
+  { key: 'interior-anchor', name: 'Interior Anchor', pos: ['F', 'C'],
+    target: { rimProtection: H, defRebounding: H, finishing: H, threeVolume: L } },
+  { key: 'stretch-big', name: 'Stretch Big', pos: ['F', 'C'],
+    target: { threeVolume: H, threeAccuracy: H, defRebounding: H, rimProtection: M } },
+  { key: 'glass-cleaning-big', name: 'Glass-Cleaning Big', pos: ['F', 'C'],
+    target: { offRebounding: H, defRebounding: H, rimProtection: H, rimPressure: H, threeVolume: L } },
 ];
+
+// Prototypes a player at `pos` can be assigned. Unknown/unparseable position -> no gating (rank all,
+// so the system degrades gracefully rather than returning nothing).
+function eligiblePrototypes(pos) {
+  const letters = String(pos ?? '').toUpperCase().match(/[GFC]/g);
+  if (!letters || !letters.length) return PROTOTYPES;
+  const set = new Set(letters);
+  const filtered = PROTOTYPES.filter(p => p.pos.some(x => set.has(x)));
+  return filtered.length ? filtered : PROTOTYPES;
+}
 
 // Assignment knobs (tunable against the truth set — the whole point of keeping them as named data).
 const ASSIGN_MAX_DISTANCE = 25;  // RMS over a prototype's defining axes; beyond this, no prototype fits.
@@ -120,8 +138,9 @@ function assignArchetype(fingerprint) {
   const confidence = confidenceFor(fingerprint);
   const modifiers = traitModifiers(axes);
 
-  // Rank prototypes by distance over their own defining axes; ignore any we couldn't measure.
-  const ranked = PROTOTYPES
+  // Rank position-eligible prototypes by distance over their own defining axes; ignore any we
+  // couldn't measure.
+  const ranked = eligiblePrototypes(fingerprint.pos)
     .map(p => ({ proto: p, ...distanceToPrototype(axes, p.target) }))
     .filter(r => r.distance !== null)
     .sort((a, b) => a.distance - b.distance);
@@ -167,6 +186,7 @@ module.exports = {
   ELITE_AXIS,
   assignArchetype,
   // exported for tests / tuning
+  eligiblePrototypes,
   distanceToPrototype,
   confidenceFor,
   traitModifiers,

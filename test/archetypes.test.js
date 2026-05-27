@@ -98,6 +98,31 @@ test('assignArchetype — confidence comes from sample size', () => {
   assert.strictEqual(assignArchetype(fp(axes, { totalMinutes: 600, seasonsCovered: 1 })).confidence, 'low');
 });
 
+test('assignArchetype — position gates out cross-position prototypes', () => {
+  // A big-shaped profile (3pt vol + rebounding + rim protection) that matches Stretch Big.
+  const bigProfile = axesWith(45, {
+    threeVolume: 80, threeAccuracy: 80, defRebounding: 80, rimProtection: 55,
+  });
+  // As a forward/center it reads Stretch Big...
+  assert.strictEqual(assignArchetype(fp(bigProfile, { pos: 'F' })).archetype.key, 'stretch-big');
+  // ...but a guard can never be a Stretch Big — it must land on a guard-eligible archetype instead.
+  assert.notStrictEqual(assignArchetype(fp(bigProfile, { pos: 'G' })).archetype.key, 'stretch-big');
+});
+
+test('assignArchetype — Point Forward for a playmaking + rebounding forward (the AT shape)', () => {
+  const res = assignArchetype(fp(axesWith(45, {
+    playmaking: 89, defRebounding: 72, steals: 84, scoringVolume: 60, rimPressure: 82, threeVolume: 9,
+  }), { pos: 'F' }));
+  assert.strictEqual(res.archetype.key, 'point-forward');
+});
+
+test('assignArchetype — Combo Guard for a scoring + playmaking + shooting guard (the Ionescu shape)', () => {
+  const res = assignArchetype(fp(axesWith(45, {
+    scoringVolume: 80, playmaking: 89, threeVolume: 90, threeAccuracy: 75, ftShooting: 89,
+  }), { pos: 'G' }));
+  assert.strictEqual(res.archetype.key, 'combo-guard');
+});
+
 test('confidenceFor — tier boundaries', () => {
   assert.strictEqual(confidenceFor({ totalMinutes: 3000, seasonsCovered: 3 }), 'high');
   assert.strictEqual(confidenceFor({ totalMinutes: 3000, seasonsCovered: 2 }), 'medium'); // needs 3+ seasons
