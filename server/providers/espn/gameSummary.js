@@ -44,6 +44,10 @@ function computeOnCourtStats(summary, targetPlayerId) {
     fga: 0, fgm: 0, fg3a: 0, fg3m: 0, fta: 0, ftm: 0, orb: 0, drb: 0, tov: 0, ast: 0,
     oFga: 0, oFgm: 0, oFg3a: 0, oFta: 0, oOrb: 0, oDrb: 0, oTov: 0,
     pts: 0, oPts: 0,
+    badPassTov: 0, lostBallTov: 0,
+    foulCommitShoot: 0, foulCommitOff: 0,
+    foulDrawnShoot: 0, foulDrawnOff: 0,
+    pga: 0, and1: 0, blkd: 0,
   };
 
   const plays = [...(summary.plays ?? [])].sort(
@@ -70,6 +74,8 @@ function computeOnCourtStats(summary, targetPlayerId) {
     const made  = play.scoringPlay;
     const sv    = play.scoreValue ?? 0;
     const is3   = isFGA && (sv === 3 || play.text?.toLowerCase().includes('three point'));
+    const type  = play.type?.text ?? '';
+    const isFoul = type.includes('Foul') || type.includes('Charge');
 
     // Team rebounds (no participants = deadball, shot-clock, OOB) are not
     // contested by individuals — exclude them from all rebound tallies.
@@ -79,21 +85,43 @@ function computeOnCourtStats(summary, targetPlayerId) {
       if (isFGA) { oc.fga++; if (is3) { oc.fg3a++; if (made) oc.fg3m++; } if (made) oc.fgm++; }
       else if (isFT) { oc.fta++; if (made) oc.ftm++; }
       if (isPlayerRebound) {
-        if (play.type?.text === 'Offensive Rebound')      oc.orb++;
-        else if (play.type?.text === 'Defensive Rebound') oc.drb++;
+        if (type === 'Offensive Rebound')      oc.orb++;
+        else if (type === 'Defensive Rebound') oc.drb++;
       }
-      if (play.type?.text?.includes('Turnover'))          oc.tov++;
-      if (isFGA && made && parts.length >= 2)             oc.ast++;
-      if (made) oc.pts  += isFT ? 1 : sv;
+      if (type.includes('Turnover')) {
+        oc.tov++;
+        if (type.includes('Bad Pass'))       oc.badPassTov++;
+        else if (type.includes('Lost Ball')) oc.lostBallTov++;
+      }
+      if (isFGA && made && parts.length >= 2) { oc.ast++; oc.pga += sv; }
+      if (made) oc.pts += isFT ? 1 : sv;
+      // Fouls committed: target player is the fouler (participants[0])
+      if (isFoul && String(parts[0]?.athlete?.id) === pid) {
+        if (type.includes('Shooting'))                       oc.foulCommitShoot++;
+        else if (type.includes('Offensive') || type.includes('Charge')) oc.foulCommitOff++;
+      }
+      // And1: made shot while target drew a foul (ESPN encodes as a separate event type)
+      if ((type.includes('And One') || type.includes('And-One')) && String(parts[0]?.athlete?.id) === pid) {
+        oc.and1++;
+      }
     } else {
       if (isFGA) { oc.oFga++; if (is3) oc.oFg3a++; if (made) oc.oFgm++; }
       else if (isFT) oc.oFta++;
       if (isPlayerRebound) {
-        if (play.type?.text === 'Offensive Rebound')      oc.oOrb++;
-        else if (play.type?.text === 'Defensive Rebound') oc.oDrb++;
+        if (type === 'Offensive Rebound')      oc.oOrb++;
+        else if (type === 'Defensive Rebound') oc.oDrb++;
       }
-      if (play.type?.text?.includes('Turnover'))          oc.oTov++;
+      if (type.includes('Turnover')) oc.oTov++;
       if (made) oc.oPts += isFT ? 1 : sv;
+      // Fouls drawn: opponent commits foul, target player is the fouled (participants[1])
+      if (isFoul && parts.length > 1 && String(parts[1]?.athlete?.id) === pid) {
+        if (type.includes('Shooting'))                       oc.foulDrawnShoot++;
+        else if (type.includes('Offensive') || type.includes('Charge')) oc.foulDrawnOff++;
+      }
+      // Blkd: opponent's block event where target player's shot was blocked (target is participants[1])
+      if (type.includes('Block') && parts.length > 1 && String(parts[1]?.athlete?.id) === pid) {
+        oc.blkd++;
+      }
     }
   }
 

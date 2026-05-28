@@ -71,6 +71,10 @@ test('computeOnCourtStats applies WNBA detection rules + on-court gating', () =>
     fga: 2, fgm: 1, fg3a: 1, fg3m: 0, fta: 1, ftm: 1, orb: 1, drb: 0, tov: 1, ast: 1,
     oFga: 1, oFgm: 1, oFg3a: 0, oFta: 0, oOrb: 1, oDrb: 0, oTov: 0,
     pts: 3, oPts: 2,
+    badPassTov: 1, lostBallTov: 0,
+    foulCommitShoot: 0, foulCommitOff: 0,
+    foulDrawnShoot: 0, foulDrawnOff: 0,
+    pga: 2, and1: 0, blkd: 0,
   });
 });
 

@@ -20,6 +20,7 @@ const { assignArchetype, buildDescriptor, confidenceFor }                = requi
 const { rankSimilar }                                                    = require('../lib/analysis/similarity');
 const { computeSeasonOnOff }                                             = require('../lib/onOffClient');
 const { computeSeasonPbpStats }                                          = require('../lib/pbpStatsClient');
+const { computePbpTableRow, computeCareerRow, PBP_TABLE_HEADERS }        = require('../lib/analysis/pbpTable');
 const { LEGACY_PLAYERS_BULK, isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyId,
         searchBulkLegacyPlayers, buildBulkLegacyProfile,
         buildBulkLegacyDetailedStats }                                   = require('../constants/legacyPlayerBulk');
@@ -581,6 +582,58 @@ router.get('/players/:id/pbp-stats', async (req, res) => {
   } catch (err) {
     console.error('pbp-stats:', err.message);
     res.status(500).json({ error: 'failed to compute play-by-play stats' });
+  }
+});
+
+// BBRef-style PBP season table: all regular seasons in one response.
+// Columns: OnCourt/On-Off per 100 poss, TOV subtypes, foul types, PGA, And1, Blkd.
+router.get('/players/:id/pbp-table', async (req, res) => {
+  try {
+    const playerId = String(req.params.id);
+    const { regData, teamsById } = await fetchPlayerSeasonData(playerId);
+    const regParsed = parseESPNSeasonData(regData, teamsById);
+    const pgTable = regParsed?.pg?.table;
+    if (!pgTable) return res.status(404).json({ error: 'no stats for this player' });
+    const I = Object.fromEntries(pgTable.headers.map((h, i) => [h, i]));
+    const regTidByYear = extractTeamIdByYear(regData);
+
+    const stFilter     = 'Regular Season';
+    const franchiseIds = new Set((await getProvider().getTeams()).map(t => String(t.id)));
+
+    const seasons = [...new Set(pgTable.rows.map(r => String(r[I.SEASON_ID])))];
+
+    const rows = (await Promise.all(seasons.map(async season => {
+      const playerRow = pgTable.rows.find(r => String(r[I.SEASON_ID]) === season);
+      if (!playerRow) return null;
+
+      const events = await getProvider().getGameLogEvents(playerId, season, 2);
+      if (!events) return null;
+      const eventIds = events
+        .filter(e => e.seasonTypeName?.includes(stFilter))
+        .filter(e => !e.eventNote?.toLowerCase().includes('all-star'))
+        .filter(e => !e.opponentId || franchiseIds.has(e.opponentId))
+        .map(e => e.eventId);
+      if (!eventIds.length) return null;
+
+      const pbpResults = await Promise.all(eventIds.map(id => getProvider().getGamePbpStats(id, playerId)));
+      const gp      = playerRow[I.GP]  ?? 0;
+      const minPg   = playerRow[I.MIN] ?? 0;
+      const minutes = Math.round(minPg * gp);
+      const meta = {
+        season,
+        team:    playerRow[I.TEAM_ABBREVIATION] ?? null,
+        age:     playerRow[I.AGE]  ?? null,
+        gp,
+        minutes,
+      };
+      return computePbpTableRow(pbpResults, meta);
+    }))).filter(Boolean);
+
+    const careerRow = computeCareerRow(rows);
+    res.json({ headers: PBP_TABLE_HEADERS, regular: { rows, careerRow } });
+  } catch (err) {
+    console.error('pbp-table:', err.message);
+    res.status(500).json({ error: 'failed to compute pbp table' });
   }
 });
 
