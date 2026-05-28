@@ -18,6 +18,7 @@ const { getPlayerPercentiles, loadFingerprintIndex }                     = requi
 const { getPlayerFingerprint, AXES, buildDimensions }                    = require('../lib/analysis/playerFingerprint');
 const { assignArchetype, buildDescriptor, confidenceFor }                = require('../lib/analysis/archetypes');
 const { rankSimilar }                                                    = require('../lib/analysis/similarity');
+const { computeSeasonOnOff }                                             = require('../lib/onOffClient');
 const { LEGACY_PLAYERS_BULK, isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyId,
         searchBulkLegacyPlayers, buildBulkLegacyProfile,
         buildBulkLegacyDetailedStats }                                   = require('../constants/legacyPlayerBulk');
@@ -553,6 +554,20 @@ router.get('/players/:id/gamelog', async (req, res) => {
 });
 
 
+
+// On/Off-Court Impact: team net rating (per 100 possessions) while the player is on vs off court.
+// PBP-derived; regular season only. Returns null result when < MIN_ON_GAMES games have usable PBP.
+router.get('/players/:id/onoff', async (req, res) => {
+  try {
+    const playerId = String(req.params.id);
+    const season   = Number(req.query.season) || new Date().getFullYear();
+    const result   = await computeSeasonOnOff(playerId, season);
+    res.json({ result: result ?? null, season });
+  } catch (err) {
+    console.error('onoff:', err.message);
+    res.status(500).json({ error: 'failed to compute on/off stats' });
+  }
+});
 
 router.get('/players/:id/advanced-pbp-all', async (req, res) => {
   try {

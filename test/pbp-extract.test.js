@@ -70,6 +70,7 @@ test('computeOnCourtStats applies WNBA detection rules + on-court gating', () =>
   assert.deepStrictEqual(computeOnCourtStats(SUMMARY, '100'), {
     fga: 2, fgm: 1, fg3a: 1, fta: 1, ftm: 1, orb: 1, drb: 0, tov: 1, ast: 1,
     oFga: 1, oFgm: 1, oFg3a: 0, oFta: 0, oOrb: 1, oDrb: 0, oTov: 0,
+    pts: 3, oPts: 2,
   });
 });
 
@@ -79,8 +80,9 @@ test('computeOnCourtStats returns null when the player is not in the boxscore', 
 
 test('extractBoxscoreTeamStats reads team totals + opponent points', () => {
   assert.deepStrictEqual(extractBoxscoreTeamStats(SUMMARY, '100'), {
-    tm: { fgm: 30, fga: 70, fg3m: 8, ftm: 14, fta: 18, orb: 10, drb: 28, tov: 12, ast: 20, pts: 82 },
+    tm:  { fgm: 30, fga: 70, fg3m: 8, ftm: 14, fta: 18, orb: 10, drb: 28, tov: 12, ast: 20, pts: 82 },
     oppPts: 72,
+    opp: { fgm: 28, fga: 66, fg3m: 6, ftm: 10, fta: 14, orb:  8, drb: 26, tov: 14, ast: 18, pts: 72 },
   });
 });
 

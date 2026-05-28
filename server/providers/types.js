@@ -108,6 +108,7 @@
 const PBP_OC_KEYS = [
   'fga', 'fgm', 'fg3a', 'fta', 'ftm', 'orb', 'drb', 'tov', 'ast',
   'oFga', 'oFgm', 'oFg3a', 'oFta', 'oOrb', 'oDrb', 'oTov',
+  'pts', 'oPts',
 ];
 
 module.exports = { PBP_OC_KEYS };

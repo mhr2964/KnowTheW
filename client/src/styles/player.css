@@ -573,3 +573,46 @@
   .similar-compare { grid-template-columns: 1fr 1fr; }
   .similar-cmp-center { grid-column: 1 / -1; order: 3; }
 }
+
+/* ── On/Off-Court Impact tab ──────────────────────────────────────────────── */
+.onoff-tab { padding-top: 0.25rem; }
+
+.onoff-panels {
+  display: flex; gap: 1rem; margin-top: 0.5rem;
+}
+
+.onoff-panel {
+  flex: 1; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1.1rem 1rem 0.9rem; text-align: center;
+}
+.onoff-panel--positive { border-color: var(--win, #4caf72); }
+.onoff-panel--negative { border-color: var(--loss, #e05252); }
+
+.onoff-panel-label {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--text-muted); margin-bottom: 0.4rem;
+}
+.onoff-panel-net {
+  font-size: 2rem; font-weight: 800; font-variant-numeric: tabular-nums;
+  line-height: 1; margin-bottom: 0.45rem;
+}
+.onoff-panel--positive .onoff-panel-net { color: var(--win, #4caf72); }
+.onoff-panel--negative .onoff-panel-net { color: var(--loss, #e05252); }
+
+.onoff-panel-sub {
+  display: flex; justify-content: center; gap: 1rem;
+  font-size: 0.78rem; color: var(--text-muted); font-variant-numeric: tabular-nums;
+}
+
+.onoff-meta {
+  margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted); text-align: center;
+}
+.onoff-pos { color: var(--win,  #4caf72); font-weight: 700; }
+.onoff-neg { color: var(--loss, #e05252); font-weight: 700; }
+
+.onoff-empty { padding-top: 0.5rem; }
+
+@media (max-width: 480px) {
+  .onoff-panels { flex-direction: column; }
+}

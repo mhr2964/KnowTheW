@@ -43,6 +43,7 @@ function computeOnCourtStats(summary, targetPlayerId) {
   const oc = {
     fga: 0, fgm: 0, fg3a: 0, fta: 0, ftm: 0, orb: 0, drb: 0, tov: 0, ast: 0,
     oFga: 0, oFgm: 0, oFg3a: 0, oFta: 0, oOrb: 0, oDrb: 0, oTov: 0,
+    pts: 0, oPts: 0,
   };
 
   const plays = [...(summary.plays ?? [])].sort(
@@ -83,6 +84,7 @@ function computeOnCourtStats(summary, targetPlayerId) {
       }
       if (play.type?.text?.includes('Turnover'))          oc.tov++;
       if (isFGA && made && parts.length >= 2)             oc.ast++;
+      if (made) oc.pts  += isFT ? 1 : sv;
     } else {
       if (isFGA) { oc.oFga++; if (is3) oc.oFg3a++; if (made) oc.oFgm++; }
       else if (isFT) oc.oFta++;
@@ -91,6 +93,7 @@ function computeOnCourtStats(summary, targetPlayerId) {
         else if (play.type?.text === 'Defensive Rebound') oc.oDrb++;
       }
       if (play.type?.text?.includes('Turnover'))          oc.oTov++;
+      if (made) oc.oPts += isFT ? 1 : sv;
     }
   }
 
@@ -148,7 +151,7 @@ function extractBoxscoreTeamStats(summary, targetPlayerId) {
   if (!tm) return null;
   const opp = oppBox ? readTeamBox(oppBox) : null;
 
-  return { tm, oppPts: opp?.pts ?? null };
+  return { tm, oppPts: opp?.pts ?? null, opp: opp ?? null };
 }
 
 /**
