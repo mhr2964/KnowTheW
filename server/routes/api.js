@@ -19,6 +19,7 @@ const { getPlayerFingerprint, AXES, buildDimensions }                    = requi
 const { assignArchetype, buildDescriptor, confidenceFor }                = require('../lib/analysis/archetypes');
 const { rankSimilar }                                                    = require('../lib/analysis/similarity');
 const { computeSeasonOnOff }                                             = require('../lib/onOffClient');
+const { computeSeasonPbpStats }                                          = require('../lib/pbpStatsClient');
 const { LEGACY_PLAYERS_BULK, isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyId,
         searchBulkLegacyPlayers, buildBulkLegacyProfile,
         buildBulkLegacyDetailedStats }                                   = require('../constants/legacyPlayerBulk');
@@ -566,6 +567,20 @@ router.get('/players/:id/onoff', async (req, res) => {
   } catch (err) {
     console.error('onoff:', err.message);
     res.status(500).json({ error: 'failed to compute on/off stats' });
+  }
+});
+
+// Full Play-by-Play section: shooting splits + on/off net ratings, both from the same PBP pass.
+// Returns { result: { onoff, shooting } | null, season }.
+router.get('/players/:id/pbp-stats', async (req, res) => {
+  try {
+    const playerId = String(req.params.id);
+    const season   = Number(req.query.season) || new Date().getFullYear();
+    const result   = await computeSeasonPbpStats(playerId, season);
+    res.json({ result: result ?? null, season });
+  } catch (err) {
+    console.error('pbp-stats:', err.message);
+    res.status(500).json({ error: 'failed to compute play-by-play stats' });
   }
 });
 

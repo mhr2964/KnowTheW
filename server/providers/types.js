@@ -106,7 +106,7 @@
  * consumers (advancedStats) can iterate it without importing a source-specific module.
  */
 const PBP_OC_KEYS = [
-  'fga', 'fgm', 'fg3a', 'fta', 'ftm', 'orb', 'drb', 'tov', 'ast',
+  'fga', 'fgm', 'fg3a', 'fg3m', 'fta', 'ftm', 'orb', 'drb', 'tov', 'ast',
   'oFga', 'oFgm', 'oFg3a', 'oFta', 'oOrb', 'oDrb', 'oTov',
   'pts', 'oPts',
 ];

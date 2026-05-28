@@ -41,7 +41,7 @@ function computeOnCourtStats(summary, targetPlayerId) {
   }
 
   const oc = {
-    fga: 0, fgm: 0, fg3a: 0, fta: 0, ftm: 0, orb: 0, drb: 0, tov: 0, ast: 0,
+    fga: 0, fgm: 0, fg3a: 0, fg3m: 0, fta: 0, ftm: 0, orb: 0, drb: 0, tov: 0, ast: 0,
     oFga: 0, oFgm: 0, oFg3a: 0, oFta: 0, oOrb: 0, oDrb: 0, oTov: 0,
     pts: 0, oPts: 0,
   };
@@ -76,7 +76,7 @@ function computeOnCourtStats(summary, targetPlayerId) {
     const isPlayerRebound = parts.length > 0;
 
     if (playTeam === targetTeamId) {
-      if (isFGA) { oc.fga++; if (is3) oc.fg3a++; if (made) oc.fgm++; }
+      if (isFGA) { oc.fga++; if (is3) { oc.fg3a++; if (made) oc.fg3m++; } if (made) oc.fgm++; }
       else if (isFT) { oc.fta++; if (made) oc.ftm++; }
       if (isPlayerRebound) {
         if (play.type?.text === 'Offensive Rebound')      oc.orb++;

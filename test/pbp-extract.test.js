@@ -68,7 +68,7 @@ const SUMMARY = {
 
 test('computeOnCourtStats applies WNBA detection rules + on-court gating', () => {
   assert.deepStrictEqual(computeOnCourtStats(SUMMARY, '100'), {
-    fga: 2, fgm: 1, fg3a: 1, fta: 1, ftm: 1, orb: 1, drb: 0, tov: 1, ast: 1,
+    fga: 2, fgm: 1, fg3a: 1, fg3m: 0, fta: 1, ftm: 1, orb: 1, drb: 0, tov: 1, ast: 1,
     oFga: 1, oFgm: 1, oFg3a: 0, oFta: 0, oOrb: 1, oDrb: 0, oTov: 0,
     pts: 3, oPts: 2,
   });
