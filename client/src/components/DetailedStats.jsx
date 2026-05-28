@@ -4,7 +4,7 @@ import BrefTable from './BrefTable';
 import useLazyFetch from '../hooks/useLazyFetch';
 import GameLogTab from './GameLogTab';
 import AdvancedTab from './AdvancedTab';
-import OnOffTab from './OnOffTab';
+import PlayByPlayTab from './PlayByPlayTab';
 import { deriveColumns } from '../lib/statsColumns';
 
 
@@ -15,14 +15,14 @@ const ALL_TABLE_TYPES = [
   { key: 'per100',    label: 'Per 100 Poss' },
   { key: 'advanced',  label: 'Advanced' },
   { key: 'gamelog',   label: 'Game Log' },
-  { key: 'onoff',     label: 'On/Off' },
+  { key: 'pbp',       label: 'Play-by-Play' },
 ];
-const COMING_SOON = ['Adj. Shooting', 'Play-by-Play'];
+const COMING_SOON = ['Adj. Shooting'];
 
 const SOURCE_ACTIVE = {
   bdl:  new Set(['perGame', 'totals', 'per36']),
   wnba: new Set(['perGame', 'totals', 'per36', 'per100']),
-  espn: new Set(['perGame', 'totals', 'per36', 'advanced', 'gamelog', 'onoff']),
+  espn: new Set(['perGame', 'totals', 'per36', 'advanced', 'gamelog', 'pbp']),
 };
 
 export default function DetailedStats({ playerId, playerName, onSaveDeck, initialTab, onTabChange }) {
@@ -85,12 +85,12 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
 
   const isGamelog  = safeType === 'gamelog';
   const isAdvanced = safeType === 'advanced';
-  const isOnOff    = safeType === 'onoff';
-  const tableData  = (isGamelog || isAdvanced || isOnOff) ? null : data[safeType];
-  const hasPlayoffs = (isGamelog || isAdvanced || isOnOff) ? false : !!tableData?.playoffs?.rows?.length;
+  const isPbp      = safeType === 'pbp';
+  const tableData  = (isGamelog || isAdvanced || isPbp) ? null : data[safeType];
+  const hasPlayoffs = (isGamelog || isAdvanced || isPbp) ? false : !!tableData?.playoffs?.rows?.length;
   const curSeason = (!hasPlayoffs && activeSeason === 'playoffs') ? 'regular' : activeSeason;
-  const regular = (isGamelog || isAdvanced || isOnOff) ? null : (curSeason === 'regular' ? tableData?.regular : tableData?.playoffs);
-  const career  = (isGamelog || isAdvanced || isOnOff) ? null : (curSeason === 'regular' ? tableData?.regularCareer : tableData?.playoffCareer);
+  const regular = (isGamelog || isAdvanced || isPbp) ? null : (curSeason === 'regular' ? tableData?.regular : tableData?.playoffs);
+  const career  = (isGamelog || isAdvanced || isPbp) ? null : (curSeason === 'regular' ? tableData?.regularCareer : tableData?.playoffCareer);
 
   function openStudy() {
     if (!regular) return;
@@ -136,8 +136,8 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
           />
         ) : isGamelog ? (
           <GameLogTab playerId={playerId} availableSeasons={availableSeasons} />
-        ) : isOnOff ? (
-          <OnOffTab playerId={playerId} availableSeasons={availableSeasons} />
+        ) : isPbp ? (
+          <PlayByPlayTab playerId={playerId} availableSeasons={availableSeasons} />
         ) : (
           <>
             <div className="stat-table-header">
