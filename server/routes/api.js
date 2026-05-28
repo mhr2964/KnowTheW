@@ -597,23 +597,14 @@ router.get('/players/:id/pbp-table', async (req, res) => {
     const I = Object.fromEntries(pgTable.headers.map((h, i) => [h, i]));
     const regTidByYear = extractTeamIdByYear(regData);
 
-    const stFilter     = 'Regular Season';
-    const franchiseIds = new Set((await getProvider().getTeams()).map(t => String(t.id)));
-
     const seasons = [...new Set(pgTable.rows.map(r => String(r[I.SEASON_ID])))];
 
     const rows = (await Promise.all(seasons.map(async season => {
       const playerRow = pgTable.rows.find(r => String(r[I.SEASON_ID]) === season);
       if (!playerRow) return null;
 
-      const events = await getProvider().getGameLogEvents(playerId, season, 2);
-      if (!events) return null;
-      const eventIds = events
-        .filter(e => e.seasonTypeName?.includes(stFilter))
-        .filter(e => !e.eventNote?.toLowerCase().includes('all-star'))
-        .filter(e => !e.opponentId || franchiseIds.has(e.opponentId))
-        .map(e => e.eventId);
-      if (!eventIds.length) return null;
+      const eventIds = await getProvider().getRegularSeasonEventIds(playerId, season, 2);
+      if (!eventIds?.length) return null;
 
       const pbpResults = await Promise.all(eventIds.map(id => getProvider().getGamePbpStats(id, playerId)));
       const gp      = playerRow[I.GP]  ?? 0;

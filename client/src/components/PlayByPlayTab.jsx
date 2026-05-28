@@ -1,6 +1,16 @@
 import useLazyFetch from '../hooks/useLazyFetch';
 import BrefTable from './BrefTable';
 
+// Column groupings matching the BBRef PBP table layout.
+const HEADER_GROUPS = [
+  { label: '',                  span: 5 }, // Season, Tm, Age, G, MP
+  { label: '+/- Per 100 Poss',  span: 2 }, // OnCourt, On-Off
+  { label: 'Turnovers',         span: 2 }, // BadPass, LostBall
+  { label: 'Fouls Committed',   span: 2 }, // FCShoot, FCOff
+  { label: 'Fouls Drawn',       span: 2 }, // FDShoot, FDOff
+  { label: 'Misc.',             span: 3 }, // PGA, And1, Blkd
+];
+
 // Human-readable column labels for PBP_TABLE_HEADERS keys.
 const COL_LABELS = {
   SEASON_ID:         'Season',
@@ -46,6 +56,7 @@ export default function PlayByPlayTab({ playerId }) {
 
   return (
     <BrefTable
+      headerGroups={HEADER_GROUPS}
       regular={{ headers: displayHeaders, rows: data.regular.rows }}
       career={data.regular.careerRow ? { headers: displayHeaders, rows: [data.regular.careerRow] } : null}
     />

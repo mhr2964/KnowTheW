@@ -40,6 +40,18 @@ class EspnProvider extends SportsDataProvider {
   getPlayerGameLog(playerId, season) { return gamelog.getPlayerGameLog(playerId, season); }
   getGameLogEvents(playerId, season, seasontype) { return gamelog.getGameLogEvents(playerId, season, seasontype); }
   getGamePbpStats(eventId, playerId) { return gameSummary.getGamePbpStats(eventId, playerId); }
+  async getRegularSeasonEventIds(playerId, season, seasontype = 2) {
+    const events = await gamelog.getGameLogEvents(playerId, season, seasontype);
+    if (!events) return null;
+    const stFilter     = seasontype === 2 ? 'Regular Season' : 'Postseason';
+    const allTeams     = await espn.getTeams();
+    const franchiseIds = new Set(allTeams.map(t => String(t.id)));
+    return events
+      .filter(e => e.seasonTypeName?.includes(stFilter))
+      .filter(e => !e.eventNote?.toLowerCase().includes('all-star'))
+      .filter(e => !e.opponentId || franchiseIds.has(e.opponentId))
+      .map(e => e.eventId);
+  }
 
   // --- League-wide stats (percentile system) ---
   getLeagueStatLines(season, mode) { return leagueStats.getLeagueStatLines(season, mode); }

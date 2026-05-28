@@ -13,21 +13,8 @@ const { getCached, writeCache } = require('./teamSeasonCache');
 const { computeOnOff } = require('./analysis/onOff');
 const { computePbpStats } = require('./analysis/pbpStats');
 
-async function buildEventIds(playerId, season, seasontype) {
-  const stFilter     = seasontype === 2 ? 'Regular Season' : 'Postseason';
-  const events       = await getProvider().getGameLogEvents(playerId, season, seasontype);
-  if (!events) return null;
-  const allTeams     = await getProvider().getTeams();
-  const franchiseIds = new Set(allTeams.map(t => String(t.id)));
-  return events
-    .filter(e => e.seasonTypeName?.includes(stFilter))
-    .filter(e => !e.eventNote?.toLowerCase().includes('all-star'))
-    .filter(e => !e.opponentId || franchiseIds.has(e.opponentId))
-    .map(e => e.eventId);
-}
-
 async function computeSeasonPbpStatsUncached(playerId, season, seasontype = 2) {
-  const eventIds = await buildEventIds(playerId, season, seasontype);
+  const eventIds = await getProvider().getRegularSeasonEventIds(playerId, season, seasontype);
   if (!eventIds?.length) return null;
 
   const pbpResults   = await Promise.all(eventIds.map(id => getProvider().getGamePbpStats(id, playerId)));

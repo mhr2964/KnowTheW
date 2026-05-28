@@ -33,7 +33,7 @@ export function percColor(p) {
   return undefined;
 }
 
-export default function BrefTable({ regular, career, percentiles, viewMode = 'perGame', emptyMessage }) {
+export default function BrefTable({ regular, career, percentiles, viewMode = 'perGame', emptyMessage, headerGroups }) {
   if (!regular) return <p className="stats-na">{emptyMessage ?? 'No data available.'}</p>;
   const { headers, rows } = regular;
   const cols = headers
@@ -45,6 +45,15 @@ export default function BrefTable({ regular, career, percentiles, viewMode = 'pe
     <div className="bref-wrap">
       <table className="bref-table">
         <thead>
+          {headerGroups && (
+            <tr className="bref-group-row">
+              {headerGroups.map((g, i) => (
+                <th key={i} colSpan={g.span} className={g.label ? 'bref-group-header' : 'bref-group-empty'}>
+                  {g.label}
+                </th>
+              ))}
+            </tr>
+          )}
           <tr>{cols.map(c => (
             <th key={c.key}>
               <HeaderTooltip label={c.label} definition={STAT_DEFINITIONS[c.key]} />

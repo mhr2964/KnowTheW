@@ -65,6 +65,8 @@ class SportsDataProvider {
   getGameLogEvents() { return this._notImplemented('getGameLogEvents'); }
   /** getGamePbpStats(eventId, playerId) → {fetched, onCourt, boxscore} (raw summary stays in provider). */
   getGamePbpStats() { return this._notImplemented('getGamePbpStats'); }
+  /** getRegularSeasonEventIds(playerId, season, seasontype) → filtered event IDs for PBP (excludes All-Stars, non-franchise opponents). */
+  getRegularSeasonEventIds() { return this._notImplemented('getRegularSeasonEventIds'); }
 
   // --- League-wide stats (percentile system) ---
   /** getLeagueStatLines(season, mode) → normalized {pos, PTS, ...} entries for qualified players. */

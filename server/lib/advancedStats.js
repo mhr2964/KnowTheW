@@ -2,7 +2,6 @@ const { GAME_MINUTES, WNBA_LG } = require('../constants/leagueAverages');
 const { getProvider } = require('../providers');
 const { PBP_OC_KEYS } = require('../providers/types');
 // Source access via the active provider; thin locals keep call sites below unchanged.
-const getTeams            = (...a) => getProvider().getTeams(...a);
 const fetchTeamStats      = (...a) => getProvider().getTeamStats(...a);
 const fetchTeamPtsAllowed = (...a) => getProvider().getTeamPointsAllowed(...a);
 const { computeBasicRatioStats, computePER, computeWinShares } = require('./statFormulas');
@@ -168,21 +167,8 @@ function buildAdvancedCareer(pgSrc, totSrc) {
 // only when every eventId returned a non-null summary (no ESPN failures mid-fetch). Partial
 // results are still returned to the caller for display but must not be persisted to the cache.
 async function computeSeasonPBPUncached(playerId, season, playerRow, I, teamId, totRow, seasontype = 2) {
-  const events = await getProvider().getGameLogEvents(playerId, season, seasontype);
-  if (!events) return null;
-
-  // ESPN returns all season types regardless of the seasontype param — filter to the right one.
-  // Also exclude All-Star/exhibition events: they appear under "Regular Season" but involve
-  // non-franchise teams. Commissioner's Cup games have eventNote too — keep those (real games).
-  // Use the live franchise list so future expansion team IDs (e.g. 129689) are not excluded.
-  const stFilter = seasontype === 2 ? 'Regular Season' : 'Postseason';
-  const franchiseIds = new Set((await getTeams()).map(t => String(t.id)));
-  const eventIds = events
-    .filter(e => e.seasonTypeName?.includes(stFilter))
-    .filter(e => !e.eventNote?.toLowerCase().includes('all-star'))
-    .filter(e => !e.opponentId || franchiseIds.has(e.opponentId))
-    .map(e => e.eventId);
-  if (!eventIds.length) return null;
+  const eventIds = await getProvider().getRegularSeasonEventIds(playerId, season, seasontype);
+  if (!eventIds?.length) return null;
 
   const pbpResults = await Promise.all(eventIds.map(id => getProvider().getGamePbpStats(id, playerId)));
   // Track how many ESPN fetches succeeded. complete = true when every eventId returned a
