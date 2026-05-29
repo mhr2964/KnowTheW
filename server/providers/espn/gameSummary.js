@@ -46,8 +46,8 @@ function computeOnCourtStats(summary, targetPlayerId) {
     pts: 0, oPts: 0,
     badPassTov: 0, lostBallTov: 0,
     foulCommitShoot: 0, foulCommitOff: 0,
-    foulDrawnShoot: 0,
-    pga: 0, and1: 0,
+    foulDrawnShoot: 0, foulDrawnOff: null,
+    pga: 0, and1: 0, blkd: null,
   };
 
   const plays = [...(summary.plays ?? [])].sort(

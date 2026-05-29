@@ -2,14 +2,14 @@ import useLazyFetch from '../hooks/useLazyFetch';
 import BrefTable from './BrefTable';
 
 // Column groupings matching the BBRef PBP table layout.
-// Note: FoulDrawnOff and Blkd are not available in ESPN WNBA PBP data.
+// FoulDrawnOff and Blkd render as — under ESPN (provider returns null); will populate when Sportradar lands.
 const HEADER_GROUPS = [
   { label: '',                  span: 5 }, // Season, Tm, Age, G, MP
   { label: '+/- Per 100 Poss',  span: 2 }, // OnCourt, On-Off
   { label: 'Turnovers',         span: 2 }, // BadPass, LostBall
   { label: 'Fouls Committed',   span: 2 }, // FCShoot, FCOff
-  { label: 'Fouls Drawn',       span: 1 }, // FDShoot only
-  { label: 'Misc.',             span: 2 }, // PGA, And1
+  { label: 'Fouls Drawn',       span: 2 }, // FDShoot, FDOff
+  { label: 'Misc.',             span: 3 }, // PGA, And1, Blkd
 ];
 
 // Human-readable column labels for PBP_TABLE_HEADERS keys.
@@ -26,8 +26,10 @@ const COL_LABELS = {
   FOUL_COMMIT_SHOOT: 'FCShoot',
   FOUL_COMMIT_OFF:   'FCOff',
   FOUL_DRAWN_SHOOT:  'FDShoot',
+  FOUL_DRAWN_OFF:    'FDOff',
   PGA:               'PGA',
   AND1:              'And1',
+  BLKD:              'Blkd',
 };
 
 export default function PlayByPlayTab({ playerId }) {

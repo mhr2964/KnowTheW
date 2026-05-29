@@ -12,13 +12,16 @@ const PBP_TABLE_HEADERS = [
   'ON_COURT', 'ON_OFF',
   'BAD_PASS', 'LOST_BALL',
   'FOUL_COMMIT_SHOOT', 'FOUL_COMMIT_OFF',
-  'FOUL_DRAWN_SHOOT',
-  'PGA', 'AND1',
+  'FOUL_DRAWN_SHOOT', 'FOUL_DRAWN_OFF',
+  'PGA', 'AND1', 'BLKD',
 ];
 
-// Indices for columns that get summed for the career row (not rate/weighted stats).
+// VOL_COLS: always-number volume columns (provider always supplies a value, never null).
 const VOL_COLS = ['BAD_PASS', 'LOST_BALL', 'FOUL_COMMIT_SHOOT', 'FOUL_COMMIT_OFF',
                   'FOUL_DRAWN_SHOOT', 'PGA', 'AND1'];
+// NULLABLE_VOL_COLS: columns a provider may not support (null = not available from this source).
+// Accumulate only when non-null so the season total stays null if no games provide a value.
+const NULLABLE_VOL_COLS = ['FOUL_DRAWN_OFF', 'BLKD'];
 const H_IDX = Object.fromEntries(PBP_TABLE_HEADERS.map((h, i) => [h, i]));
 
 function r1(v) { return v != null ? Math.round(v * 10) / 10 : null; }
@@ -36,6 +39,7 @@ function computePbpTableRow(pbpResults, meta) {
   let badPassTov = 0, lostBallTov = 0;
   let foulCommitShoot = 0, foulCommitOff = 0, foulDrawnShoot = 0;
   let pga = 0, and1 = 0;
+  let foulDrawnOff = null, blkd = null; // nullable: null if provider cannot supply
 
   for (const r of pbpResults) {
     if (!r.fetched || !r.onCourt) continue;
@@ -47,6 +51,9 @@ function computePbpTableRow(pbpResults, meta) {
     foulDrawnShoot  += oc.foulDrawnShoot  ?? 0;
     pga             += oc.pga             ?? 0;
     and1            += oc.and1            ?? 0;
+    // Nullable fields: only accumulate when the provider supplies a real value
+    if (oc.foulDrawnOff != null) foulDrawnOff = (foulDrawnOff ?? 0) + oc.foulDrawnOff;
+    if (oc.blkd         != null) blkd         = (blkd         ?? 0) + oc.blkd;
   }
 
   const row = new Array(PBP_TABLE_HEADERS.length).fill(null);
@@ -62,8 +69,10 @@ function computePbpTableRow(pbpResults, meta) {
   row[H_IDX.FOUL_COMMIT_SHOOT]  = foulCommitShoot;
   row[H_IDX.FOUL_COMMIT_OFF]    = foulCommitOff;
   row[H_IDX.FOUL_DRAWN_SHOOT]   = foulDrawnShoot;
+  row[H_IDX.FOUL_DRAWN_OFF]     = foulDrawnOff;
   row[H_IDX.PGA]                = pga;
   row[H_IDX.AND1]               = and1;
+  row[H_IDX.BLKD]               = blkd;
   return row;
 }
 
@@ -98,6 +107,10 @@ function computeCareerRow(rows) {
     }
     for (const col of VOL_COLS) {
       careerRow[H_IDX[col]] = (careerRow[H_IDX[col]] ?? 0) + (r[H_IDX[col]] ?? 0);
+    }
+    for (const col of NULLABLE_VOL_COLS) {
+      const v = r[H_IDX[col]];
+      if (v != null) careerRow[H_IDX[col]] = (careerRow[H_IDX[col]] ?? 0) + v;
     }
   }
 

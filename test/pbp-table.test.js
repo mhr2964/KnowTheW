@@ -18,8 +18,8 @@ function makeGame(oc = {}) {
       pts: 9, oPts: 8,
       badPassTov: 1, lostBallTov: 1,
       foulCommitShoot: 2, foulCommitOff: 0,
-      foulDrawnShoot: 3,
-      and1: 1,
+      foulDrawnShoot: 3, foulDrawnOff: null,
+      and1: 1, blkd: null,
       ...oc,
     },
     // computeOnOff needs boxscore for off-court derivation
@@ -73,6 +73,21 @@ test('foul columns are season totals', () => {
   assert.strictEqual(row[H.FOUL_COMMIT_SHOOT], 2 * n);
   assert.strictEqual(row[H.FOUL_COMMIT_OFF],   1 * n);
   assert.strictEqual(row[H.FOUL_DRAWN_SHOOT],  3 * n);
+});
+
+test('nullable columns stay null when provider returns null for all games', () => {
+  // ESPN sets foulDrawnOff=null and blkd=null — season total must stay null (not 0)
+  const row = computePbpTableRow(makeGames(6, { foulDrawnOff: null, blkd: null }), META);
+  assert.strictEqual(row[H.FOUL_DRAWN_OFF], null);
+  assert.strictEqual(row[H.BLKD], null);
+});
+
+test('nullable columns accumulate when provider returns real values', () => {
+  // When Sportradar provides blkd, it should sum normally
+  const n = 6;
+  const row = computePbpTableRow(makeGames(n, { foulDrawnOff: 2, blkd: 3 }), META);
+  assert.strictEqual(row[H.FOUL_DRAWN_OFF], 2 * n);
+  assert.strictEqual(row[H.BLKD], 3 * n);
 });
 
 test('ON_COURT and ON_OFF are populated (non-null) when enough games present', () => {
