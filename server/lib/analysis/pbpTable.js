@@ -12,13 +12,13 @@ const PBP_TABLE_HEADERS = [
   'ON_COURT', 'ON_OFF',
   'BAD_PASS', 'LOST_BALL',
   'FOUL_COMMIT_SHOOT', 'FOUL_COMMIT_OFF',
-  'FOUL_DRAWN_SHOOT', 'FOUL_DRAWN_OFF',
-  'PGA', 'AND1', 'BLKD',
+  'FOUL_DRAWN_SHOOT',
+  'PGA', 'AND1',
 ];
 
 // Indices for columns that get summed for the career row (not rate/weighted stats).
 const VOL_COLS = ['BAD_PASS', 'LOST_BALL', 'FOUL_COMMIT_SHOOT', 'FOUL_COMMIT_OFF',
-                  'FOUL_DRAWN_SHOOT', 'FOUL_DRAWN_OFF', 'PGA', 'AND1', 'BLKD'];
+                  'FOUL_DRAWN_SHOOT', 'PGA', 'AND1'];
 const H_IDX = Object.fromEntries(PBP_TABLE_HEADERS.map((h, i) => [h, i]));
 
 function r1(v) { return v != null ? Math.round(v * 10) / 10 : null; }
@@ -34,9 +34,8 @@ function computePbpTableRow(pbpResults, meta) {
   if (!onoff) return null;
 
   let badPassTov = 0, lostBallTov = 0;
-  let foulCommitShoot = 0, foulCommitOff = 0;
-  let foulDrawnShoot = 0, foulDrawnOff = 0;
-  let pga = 0, and1 = 0, blkd = 0;
+  let foulCommitShoot = 0, foulCommitOff = 0, foulDrawnShoot = 0;
+  let pga = 0, and1 = 0;
 
   for (const r of pbpResults) {
     if (!r.fetched || !r.onCourt) continue;
@@ -46,10 +45,8 @@ function computePbpTableRow(pbpResults, meta) {
     foulCommitShoot += oc.foulCommitShoot ?? 0;
     foulCommitOff   += oc.foulCommitOff   ?? 0;
     foulDrawnShoot  += oc.foulDrawnShoot  ?? 0;
-    foulDrawnOff    += oc.foulDrawnOff    ?? 0;
     pga             += oc.pga             ?? 0;
     and1            += oc.and1            ?? 0;
-    blkd            += oc.blkd            ?? 0;
   }
 
   const row = new Array(PBP_TABLE_HEADERS.length).fill(null);
@@ -65,10 +62,8 @@ function computePbpTableRow(pbpResults, meta) {
   row[H_IDX.FOUL_COMMIT_SHOOT]  = foulCommitShoot;
   row[H_IDX.FOUL_COMMIT_OFF]    = foulCommitOff;
   row[H_IDX.FOUL_DRAWN_SHOOT]   = foulDrawnShoot;
-  row[H_IDX.FOUL_DRAWN_OFF]     = foulDrawnOff;
   row[H_IDX.PGA]                = pga;
   row[H_IDX.AND1]               = and1;
-  row[H_IDX.BLKD]               = blkd;
   return row;
 }
 

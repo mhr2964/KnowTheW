@@ -18,8 +18,8 @@ function makeGame(oc = {}) {
       pts: 9, oPts: 8,
       badPassTov: 1, lostBallTov: 1,
       foulCommitShoot: 2, foulCommitOff: 0,
-      foulDrawnShoot: 3, foulDrawnOff: 0,
-      and1: 1, blkd: 1,
+      foulDrawnShoot: 3,
+      and1: 1,
       ...oc,
     },
     // computeOnOff needs boxscore for off-court derivation
@@ -60,21 +60,19 @@ test('metadata columns populated correctly', () => {
 
 test('volume columns are season totals across games', () => {
   const n = 6;
-  const row = computePbpTableRow(makeGames(n, { badPassTov: 2, lostBallTov: 1, pga: 4, and1: 1, blkd: 1 }), META);
+  const row = computePbpTableRow(makeGames(n, { badPassTov: 2, lostBallTov: 1, pga: 4, and1: 1 }), META);
   assert.strictEqual(row[H.BAD_PASS], 2 * n);
   assert.strictEqual(row[H.LOST_BALL], 1 * n);
   assert.strictEqual(row[H.PGA], 4 * n);
   assert.strictEqual(row[H.AND1], 1 * n);
-  assert.strictEqual(row[H.BLKD], 1 * n);
 });
 
 test('foul columns are season totals', () => {
   const n = 6;
-  const row = computePbpTableRow(makeGames(n, { foulCommitShoot: 2, foulCommitOff: 1, foulDrawnShoot: 3, foulDrawnOff: 0 }), META);
+  const row = computePbpTableRow(makeGames(n, { foulCommitShoot: 2, foulCommitOff: 1, foulDrawnShoot: 3 }), META);
   assert.strictEqual(row[H.FOUL_COMMIT_SHOOT], 2 * n);
   assert.strictEqual(row[H.FOUL_COMMIT_OFF],   1 * n);
   assert.strictEqual(row[H.FOUL_DRAWN_SHOOT],  3 * n);
-  assert.strictEqual(row[H.FOUL_DRAWN_OFF],    0);
 });
 
 test('ON_COURT and ON_OFF are populated (non-null) when enough games present', () => {

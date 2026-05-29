@@ -46,8 +46,8 @@ function computeOnCourtStats(summary, targetPlayerId) {
     pts: 0, oPts: 0,
     badPassTov: 0, lostBallTov: 0,
     foulCommitShoot: 0, foulCommitOff: 0,
-    foulDrawnShoot: 0, foulDrawnOff: 0,
-    pga: 0, and1: 0, blkd: 0,
+    foulDrawnShoot: 0,
+    pga: 0, and1: 0,
   };
 
   const plays = [...(summary.plays ?? [])].sort(
@@ -83,7 +83,17 @@ function computeOnCourtStats(summary, targetPlayerId) {
 
     if (playTeam === targetTeamId) {
       if (isFGA) { oc.fga++; if (is3) { oc.fg3a++; if (made) oc.fg3m++; } if (made) oc.fgm++; }
-      else if (isFT) { oc.fta++; if (made) oc.ftm++; }
+      else if (isFT) {
+        oc.fta++; if (made) oc.ftm++;
+        // Fouls drawn: target player is the shooter on the 1st FT of a non-technical foul.
+        // ESPN uses "Free Throw - 1 of N" (N=1,2,3) for all shooting fouls; "1 of 1" = And1.
+        // Foul events themselves only contain the fouler, not the fouled player — FTs are the
+        // only reliable signal for who was fouled.
+        if (type.includes(' 1 of ') && !type.includes('Technical') && String(parts[0]?.athlete?.id) === pid) {
+          oc.foulDrawnShoot++;
+          if (type === 'Free Throw - 1 of 1') oc.and1++; // And1 is a subset of fouls drawn
+        }
+      }
       if (isPlayerRebound) {
         if (type === 'Offensive Rebound')      oc.orb++;
         else if (type === 'Defensive Rebound') oc.drb++;
@@ -95,14 +105,11 @@ function computeOnCourtStats(summary, targetPlayerId) {
       }
       if (isFGA && made && parts.length >= 2) { oc.ast++; oc.pga += sv; }
       if (made) oc.pts += isFT ? 1 : sv;
-      // Fouls committed: target player is the fouler (participants[0])
+      // Fouls committed: target player is the fouler (participants[0]).
+      // ESPN foul events only ever contain 1 participant (the fouler).
       if (isFoul && String(parts[0]?.athlete?.id) === pid) {
-        if (type.includes('Shooting'))                       oc.foulCommitShoot++;
-        else if (type.includes('Offensive') || type.includes('Charge')) oc.foulCommitOff++;
-      }
-      // And1: made shot while target drew a foul (ESPN encodes as a separate event type)
-      if ((type.includes('And One') || type.includes('And-One')) && String(parts[0]?.athlete?.id) === pid) {
-        oc.and1++;
+        if (type.includes('Shooting'))                                    oc.foulCommitShoot++;
+        else if (type.includes('Offensive') || type.includes('Charge'))  oc.foulCommitOff++;
       }
     } else {
       if (isFGA) { oc.oFga++; if (is3) oc.oFg3a++; if (made) oc.oFgm++; }
@@ -113,15 +120,6 @@ function computeOnCourtStats(summary, targetPlayerId) {
       }
       if (type.includes('Turnover')) oc.oTov++;
       if (made) oc.oPts += isFT ? 1 : sv;
-      // Fouls drawn: opponent commits foul, target player is the fouled (participants[1])
-      if (isFoul && parts.length > 1 && String(parts[1]?.athlete?.id) === pid) {
-        if (type.includes('Shooting'))                       oc.foulDrawnShoot++;
-        else if (type.includes('Offensive') || type.includes('Charge')) oc.foulDrawnOff++;
-      }
-      // Blkd: opponent's block event where target player's shot was blocked (target is participants[1])
-      if (type.includes('Block') && parts.length > 1 && String(parts[1]?.athlete?.id) === pid) {
-        oc.blkd++;
-      }
     }
   }
 

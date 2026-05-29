@@ -111,8 +111,8 @@ const PBP_OC_KEYS = [
   'pts', 'oPts',
   'badPassTov', 'lostBallTov',
   'foulCommitShoot', 'foulCommitOff',
-  'foulDrawnShoot', 'foulDrawnOff',
-  'pga', 'and1', 'blkd',
+  'foulDrawnShoot',
+  'pga', 'and1',
 ];
 
 module.exports = { PBP_OC_KEYS };
