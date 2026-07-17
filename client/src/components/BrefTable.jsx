@@ -4,13 +4,14 @@ import { STAT_DEFINITIONS } from '../lib/statDefinitions';
 
 export const LEFT_COLS = new Set(['SEASON_ID', 'TEAM_ABBREVIATION']);
 
-export function fmt(key, val) {
+// kind: 'num' (plain) | 'pct' (0-1 fraction, renders .XXX) | 'pct100' (0-1 internally, renders XX.X).
+export function fmt(kind, val) {
   if (val === null || val === undefined || val === '') return '—';
-  if (PCT_COLS.has(key)) {
+  if (kind === 'pct') {
     if (typeof val !== 'number') return '—';
     return val.toFixed(3).replace(/^0\./, '.');
   }
-  if (PCT100_COLS.has(key)) {
+  if (kind === 'pct100') {
     if (typeof val !== 'number') return '—';
     return (val * 100).toFixed(1);
   }
@@ -35,10 +36,15 @@ export function percColor(p) {
 
 export default function BrefTable({ regular, career, percentiles, viewMode = 'perGame', emptyMessage, headerGroups }) {
   if (!regular) return <p className="stats-na">{emptyMessage ?? 'No data available.'}</p>;
-  const { headers, rows } = regular;
-  const cols = headers
-    .map((h, i) => ({ key: h, idx: i, label: LABELS[h] ?? h }))
-    .filter(c => !HIDDEN.has(c.key));
+  const { columns, headers, rows } = regular;
+  // Server-emitted `columns` ({key,label,kind}) is the primary path (detailed-stats,
+  // advanced-pbp-all). A bare `headers` array is still a fallback for PlayByPlayTab, whose
+  // PBP_TABLE_HEADERS keys live outside statColumns.js and aren't part of this migration.
+  const cols = columns
+    ? columns.map((c, i) => ({ ...c, idx: i }))
+    : headers
+        .map((h, i) => ({ key: h, idx: i, label: LABELS[h] ?? h, kind: PCT_COLS.has(h) ? 'pct' : PCT100_COLS.has(h) ? 'pct100' : 'num' }))
+        .filter(c => !HIDDEN.has(c.key));
   const careerRow = career?.rows?.[0];
 
   return (
@@ -75,7 +81,7 @@ export default function BrefTable({ regular, career, percentiles, viewMode = 'pe
                       style={{ backgroundColor: percColor(perc) }}
                       title={perc !== null && perc !== undefined ? `${ordinal(perc)} percentile` : undefined}
                     >
-                      {fmt(c.key, raw)}
+                      {fmt(c.kind, raw)}
                     </td>
                   );
                 })}
@@ -88,7 +94,7 @@ export default function BrefTable({ regular, career, percentiles, viewMode = 'pe
                 <td key={c.key} className={LEFT_COLS.has(c.key) ? 'td-l' : ''}>
                   {c.key === 'SEASON_ID' ? 'Career'
                     : c.key === 'TEAM_ABBREVIATION' ? ''
-                    : fmt(c.key, careerRow[c.idx])}
+                    : fmt(c.kind, careerRow[c.idx])}
                 </td>
               ))}
             </tr>

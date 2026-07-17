@@ -5,6 +5,13 @@ const fetchTeamStats      = (...a) => getProvider().getTeamStats(...a);
 const fetchTeamPtsAllowed = (...a) => getProvider().getTeamPointsAllowed(...a);
 const { computeBasicRatioStats, computePER, computeWinShares } = require('./statFormulas');
 const { getCached, writeCache } = require('./teamSeasonCache');
+const { ESPN_DETAILED_HEADERS } = require('./statsParser');
+
+// Per-game/totals tables passed into buildAdvancedSplit/buildAdvancedCareer always use this exact
+// header set (ESPN_DETAILED_HEADERS) — index off the constant directly rather than reading
+// `.headers` off the passed-in table, so this module doesn't care whether that table is still
+// carrying a `headers` field or has moved to `columns` for its own HTTP response.
+const PG_I = Object.fromEntries(ESPN_DETAILED_HEADERS.map((h, i) => [h, i]));
 
 const ADV_HEADERS_SRV = [
   'SEASON_ID', 'TEAM_ABBREVIATION', 'GP',
@@ -130,7 +137,7 @@ function advancedRow(row, I, tm, lg, totRow, officialTm = null) {
 
 function buildAdvancedSplit(src, teamIdByYear, cache, totSrc) {
   if (!src?.rows) return null;
-  const I = Object.fromEntries(src.headers.map((h, i) => [h, i]));
+  const I = PG_I;
   const totByYear = {};
   if (totSrc?.rows) {
     for (const r of totSrc.rows) totByYear[String(r[I.SEASON_ID])] = r;
@@ -147,7 +154,7 @@ function buildAdvancedSplit(src, teamIdByYear, cache, totSrc) {
 
 function buildAdvancedCareer(pgSrc, totSrc) {
   if (!pgSrc?.rows?.[0]) return null;
-  const I = Object.fromEntries(pgSrc.headers.map((h, i) => [h, i]));
+  const I = PG_I;
   const row = pgSrc.rows[0];
   const t   = totSrc?.rows?.[0] ?? row;
   const fga = t[I.FGA] ?? 0, fgm = t[I.FGM] ?? 0;

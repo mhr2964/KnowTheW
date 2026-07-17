@@ -5,7 +5,6 @@ import useLazyFetch from '../hooks/useLazyFetch';
 import GameLogTab from './GameLogTab';
 import AdvancedTab from './AdvancedTab';
 import PlayByPlayTab from './PlayByPlayTab';
-import { deriveColumns } from '../lib/statsColumns';
 
 
 const ALL_TABLE_TYPES = [
@@ -94,12 +93,15 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
 
   function openStudy() {
     if (!regular) return;
-    const { headers, rows } = regular;
+    const { columns, rows } = regular;
     const careerRows = career?.rows ?? [];
     const studyData = [...rows, ...careerRows].map(row =>
-      Object.fromEntries(headers.map((h, i) => [h, row[i]]))
+      Object.fromEntries(columns.map((c, i) => [c.key, row[i]]))
     );
-    const studyCols = deriveColumns(studyData);
+    // StudyFlow only special-cases type:'pct' (0-1 fraction -> "51.2%"); pct100 values fall through
+    // to its plain-number formatting same as 'num' always did here. No HIDDEN filter needed —
+    // server-emitted columns never include PLAYER_ID/LEAGUE_ID/TEAM_ID.
+    const studyCols = columns.map(c => ({ key: c.key, label: c.label, type: c.kind === 'pct' ? 'pct' : 'text' }));
     const typeLabel = enabledTypes.find(t => t.key === safeType)?.label ?? safeType;
     const suffix = curSeason === 'playoffs' ? ' (Playoffs)' : '';
     setStudyConfig({ data: studyData, columns: studyCols, deckName: `${playerName} ${typeLabel}${suffix}` });

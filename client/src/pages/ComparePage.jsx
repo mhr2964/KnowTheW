@@ -46,9 +46,9 @@ function deriveLastTeamName(details) {
   if (!Array.isArray(rows) || rows.length === 0) return null;
   // Rows are ordered ascending by season year; last row = most recent season.
   const lastRow = rows[rows.length - 1];
-  // Resolve the team-abbreviation column by NAME from the response's own headers, rather than a
+  // Resolve the team-abbreviation column by NAME from the response's own columns, rather than a
   // hardcoded positional index — the client shouldn't depend on the server's column ordering.
-  const abbrIdx = table.headers?.indexOf('TEAM_ABBREVIATION') ?? -1;
+  const abbrIdx = table.columns?.findIndex(c => c.key === 'TEAM_ABBREVIATION') ?? -1;
   const abbr = abbrIdx >= 0 ? lastRow?.[abbrIdx] : null;
   if (!abbr || abbr === '') return null;
   return TEAM_ABBR_MAP[abbr] ?? abbr;

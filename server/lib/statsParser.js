@@ -1,3 +1,5 @@
+const { toColumnTable } = require('./statColumns');
+
 const ESPN_DETAILED_HEADERS = [
   'SEASON_ID', 'TEAM_ABBREVIATION', 'GP', 'GS', 'MIN',
   'FGM', 'FGA', 'FG_PCT', 'FG3M', 'FG3A', 'FG3_PCT',
@@ -139,10 +141,10 @@ function buildDetailedStats(regData, postData, teamsById) {
   const reg = parseESPNSeasonData(regData, teamsById);
   const post = parseESPNSeasonData(postData, teamsById);
   const makeSplit = getter => ({
-    regular:       reg  ? getter(reg).table  : null,
-    regularCareer: reg  ? getter(reg).career : null,
-    playoffs:      post ? getter(post).table  : null,
-    playoffCareer: post ? getter(post).career : null,
+    regular:       reg  ? toColumnTable(getter(reg).table)  : null,
+    regularCareer: reg  ? toColumnTable(getter(reg).career) : null,
+    playoffs:      post ? toColumnTable(getter(post).table)  : null,
+    playoffCareer: post ? toColumnTable(getter(post).career) : null,
   });
   return {
     source: 'espn',

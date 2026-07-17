@@ -29,8 +29,8 @@ export default function AdvancedTab({ pbpAllData, pbpAllLoading, pbpAllError, re
               </div>
             </div>
             <BrefTable
-              regular={{ headers: pbpAllData.headers, rows: advSplit?.rows ?? [] }}
-              career={advSplit?.careerRow ? { headers: pbpAllData.headers, rows: [advSplit.careerRow] } : null}
+              regular={{ columns: pbpAllData.columns, rows: advSplit?.rows ?? [] }}
+              career={advSplit?.careerRow ? { columns: pbpAllData.columns, rows: [advSplit.careerRow] } : null}
             />
           </>
         );

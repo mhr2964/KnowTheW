@@ -21,7 +21,7 @@ const { getProvider } = require('../providers');
 // Source access via the active provider; thin locals keep call sites below unchanged.
 const getTeams       = (...a) => getProvider().getTeams(...a);
 const fetchTeamStats = (...a) => getProvider().getTeamStats(...a);
-const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats } = require('./statsParser');
+const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats, ESPN_DETAILED_HEADERS } = require('./statsParser');
 const { ADV_HEADERS_SRV, buildAdvancedSplit, computeSeasonPBP, buildPbpSplit } = require('./advancedStats');
 const { WNBA_LG } = require('../constants/leagueAverages');
 const { getPlayerAccolades } = require('../constants/wnbaAccolades');
@@ -298,14 +298,17 @@ async function buildInputs(playerId, mode) {
     }
   }
 
-  // Convert per-game rows to labelled objects sorted by year ascending
+  // Convert per-game rows to labelled objects sorted by year ascending. pgSplit/pgCareer come from
+  // buildDetailedStats() (`detailed`, above), which always uses ESPN_DETAILED_HEADERS ordering —
+  // index off the constant rather than a `.headers` field, since that response projects to
+  // `columns` for its own HTTP consumers.
   const seasonRows = pgSplit.rows
-    .map(r => rowToObj(pgSplit.headers, r))
+    .map(r => rowToObj(ESPN_DETAILED_HEADERS, r))
     .sort((a, b) => String(a.year).localeCompare(String(b.year)));
 
   // Career row
   const careerRow = pgCareer?.rows?.[0]
-    ? rowToObj(pgCareer.headers, pgCareer.rows[0])
+    ? rowToObj(ESPN_DETAILED_HEADERS, pgCareer.rows[0])
     : null;
 
   // League averages for the touched seasons

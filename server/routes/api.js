@@ -14,6 +14,7 @@ const { buildInputs: buildReportInputs }                                 = requi
 const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats }   = require('../lib/statsParser');
 const { ADV_HEADERS_SRV, buildAdvancedSplit, buildAdvancedCareer,
         computeSeasonPBP, buildPbpSplit }                                = require('../lib/advancedStats');
+const { columnsFor, toColumnTable }                                      = require('../lib/statColumns');
 const { getPlayerPercentiles, loadFingerprintIndex }                     = require('../lib/percentileClient');
 const { getPlayerFingerprint, AXES, buildDimensions }                    = require('../lib/analysis/playerFingerprint');
 const { assignArchetype, buildDescriptor, confidenceFor }                = require('../lib/analysis/archetypes');
@@ -531,10 +532,10 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
     );
 
     result.advanced = {
-      regular:       buildAdvancedSplit(result.perGame.regular,       regTidByYear,  teamStatsByKey, result.totals.regular),
-      regularCareer: buildAdvancedCareer(result.perGame.regularCareer, result.totals.regularCareer),
-      playoffs:      buildAdvancedSplit(result.perGame.playoffs,      postTidByYear, teamStatsByKey, result.totals.playoffs),
-      playoffCareer: buildAdvancedCareer(result.perGame.playoffCareer, result.totals.playoffCareer),
+      regular:       toColumnTable(buildAdvancedSplit(result.perGame.regular,       regTidByYear,  teamStatsByKey, result.totals.regular)),
+      regularCareer: toColumnTable(buildAdvancedCareer(result.perGame.regularCareer, result.totals.regularCareer)),
+      playoffs:      toColumnTable(buildAdvancedSplit(result.perGame.playoffs,      postTidByYear, teamStatsByKey, result.totals.playoffs)),
+      playoffCareer: toColumnTable(buildAdvancedCareer(result.perGame.playoffCareer, result.totals.playoffCareer)),
     };
 
     res.json(result);
@@ -650,7 +651,7 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
     const db = getDb();
     if (db) {
       const advCached = await db.collection('advancedStats').findOne({ _id: req.params.id });
-      if (advCached?.gp === currentGP && advCached.v === 25 && advCached.data?.regular != null) return res.json(advCached.data);
+      if (advCached?.gp === currentGP && advCached.v === 26 && advCached.data?.regular != null) return res.json(advCached.data);
     }
 
     // Build totals-by-year maps for both splits
@@ -692,7 +693,7 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
     const validPost = postResults.filter(Boolean);
 
     const advResult = {
-      headers:  ADV_HEADERS_SRV,
+      columns:  columnsFor(ADV_HEADERS_SRV),
       regular:  buildPbpSplit(validReg,  pgTable.rows,      I),
       playoffs: validPost.length ? buildPbpSplit(validPost, pgPostTable?.rows ?? [], IPost) : null,
       pbpGamesBySeason: Object.fromEntries([
@@ -701,8 +702,10 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
       ]),
     };
 
+    // v bumped 25->26: response shape changed from `headers` (bare strings) to `columns`
+    // ({key,label,kind}) — force a rebuild of any Mongo-cached v25 documents.
     if (db) db.collection('advancedStats')
-      .replaceOne({ _id: req.params.id }, { _id: req.params.id, gp: currentGP, v: 25, data: advResult }, { upsert: true })
+      .replaceOne({ _id: req.params.id }, { _id: req.params.id, gp: currentGP, v: 26, data: advResult }, { upsert: true })
       .catch(err => console.error('mongo write advancedStats:', err.message));
     res.json(advResult);
   } catch (err) {

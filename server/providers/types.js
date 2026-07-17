@@ -6,7 +6,12 @@
 // As later milestones absorb the leaky boundaries, their shapes get added here:
 //   - GameSummary / OnCourtStats       (M5)
 //   - LeagueStatLine / PercentileEntry (M6)
-//   - STAT_COLUMNS column metadata      (client-decoupling milestone)
+//
+// STAT_COLUMNS column metadata (client-decoupling milestone) — done, but NOT via this provider
+// contract: detailed-stats/advanced-stats are analysis-layer code (server/lib/statsParser.js,
+// server/lib/advancedStats.js), not SportsDataProvider methods, so they're documented here for
+// IntelliSense only — no Zod schema, since there's no provider-boundary drift risk (ESPN's raw JSON
+// is already fully parsed into rows well before this shape exists). See server/lib/statColumns.js.
 
 /**
  * @typedef {Object} GameLogColumn
@@ -21,6 +26,21 @@
  * @property {Array<{date:string, opponent:string, atVs:'vs'|'@', result:string,
  *   teamScore:number, oppScore:number, stats:Object<string,*>}>} games  Sorted ascending by date;
  *   each game's `stats` is keyed by column key (no positional arrays).
+ */
+
+/**
+ * @typedef {Object} DetailedStatsColumn
+ * @property {string} key    Stat identifier (also the index into each row array via its position
+ *   in the `columns` array — rows stay positional, unlike GameLogResponse's keyed `stats`).
+ * @property {string} label  Display label, e.g. "TS%".
+ * @property {'num'|'pct'|'pct100'} kind  'pct' is a 0-1 fraction rendered as .XXX; 'pct100' is also
+ *   0-1 internally but a whole-number percent stat rendered as XX.X (e.g. USG_PCT, TOV_PCT).
+ */
+
+/**
+ * @typedef {Object} DetailedStatsTable
+ * @property {DetailedStatsColumn[]} columns
+ * @property {Array<Array<*>>} rows  Positional — value at rows[i][j] corresponds to columns[j].
  */
 
 /**

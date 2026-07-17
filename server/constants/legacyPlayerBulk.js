@@ -30,6 +30,8 @@
 
 'use strict';
 
+const { toColumnTable } = require('../lib/statColumns');
+
 const LEGACY_PLAYERS_BULK = {
   'abrahta01w': {
     id: 'abrahta01w',
@@ -4280,8 +4282,8 @@ function buildBulkLegacyDetailedStats(player) {
     .filter(Boolean);
   const careerPgRow = buildBulkPgCareerRow(player);
 
-  const pgTable     = pgRows.length     ? { headers: BULK_PG_HEADERS, rows: pgRows } : null;
-  const pgCareerTbl = careerPgRow       ? { headers: BULK_PG_HEADERS, rows: [careerPgRow] } : null;
+  const pgTable     = pgRows.length     ? toColumnTable({ headers: BULK_PG_HEADERS, rows: pgRows }) : null;
+  const pgCareerTbl = careerPgRow       ? toColumnTable({ headers: BULK_PG_HEADERS, rows: [careerPgRow] }) : null;
 
   return {
     source:        'legacy-bulk',
