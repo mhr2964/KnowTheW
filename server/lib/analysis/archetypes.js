@@ -42,7 +42,7 @@ const L = 20;
 // scoring forward reading as a Floor General (the truth-set misses that drove this).
 const PROTOTYPES = [
   { key: 'three-level-scorer', name: 'Three-Level Scorer', pos: ['G', 'F'],
-    target: { scoringVolume: H, finishing: H, threeAccuracy: H, rimPressure: H } },
+    target: { scoringVolume: H, finishing: H, threeAccuracy: H, rimPressure: H, threeVolume: H } },
   { key: 'floor-general', name: 'Floor General', pos: ['G'],
     target: { playmaking: H, scoringVolume: L } },
   { key: 'combo-guard', name: 'Combo Guard', pos: ['G'],

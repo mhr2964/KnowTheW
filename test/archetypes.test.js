@@ -226,6 +226,16 @@ test('buildDescriptor — suppresses position-expected limitations', () => {
   assert.ok(!d2.includes('crash the glass'), d2);
 });
 
+test('assignArchetype — Three-Level Scorer requires meaningful 3pt volume (Chelsea Gray case)', () => {
+  // A guard with elite finishing + threeAccuracy but low threeVolume + rimPressure should NOT be
+  // Three-Level Scorer — the name implies actually shooting 3s at volume, not just accurately.
+  const res = assign(axesWith(50, {
+    scoringVolume: 62, finishing: 85, threeAccuracy: 70, rimPressure: 48, threeVolume: 32,
+    playmaking: 85,
+  }), { pos: 'G' });
+  assert.notStrictEqual(res.archetype.key, 'three-level-scorer');
+});
+
 test('confidenceFor — tier boundaries', () => {
   assert.strictEqual(confidenceFor({ totalMinutes: 3000, seasonsCovered: 3 }), 'high');
   assert.strictEqual(confidenceFor({ totalMinutes: 3000, seasonsCovered: 2 }), 'medium');
