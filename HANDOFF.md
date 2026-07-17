@@ -8,7 +8,7 @@ last-session: 2026-07-17
 state: green
 ```
 
-**Branch: `feature/archetype-accuracy`** (off `master` at `60a028d`), not pushed. `master` itself is 9 commits ahead of `origin/master` and also not pushed.
+**Branch: `master`.** `feature/archetype-accuracy` merged (fast-forward) and deleted this session. `master` is 14 commits ahead of `origin/master`, not pushed.
 
 ## What shipped this session
 
@@ -30,7 +30,6 @@ The version this replaces (`683873d`, dated 2026-05-28) described On/Off-Court I
 
 No planned feature is in flight. Options, in rough priority order:
 
-- **Decide what to do with `feature/archetype-accuracy`** — merge to `master`, or keep accumulating archetype fixes on it. Nothing blocks a merge; all three commits are green and the eval note's open items are closed.
 - **Win Shares** should move from `advancedStats.js` (analysis layer) into the ESPN provider, per the same nullable-contract principle used for On/Off — noted as "Task 2" in 05-28's session, still not done.
 - **STAT_COLUMNS** for detailed-stats — gamelog has a server-emitted columns shape; detailed-stats still sends raw headers.
 - **`latestCompletedSeason` schedule-detection heuristic** — currently date-based, should eventually be schedule-based (D1 in the eval note).
