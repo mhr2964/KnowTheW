@@ -236,6 +236,25 @@ test('assignArchetype — Three-Level Scorer requires meaningful 3pt volume (Che
   assert.notStrictEqual(res.archetype.key, 'three-level-scorer');
 });
 
+test('assignArchetype — Combo Guard accepts a shooting-led guard (Toliver/Latta shape)', () => {
+  // Shooting is one of Combo Guard's own defining axes, so a guard whose TOP dimension is shooting
+  // rather than scoring is still on-theme and should match.
+  const res = assign(axesWith(50, {
+    scoringVolume: 80, playmaking: 65, threeVolume: 80, threeAccuracy: 70, ftShooting: 80,
+  }), { pos: 'G' });
+  assert.strictEqual(res.archetype.key, 'combo-guard');
+});
+
+test('assignArchetype — Combo Guard rejects a defense-dominant guard (Rhyne Howard shape)', () => {
+  // Defense isn't one of Combo Guard's defining axes at all. A guard whose defense (83) leads her
+  // scoring/shooting (63) by 20 shouldn't read as a scoring/shooting-primary Combo Guard.
+  const res = assignArchetype(
+    fp(axesWith(50, { scoringVolume: 63, threeVolume: 55, threeAccuracy: 60, steals: 90, rimProtection: 40 }), { pos: 'G' }),
+    dimsOf({ scoring: 63, shooting: 59, playmaking: 52, rebounding: 69, defense: 83 }),
+  );
+  assert.notStrictEqual(res.archetype.key, 'combo-guard');
+});
+
 test('assignArchetype — DOMINANT_GAP=12: gap of 13 between top dims triggers Specialist', () => {
   // With DOMINANT_GAP=12, a 13-point gap between the top two strong dims is sufficient for
   // Specialist. Previously (gap threshold 15) this would fall to Versatile.

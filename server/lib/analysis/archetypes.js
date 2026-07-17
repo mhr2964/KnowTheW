@@ -93,7 +93,9 @@ const MAX_MODIFIERS = 2;
 const PROTOTYPE_PRIMARY = {
   'three-level-scorer': 'scoring',
   'floor-general': 'playmaking',
-  'combo-guard': 'scoring',
+  // Combo Guard's own target axes span both scoring AND shooting (threeVolume/threeAccuracy), so
+  // either counts as "primary" — a shooting-led combo guard (Toliver, Latta) is still on-theme.
+  'combo-guard': ['scoring', 'shooting'],
   'three-and-d-wing': 'shooting',
   'sharpshooter': 'shooting',
   'slashing-creator': 'scoring',
@@ -105,6 +107,10 @@ const PROTOTYPE_PRIMARY = {
   'glass-cleaning-big': 'rebounding',
 };
 const PRIMARY_GAP = 25;
+// Combo Guard's off-theme dimensions (defense, rebounding) were sneaking past the generic 25pt
+// window — a defense-dominant guard (Rhyne Howard, def 83 vs scoring/shooting 63) still read as a
+// scoring/shooting-primary Combo Guard. Tighter, prototype-specific gap; everything else keeps 25.
+const PRIMARY_GAP_BY_KEY = { 'combo-guard': 15 };
 const PRIMARY_FLOOR = 58;  // a prototype's defining skill must be at least above-average (58th pct)
 const DOMINANT_GAP = 12;  // in the fallback, a top dim leading the 2nd by this much => Specialist, not Versatile
 
@@ -200,8 +206,19 @@ function assignArchetype(fingerprint, dimensions) {
   const consistent = (proto) => {
     const primary = PROTOTYPE_PRIMARY[proto.key];
     if (!primary) return true;
-    const pv = dimVal(primary) ?? 0;
-    return pv >= PRIMARY_FLOOR && topDim - pv < PRIMARY_GAP;
+    const keys = Array.isArray(primary) ? primary : [primary];
+    const gap = PRIMARY_GAP_BY_KEY[proto.key] ?? PRIMARY_GAP;
+    // If the player's actual TOP dimension is itself one of the prototype's primary dims, it's
+    // on-theme by construction (e.g. a shooting-led Combo Guard) — just clear that dim's floor, no
+    // gap penalty against itself. Otherwise anchor on the archetype's headline dim (keys[0]) so an
+    // off-theme leader (playmaking, defense, rebounding) still has to stay within `gap` of it — this
+    // is what stops a playmaking-dominant guard (Sue Bird) from qualifying just because her secondary
+    // shooting dim alone clears the floor.
+    const topKeys = (dimensions ?? []).filter(d => d.value === topDim).map(d => d.key);
+    const onThemeTop = keys.find(k => topKeys.includes(k));
+    if (onThemeTop) return (dimVal(onThemeTop) ?? 0) >= PRIMARY_FLOOR;
+    const pv = dimVal(keys[0]) ?? 0;
+    return pv >= PRIMARY_FLOOR && topDim - pv < gap;
   };
 
   const strengths = strongDimensions(dimensions);  // used by the fallback below
