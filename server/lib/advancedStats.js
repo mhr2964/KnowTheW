@@ -6,6 +6,7 @@ const fetchTeamPtsAllowed = (...a) => getProvider().getTeamPointsAllowed(...a);
 const { computeBasicRatioStats, computePER, computeWinShares } = require('./statFormulas');
 const { getCached, writeCache } = require('./teamSeasonCache');
 const { ESPN_DETAILED_HEADERS } = require('./statsParser');
+const { isPastSeason } = require('./seasonWindow');
 
 // Per-game/totals tables passed into buildAdvancedSplit/buildAdvancedCareer always use this exact
 // header set (ESPN_DETAILED_HEADERS) — index off the constant directly rather than reading
@@ -213,10 +214,7 @@ async function computeSeasonPBPUncached(playerId, season, playerRow, I, teamId, 
 // (ESPN flaking on a subset of games) are never persisted; they return live to the caller but
 // leave the cache slot open for a future complete fetch.
 async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, seasontype = 2) {
-  const currentYear = new Date().getFullYear();
-  const isPastSeason = Number(season) < currentYear;
-
-  if (isPastSeason) {
+  if (isPastSeason(season)) {
     const cacheKey = `${playerId}-${season}-${seasontype}`;
 
     // Check cache first — one findOne, no ESPN traffic on hit.

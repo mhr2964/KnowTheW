@@ -13,6 +13,7 @@
 const { getProvider } = require('../providers');
 const { getCached, writeCache } = require('./teamSeasonCache');
 const { computeOnOff } = require('./analysis/onOff');
+const { isPastSeason } = require('./seasonWindow');
 
 // Returns { onoff, complete } or null. Callers decide what to cache vs return.
 async function computeSeasonOnOffUncached(playerId, season, seasontype = 2) {
@@ -34,10 +35,7 @@ async function computeSeasonOnOffUncached(playerId, season, seasontype = 2) {
  * @returns {Promise<{on,off,delta,games}|null>}
  */
 async function computeSeasonOnOff(playerId, season, seasontype = 2) {
-  const currentYear  = new Date().getFullYear();
-  const isPastSeason = Number(season) < currentYear;
-
-  if (isPastSeason) {
+  if (isPastSeason(season)) {
     const cacheKey = `${playerId}-${season}-${seasontype}`;
     const cached   = await getCached('playerSeasonOnOff', cacheKey);
     if (cached !== null) return cached;

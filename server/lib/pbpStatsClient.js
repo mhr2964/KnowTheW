@@ -12,6 +12,7 @@ const { getProvider } = require('../providers');
 const { getCached, writeCache } = require('./teamSeasonCache');
 const { computeOnOff } = require('./analysis/onOff');
 const { computePbpStats } = require('./analysis/pbpStats');
+const { isPastSeason } = require('./seasonWindow');
 
 async function computeSeasonPbpStatsUncached(playerId, season, seasontype = 2) {
   const eventIds = await getProvider().getRegularSeasonEventIds(playerId, season, seasontype);
@@ -35,10 +36,7 @@ async function computeSeasonPbpStatsUncached(playerId, season, seasontype = 2) {
  * @returns {Promise<{onoff:object|null, shooting:object|null}|null>}
  */
 async function computeSeasonPbpStats(playerId, season, seasontype = 2) {
-  const currentYear  = new Date().getFullYear();
-  const isPastSeason = Number(season) < currentYear;
-
-  if (isPastSeason) {
+  if (isPastSeason(season)) {
     const cacheKey = `${playerId}-${season}-${seasontype}`;
     const cached   = await getCached('playerSeasonPbpStats', cacheKey);
     if (cached !== null) return cached;
