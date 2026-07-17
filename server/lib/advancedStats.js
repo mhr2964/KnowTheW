@@ -1,6 +1,5 @@
 const { GAME_MINUTES, WNBA_LG } = require('../constants/leagueAverages');
 const { getProvider } = require('../providers');
-const { PBP_OC_KEYS } = require('../providers/types');
 // Source access via the active provider; thin locals keep call sites below unchanged.
 const fetchTeamStats      = (...a) => getProvider().getTeamStats(...a);
 const fetchTeamPtsAllowed = (...a) => getProvider().getTeamPointsAllowed(...a);
@@ -167,44 +166,9 @@ function buildAdvancedCareer(pgSrc, totSrc) {
 // only when every eventId returned a non-null summary (no ESPN failures mid-fetch). Partial
 // results are still returned to the caller for display but must not be persisted to the cache.
 async function computeSeasonPBPUncached(playerId, season, playerRow, I, teamId, totRow, seasontype = 2) {
-  const eventIds = await getProvider().getRegularSeasonEventIds(playerId, season, seasontype);
-  if (!eventIds?.length) return null;
-
-  const pbpResults = await Promise.all(eventIds.map(id => getProvider().getGamePbpStats(id, playerId)));
-  // Track how many ESPN fetches succeeded. complete = true when every eventId returned a
-  // non-null summary, meaning no ESPN 4xx/5xx/network failures occurred mid-fetch.
-  // Games where on-court stats come back null (no PBP data) are still counted as fetched.
-  const fetchedCount = pbpResults.filter(r => r.fetched).length;
-  const totOC = Object.fromEntries(PBP_OC_KEYS.map(k => [k, 0]));
-  const totTm = { fga: 0, fgm: 0, fg3m: 0, fta: 0, ftm: 0, pts: 0, orb: 0, drb: 0, tov: 0, ast: 0 };
-  let pbpGames = 0, wsGames = 0;
-
-  for (const r of pbpResults) {
-    if (!r.fetched) continue;
-    const oc = r.onCourt;
-    if (!oc) continue;
-    pbpGames++;
-    for (const k of PBP_OC_KEYS) totOC[k] += oc[k];
-
-    const gs = r.boxscore;
-    if (gs) {
-      wsGames++;
-      for (const k of Object.keys(totTm)) totTm[k] += gs.tm[k] ?? 0;
-    }
-  }
-  if (!pbpGames) return null;
-
-  const g = pbpGames;
-  const tmOC = {
-    fgaPg:   totOC.fga  / g, fgmPg:   totOC.fgm  / g,
-    fg3aPg:  totOC.fg3a / g, ftaPg:   totOC.fta  / g, ftmPg:  totOC.ftm / g,
-    orbPg:   totOC.orb  / g, drbPg:   totOC.drb  / g,
-    tovPg:   totOC.tov  / g, astPg:   totOC.ast  / g,
-    oFgaPg:  totOC.oFga  / g, oFgmPg: totOC.oFgm  / g,
-    oFg3aPg: totOC.oFg3a / g, oFtaPg: totOC.oFta  / g,
-    oOrbPg:  totOC.oOrb  / g, oDrbPg: totOC.oDrb  / g,
-    oTovPg:  totOC.oTov  / g,
-  };
+  const summary = await getProvider().getSeasonPBPSummary(playerId, season, seasontype);
+  if (!summary) return null;
+  const { tmOC, tmForWS, pbpGames, complete } = summary;
 
   const lg = WNBA_LG[season] ?? null;
 
@@ -217,18 +181,6 @@ async function computeSeasonPBPUncached(playerId, season, playerRow, I, teamId, 
 
   const advRow = advancedRow(playerRow, I, tmOC, lg, totRow, tmOfficial);
 
-  const tmForWS = wsGames > 0 ? {
-    fgaPg:  totTm.fga  / wsGames,
-    fgmPg:  totTm.fgm  / wsGames,
-    fg3mPg: totTm.fg3m / wsGames,
-    ftaPg:  totTm.fta  / wsGames,
-    ftmPg:  totTm.ftm  / wsGames,
-    ptsPg:  totTm.pts  / wsGames,
-    orbPg:  totTm.orb  / wsGames,
-    drbPg:  totTm.drb  / wsGames,
-    tovPg:  totTm.tov  / wsGames,
-    astPg:  totTm.ast  / wsGames,
-  } : null;
   const officialPace = tmOfficial
     ? (tmOfficial.fgaPg ?? 0) - (tmOfficial.orbPg ?? 0) + (tmOfficial.tovPg ?? 0) + 0.44*(tmOfficial.ftaPg ?? 0)
     : null;
@@ -242,10 +194,9 @@ async function computeSeasonPBPUncached(playerId, season, playerRow, I, teamId, 
 
   const row = [...advRow.slice(0, 16), ...wsVals];
 
-  // complete = true only when every event returned a non-null ESPN response.
-  // Partial fetches (ESPN failing on some game IDs) must not be cached — they would bake in
-  // understated stats permanently. The row is still returned to the caller for this request.
-  const complete = fetchedCount === eventIds.length;
+  // complete comes from the provider summary — false means an ESPN fetch failed mid-game-loop.
+  // Partial fetches must not be cached — they would bake in understated stats permanently.
+  // The row is still returned to the caller for this request.
   return { row, pbpGames, complete };
 }
 

@@ -67,6 +67,12 @@ class SportsDataProvider {
   getGamePbpStats() { return this._notImplemented('getGamePbpStats'); }
   /** getRegularSeasonEventIds(playerId, season, seasontype) → filtered event IDs for PBP (excludes All-Stars, non-franchise opponents). */
   getRegularSeasonEventIds() { return this._notImplemented('getRegularSeasonEventIds'); }
+  /** getSeasonPBPSummary(playerId, season, seasontype) → {Promise<import('./types').SeasonPBPSummary|null>}
+   *  team on-court averages (USG%/AST%/PER) + team-boxscore averages (Win Shares), reconstructed
+   *  from per-game PBP where the source has no season-level on-court endpoint. null when no PBP
+   *  games were found. A provider with a real on-court/boxscore endpoint can skip the
+   *  per-game reconstruction and return the same shape directly. */
+  getSeasonPBPSummary() { return this._notImplemented('getSeasonPBPSummary'); }
 
   // --- League-wide stats (percentile system) ---
   /** getLeagueStatLines(season, mode) → normalized {pos, PTS, ...} entries for qualified players. */

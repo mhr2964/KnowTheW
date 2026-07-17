@@ -14,6 +14,7 @@ const gameSummary = require('./gameSummary');
 const leagueStats = require('./leagueStats');
 const { SportsDataProvider } = require('../SportsDataProvider');
 const { withValidation } = require('../validation');
+const { PBP_OC_KEYS } = require('../types');
 
 class EspnProvider extends SportsDataProvider {
   get name() { return 'espn'; }
@@ -51,6 +52,68 @@ class EspnProvider extends SportsDataProvider {
       .filter(e => !e.eventNote?.toLowerCase().includes('all-star'))
       .filter(e => !e.opponentId || franchiseIds.has(e.opponentId))
       .map(e => e.eventId);
+  }
+
+  // ESPN has no season-level on-court-stats or WS-team-averages endpoint, so both are
+  // reconstructed here game-by-game from getGamePbpStats(). Moved out of advancedStats.js so the
+  // analysis layer only ever sees the resolved per-game averages, never ESPN's PBP mechanics.
+  async getSeasonPBPSummary(playerId, season, seasontype = 2) {
+    const eventIds = await this.getRegularSeasonEventIds(playerId, season, seasontype);
+    if (!eventIds?.length) return null;
+
+    const pbpResults = await Promise.all(eventIds.map(id => this.getGamePbpStats(id, playerId)));
+    // Track how many ESPN fetches succeeded. complete = true when every eventId returned a
+    // non-null summary, meaning no ESPN 4xx/5xx/network failures occurred mid-fetch.
+    const fetchedCount = pbpResults.filter(r => r.fetched).length;
+    const totOC = Object.fromEntries(PBP_OC_KEYS.map(k => [k, 0]));
+    const totTm = { fga: 0, fgm: 0, fg3m: 0, fta: 0, ftm: 0, pts: 0, orb: 0, drb: 0, tov: 0, ast: 0 };
+    let pbpGames = 0, wsGames = 0;
+
+    for (const r of pbpResults) {
+      if (!r.fetched) continue;
+      const oc = r.onCourt;
+      if (!oc) continue;
+      pbpGames++;
+      for (const k of PBP_OC_KEYS) totOC[k] += oc[k];
+
+      const gs = r.boxscore;
+      if (gs) {
+        wsGames++;
+        for (const k of Object.keys(totTm)) totTm[k] += gs.tm[k] ?? 0;
+      }
+    }
+    if (!pbpGames) return null;
+
+    const g = pbpGames;
+    const tmOC = {
+      fgaPg:   totOC.fga  / g, fgmPg:   totOC.fgm  / g,
+      fg3aPg:  totOC.fg3a / g, ftaPg:   totOC.fta  / g, ftmPg:  totOC.ftm / g,
+      orbPg:   totOC.orb  / g, drbPg:   totOC.drb  / g,
+      tovPg:   totOC.tov  / g, astPg:   totOC.ast  / g,
+      oFgaPg:  totOC.oFga  / g, oFgmPg: totOC.oFgm  / g,
+      oFg3aPg: totOC.oFg3a / g, oFtaPg: totOC.oFta  / g,
+      oOrbPg:  totOC.oOrb  / g, oDrbPg: totOC.oDrb  / g,
+      oTovPg:  totOC.oTov  / g,
+    };
+
+    const tmForWS = wsGames > 0 ? {
+      fgaPg:  totTm.fga  / wsGames,
+      fgmPg:  totTm.fgm  / wsGames,
+      fg3mPg: totTm.fg3m / wsGames,
+      ftaPg:  totTm.fta  / wsGames,
+      ftmPg:  totTm.ftm  / wsGames,
+      ptsPg:  totTm.pts  / wsGames,
+      orbPg:  totTm.orb  / wsGames,
+      drbPg:  totTm.drb  / wsGames,
+      tovPg:  totTm.tov  / wsGames,
+      astPg:  totTm.ast  / wsGames,
+    } : null;
+
+    // complete = true only when every event returned a non-null ESPN response. Partial fetches
+    // (ESPN failing on some game IDs) must not be cached by the caller — they would bake in
+    // understated stats permanently.
+    const complete = fetchedCount === eventIds.length;
+    return { tmOC, tmForWS, pbpGames, complete };
   }
 
   // --- League-wide stats (percentile system) ---

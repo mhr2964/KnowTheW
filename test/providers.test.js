@@ -18,7 +18,7 @@ const CONTRACT_METHODS = [
   'getTeamStats', 'getTeamStatsRaw', 'getTeamPointsAllowed', 'getTeamPointsAllowedRaw',
   'getTeamSchedule', 'getPlayoffSchedule', 'getStandingsRaw',
   'getPlayerBasics', 'getRetiredPlayer', 'getPlayerSeasonStats', 'getPlayerGameLog',
-  'getGameLogEvents', 'getGamePbpStats', 'getActivePlayers', 'findActivePlayer',
+  'getGameLogEvents', 'getGamePbpStats', 'getSeasonPBPSummary', 'getActivePlayers', 'findActivePlayer',
   'getLeagueStatLines', 'getLeagueReboundFoulStats', 'getPlayerSeasonAverages', 'getLeaguePlayerIndex',
 ];
 

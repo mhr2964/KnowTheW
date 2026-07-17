@@ -12,6 +12,8 @@ state: green
 
 ## What shipped this session
 
+**Win Shares provider extraction (Task 2 from 05-28, closed).** Re-audited the HANDOFF's old framing first — it was stale: the data-fetch routing it complained about (`getTeamStats`, `getTeamPointsAllowed`, `getGamePbpStats` through `getProvider()`) was already done on 05-26, before the 05-28 note was even written. The actual remaining leak was narrower: `computeSeasonPBPUncached` in `advancedStats.js` was looping raw per-game `getGamePbpStats()` results and manually summing them (`totOC`/`totTm`) to reconstruct team on-court stats and WS team-averages — ESPN's specific workaround for having no season-level on-court endpoint, sitting in what's supposed to be the data-neutral analysis layer. Extracted that reconstruction into a new provider contract method, `getSeasonPBPSummary(playerId, season, seasontype)` (`SportsDataProvider.js`, documented in `types.js` as `SeasonPBPSummary`), implemented in `providers/espn/index.js`; `advancedStats.js` now just calls it and gets back `{tmOC, tmForWS, pbpGames, complete}`. Sportradar's stub inherits the throwing default, so it's covered by the existing M8 leak test (added `getSeasonPBPSummary` to `CONTRACT_METHODS` in `test/providers.test.js`). `computeWinShares` itself (`statFormulas.js`) was already pure formula code — nothing to move there. Pure move, no logic changes: verified by diffing `/players/:id/advanced-pbp-all` output before/after for a historical player (Sue Bird, id 91) and a current-season player (Chelsea Gray, id 2529122) against the live dev server — byte-identical both times.
+
 Three archetype-tuning fixes, each validated against all 345 real cached position-pooled fingerprints (throwaway eval script, not committed) before landing:
 
 - **`1099ca4`** — Three-Level Scorer prototype now requires `threeVolume:H`, not just accuracy/finishing. Fixes the Chelsea Gray misclassification flagged in `Brain/Note Pad/knowthew-archetype-eval.md` (M2): a guard could match on finishing+accuracy+rimPressure alone without shooting 3s at any real volume.
@@ -30,7 +32,6 @@ The version this replaces (`683873d`, dated 2026-05-28) described On/Off-Court I
 
 No planned feature is in flight. Options, in rough priority order:
 
-- **Win Shares** should move from `advancedStats.js` (analysis layer) into the ESPN provider, per the same nullable-contract principle used for On/Off — noted as "Task 2" in 05-28's session, still not done.
 - **STAT_COLUMNS** for detailed-stats — gamelog has a server-emitted columns shape; detailed-stats still sends raw headers.
 - **`latestCompletedSeason` schedule-detection heuristic** — currently date-based, should eventually be schedule-based (D1 in the eval note).
 - **Commit the known-player truth set** as an offline test once it can run without live ESPN (eval note, D1/closing line).
@@ -39,6 +40,7 @@ No planned feature is in flight. Options, in rough priority order:
 
 - **Provider must be resolved per-call, not at module load.** Consumers use `getProvider()` inside handlers/functions.
 - **Tests must not hit ESPN/Atlas.** `NODE_ENV=test` gates the espnClient prefetch and Mongo connect in every test file.
+- **`getSeasonPBPSummary` is the only place per-game PBP reconstruction should happen.** If a future WS/on-court-stat tweak needs raw per-game data again, it belongs inside the provider implementation, not back in `advancedStats.js` — that boundary was deliberately drawn this session.
 - **Archetype fingerprints for assignment must be position-pooled** (`getPlayerFingerprint(id, {pool:'position'})`), NOT the league-wide `'all'`-pool fingerprint cached in `playerFingerprints` (that one's for Cross-Era Similarity, `AXES_VERSION` 2). Conflating the two pools was the trap that made `scripts/_eval-archetypes-tmp.js` necessary as a separate live-fingerprint sweep rather than reading the cache directly.
 - **`pts`/`oPts` in `PBP_OC_KEYS`** — `advancedStats.js` iterates `PBP_OC_KEYS` to aggregate `totOC`; it now picks up `pts`/`oPts` too but never reads them. Harmless.
 - **FT `scoreValue`** — ESPN doesn't always set `scoreValue` on FT plays. The PBP accumulator uses `isFT ? 1 : sv`; do not revert to plain `sv`.

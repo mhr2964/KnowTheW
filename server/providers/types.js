@@ -102,6 +102,17 @@
  */
 
 /**
+ * @typedef {Object} SeasonPBPSummary
+ * @property {Object} tmOC        Per-game on-court team+opponent averages (fgaPg, oFgaPg, etc.),
+ *   used for USG%/AST%/ORB%/PER. Same key shape as OnCourtStats, "Pg"-suffixed.
+ * @property {TeamStats|null} tmForWS  Per-game team averages restricted to games the target player
+ *   actually played (WS uses this, not season-wide team stats), or null if no boxscore games.
+ * @property {number} pbpGames    Count of games that contributed on-court stats.
+ * @property {boolean} complete   False if any per-game fetch failed — callers must not cache a
+ *   summary with complete:false, since it would permanently bake in an undercount.
+ */
+
+/**
  * The key set of an OnCourtStats object (team stats + opponent `o*` stats). Part of the contract so
  * consumers (advancedStats) can iterate it without importing a source-specific module.
  */
