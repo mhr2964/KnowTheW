@@ -106,7 +106,7 @@ const PROTOTYPE_PRIMARY = {
 };
 const PRIMARY_GAP = 25;
 const PRIMARY_FLOOR = 58;  // a prototype's defining skill must be at least above-average (58th pct)
-const DOMINANT_GAP = 15;  // in the fallback, a top dim leading the 2nd by this much => Specialist, not Versatile
+const DOMINANT_GAP = 12;  // in the fallback, a top dim leading the 2nd by this much => Specialist, not Versatile
 
 const FALLBACK_VERSATILE = { key: 'versatile', name: 'Versatile' };
 const FALLBACK_ROLE = { key: 'role-player', name: 'Role Player' };

@@ -236,6 +236,13 @@ test('assignArchetype — Three-Level Scorer requires meaningful 3pt volume (Che
   assert.notStrictEqual(res.archetype.key, 'three-level-scorer');
 });
 
+test('assignArchetype — DOMINANT_GAP=12: gap of 13 between top dims triggers Specialist', () => {
+  // With DOMINANT_GAP=12, a 13-point gap between the top two strong dims is sufficient for
+  // Specialist. Previously (gap threshold 15) this would fall to Versatile.
+  const res = assignArchetype(fp(NO_MATCH), dimsOf({ playmaking: 78, scoring: 65 }));
+  assert.strictEqual(res.archetype.key, 'playmaker');
+});
+
 test('confidenceFor — tier boundaries', () => {
   assert.strictEqual(confidenceFor({ totalMinutes: 3000, seasonsCovered: 3 }), 'high');
   assert.strictEqual(confidenceFor({ totalMinutes: 3000, seasonsCovered: 2 }), 'medium');
