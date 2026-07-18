@@ -44,7 +44,7 @@ export default function SimilarPlayersPage() {
       {loading && <p className="status-msg">Loading player...</p>}
 
       {(error || (!loading && !player)) && (
-        <p className="status-msg error" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '2rem 0' }}>
+        <p className="status-msg error status-msg--retry">
           Could not load player.
           {error && <button type="button" className="btn-ghost compare-verdict-retry" onClick={refetch}>Try again</button>}
         </p>

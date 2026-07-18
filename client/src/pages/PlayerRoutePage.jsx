@@ -28,7 +28,7 @@ export default function PlayerRoutePage({ onSaveDeck }) {
 
   if (loading) return <p className="status-msg">Loading player...</p>;
   if (loadError || !playerData) return (
-    <p className="status-msg error" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '2rem 0' }}>
+    <p className="status-msg error status-msg--retry">
       Could not load player data.
       {loadError && <button type="button" className="btn-ghost compare-verdict-retry" onClick={refetch}>Try again</button>}
     </p>
