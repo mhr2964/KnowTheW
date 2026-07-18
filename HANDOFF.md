@@ -8,6 +8,8 @@ last-session: 2026-07-18
 state: green
 ```
 
+
+
 **Branch: `master`.** Phase 0 + Phase 1 of the launch roadmap below are committed, pushed to `origin/master`, and deployed live. **Live URL: https://knowthew-536bebfc7101.herokuapp.com/** (Heroku app name: `knowthew`).
 
 ## Business/launch roadmap (new, in progress)
@@ -35,7 +37,9 @@ User wants a full path to deploying KnowTheW and monetizing it (ads to start), o
 - Fixed the one pre-existing lint error (`server/routes/api.js:599`, an unused `regTidByYear` — genuinely dead, unlike the identical pattern used elsewhere in the same file that IS read).
 - Consolidated `.study-trigger-btn`/`.compare-trigger-btn` (byte-for-byte duplicate CSS under two names) into one shared rule in `shared.css`. Deliberately left the other ~13 button classes flagged in the roadmap review alone (icon/row-select/nav/logo/back buttons) — each is a genuinely different visual role, not a duplicate, and forcing them onto shared primitives would trade real behavior for cosmetic DRY-ness.
 
-**Explicitly deferred, not started**: unifying `ScheduleTable`/`TeamHistoryPage`/`RosterTable` onto a shared table primitive (`RosterTable` isn't even a real `<table>` — it's a CSS grid — so this is closer to a rewrite than a refactor), CSV export, shooting-splits tables. User chose to stop here rather than push into that bigger, riskier diff in the same pass — pick this up as its own reviewed pass. Phase 2 (analytics + AdSense application) also not started — needs the user's own AdSense account/login, not something to do unprompted.
+**`ac3dec4`** — Rebuilt `RosterTable` on a real `<table>` (was CSS-grid divs with `role="button"` overriding native row semantics, no keyboard path to open a player). Player name is now a genuine `<button>` for keyboard/screen-reader access; the row keeps its own `onClick` for mouse convenience, and the name button `stopPropagation`s so a click there doesn't double-fire. Verified via Playwright against the live dev server: table/row/cell a11y roles present, row-click and name-button click both navigate, archetype badge click still doesn't navigate, Study This Roster modal unaffected. Lint and build both clean.
+
+**Re-scoped, on inspection: `ScheduleTable`/`TeamHistoryPage` are staying as-is.** The original roadmap plan's "unify all three onto BrefTable" framing didn't survive reading the actual code — both are already real `<table>`s with bespoke, non-tabular-stat content (injected "Next up"/"Season starts" divider rows, result pills, opponent logos, champion badges, dual responsive header labels), not sortable stat columns. Forcing them onto `BrefTable` would mean bolting on row-injection and per-cell custom renderers `BrefTable` doesn't need for its actual job, without removing any real duplication. Only `RosterTable` (above) was a genuine gap. CSV export and shooting-splits tables remain open, unstarted. Phase 2 (analytics + AdSense application) also not started — needs the user's own AdSense account/login, not something to do unprompted.
 
 ## What shipped last session (2026-07-17)
 
@@ -65,7 +69,9 @@ The version this replaces (`683873d`, dated 2026-05-28) described On/Off-Court I
 
 ## Next action
 
-Site is live. User wants to continue Phase 3 next session: unify `ScheduleTable`/`TeamHistoryPage`/`RosterTable` onto a shared table primitive (bigger diff — `RosterTable` needs a real rewrite from CSS-grid to `<table>`), then likely CSV export / shooting-splits tables. Treat this as its own design-before-build pass (touches 3+ files, introduces/changes a shared contract) rather than a continuation of the low-risk cleanup already done. Phase 2 (analytics + AdSense application) is separate and needs the user's own account — don't start unprompted.
+Site is live. Table-unification review is done — `RosterTable` shipped as a real `<table>` (`ac3dec4`); `ScheduleTable`/`TeamHistoryPage` were deliberately left alone (see above, not a duplication worth merging). Remaining Phase 3 candidates: CSV export, shooting-splits tables. Phase 2 (analytics + AdSense application) is separate and needs the user's own account — don't start unprompted.
+
+**5 local commits ahead of `origin/master`** (`d20405d`, `3d2da23`, `28e2d1d`, `6033fa1`, `ac3dec4`) — not pushed to `origin` or deployed to `heroku` yet. Do not push/deploy without an explicit ask.
 
 ## Traps
 
