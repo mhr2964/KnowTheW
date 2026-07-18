@@ -3,6 +3,9 @@ client/node_modules/
 client/build/
 client/dist/
 .env
+.env.local
+client/.env
+client/.env.local
 
 # user-tester screenshot sessions
 .test-screenshots/

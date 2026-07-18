@@ -22,9 +22,10 @@ export default function PrivacyPage() {
 
       <h2>Cookies and analytics</h2>
       <p>
-        KnowTheW may use privacy-conscious analytics tools to understand aggregate traffic
-        (e.g. which pages are visited, roughly how many people visit), which can involve
-        cookies or similar identifiers in the visitor&apos;s browser.
+        KnowTheW uses Google Analytics to understand aggregate traffic (e.g. which pages are
+        visited, roughly how many people visit). Google Analytics uses cookies or similar
+        identifiers in the visitor&apos;s browser to distinguish sessions and visits; no
+        personal information is collected beyond what Google Analytics gathers by default.
       </p>
       <p>
         KnowTheW may also display advertising through third-party ad networks, including
