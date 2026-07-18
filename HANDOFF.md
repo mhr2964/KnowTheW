@@ -3,12 +3,12 @@
 Forward-looking handoff for the active work-stream. **Overwrite** each session; history lives in git.
 
 ```yaml
-last-model: claude-sonnet-4-6
+last-model: claude-sonnet-5
 last-session: 2026-07-18
-state: yellow
+state: green
 ```
 
-**Branch: `master`.** Uncommitted work in progress (Phase 0 of the launch roadmap below) — not yet committed or pushed.
+**Branch: `master`.** Phase 0 + Phase 1 of the launch roadmap below are committed, pushed to `origin/master`, and deployed live. **Live URL: https://knowthew-536bebfc7101.herokuapp.com/** (Heroku app name: `knowthew`).
 
 ## Business/launch roadmap (new, in progress)
 
@@ -24,7 +24,11 @@ User wants a full path to deploying KnowTheW and monetizing it (ads to start), o
 - Verified: `npm run lint` clean (client + server, except one pre-existing unrelated `api.js:599` error present on unmodified master), `npm run build` succeeds, and a live Playwright pass confirmed the homepage (no more Premium banner, footer links present) and `/about`/`/privacy` render correctly with working nav.
 - Checked whether team logos are self-hosted (a trademark-risk pattern) — they're not; `<img src={team.logo}>` hotlinks ESPN's own CDN URLs directly (`TeamCard`-style components), which is the lower-risk pattern. No change needed.
 
-**Not started yet**: Phase 1 (actual Heroku deploy — no live URL currently exists anywhere), Phase 2 (AdSense application), Phase 3 (table/CSS standardization, deferred post-launch per the plan).
+**Phase 1 (deploy) — done this session.** MongoDB Atlas capacity confirmed healthy (~6.6MB of the 512MB free-tier cap, nowhere near the ceiling that broke a release before). Pinned `"engines": {"node": "24.x"}` in root `package.json` so the Heroku build can't silently drift. The app (`knowthew`) already existed on Heroku but was serving a stale build with no `heroku` git remote wired up locally; authenticated the Heroku CLI via API key (avoids the browser-based `heroku login` flow, which needs an interactive TTY this shell doesn't have), added the `heroku` remote, and `git push heroku master` — release v155, Mongo caches reseeded clean, verified live via Playwright (no Premium banner, footer nav present, `/privacy` renders correctly in prod). All required config vars (`ANTHROPIC_API_KEY`, `MONGODB_URI`) were already set on the Heroku app from a prior manual setup.
+
+**Note**: the `heroku` git remote's URL has the API key embedded directly in it (`https://heroku:<key>@git.heroku.com/knowthew.git`) rather than using a git credential helper, because the interactive Windows Git Credential Manager prompt hung in this shell. This is a local-only `.git/config` entry (never committed), but it means the key sits in plaintext on disk — flagged to the user, not yet resolved either way.
+
+**Not started yet**: Phase 2 (analytics + AdSense application — needs the user's own AdSense account/login), Phase 3 (table/CSS standardization, deferred post-launch per the plan).
 
 ## What shipped last session (2026-07-17)
 
@@ -54,7 +58,7 @@ The version this replaces (`683873d`, dated 2026-05-28) described On/Off-Court I
 
 ## Next action
 
-Mid-flight on the launch roadmap's Phase 0 (see above) — the archetype/eval backlog is fully closed and not the active thread. Immediate next steps: (1) get user sign-off to commit the Phase 0 legal/compliance pages, (2) move to Phase 1 (actual Heroku deploy — verify Mongo Atlas capacity, pin a Node `engines` version, set env vars, real `git push heroku master`, confirm a live URL end-to-end), (3) Phase 2 (analytics + Google AdSense application). Full sequencing and rationale in the plan file referenced above.
+Site is live. Next up is Phase 2: add a lightweight analytics tool (Plausible or GA) and apply for Google AdSense (needs the user's own account — an account-level action, not something to do unprompted). Phase 3 (table sorting, CSS/badge consolidation) is post-launch and not urgent. Full sequencing and rationale in the plan file referenced above.
 
 ## Traps
 
