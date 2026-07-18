@@ -132,31 +132,31 @@
 /* .study-trigger-btn styling lives in shared.css alongside .compare-trigger-btn, which it's
    visually identical to. */
 
-.data-table {
+/* ── Roster Table (real <table> — a hoverable archetype card can still escape it since only the
+   head/last-row corners clip via each cell's own border-radius, not a wrapper overflow:hidden) ── */
+.roster-table-wrap {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius);
-  /* overflow visible (not hidden) so a row's archetype hover card can escape the table; the head and
-     last row carry the corner rounding overflow:hidden used to do (backgrounds clip to their own
-     border-radius, so corners stay clean). */
-  overflow: visible; margin-bottom: 2.5rem;
+  border-radius: var(--radius); overflow: visible; margin-bottom: 2.5rem;
 }
-.data-table-head {
-  display: grid; grid-template-columns: 52px 1fr 60px 60px;
-  padding: 0.6rem 1rem; background: var(--surface-2);
+.roster-table { width: 100%; border-collapse: collapse; }
+.roster-cell {
+  padding: 0.55rem 1rem; text-align: left; font-size: 0.88rem;
   border-bottom: 1px solid var(--border);
-  border-radius: var(--radius) var(--radius) 0 0;
+}
+.roster-cell--head {
+  padding: 0.6rem 1rem; background: var(--surface-2);
   font-size: 0.7rem; font-weight: 700; color: var(--text-muted);
-  text-transform: uppercase; letter-spacing: 0.08em;
+  text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid var(--border);
 }
-.data-table-row {
-  display: grid; grid-template-columns: 52px 1fr 60px 60px;
-  padding: 0.55rem 1rem; align-items: center;
-  border-bottom: 1px solid var(--border); font-size: 0.88rem;
+.roster-cell--photo { width: 52px; }
+.roster-row { cursor: pointer; }
+.roster-row:hover { background: var(--surface-2); }
+.roster-row:last-child .roster-cell { border-bottom: none; }
+.roster-name-btn {
+  background: none; border: none; padding: 0; margin: 0;
+  color: inherit; font: inherit; font-weight: 600; cursor: pointer; text-align: left;
 }
-.data-table-row:last-child { border-bottom: none; border-radius: 0 0 var(--radius) var(--radius); }
-.data-table-row:hover { background: var(--surface-2); }
-.data-table-head > span:not(:last-child),
-.data-table-row > *:not(:last-child) { border-right: 1px solid rgba(255,255,255,0.04); }
+.roster-name-btn:hover { color: var(--accent); text-decoration: underline; }
 .table-headshot {
   width: 36px; height: 36px; border-radius: 50%; object-fit: cover;
 }

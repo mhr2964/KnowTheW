@@ -22,39 +22,51 @@ export default function RosterTable({ players, teamName, onSaveDeck, onPlayerCli
         </button>
       </div>
 
-      <div className="data-table">
-        <div className="data-table-head">
-          <span />
-          <span>Name</span>
-          <span>#</span>
-          <span>Pos</span>
-        </div>
-        {players.map(player => (
-          // Div-button (not <button>) so the hoverable ArchetypeBadge — itself a button — can nest
-          // beside the name without invalid button-in-button markup; the badge stops its own clicks
-          // from bubbling, so opening its card never navigates to the player.
-          <div
-            key={player.id}
-            role="button"
-            tabIndex={0}
-            className="data-table-row data-table-row-btn"
-            onClick={() => onPlayerClick && onPlayerClick(player.id)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPlayerClick && onPlayerClick(player.id); }
-            }}
-          >
-            {player.headshot
-              ? <img src={player.headshot} alt="" className="table-headshot" />
-              : <div className="table-headshot placeholder" aria-hidden="true">{initialsOf(player.name)}</div>
-            }
-            <span className="roster-name-cell">
-              {player.name}
-              {player.archetypeName && <ArchetypeBadge playerId={player.id} name={player.archetypeName} confidence={player.archetypeConfidence} />}
-            </span>
-            <span className="muted">{player.jersey || '—'}</span>
-            <span className="muted">{player.position || '—'}</span>
-          </div>
-        ))}
+      <div className="roster-table-wrap">
+        <table className="roster-table">
+          <thead>
+            <tr>
+              <th className="roster-cell roster-cell--head roster-cell--photo" aria-hidden="true" />
+              <th className="roster-cell roster-cell--head">Name</th>
+              <th className="roster-cell roster-cell--head">#</th>
+              <th className="roster-cell roster-cell--head">Pos</th>
+            </tr>
+          </thead>
+          <tbody>
+            {players.map(player => (
+              // Row click navigates for mouse users; the name button gives keyboard/screen-reader
+              // users a real focusable control instead of overriding the <tr>'s row semantics.
+              // The badge is its own nested button and stops its own clicks from bubbling, so
+              // opening its card never navigates to the player.
+              <tr
+                key={player.id}
+                className="roster-row"
+                onClick={() => onPlayerClick && onPlayerClick(player.id)}
+              >
+                <td className="roster-cell roster-cell--photo">
+                  {player.headshot
+                    ? <img src={player.headshot} alt="" className="table-headshot" />
+                    : <div className="table-headshot placeholder" aria-hidden="true">{initialsOf(player.name)}</div>
+                  }
+                </td>
+                <td className="roster-cell">
+                  <span className="roster-name-cell">
+                    <button
+                      type="button"
+                      className="roster-name-btn"
+                      onClick={(e) => { e.stopPropagation(); onPlayerClick && onPlayerClick(player.id); }}
+                    >
+                      {player.name}
+                    </button>
+                    {player.archetypeName && <ArchetypeBadge playerId={player.id} name={player.archetypeName} confidence={player.archetypeConfidence} />}
+                  </span>
+                </td>
+                <td className="roster-cell muted">{player.jersey || '—'}</td>
+                <td className="roster-cell muted">{player.position || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {studying && (

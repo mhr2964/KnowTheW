@@ -311,13 +311,7 @@
 .done-sub { color: var(--text-muted); font-size: 0.9rem; }
 .done-actions { display: flex; gap: 0.75rem; margin-top: 0.5rem; }
 
-/* ── Clickable table rows / search player rows ── */
-.data-table-row-btn {
-  width: 100%; background: none; border: none; color: inherit;
-  text-align: left; cursor: pointer; font: inherit;
-}
-.data-table-row-btn:hover { background: var(--surface-2); }
-
+/* ── Clickable search player rows ── */
 .search-player-row-btn {
   width: 100%; background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); text-align: left; cursor: pointer;
