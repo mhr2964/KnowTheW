@@ -53,6 +53,10 @@ async function fetchPlayerSeasonData(playerId) {
 // Valid modes for the graded-report route. Module-level so the Set isn't rebuilt per request.
 const VALID_REPORT_MODES = new Set(['career', 'peak', 'playoffs']);
 
+// Valid split types for the /players/:id/splits route. Module-level so the array isn't rebuilt
+// per request (same reasoning as VALID_REPORT_MODES above).
+const VALID_SPLIT_TYPES = new Set(['homeaway', 'month', 'opponent']);
+
 // Parse the optional ?season query param shared by the roster, season-info, and team-stats routes:
 // default to the current year, accept any 4-digit year, reject everything else. Returns
 // { season, currentYear } on success or { error } carrying the 400 message. The schedule route has
@@ -564,15 +568,13 @@ router.get('/players/:id/splits', async (req, res) => {
   try {
     const log = await getProvider().getPlayerGameLog(req.params.id, req.query.season);
     if (!log) return res.status(404).json({ error: 'no gamelog available' });
-    const splitType = ['homeaway', 'month', 'opponent'].includes(req.query.type) ? req.query.type : 'homeaway';
+    const splitType = VALID_SPLIT_TYPES.has(req.query.type) ? req.query.type : 'homeaway';
     res.json(buildSplits(log, log.games, splitType) ?? { columns: [], rows: [] });
   } catch (err) {
     console.error('splits:', err.message);
     res.status(500).json({ error: 'failed to load splits' });
   }
 });
-
-
 
 // On/Off-Court Impact: team net rating (per 100 possessions) while the player is on vs off court.
 // PBP-derived; regular season only. Returns null result when < MIN_ON_GAMES games have usable PBP.
@@ -883,6 +885,13 @@ router.get('/players/:id/graded-report', async (req, res) => {
     return res.json({ playerId, mode, empty: true });
   }
 
+  // Career year range from inputs.seasonRows — same for both the cache-hit and freshly-generated
+  // response below, so it's computed once here rather than twice.
+  const reportYears = inputs.seasonRows?.map(r => Number(r.year)).filter(Boolean) ?? [];
+  const careerYearRange = reportYears.length
+    ? [Math.min(...reportYears), Math.max(...reportYears)]
+    : null;
+
   // Deterministic source hash over all data Claude will receive.
   // Sorted ascending by year so insertion order doesn't matter.
   // seasonsPlayed is now included so that a change in the player's GP-filtered year set
@@ -918,10 +927,6 @@ router.get('/players/:id/graded-report', async (req, res) => {
       cached = null;
     }
     if (cached) {
-      const years = inputs.seasonRows?.map(r => Number(r.year)).filter(Boolean) ?? [];
-      const careerYearRange = years.length
-        ? [Math.min(...years), Math.max(...years)]
-        : null;
       // Bug 6: playoffs mode has no peak window — never include peakSeasons in playoffs response.
       const includePeakSeasons = mode === 'peak' && cached.data.peakSeasons;
       return res.json({
@@ -969,11 +974,6 @@ router.get('/players/:id/graded-report', async (req, res) => {
       .replaceOne({ _id: docId }, doc, { upsert: true })
       .catch(err => console.error(`[graded-report] mongo write failed _id=${docId}:`, err.message));
   }
-
-  const years = inputs.seasonRows?.map(r => Number(r.year)).filter(Boolean) ?? [];
-  const careerYearRange = years.length
-    ? [Math.min(...years), Math.max(...years)]
-    : null;
 
   // Bug 6: playoffs mode has no peak window concept — never include peakSeasons in playoffs response.
   const includePeakSeasons = mode === 'peak' && reportData.peakSeasons;
