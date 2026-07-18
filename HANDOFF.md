@@ -18,7 +18,7 @@ User wants a full path to deploying KnowTheW and monetizing it (ads to start), o
 - **LLC**: tradeoffs laid out in the plan (single-project vs. umbrella vs. none yet), not decided — not a launch blocker.
 - **Monetization**: no ads/analytics/payment infra existed at all before this session. `PremiumBanner` was advertising a fake "$4.99/mo" with a checkout that said "coming soon" — a real consumer-protection-flavored problem right before an AdSense application, so it's now removed from rendering (component file kept for when premium is real) rather than half-fixed.
 
-**Phase 0 (legal/compliance hardening) — done this session, uncommitted:**
+**Phase 0 (legal/compliance hardening) — done, committed (`bbae944`, `02a0715`, `12e3adc`):**
 - Added `/about`, `/data-sources`, `/privacy`, `/terms` pages (`client/src/pages/*.jsx`, styled via new `client/src/styles/legal.css`, linked from a new `LegalFooterNav` component and from the site footer in `App.jsx`). Privacy Policy already covers Google AdSense's cookie/ads-personalization disclosure so Phase 2 (AdSense application) doesn't need rework.
 - Removed `PremiumBanner` from `HomePage.jsx` (fake pricing, non-functional checkout).
 - Verified: `npm run lint` clean (client + server, except one pre-existing unrelated `api.js:599` error present on unmodified master), `npm run build` succeeds, and a live Playwright pass confirmed the homepage (no more Premium banner, footer links present) and `/about`/`/privacy` render correctly with working nav.
@@ -26,9 +26,16 @@ User wants a full path to deploying KnowTheW and monetizing it (ads to start), o
 
 **Phase 1 (deploy) — done this session.** MongoDB Atlas capacity confirmed healthy (~6.6MB of the 512MB free-tier cap, nowhere near the ceiling that broke a release before). Pinned `"engines": {"node": "24.x"}` in root `package.json` so the Heroku build can't silently drift. The app (`knowthew`) already existed on Heroku but was serving a stale build with no `heroku` git remote wired up locally; authenticated the Heroku CLI via API key (avoids the browser-based `heroku login` flow, which needs an interactive TTY this shell doesn't have), added the `heroku` remote, and `git push heroku master` — release v155, Mongo caches reseeded clean, verified live via Playwright (no Premium banner, footer nav present, `/privacy` renders correctly in prod). All required config vars (`ANTHROPIC_API_KEY`, `MONGODB_URI`) were already set on the Heroku app from a prior manual setup.
 
-**Note**: the `heroku` git remote's URL has the API key embedded directly in it (`https://heroku:<key>@git.heroku.com/knowthew.git`) rather than using a git credential helper, because the interactive Windows Git Credential Manager prompt hung in this shell. This is a local-only `.git/config` entry (never committed), but it means the key sits in plaintext on disk — flagged to the user, not yet resolved either way.
+**Credential cleanup (resolved).** The `heroku` remote initially had the API key embedded directly in its URL (Windows Git Credential Manager's interactive prompt hung in this shell). Fixed: remote URL is clean (`https://git.heroku.com/knowthew.git`), auth now goes through a local-only, repo-scoped git credential helper (`~/.git-credential-heroku`, reads from `~/.heroku-git-token` mode 600) instead. Verified with `git ls-remote heroku` (no prompt). The Heroku *CLI's* own separate login is stale/expired (unrelated to git push auth) — not urgent, would need `heroku login -i` with the account password to fix.
 
-**Not started yet**: Phase 2 (analytics + AdSense application — needs the user's own AdSense account/login), Phase 3 (table/CSS standardization, deferred post-launch per the plan).
+**Phase 3 (post-launch product hardening) — in progress, done so far (`d20405d`, `3d2da23`, `28e2d1d`):**
+- Added click-to-sort (desc→asc→reset) to `BrefTable`, the shared table used by Per Game/Totals/Per 36/Advanced/PBP — zero column sorting existed anywhere before this, the single most conspicuous gap vs. a real box-score site. Career-total row stays pinned last under any sort; missing values always sort to the bottom.
+- Migrated `GameLogTab`'s hand-rolled duplicate table onto `BrefTable` (was one of four independent table implementations). Surfaced and fixed a real latent bug in the process: the gamelog API returns every stat as a **string** ("50.0", not 50.0), so FG%/3P%/FT% were rendering as "—" and numeric columns would have sorted lexicographically ("10" before "2") — fixed by parsing at the `toBrefShape` boundary in `GameLogTab.jsx`.
+- Deleted dead `.compare-merged-table` CSS (no JSX consumer left).
+- Fixed the one pre-existing lint error (`server/routes/api.js:599`, an unused `regTidByYear` — genuinely dead, unlike the identical pattern used elsewhere in the same file that IS read).
+- Consolidated `.study-trigger-btn`/`.compare-trigger-btn` (byte-for-byte duplicate CSS under two names) into one shared rule in `shared.css`. Deliberately left the other ~13 button classes flagged in the roadmap review alone (icon/row-select/nav/logo/back buttons) — each is a genuinely different visual role, not a duplicate, and forcing them onto shared primitives would trade real behavior for cosmetic DRY-ness.
+
+**Explicitly deferred, not started**: unifying `ScheduleTable`/`TeamHistoryPage`/`RosterTable` onto a shared table primitive (`RosterTable` isn't even a real `<table>` — it's a CSS grid — so this is closer to a rewrite than a refactor), CSV export, shooting-splits tables. User chose to stop here rather than push into that bigger, riskier diff in the same pass — pick this up as its own reviewed pass. Phase 2 (analytics + AdSense application) also not started — needs the user's own AdSense account/login, not something to do unprompted.
 
 ## What shipped last session (2026-07-17)
 
@@ -58,7 +65,7 @@ The version this replaces (`683873d`, dated 2026-05-28) described On/Off-Court I
 
 ## Next action
 
-Site is live. Next up is Phase 2: add a lightweight analytics tool (Plausible or GA) and apply for Google AdSense (needs the user's own account — an account-level action, not something to do unprompted). Phase 3 (table sorting, CSS/badge consolidation) is post-launch and not urgent. Full sequencing and rationale in the plan file referenced above.
+Site is live. User wants to continue Phase 3 next session: unify `ScheduleTable`/`TeamHistoryPage`/`RosterTable` onto a shared table primitive (bigger diff — `RosterTable` needs a real rewrite from CSS-grid to `<table>`), then likely CSV export / shooting-splits tables. Treat this as its own design-before-build pass (touches 3+ files, introduces/changes a shared contract) rather than a continuation of the low-risk cleanup already done. Phase 2 (analytics + AdSense application) is separate and needs the user's own account — don't start unprompted.
 
 ## Traps
 
