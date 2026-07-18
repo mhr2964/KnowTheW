@@ -5,6 +5,7 @@ import useLazyFetch from '../hooks/useLazyFetch';
 import GameLogTab from './GameLogTab';
 import AdvancedTab from './AdvancedTab';
 import PlayByPlayTab from './PlayByPlayTab';
+import SplitsTab from './SplitsTab';
 
 
 const ALL_TABLE_TYPES = [
@@ -14,6 +15,7 @@ const ALL_TABLE_TYPES = [
   { key: 'per100',    label: 'Per 100 Poss' },
   { key: 'advanced',  label: 'Advanced' },
   { key: 'gamelog',   label: 'Game Log' },
+  { key: 'splits',    label: 'Splits' },
   { key: 'pbp',       label: 'Play-by-Play' },
 ];
 const COMING_SOON = ['Adj. Shooting'];
@@ -21,7 +23,7 @@ const COMING_SOON = ['Adj. Shooting'];
 const SOURCE_ACTIVE = {
   bdl:  new Set(['perGame', 'totals', 'per36']),
   wnba: new Set(['perGame', 'totals', 'per36', 'per100']),
-  espn: new Set(['perGame', 'totals', 'per36', 'advanced', 'gamelog', 'pbp']),
+  espn: new Set(['perGame', 'totals', 'per36', 'advanced', 'gamelog', 'splits', 'pbp']),
 };
 
 export default function DetailedStats({ playerId, playerName, onSaveDeck, initialTab, onTabChange }) {
@@ -84,12 +86,14 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
 
   const isGamelog  = safeType === 'gamelog';
   const isAdvanced = safeType === 'advanced';
+  const isSplits   = safeType === 'splits';
   const isPbp      = safeType === 'pbp';
-  const tableData  = (isGamelog || isAdvanced || isPbp) ? null : data[safeType];
-  const hasPlayoffs = (isGamelog || isAdvanced || isPbp) ? false : !!tableData?.playoffs?.rows?.length;
+  const isRawTab   = isGamelog || isAdvanced || isSplits || isPbp;
+  const tableData  = isRawTab ? null : data[safeType];
+  const hasPlayoffs = isRawTab ? false : !!tableData?.playoffs?.rows?.length;
   const curSeason = (!hasPlayoffs && activeSeason === 'playoffs') ? 'regular' : activeSeason;
-  const regular = (isGamelog || isAdvanced || isPbp) ? null : (curSeason === 'regular' ? tableData?.regular : tableData?.playoffs);
-  const career  = (isGamelog || isAdvanced || isPbp) ? null : (curSeason === 'regular' ? tableData?.regularCareer : tableData?.playoffCareer);
+  const regular = isRawTab ? null : (curSeason === 'regular' ? tableData?.regular : tableData?.playoffs);
+  const career  = isRawTab ? null : (curSeason === 'regular' ? tableData?.regularCareer : tableData?.playoffCareer);
 
   function openStudy() {
     if (!regular) return;
@@ -137,7 +141,9 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
             refetchPbp={refetchPbp}
           />
         ) : isGamelog ? (
-          <GameLogTab playerId={playerId} availableSeasons={availableSeasons} />
+          <GameLogTab playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} />
+        ) : isSplits ? (
+          <SplitsTab playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} />
         ) : isPbp ? (
           <PlayByPlayTab playerId={playerId} availableSeasons={availableSeasons} />
         ) : (
@@ -184,6 +190,7 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
               percentiles={showPercentiles && !percLoading ? percData : null}
               viewMode={safeType}
               emptyMessage={isEmpty ? "Hasn't played WNBA games yet." : undefined}
+              filename={`${playerName}-${safeType}${curSeason === 'playoffs' ? '-playoffs' : ''}.csv`}
             />
           </>
         )}

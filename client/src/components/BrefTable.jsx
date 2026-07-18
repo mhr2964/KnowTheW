@@ -55,7 +55,31 @@ function compareRows(a, b, idx, dir) {
   return String(av).localeCompare(String(bv)) * dir;
 }
 
-export default function BrefTable({ regular, career, percentiles, viewMode = 'perGame', emptyMessage, headerGroups, cellClassName }) {
+function toCsvCell(val) {
+  const s = val === null || val === undefined ? '' : String(val);
+  return /["\n,]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function downloadCsv(filename, cols, rows, careerRow) {
+  const lines = [cols.map(c => toCsvCell(c.label)).join(',')];
+  for (const row of rows) {
+    lines.push(cols.map(c => toCsvCell(fmt(c.kind, row[c.idx]))).join(','));
+  }
+  if (careerRow) {
+    lines.push(cols.map(c => toCsvCell(
+      c.key === 'SEASON_ID' ? 'Career' : c.key === 'TEAM_ABBREVIATION' ? '' : fmt(c.kind, careerRow[c.idx])
+    )).join(','));
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export default function BrefTable({ regular, career, percentiles, viewMode = 'perGame', emptyMessage, headerGroups, cellClassName, filename }) {
   const [sort, setSort] = useState(null); // {key, dir: 1|-1} | null
 
   // Server-emitted `columns` ({key,label,kind}) is the primary path (detailed-stats,
@@ -88,68 +112,79 @@ export default function BrefTable({ regular, career, percentiles, viewMode = 'pe
   if (!regular) return <p className="stats-na">{emptyMessage ?? 'No data available.'}</p>;
 
   return (
-    <div className="bref-wrap">
-      <table className="bref-table">
-        <thead>
-          {headerGroups && (
-            <tr className="bref-group-row">
-              {headerGroups.map((g, i) => (
-                <th key={i} colSpan={g.span} className={g.label ? 'bref-group-header' : 'bref-group-empty'}>
-                  {g.label}
-                </th>
-              ))}
-            </tr>
-          )}
-          <tr>{cols.map(c => (
-            <th
-              key={c.key}
-              className="bref-th-sortable"
-              aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}
-              onClick={() => toggleSort(c.key)}
-            >
-              <HeaderTooltip label={c.label} definition={STAT_DEFINITIONS[c.key]} />
-              <span className="bref-sort-indicator">
-                {sort?.key === c.key ? (sort.dir === 1 ? '▲' : '▼') : ''}
-              </span>
-            </th>
-          ))}</tr>
-        </thead>
-        <tbody>
-          {sortedRows.map((row, ri) => {
-            const seasonPerc = percentiles?.[String(row[0])]?.[viewMode];
-            return (
-              <tr key={ri}>
-                {cols.map(c => {
-                  const raw  = row[c.idx];
-                  const perc = seasonPerc?.[c.key];
-                  const extraClass = cellClassName?.(row, c) ?? '';
-                  return (
-                    <td
-                      key={c.key}
-                      className={[LEFT_COLS.has(c.key) ? 'td-l' : '', extraClass].filter(Boolean).join(' ')}
-                      style={{ backgroundColor: percColor(perc) }}
-                      title={perc !== null && perc !== undefined ? `${ordinal(perc)} percentile` : undefined}
-                    >
-                      {fmt(c.kind, raw)}
-                    </td>
-                  );
-                })}
+    <>
+      <div className="bref-toolbar">
+        <button
+          type="button"
+          className="btn-ghost bref-export-btn"
+          onClick={() => downloadCsv(filename ?? 'stats.csv', cols, sortedRows, careerRow)}
+        >
+          Export CSV
+        </button>
+      </div>
+      <div className="bref-wrap">
+        <table className="bref-table">
+          <thead>
+            {headerGroups && (
+              <tr className="bref-group-row">
+                {headerGroups.map((g, i) => (
+                  <th key={i} colSpan={g.span} className={g.label ? 'bref-group-header' : 'bref-group-empty'}>
+                    {g.label}
+                  </th>
+                ))}
               </tr>
-            );
-          })}
-          {careerRow && (
-            <tr className="career-row">
-              {cols.map(c => (
-                <td key={c.key} className={LEFT_COLS.has(c.key) ? 'td-l' : ''}>
-                  {c.key === 'SEASON_ID' ? 'Career'
-                    : c.key === 'TEAM_ABBREVIATION' ? ''
-                    : fmt(c.kind, careerRow[c.idx])}
-                </td>
-              ))}
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+            )}
+            <tr>{cols.map(c => (
+              <th
+                key={c.key}
+                className="bref-th-sortable"
+                aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}
+                onClick={() => toggleSort(c.key)}
+              >
+                <HeaderTooltip label={c.label} definition={STAT_DEFINITIONS[c.key]} />
+                <span className="bref-sort-indicator">
+                  {sort?.key === c.key ? (sort.dir === 1 ? '▲' : '▼') : ''}
+                </span>
+              </th>
+            ))}</tr>
+          </thead>
+          <tbody>
+            {sortedRows.map((row, ri) => {
+              const seasonPerc = percentiles?.[String(row[0])]?.[viewMode];
+              return (
+                <tr key={ri}>
+                  {cols.map(c => {
+                    const raw  = row[c.idx];
+                    const perc = seasonPerc?.[c.key];
+                    const extraClass = cellClassName?.(row, c) ?? '';
+                    return (
+                      <td
+                        key={c.key}
+                        className={[LEFT_COLS.has(c.key) ? 'td-l' : '', extraClass].filter(Boolean).join(' ')}
+                        style={{ backgroundColor: percColor(perc) }}
+                        title={perc !== null && perc !== undefined ? `${ordinal(perc)} percentile` : undefined}
+                      >
+                        {fmt(c.kind, raw)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+            {careerRow && (
+              <tr className="career-row">
+                {cols.map(c => (
+                  <td key={c.key} className={LEFT_COLS.has(c.key) ? 'td-l' : ''}>
+                    {c.key === 'SEASON_ID' ? 'Career'
+                      : c.key === 'TEAM_ABBREVIATION' ? ''
+                      : fmt(c.kind, careerRow[c.idx])}
+                  </td>
+                ))}
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }

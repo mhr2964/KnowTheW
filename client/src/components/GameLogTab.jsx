@@ -33,18 +33,19 @@ function toBrefShape(log, games) {
   return { columns, rows };
 }
 
-function GameLogTable({ log, games }) {
+function GameLogTable({ log, games, filename }) {
   const regular = toBrefShape(log, games);
   return (
     <BrefTable
       regular={regular}
       emptyMessage="No games logged yet."
       cellClassName={(row, col) => col.key === 'result' ? (row[col.idx]?.startsWith('W') ? 'gl-win' : 'gl-loss') : undefined}
+      filename={filename}
     />
   );
 }
 
-export default function GameLogTab({ playerId, availableSeasons }) {
+export default function GameLogTab({ playerId, playerName, availableSeasons }) {
   const [gameLogSeason, setGameLogSeason] = useState(null);
   const [gameLogCache, setGameLogCache] = useState({});
   const [gameLogLoading, setGameLogLoading] = useState(false);
@@ -144,7 +145,7 @@ export default function GameLogTab({ playerId, availableSeasons }) {
       )}
       {!gameLogLoading && !gameLogError && (
         <>
-          <GameLogTable log={currentLog} games={pagedGames} />
+          <GameLogTable log={currentLog} games={pagedGames} filename={`${playerName}-gamelog-${gameLogSeason}.csv`} />
           {totalPages > 1 && (
             <div className="gl-pagination">
               <button

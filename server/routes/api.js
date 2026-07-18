@@ -22,6 +22,7 @@ const { rankSimilar }                                                    = requi
 const { computeSeasonOnOff }                                             = require('../lib/onOffClient');
 const { computeSeasonPbpStats }                                          = require('../lib/pbpStatsClient');
 const { computePbpTableRow, computeCareerRow, PBP_TABLE_HEADERS }        = require('../lib/analysis/pbpTable');
+const { buildSplits }                                                    = require('../lib/gameSplits');
 const { LEGACY_PLAYERS_BULK, isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyId,
         searchBulkLegacyPlayers, buildBulkLegacyProfile,
         buildBulkLegacyDetailedStats }                                   = require('../constants/legacyPlayerBulk');
@@ -553,6 +554,21 @@ router.get('/players/:id/gamelog', async (req, res) => {
   } catch (err) {
     console.error('gamelog:', err.message);
     res.status(500).json({ error: 'failed to load gamelog' });
+  }
+});
+
+// Home/Away, Monthly, and By-Opponent splits, derived from the same per-game gamelog data as
+// /gamelog. No shot-location/zone data exists in ESPN's free endpoints, so a bref-style
+// shooting-by-zone split isn't feasible here — see server/lib/gameSplits.js.
+router.get('/players/:id/splits', async (req, res) => {
+  try {
+    const log = await getProvider().getPlayerGameLog(req.params.id, req.query.season);
+    if (!log) return res.status(404).json({ error: 'no gamelog available' });
+    const splitType = ['homeaway', 'month', 'opponent'].includes(req.query.type) ? req.query.type : 'homeaway';
+    res.json(buildSplits(log, log.games, splitType) ?? { columns: [], rows: [] });
+  } catch (err) {
+    console.error('splits:', err.message);
+    res.status(500).json({ error: 'failed to load splits' });
   }
 });
 

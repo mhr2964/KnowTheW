@@ -3,7 +3,7 @@ import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import PlayerPage from '../components/PlayerPage';
 import useLazyFetch from '../hooks/useLazyFetch';
 
-const VALID_TABS = new Set(['totals', 'per36', 'per100', 'advanced', 'gamelog', 'pbp']);
+const VALID_TABS = new Set(['totals', 'per36', 'per100', 'advanced', 'gamelog', 'splits', 'pbp']);
 
 export default function PlayerRoutePage({ onSaveDeck }) {
   const { id, tab } = useParams();

@@ -102,6 +102,13 @@
 .stat-season-tab:hover { color: var(--text); border-color: var(--text-muted); }
 .stat-season-tab.active { background: var(--bg); border-color: var(--border); color: var(--accent); }
 
+.bref-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+.bref-export-btn { padding: 0.35rem 0.8rem; font-size: 0.78rem; }
+
 .bref-wrap {
   background: var(--surface);
   border: 1px solid var(--border);
