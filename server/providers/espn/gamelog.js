@@ -9,7 +9,17 @@
 // captured fixture without a network call (the exact stat order + the 0-100 percent values that the
 // client renders as 3-dp fractions are the regression-prone bits).
 
-const { ESPN_WEB } = require('./client');
+const { ESPN_WEB, withCache, withTtlCache } = require('./client');
+const { isPastSeason } = require('../../lib/seasonWindow');
+
+// Past seasons are over and immutable -> cache forever (safe, same reasoning as team schedule/
+// stats). The current season changes after every game, so it gets a short TTL instead of no cache
+// at all -- this route previously hit ESPN fresh on every single request, for every visitor.
+// Kept as two separate cache objects (not one shared object keyed the same way) so a season
+// crossing the past/current boundary between requests can never read the other cache's entry shape.
+const CURRENT_SEASON_TTL_MS = 15 * 60 * 1000;
+const pastGameLogCache = {};
+const currentGameLogCache = {};
 
 // Presentation metadata for ESPN's gamelog stat keys. `kind` drives client formatting:
 // 'pct' values are 0-100 and render as a 3-dp fraction (e.g. 60.0 -> ".600"); 'num' renders as-is.
@@ -63,13 +73,21 @@ function normalizeGameLog(data) {
   return { columns, games };
 }
 
-/** Fetch + normalize a player's gamelog for a season. Returns null on a non-2xx response. */
-async function getPlayerGameLog(playerId, season) {
+async function fetchPlayerGameLogRaw(playerId, season) {
   const url = new URL(`${ESPN_WEB}/athletes/${playerId}/gamelog`);
   if (season) url.searchParams.set('season', season);
   const raw = await fetch(url.toString());
   if (!raw.ok) return null;
   return normalizeGameLog(await raw.json());
+}
+
+/** Fetch + normalize a player's gamelog for a season. Returns null on a non-2xx response. */
+function getPlayerGameLog(playerId, season) {
+  const key = `${playerId}-${season ?? 'current'}`;
+  if (isPastSeason(season)) {
+    return withCache(pastGameLogCache, key, () => fetchPlayerGameLogRaw(playerId, season));
+  }
+  return withTtlCache(currentGameLogCache, key, CURRENT_SEASON_TTL_MS, () => fetchPlayerGameLogRaw(playerId, season));
 }
 
 /**

@@ -28,6 +28,25 @@ async function withCache(cache, key, fn) {
   catch { return (cache[key] = null); }
 }
 
+// TTL variant of withCache, for data that changes (current-season stats) rather than immutable
+// past-season data. Serves the stale value on a transient fetch error instead of throwing, so a
+// flaky upstream degrades to "a bit old" rather than a failed request. Entries are {value, at}
+// objects — keep this on its own cache object per call site, never share one with withCache above,
+// or a season-boundary reclassification (current -> past) could read the wrong shape back.
+async function withTtlCache(cache, key, ttlMs, fn) {
+  const entry = cache[key];
+  if (entry && Date.now() - entry.at < ttlMs) return entry.value;
+  try {
+    const value = await fn();
+    cache[key] = { value, at: Date.now() };
+    return value;
+  } catch {
+    if (entry) return entry.value;
+    cache[key] = { value: null, at: Date.now() };
+    return null;
+  }
+}
+
 async function fetchTeams() {
   const [teamsRes, standings] = await Promise.all([
     fetch(`${ESPN}/teams?limit=100`),
@@ -365,7 +384,7 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 module.exports = {
-  ESPN, ESPN_WEB, STANDINGS, withCache,
+  ESPN, ESPN_WEB, STANDINGS, withCache, withTtlCache,
   getTeams, getRoster, fetchHistoricalRoster, fetchSeasonRoster,
   fetchTeamStats, fetchTeamStatsRaw, fetchTeamPtsAllowed, fetchTeamPtsAllowedRaw,
   fetchGameSummary,
