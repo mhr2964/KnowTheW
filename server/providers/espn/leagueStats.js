@@ -272,7 +272,7 @@ function extractPer36Stats(data, targetYear) {
 async function getPlayerSeasonAverages(playerId) {
   const pos = primaryPosition(espn.playerById[playerId]?.position || '');
 
-  const r = await fetch(`${ESPN_WEB}/athletes/${playerId}/stats?seasontype=2`);
+  const r = await fetchWithTimeout(`${ESPN_WEB}/athletes/${playerId}/stats?seasontype=2`);
   if (!r.ok) return null;
   const data = await r.json();
 
