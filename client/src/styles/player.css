@@ -25,15 +25,15 @@
 
 /* "Players like X" target header on the dedicated Similar Players page. */
 .similar-target-eyebrow {
-  font-size: 0.72rem; font-weight: 700; color: var(--text-muted);
-  text-transform: uppercase; letter-spacing: 0.1em;
+  font-size: var(--text-xs); font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: var(--tracking-label);
 }
 
 .player-bio-grid {
-  display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-top: 0.25rem;
+  display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); margin-top: var(--space-1);
 }
 .player-bio-item { display: flex; flex-direction: column; gap: 0.1rem; }
-.player-bio-label { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.player-bio-label { font-size: var(--text-2xs); font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: var(--tracking-label); }
 .player-bio-value { font-size: 0.88rem; font-weight: 600; }
 
 
@@ -614,7 +614,7 @@
 }
 .pbp-stat-cell { display: flex; flex-direction: column; gap: 0.25rem; }
 .pbp-stat-value { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.01em; }
-.pbp-stat-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.pbp-stat-label { font-size: var(--text-2xs); font-weight: 600; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-muted); }
 .pbp-stat-value--good { color: var(--win); }
 .pbp-stat-value--bad  { color: var(--loss); }
 @media (max-width: 600px) { .pbp-stat-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -635,11 +635,11 @@
 .onoff-panel--negative { border-color: var(--loss); }
 
 .onoff-panel-label {
-  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.07em; color: var(--text-muted); margin-bottom: 0.4rem;
+  font-size: var(--text-xs); font-weight: 700; text-transform: uppercase;
+  letter-spacing: var(--tracking-label); color: var(--text-muted); margin-bottom: 0.4rem;
 }
 .onoff-panel-net {
-  font-size: 2rem; font-weight: 800; font-variant-numeric: tabular-nums;
+  font-size: var(--text-2xl); font-weight: 800; font-variant-numeric: tabular-nums;
   line-height: 1; margin-bottom: 0.45rem;
 }
 .onoff-panel--positive .onoff-panel-net { color: var(--win); }

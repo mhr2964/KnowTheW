@@ -17,6 +17,35 @@
   --error: #e05555;
   --champion: #c8960c;
   --champion-text: #e8c84a;
+
+  /* Spacing scale — a 4px base grid. Every gap/padding/margin in the app already lands on or near
+     one of these steps; this doesn't replace every literal (most values are legitimately one-off
+     per component), it's here so genuinely shared spacing has one source instead of re-typing the
+     same rem value in five files and letting it drift (0.85rem vs 0.86rem vs 0.88rem, etc.). */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Type scale. Font sizes across styles/*.css had drifted into ~30 distinct values for what were
+     mostly a handful of intended tiers (e.g. the uppercase label pattern alone had spread across
+     0.6/0.65/0.68/0.7/0.72rem). These steps are the scale going forward; --tracking-label is the
+     wide letter-spacing used on every uppercase eyebrow/label across the app (section titles, table
+     headers, stat labels) — 0.08em was already the majority value among 0.04-0.15em drift. */
+  --text-2xs: 0.68rem;
+  --text-xs: 0.72rem;
+  --text-sm: 0.82rem;
+  --text-base: 0.9rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --tracking-label: 0.08em;
 }
 
 body {
