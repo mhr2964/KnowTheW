@@ -130,6 +130,17 @@
 }
 .btn-ghost:hover { border-color: var(--text-muted); color: var(--text); }
 
+/* Accent-outline pill: "trigger" buttons that open a flow (Study this table, Compare with...)
+   rather than submit one - visually distinct from btn-primary/btn-ghost. Was duplicated
+   verbatim under two different class names across layout.css and compare.css. */
+.study-trigger-btn, .compare-trigger-btn {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--accent);
+  padding: 0.4rem 0.9rem; font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; transition: background 0.12s, border-color 0.12s;
+}
+.study-trigger-btn:hover, .compare-trigger-btn:hover { background: var(--surface); border-color: var(--accent); }
+
 /* ── Flashcard Study ── */
 .study-fullscreen {
   display: flex; flex-direction: column; width: 100%; height: 100%;

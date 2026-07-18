@@ -192,21 +192,12 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* Compare trigger button on player page */
+/* Compare trigger button on player page - visual styling lives in shared.css alongside
+   .study-trigger-btn; only this page-specific positioning stays here. */
 .compare-trigger-btn {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--accent);
-  padding: 0.35rem 0.85rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
   margin-top: 0.35rem;
   align-self: flex-start;
 }
-.compare-trigger-btn:hover { border-color: var(--accent); background: rgba(255,107,0,0.07); }
 
 /* Compare picker modal */
 .compare-picker-modal {

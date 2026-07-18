@@ -129,13 +129,8 @@
 }
 .perc-toggle input:checked ~ .perc-toggle-label { color: var(--text); }
 
-.study-trigger-btn {
-  background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: var(--radius); color: var(--accent);
-  padding: 0.4rem 0.9rem; font-size: 0.8rem; font-weight: 600;
-  cursor: pointer; transition: background 0.12s, border-color 0.12s;
-}
-.study-trigger-btn:hover { background: var(--surface); border-color: var(--accent); }
+/* .study-trigger-btn styling lives in shared.css alongside .compare-trigger-btn, which it's
+   visually identical to. */
 
 .data-table {
   background: var(--surface); border: 1px solid var(--border);
