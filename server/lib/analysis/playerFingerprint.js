@@ -53,7 +53,10 @@ const AXIS_KEYS = AXES.map(a => a.key);
 // changing a stat/mode, OR changing the percentile POOL the similarity fingerprint is built against.
 // v2: similarity fingerprint switched from position-pooled to league-wide ('all') percentiles so
 // matching reflects absolute playstyle (a guard's blocks aren't inflated "for a guard" and matched to a big).
-const AXES_VERSION = 2;
+// v3: aggregateFingerprint applies recency decay (see RECENCY_HALF_LIFE_YEARS) instead of a flat
+// minutes-weighted mean, so a player whose role genuinely shifted (e.g. a scorer who became a
+// playmaker) reads as their recent self instead of an averaged blend of every era they've played.
+const AXES_VERSION = 3;
 
 // Composite "play dimensions" — the 13 axes collapsed into 6 buckets for the radar so a profile
 // reads as a SHAPE at a glance (13 equal bars have no gestalt). Order here is the radar's spoke
@@ -135,6 +138,16 @@ function buildDimensions(axes, advanced = {}, pos = '') {
 // guards against a career too thin to characterize — a handful of qualifying minutes total.
 const MIN_CAREER_MINUTES = 500;
 
+// Recency half-life, in seasons, for aggregateFingerprint's decay weighting: a season's contribution
+// halves every this-many-years back from the player's OWN last qualifying season (not today's date —
+// see aggregateFingerprint). Tuned against a full-index live sweep (459 players): half-life 4 flipped
+// 42 archetype labels (many long-career players with no real role change — just noise from
+// discounting their early seasons too hard); half-life 8 only reduced that to 26, diminishing
+// returns. 6 is the knee of that curve — 28 flips, same qualitative fix for the motivating case
+// (Alyssa Thomas's playmaking axis rises to reflect her recent seasons) without over-discounting
+// long careers.
+const RECENCY_HALF_LIFE_YEARS = 6;
+
 // Playmaking blends assist VOLUME (the era-normalized axis) with assist CONTROL (career assist-to-
 // turnover ratio). Raw turnover rate alone unfairly punishes high-usage creators (their turnovers
 // are the cost of their assists); AST/TO credits the assists, so an elite-volume passer who is also
@@ -166,12 +179,19 @@ function buildSeasonFingerprint(seasonPercentiles) {
 }
 
 /**
- * Minutes-weighted career vector across seasons. A bigger season pulls each axis harder; null axis
- * values are skipped (don't dilute the mean toward 0). An axis with no data in any season -> null.
- * @param {Array<{minutes:number, fingerprint:Object<string,number|null>}>} seasonFps
+ * Recency-decayed, minutes-weighted career vector across seasons. A bigger season pulls each axis
+ * harder, same as before — but each season's minutes are also scaled down the further back it sits
+ * from the player's OWN last qualifying season, so a genuine role shift (e.g. a scorer who became a
+ * playmaker) reads as their recent self instead of an average of every era. The anchor is the
+ * player's last season, not today's date, so a retired player's profile stops drifting once they
+ * stop playing. Null axis values are skipped (don't dilute the mean toward 0); an axis with no data
+ * in any season -> null.
+ * @param {Array<{season:string|number, minutes:number, fingerprint:Object<string,number|null>}>} seasonFps
  * @returns {Object<string, number|null>}
  */
 function aggregateFingerprint(seasonFps) {
+  const seasonYears = seasonFps.map(s => Number(s.season)).filter(Number.isFinite);
+  const lastSeason = seasonYears.length ? Math.max(...seasonYears) : null;
   const axes = {};
   for (const key of AXIS_KEYS) {
     let weighted = 0;
@@ -180,8 +200,10 @@ function aggregateFingerprint(seasonFps) {
       const v = s.fingerprint[key];
       const m = s.minutes;
       if (typeof v === 'number' && typeof m === 'number' && m > 0) {
-        weighted += v * m;
-        weight += m;
+        const age = lastSeason !== null && Number.isFinite(Number(s.season)) ? lastSeason - Number(s.season) : 0;
+        const decay = 0.5 ** (age / RECENCY_HALF_LIFE_YEARS);
+        weighted += v * m * decay;
+        weight += m * decay;
       }
     }
     axes[key] = weight > 0 ? Math.round(weighted / weight) : null;
@@ -339,6 +361,7 @@ module.exports = {
   AXES_VERSION,
   DIMENSIONS,
   MIN_CAREER_MINUTES,
+  RECENCY_HALF_LIFE_YEARS,
   buildDimensions,
   normalizeAstTo,
   buildSeasonFingerprint,

@@ -139,7 +139,11 @@ test('assignArchetype — rejects a prototype when the top dimension contradicts
   assert.strictEqual(res.fallback, true);
 });
 
-test('assignArchetype — Point Forward for a playmaking + rebounding forward (the AT shape)', () => {
+test('assignArchetype — Point Forward for a playmaking + rebounding forward', () => {
+  // Synthetic, not a live-captured profile — the pre-recency-decay Alyssa Thomas truth-set entry
+  // happened to look like this, but her real fingerprint shifts once aggregateFingerprint decays
+  // toward her recent seasons (see AXES_VERSION v3). Kept as a synthetic regression case for the
+  // Point Forward prototype's own matching logic, independent of any one player's real numbers.
   const res = assign(axesWith(45, {
     playmaking: 89, defRebounding: 72, steals: 84, scoringVolume: 60, rimPressure: 82, threeVolume: 9,
   }), { pos: 'F' });
@@ -156,7 +160,9 @@ test('assignArchetype — Combo Guard for a scoring + playmaking + shooting guar
 
 // ── buildDescriptor (reads the same dimensions; takes the assignment) ──────────────────────────
 
-test('buildDescriptor — Elite tier, top-3 strengths, real limitation (the AT shape)', () => {
+test('buildDescriptor — Elite tier, top-3 strengths, real limitation', () => {
+  // Synthetic dimension shape (see the Point Forward test above for why this isn't labeled to any
+  // one real player anymore).
   const dims = dimsOf({ playmaking: 89, rebounding: 75, defense: 70, scoring: 55, shooting: 8 });
   assert.strictEqual(
     buildDescriptor(dims, { archetype: { key: 'point-forward' } }),

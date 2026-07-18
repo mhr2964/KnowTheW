@@ -54,25 +54,47 @@ test('buildSeasonFingerprint — null/undefined input is all-null, never throws'
   for (const key of AXIS_KEYS) assert.strictEqual(fp[key], null);
 });
 
-test('aggregateFingerprint — minutes-weighted mean', () => {
+test('aggregateFingerprint — minutes-weighted mean (same season, no decay gap)', () => {
+  const seasonFps = [
+    { season: 2023, minutes: 100, fingerprint: { scoringVolume: 40 } },
+    { season: 2023, minutes: 300, fingerprint: { scoringVolume: 80 } },
+  ];
+  // Both seasons are the player's own last season -> age 0 for both -> decay 1 -> plain mean.
+  // (40*100 + 80*300) / 400 = 70
+  assert.strictEqual(aggregateFingerprint(seasonFps).scoringVolume, 70);
+});
+
+test('aggregateFingerprint — recency decay favors the player\'s own most recent season', () => {
+  const seasonFps = [
+    { season: 2018, minutes: 200, fingerprint: { scoringVolume: 20 } }, // 6 years back from 2024
+    { season: 2024, minutes: 200, fingerprint: { scoringVolume: 80 } }, // player's own last season
+  ];
+  // Equal minutes, but 2018 is one half-life back (decay 0.5^(6/6) = 0.5) while 2024 gets full
+  // weight -> the recent season dominates the mean instead of a flat 50/50 split.
+  // (20*200*0.5 + 80*200*1) / (200*0.5 + 200*1) = 18000 / 300 = 60
+  const value = aggregateFingerprint(seasonFps).scoringVolume;
+  assert.strictEqual(value, 60);
+  assert.ok(value > 50, 'recency-weighted mean should beat the flat minutes-weighted mean of 50');
+});
+
+test('aggregateFingerprint — no season field on any entry behaves like a flat mean (age defaults to 0)', () => {
   const seasonFps = [
     { minutes: 100, fingerprint: { scoringVolume: 40 } },
     { minutes: 300, fingerprint: { scoringVolume: 80 } },
   ];
-  // (40*100 + 80*300) / 400 = 70
   assert.strictEqual(aggregateFingerprint(seasonFps).scoringVolume, 70);
 });
 
 test('aggregateFingerprint — null axis values are skipped, not counted as 0', () => {
   const seasonFps = [
-    { minutes: 100, fingerprint: { scoringVolume: null } }, // skipped
-    { minutes: 300, fingerprint: { scoringVolume: 80 } },
+    { season: 2023, minutes: 100, fingerprint: { scoringVolume: null } }, // skipped
+    { season: 2023, minutes: 300, fingerprint: { scoringVolume: 80 } },
   ];
   assert.strictEqual(aggregateFingerprint(seasonFps).scoringVolume, 80);
 });
 
 test('aggregateFingerprint — axis with no data in any season is null', () => {
-  const seasonFps = [{ minutes: 100, fingerprint: { scoringVolume: 50 } }];
+  const seasonFps = [{ season: 2023, minutes: 100, fingerprint: { scoringVolume: 50 } }];
   assert.strictEqual(aggregateFingerprint(seasonFps).playmaking, null);
 });
 
