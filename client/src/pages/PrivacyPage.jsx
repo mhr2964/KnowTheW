@@ -31,11 +31,11 @@ export default function PrivacyPage() {
         Google AdSense. Google and its partners may use cookies to serve ads based on a
         visitor&apos;s prior visits to this or other websites. Visitors can opt out of
         personalized advertising by visiting{' '}
-        <a href="https://adssettings.google.com" target="_blank" rel="noreferrer">
+        <a href="https://adssettings.google.com" target="_blank" rel="noopener noreferrer">
           Google&apos;s Ads Settings
         </a>{' '}
         or{' '}
-        <a href="https://www.aboutads.info/choices/" target="_blank" rel="noreferrer">
+        <a href="https://www.aboutads.info/choices/" target="_blank" rel="noopener noreferrer">
           aboutads.info
         </a>.
       </p>
