@@ -33,6 +33,15 @@ const FULL_SEASON = {
   per36:   { PTS: 95, FG3A: 40, FTA: 55, AST: 88, TOV: 65, OREB: 30, DREB: 50, STL: 77, BLK: 20 },
 };
 
+// buildFingerprint()-shaped input for a single season: FULL_SEASON percentiles + a Totals line
+// (used by the minutes-floor / AST-TO tests below, which only vary the Totals fields).
+function fpInput(season, totals) {
+  return {
+    percentiles: { [season]: FULL_SEASON },
+    seasonAverages: { statsByModeBySeason: { [season]: { Totals: totals } } },
+  };
+}
+
 test('buildSeasonFingerprint — pulls each axis from the right stat + mode', () => {
   assert.deepStrictEqual(buildSeasonFingerprint(FULL_SEASON), {
     scoringVolume: 95, finishing: 60, threeVolume: 40, threeAccuracy: 70, rimPressure: 55,
@@ -99,10 +108,7 @@ test('aggregateFingerprint — axis with no data in any season is null', () => {
 });
 
 test('buildFingerprint — assembles axes + coverage when above the minutes floor', () => {
-  const result = buildFingerprint({
-    percentiles: { 2024: FULL_SEASON },
-    seasonAverages: { statsByModeBySeason: { 2024: { Totals: { MIN: 800 } } } },
-  });
+  const result = buildFingerprint(fpInput(2024, { MIN: 800 }));
   assert.strictEqual(result.insufficient, undefined);
   assert.strictEqual(result.seasonsCovered, 1);
   assert.strictEqual(result.totalMinutes, 800);
@@ -111,10 +117,7 @@ test('buildFingerprint — assembles axes + coverage when above the minutes floo
 });
 
 test('buildFingerprint — below the minutes floor is gated insufficient', () => {
-  const result = buildFingerprint({
-    percentiles: { 2024: FULL_SEASON },
-    seasonAverages: { statsByModeBySeason: { 2024: { Totals: { MIN: 200 } } } }, // < 500
-  });
+  const result = buildFingerprint(fpInput(2024, { MIN: 200 })); // < 500
   assert.strictEqual(result.insufficient, true);
   assert.strictEqual(result.reason, 'sample');
 });
@@ -241,19 +244,13 @@ test('normalizeAstTo — maps AST/TO to 0-100 on the fixed scale, clamped', () =
 });
 
 test('buildFingerprint — computes career AST/TO + playmakingQuality from season totals', () => {
-  const result = buildFingerprint({
-    percentiles: { 2024: FULL_SEASON },
-    seasonAverages: { statsByModeBySeason: { 2024: { Totals: { MIN: 800, AST: 200, TOV: 80 } } } },
-  });
+  const result = buildFingerprint(fpInput(2024, { MIN: 800, AST: 200, TOV: 80 }));
   assert.strictEqual(result.advanced.astTo, 2.5);             // 200 / 80
   assert.strictEqual(result.advanced.playmakingQuality, 85);  // (2.5-0.8)/2.0*100
 });
 
 test('buildFingerprint — zero turnovers leaves AST/TO + quality null (no divide-by-zero)', () => {
-  const result = buildFingerprint({
-    percentiles: { 2024: FULL_SEASON },
-    seasonAverages: { statsByModeBySeason: { 2024: { Totals: { MIN: 800, AST: 200, TOV: 0 } } } },
-  });
+  const result = buildFingerprint(fpInput(2024, { MIN: 800, AST: 200, TOV: 0 }));
   assert.strictEqual(result.advanced.astTo, null);
   assert.strictEqual(result.advanced.playmakingQuality, null);
 });
