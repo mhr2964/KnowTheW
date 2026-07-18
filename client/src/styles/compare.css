@@ -154,24 +154,6 @@
   white-space: nowrap;
 }
 
-/* Sticky Season column on the merged table */
-.compare-merged-table th.compare-sticky-col,
-.compare-merged-table td.compare-sticky-col {
-  position: sticky;
-  left: 0;
-}
-.compare-merged-table th.compare-sticky-col {
-  background: var(--surface-2);
-  z-index: 2;
-}
-.compare-merged-table td.compare-sticky-col {
-  background: var(--bg);
-  z-index: 1;
-}
-.compare-merged-table tr:hover td.compare-sticky-col {
-  background: var(--surface);
-}
-
 /* Career row modifier (piggybacks on .career-row) */
 .compare-career-row td {
   background: var(--surface);

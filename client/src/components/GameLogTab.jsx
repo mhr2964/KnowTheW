@@ -1,59 +1,46 @@
 import { useState, useEffect, useRef } from 'react';
-import HeaderTooltip from './HeaderTooltip';
-import { STAT_DEFINITIONS } from '../lib/statDefinitions';
+import BrefTable from './BrefTable';
 
 const GL_PAGE_SIZES = [10, 25, 50];
 
-// Server supplies column metadata ({key,label,kind}); the client just formats by kind.
-// 'pct' values are 0-100 and render as a 3-dp fraction (60.0 -> ".600").
-function fmtGame(kind, val) {
-  if (val === null || val === undefined || val === '') return '—';
-  if (kind === 'pct') {
-    const n = parseFloat(val);
-    if (isNaN(n)) return '—';
-    return (n / 100).toFixed(3).replace(/^0\./, '.');
-  }
-  return String(val);
+// The gamelog API returns every stat as a string (even plain numbers, e.g. "20"), and 'pct'
+// values as 0-100 percentages rather than BrefTable's shared 0-1-fraction convention. Parse
+// numeric-looking strings into real numbers here (so column sorting compares numerically
+// instead of lexicographically) and normalize 'pct' to match detailed-stats. Combined
+// make-attempt strings like "3-6" aren't valid numbers and are left as display strings.
+function toBrefShape(log, games) {
+  if (!log?.columns?.length || !games?.length) return null;
+  const columns = [
+    { key: 'date', label: 'Date', kind: 'date' },
+    { key: 'opp', label: 'Opp' },
+    { key: 'result', label: 'Result' },
+    ...log.columns,
+  ];
+  const rows = games.map(g => [
+    g.date,
+    `${g.atVs} ${g.opponent}`,
+    `${g.result} ${g.teamScore}-${g.oppScore}`,
+    ...log.columns.map(col => {
+      const raw = g.stats[col.key];
+      if (col.kind === 'pct') {
+        const n = parseFloat(raw);
+        return Number.isNaN(n) ? null : n / 100;
+      }
+      const n = Number(raw);
+      return Number.isNaN(n) ? raw : n;
+    }),
+  ]);
+  return { columns, rows };
 }
 
 function GameLogTable({ log, games }) {
-  if (!log?.columns?.length || !games?.length) return <p className="stats-na">No games logged yet.</p>;
-  const { columns } = log;
+  const regular = toBrefShape(log, games);
   return (
-    <div className="bref-wrap">
-      <table className="bref-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Opp</th>
-            <th>Result</th>
-            {columns.map(col => (
-              <th key={col.key}>
-                <HeaderTooltip label={col.label} definition={STAT_DEFINITIONS[col.key]} />
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {games.map((g, i) => {
-            const date = new Date(g.date);
-            const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            const oppStr = `${g.atVs} ${g.opponent}`;
-            const resultStr = `${g.result} ${g.teamScore}-${g.oppScore}`;
-            return (
-              <tr key={i}>
-                <td className="td-l">{dateStr}</td>
-                <td className="td-l">{oppStr}</td>
-                <td className={`td-l gl-${g.result === 'W' ? 'win' : 'loss'}`}>{resultStr}</td>
-                {columns.map(col => (
-                  <td key={col.key}>{fmtGame(col.kind, g.stats[col.key])}</td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <BrefTable
+      regular={regular}
+      emptyMessage="No games logged yet."
+      cellClassName={(row, col) => col.key === 'result' ? (row[col.idx]?.startsWith('W') ? 'gl-win' : 'gl-loss') : undefined}
+    />
   );
 }
 

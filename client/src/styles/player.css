@@ -130,6 +130,13 @@
 .bref-table th:first-child { text-align: left; border-left: none; }
 .bref-table th:last-child { border-right: none; }
 
+.bref-th-sortable { cursor: pointer; user-select: none; }
+.bref-th-sortable:hover { color: var(--accent-light); }
+.bref-sort-indicator {
+  display: inline-block; width: 0.9em; margin-left: 0.2em;
+  color: var(--accent); font-size: 0.9em;
+}
+
 /* Group header row (PBP table and any future grouped table) */
 .bref-group-row th { border-bottom: 1px solid var(--border); text-align: center; }
 .bref-group-header { border-bottom: 2px solid var(--border) !important; }
