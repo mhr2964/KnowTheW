@@ -8,6 +8,7 @@ last-session: 2026-07-18
 state: green
 ```
 
+**Heroku auto-deploys from `origin/master` via its own GitHub integration.** This is invisible in `.github/workflows/ci.yml` (that workflow is lint/test only) — it's configured on Heroku's dashboard side (Deploy tab → GitHub), not in this repo. Confirmed 2026-07-18: `git push origin master` alone (no `git push heroku master`) produced Heroku release v156 within ~2 minutes, matching the pushed commit hash exactly. **A push to `origin/master` IS a production deploy.** Do not treat "push to origin" and "deploy to Heroku" as two separate confirmable actions — they're the same action now.
 
 
 **Branch: `master`.** Phase 0 + Phase 1 of the launch roadmap below are committed, pushed to `origin/master`, and deployed live. **Live URL: https://knowthew-536bebfc7101.herokuapp.com/** (Heroku app name: `knowthew`).
@@ -71,7 +72,7 @@ The version this replaces (`683873d`, dated 2026-05-28) described On/Off-Court I
 
 Site is live. Table-unification review is done — `RosterTable` shipped as a real `<table>` (`ac3dec4`); `ScheduleTable`/`TeamHistoryPage` were deliberately left alone (see above, not a duplication worth merging). Remaining Phase 3 candidates: CSV export, shooting-splits tables. Phase 2 (analytics + AdSense application) is separate and needs the user's own account — don't start unprompted.
 
-**5 local commits ahead of `origin/master`** (`d20405d`, `3d2da23`, `28e2d1d`, `6033fa1`, `ac3dec4`) — not pushed to `origin` or deployed to `heroku` yet. Do not push/deploy without an explicit ask.
+All commits through `b15be19` are pushed to `origin/master` and live on Heroku (release v156, confirmed via matching asset hashes) — see the auto-deploy note above.
 
 ## Traps
 
