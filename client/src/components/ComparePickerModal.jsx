@@ -7,7 +7,6 @@ export default function ComparePickerModal({ currentPlayerId, onPick, onClose, t
   const [loading, setLoading] = useState(false);
   const [selfError, setSelfError] = useState(false);
   const inputRef = useRef(null);
-  const debounceRef = useRef(null);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -15,20 +14,23 @@ export default function ComparePickerModal({ currentPlayerId, onPick, onClose, t
 
   useEffect(() => {
     const q = query.trim();
-    if (!q) { setResults(null); return; }
+    if (!q) { setResults(null); return undefined; }
 
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      const controller = new AbortController();
+    // The controller is created here (not inside the timeout) so effect cleanup can abort an
+    // in-flight fetch even after the debounce has already fired. Previously `controller.abort()`
+    // was returned from inside the setTimeout callback, which does nothing — setTimeout ignores
+    // callback return values — so a superseded fetch could resolve after a newer one and
+    // clobber its results with stale data.
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
       setLoading(true);
       fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal: controller.signal })
         .then(r => { if (!r.ok) throw new Error(); return r.json(); })
         .then(d => { setResults(d.players ?? []); setLoading(false); })
         .catch(err => { if (err.name !== 'AbortError') { setResults([]); setLoading(false); } });
-      return () => controller.abort();
     }, 200);
 
-    return () => clearTimeout(debounceRef.current);
+    return () => { clearTimeout(timer); controller.abort(); };
   }, [query]);
 
   useEffect(() => {
