@@ -25,6 +25,8 @@ function safeRating(pts, p) {
   return p > 0 ? (pts / p) * 100 : null;
 }
 
+function round1(v) { return v != null ? Math.round(v * 10) / 10 : null; }
+
 /**
  * Compute on/off net rating from an array of per-game PBP results.
  * @param {Array<{fetched:boolean, onCourt:object|null, boxscore:object|null}>} pbpResults
@@ -102,8 +104,6 @@ function computeOnOff(pbpResults) {
   const offNet   = offORTG != null && offDRTG != null ? offORTG - offDRTG : null;
 
   const delta = onNet != null && offNet != null ? onNet - offNet : null;
-
-  function round1(v) { return v != null ? Math.round(v * 10) / 10 : null; }
 
   return {
     on:  { ortg: round1(onORTG),  drtg: round1(onDRTG),  net: round1(onNet)  },
