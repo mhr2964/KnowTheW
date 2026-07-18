@@ -596,7 +596,6 @@ router.get('/players/:id/pbp-table', async (req, res) => {
     const pgTable = regParsed?.pg?.table;
     if (!pgTable) return res.status(404).json({ error: 'no stats for this player' });
     const I = Object.fromEntries(pgTable.headers.map((h, i) => [h, i]));
-    const regTidByYear = extractTeamIdByYear(regData);
 
     const seasons = [...new Set(pgTable.rows.map(r => String(r[I.SEASON_ID])))];
 
