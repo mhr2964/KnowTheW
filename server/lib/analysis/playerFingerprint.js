@@ -163,6 +163,8 @@ function normalizeAstTo(astTo) {
   return Math.round(Math.max(0, Math.min(100, pct)));
 }
 
+function r1(v) { return Math.round(v * 10) / 10; }
+
 /**
  * Pull each axis from the right mode's percentile vector for a single season.
  * @param {{perGame?:Object, per36?:Object, totals?:Object}|null} seasonPercentiles
@@ -256,7 +258,6 @@ function buildFingerprint({ percentiles, seasonAverages } = {}) {
   }
 
   const astTo = careerTov > 0 ? careerAst / careerTov : null;
-  const r1 = v => Math.round(v * 10) / 10;
   const stats = careerGames >= 1
     ? { ppg: r1(careerPts / careerGames), rpg: r1(careerReb / careerGames), apg: r1(careerAst / careerGames), gp: Math.round(careerGames) }
     : null;

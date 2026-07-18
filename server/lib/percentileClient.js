@@ -62,14 +62,21 @@ async function getOrBuildDistribution(season, mode = 'PerGame') {
 // ── Distribution builder ──────────────────────────────────────────────────────
 // Sorts the provider's normalized stat lines into per-stat, per-position-group ascending arrays.
 
+// Bucket entries into { all: <everything>, [pos]: <entries with that pos> } — the shared grouping
+// step both the byathlete distribution and the rebound/foul enrichment sort into before percentiling.
+function groupByPosition(entries) {
+  const groups = { all: entries };
+  for (const entry of entries) {
+    if (entry.pos) (groups[entry.pos] ??= []).push(entry);
+  }
+  return groups;
+}
+
 async function buildLeagueDistribution(season, mode = 'PerGame') {
   const qualified = await getProvider().getLeagueStatLines(season, mode);
   if (qualified.length < DISTRIBUTION_MIN) return null;
 
-  const groups = { all: qualified };
-  for (const entry of qualified) {
-    if (entry.pos) (groups[entry.pos] ??= []).push(entry);
-  }
+  const groups = groupByPosition(qualified);
 
   const distribution = {};
   for (const [grp, players] of Object.entries(groups)) {
@@ -91,10 +98,7 @@ async function enrichWithIndividualStats(distribution, season, mode) {
   const entries = await getProvider().getLeagueReboundFoulStats(season);
   if (entries.length < DISTRIBUTION_MIN) return;
 
-  const groups = { all: entries };
-  for (const entry of entries) {
-    if (entry.pos) (groups[entry.pos] ??= []).push(entry);
-  }
+  const groups = groupByPosition(entries);
 
   for (const [grp, grpEntries] of Object.entries(groups)) {
     if (!distribution[grp]) continue;
@@ -170,10 +174,20 @@ async function getPlayerPercentiles(playerId, { pool = 'position' } = {}) {
   return Object.keys(result).length ? result : null;
 }
 
-async function warmDistributionCache() {
-  const lastSeason = latestCompletedSeason(); // exclude the in-progress season (jitter source)
+// Earliest season the league-wide feeds (byathlete, rebound/foul, player index) cover.
+const FIRST_INDEXED_SEASON = 2011;
+
+// Inclusive [FIRST_INDEXED_SEASON, latestCompletedSeason()] as string years — excludes the
+// in-progress season (jitter source; see seasonWindow.js).
+function indexedSeasonRange() {
+  const lastSeason = latestCompletedSeason();
   const seasons = [];
-  for (let y = 2011; y <= lastSeason; y++) seasons.push(String(y));
+  for (let y = FIRST_INDEXED_SEASON; y <= lastSeason; y++) seasons.push(String(y));
+  return seasons;
+}
+
+async function warmDistributionCache() {
+  const seasons = indexedSeasonRange();
   await Promise.all(
     seasons.flatMap(season => DIST_MODES.map(mode => getOrBuildDistribution(season, mode).catch(() => null)))
   );
@@ -183,9 +197,7 @@ async function buildPlayerIndex() {
   const db = getDb();
   if (!db) return;
 
-  const lastSeason = latestCompletedSeason();
-  const seasons = [];
-  for (let y = 2011; y <= lastSeason; y++) seasons.push(String(y));
+  const seasons = indexedSeasonRange();
 
   const players = await getProvider().getLeaguePlayerIndex(seasons);
   const upserts = players.map(p => ({
