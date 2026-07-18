@@ -1,6 +1,9 @@
 {
   "name": "knowthew",
   "version": "1.0.0",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "nodemon server/index.js",
     "start": "node server/index.js",
