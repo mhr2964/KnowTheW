@@ -14,6 +14,10 @@ import SearchPage from './pages/SearchPage';
 import ComparePage from './pages/ComparePage';
 import SimilarPlayersPage from './pages/SimilarPlayersPage';
 import NotFoundPage from './pages/NotFoundPage';
+import AboutPage from './pages/AboutPage';
+import DataSourcesPage from './pages/DataSourcesPage';
+import PrivacyPage from './pages/PrivacyPage';
+import TermsPage from './pages/TermsPage';
 import './styles/global.css';
 import './styles/layout.css';
 import './styles/shared.css';
@@ -21,6 +25,7 @@ import './styles/player.css';
 import './styles/compare.css';
 import './styles/team.css';
 import './styles/responsive.css';
+import './styles/legal.css';
 
 function RedirectToPlayer() {
   const { idA } = useParams();
@@ -171,12 +176,22 @@ export default function App() {
             path="/similar/:id"
             element={<SimilarPlayersPage />}
           />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/data-sources" element={<DataSourcesPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
 
       <footer className="footer">
-        Stats and data sourced from ESPN. KnowTheW is not affiliated with the WNBA.
+        <p>Stats and data sourced from ESPN. KnowTheW is not affiliated with the WNBA.</p>
+        <nav className="footer-links">
+          <button type="button" className="footer-link-btn" onClick={() => navigate('/about')}>About</button>
+          <button type="button" className="footer-link-btn" onClick={() => navigate('/data-sources')}>Data Sources</button>
+          <button type="button" className="footer-link-btn" onClick={() => navigate('/privacy')}>Privacy</button>
+          <button type="button" className="footer-link-btn" onClick={() => navigate('/terms')}>Terms</button>
+        </nav>
       </footer>
 
       {activeStudy && (

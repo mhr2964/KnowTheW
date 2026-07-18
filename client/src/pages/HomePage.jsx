@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import RecentDecks from '../components/RecentDecks';
-import PremiumBanner from '../components/PremiumBanner';
 
 function LogoPlaceholder({ abbreviation }) {
   return (
@@ -73,7 +72,6 @@ export default function HomePage({ teams, decks, onRestudy, loading, error }) {
           </div>
         </>
       )}
-      <PremiumBanner />
     </>
   );
 }

@@ -4,6 +4,20 @@
   text-align: center; color: var(--text-muted); font-size: 0.75rem;
 }
 
+.footer-links {
+  margin-top: 0.5rem;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.footer-link-btn {
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--text-muted); font-size: 0.75rem; text-decoration: underline;
+}
+
+.footer-link-btn:hover { color: var(--accent-light); }
+
 /* ── Team Spoke Nav ── */
 .team-spoke-nav {
   display: flex;
