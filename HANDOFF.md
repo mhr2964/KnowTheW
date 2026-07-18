@@ -4,13 +4,29 @@ Forward-looking handoff for the active work-stream. **Overwrite** each session; 
 
 ```yaml
 last-model: claude-sonnet-4-6
-last-session: 2026-07-17
-state: green
+last-session: 2026-07-18
+state: yellow
 ```
 
-**Branch: `master`.** `feature/archetype-accuracy` merged (fast-forward) and deleted this session. Pushed to `origin/master` at the end of this session.
+**Branch: `master`.** Uncommitted work in progress (Phase 0 of the launch roadmap below) — not yet committed or pushed.
 
-## What shipped this session
+## Business/launch roadmap (new, in progress)
+
+User wants a full path to deploying KnowTheW and monetizing it (ads to start), on an **aggressive — weeks, not months** timeline. Full research + phased plan written this session at `C:\Users\Owner\.claude\plans\stateful-stargazing-koala.md` (persists outside the repo; read it for the full obstacle map — data legality, hosting cost, ad-network requirements, CSS/table debt, LLC tradeoffs). Short version of what it found and decided:
+
+- **Biggest real risk**: all live stats come from ESPN's *undocumented* JSON endpoints (`server/providers/espn/`) — no key, no ToS acceptance. Facts themselves aren't copyrightable (*Feist v. Rural Telephone*) and using real player names/stats commercially is protected (*C.B.C. Distribution v. MLB Advanced Media*, the fantasy-sports precedent) — but pulling specifically from ESPN's private endpoint is a ToS/ban risk, not a copyright one. Decision: stay on ESPN short-term (user's budget is ~$0 for now), mitigate with attribution + honest framing, revisit BALLDONTLIE's ALL-STAR tier ($9.99/mo, WNBA coverage, previously integrated in this codebase once) once there's revenue.
+- **LLC**: tradeoffs laid out in the plan (single-project vs. umbrella vs. none yet), not decided — not a launch blocker.
+- **Monetization**: no ads/analytics/payment infra existed at all before this session. `PremiumBanner` was advertising a fake "$4.99/mo" with a checkout that said "coming soon" — a real consumer-protection-flavored problem right before an AdSense application, so it's now removed from rendering (component file kept for when premium is real) rather than half-fixed.
+
+**Phase 0 (legal/compliance hardening) — done this session, uncommitted:**
+- Added `/about`, `/data-sources`, `/privacy`, `/terms` pages (`client/src/pages/*.jsx`, styled via new `client/src/styles/legal.css`, linked from a new `LegalFooterNav` component and from the site footer in `App.jsx`). Privacy Policy already covers Google AdSense's cookie/ads-personalization disclosure so Phase 2 (AdSense application) doesn't need rework.
+- Removed `PremiumBanner` from `HomePage.jsx` (fake pricing, non-functional checkout).
+- Verified: `npm run lint` clean (client + server, except one pre-existing unrelated `api.js:599` error present on unmodified master), `npm run build` succeeds, and a live Playwright pass confirmed the homepage (no more Premium banner, footer links present) and `/about`/`/privacy` render correctly with working nav.
+- Checked whether team logos are self-hosted (a trademark-risk pattern) — they're not; `<img src={team.logo}>` hotlinks ESPN's own CDN URLs directly (`TeamCard`-style components), which is the lower-risk pattern. No change needed.
+
+**Not started yet**: Phase 1 (actual Heroku deploy — no live URL currently exists anywhere), Phase 2 (AdSense application), Phase 3 (table/CSS standardization, deferred post-launch per the plan).
+
+## What shipped last session (2026-07-17)
 
 **D3 — recency-weight the career fingerprint (closed).** The eval note's last open item: `aggregateFingerprint` (`playerFingerprint.js`) combined every season into one career vector via a flat minutes-weighted mean, so a player whose role genuinely shifted (Alyssa Thomas: early scoring forward → recent elite point-forward) read as an averaged, diluted shape instead of their real current identity. Added exponential recency decay on top of the existing minutes weight — `RECENCY_HALF_LIFE_YEARS = 6`, anchored to each player's OWN last qualifying season (not today's date, so a retired player's badge stops drifting once they stop playing). `AXES_VERSION` bumped 2→3. Half-life tuned against a full 459-player live sweep (git-stash before/after): 4 years flipped 42 archetype labels, mostly noise from over-discounting long careers with no real role change; 8 years only bought 2 fewer flips than 6 — landed on 6 as the smallest change that still fixes the motivating case (AT's playmaking axis 89→93). Re-captured `test/archetype-truth-set.test.js`'s 24-player fixture live post-fix; two label changes reviewed as improved fits, not regressions (Aliyah Boston → Glass-Cleaning Big, a close call between two defensible bigs; Sue Bird → Floor General, upgraded from the generic Playmaker fallback to the specific prototype her lower scoring volume now clears). Re-swept the full index post-commit: zero errors, Role Player cliff still holds (max dim 64, same threshold as Iter 6), zero M4/M5-style fallback contradictions, and a live descriptor-consistency spot check (M3) on the shifted players read clean. Re-seeded the `playerFingerprints` Mongo cache (`scripts/seed-fingerprints.js`) and confirmed Cross-Era Similarity still returns sane matches post-reseed. `npm test` → 172/172, lint clean (one pre-existing unrelated `api.js:599` error confirmed present on unmodified master).
 
@@ -38,7 +54,7 @@ The version this replaces (`683873d`, dated 2026-05-28) described On/Off-Court I
 
 ## Next action
 
-No planned feature is in flight. All backlog items from the 2026-05-27/05-28 eval passes are now closed, including D3 (career vs. peak/recent weighting) — that was the last one open. Nothing queued — check in with the user for direction.
+Mid-flight on the launch roadmap's Phase 0 (see above) — the archetype/eval backlog is fully closed and not the active thread. Immediate next steps: (1) get user sign-off to commit the Phase 0 legal/compliance pages, (2) move to Phase 1 (actual Heroku deploy — verify Mongo Atlas capacity, pin a Node `engines` version, set env vars, real `git push heroku master`, confirm a live URL end-to-end), (3) Phase 2 (analytics + Google AdSense application). Full sequencing and rationale in the plan file referenced above.
 
 ## Traps
 
