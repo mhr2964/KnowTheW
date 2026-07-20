@@ -17,6 +17,9 @@
   --error: #e05555;
   --champion: #c8960c;
   --champion-text: #e8c84a;
+  /* Second-series color for two-player overlays (radar, compare bars) — matches the blue already
+     hardcoded in player.css's Cross-Era Similarity overlay/legend; --accent is series A everywhere. */
+  --compare-b: #7fb3d4;
 
   /* Spacing scale — a 4px base grid. Every gap/padding/margin in the app already lands on or near
      one of these steps; this doesn't replace every literal (most values are legitimately one-off

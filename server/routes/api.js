@@ -938,6 +938,7 @@ router.get('/players/:id/graded-report', async (req, res) => {
         categories:  cached.data.categories,
         overall:     cached.data.overall,
         volume:      cached.data.volume,
+        accolades:   inputs.accolades ?? {},
         generatedAt: cached.generatedAt instanceof Date
           ? cached.generatedAt.toISOString()
           : cached.generatedAt,
@@ -987,6 +988,7 @@ router.get('/players/:id/graded-report', async (req, res) => {
     categories:  reportData.categories,
     overall:     reportData.overall,
     volume:      reportData.volume,
+    accolades:   inputs.accolades ?? {},
     generatedAt: generatedAt.toISOString(),
     sourceHash,
   });

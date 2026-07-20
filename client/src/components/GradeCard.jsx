@@ -1,67 +1,66 @@
 import GradeBadge from './GradeBadge';
+import CompareMagnitudeBar from './CompareMagnitudeBar';
 import { compareGrades } from '../lib/gradeUtils';
 
-export default function GradeCard({ category, reportA, reportB, nameA, nameB }) {
-  const catA = reportA?.categories?.[category];
-  const catB = reportB?.categories?.[category];
+export const CATEGORIES = ['Scoring', 'Playmaking', 'Rebounding', 'Defense', 'Efficiency', 'Longevity'];
 
+const POS_ADJ_RE = /^\((guard|forward)-adj\)/;
+
+// Always-expanded category card — no collapse, no chevron. Stats and AI context render
+// immediately under each side's badge; the magnitude bar in the header is the only "who's ahead"
+// signal, replacing the old winner-arrow-vs-expand-chevron pair that shared one column.
+export default function GradeCard({ category, reportA, reportB, nameA, nameB }) {
+  const catA = reportA?.categories?.[category] ?? null;
+  const catB = reportB?.categories?.[category] ?? null;
   const gradeA = catA?.grade ?? null;
   const gradeB = catB?.grade ?? null;
   const cmp = (gradeA && gradeB) ? compareGrades(gradeA, gradeB) : 0;
+  const aWins = cmp > 0;
+  const bWins = cmp < 0;
 
-  const gpA = reportA?.volume?.gp;
-  const gpB = reportB?.volume?.gp;
-  const seasonsA = reportA?.volume?.seasons;
-  const seasonsB = reportB?.volume?.seasons;
-
-  const showVolume = (gpA != null || gpB != null);
+  const hasPosAdj = category === 'Rebounding' && (
+    POS_ADJ_RE.test(catA?.stats ?? '') || POS_ADJ_RE.test(catB?.stats ?? '')
+  );
 
   return (
-    <div className="compare-grade-card">
-      <div className="compare-grade-card-header">
-        <span className="compare-grade-card-category">{category.toUpperCase()}</span>
-        {cmp > 0 && <span className="compare-grade-card-leader">{nameA} leads</span>}
-        {cmp < 0 && <span className="compare-grade-card-leader">{nameB} leads</span>}
-        {cmp === 0 && gradeA && gradeB && <span className="compare-grade-card-tie">Tie</span>}
+    <div className="grade-card">
+      <div className="grade-card-header">
+        <span className="grade-card-category">{category.toUpperCase()}</span>
+        {hasPosAdj && <span className="grade-card-pos-adj">pos-adj</span>}
+        <CompareMagnitudeBar gradeA={gradeA} gradeB={gradeB} size="sm" />
       </div>
 
-      <div className="compare-grade-card-panels">
-        <div className={`compare-grade-panel${cmp > 0 ? ' compare-grade-panel--winner' : ''}`}>
-          <div className="compare-grade-panel-top">
-            <span className="compare-grade-panel-name">{nameA}</span>
-            <GradeBadge grade={gradeA} />
+      <div className="grade-card-panels">
+        <div className={`grade-card-panel${aWins ? ' grade-card-panel--winner-a' : ''}`}>
+          <div className="grade-card-panel-top">
+            <span className="grade-card-panel-name">{nameA}</span>
+            <GradeBadge grade={gradeA} winnerSide={aWins ? 'a' : null} />
           </div>
-          {catA
-            ? <>
-                <p className="compare-grade-panel-stats">{catA.stats}</p>
-                <p className="compare-grade-panel-context">{catA.context}</p>
-              </>
-            : <p className="compare-grade-panel-unavailable">AI report unavailable for this player</p>
-          }
+          {catA ? (
+            <>
+              {catA.stats && <p className="grade-card-panel-stats">{catA.stats}</p>}
+              <p className="grade-card-panel-context">{catA.context}</p>
+            </>
+          ) : (
+            <p className="grade-card-panel-unavailable">Report unavailable</p>
+          )}
         </div>
 
-        <div className={`compare-grade-panel${cmp < 0 ? ' compare-grade-panel--winner' : ''}`}>
-          <div className="compare-grade-panel-top">
-            <span className="compare-grade-panel-name">{nameB}</span>
-            <GradeBadge grade={gradeB} />
+        <div className={`grade-card-panel${bWins ? ' grade-card-panel--winner-b' : ''}`}>
+          <div className="grade-card-panel-top">
+            <span className="grade-card-panel-name">{nameB}</span>
+            <GradeBadge grade={gradeB} winnerSide={bWins ? 'b' : null} />
           </div>
-          {catB
-            ? <>
-                <p className="compare-grade-panel-stats">{catB.stats}</p>
-                <p className="compare-grade-panel-context">{catB.context}</p>
-              </>
-            : <p className="compare-grade-panel-unavailable">AI report unavailable for this player</p>
-          }
+          {catB ? (
+            <>
+              {catB.stats && <p className="grade-card-panel-stats">{catB.stats}</p>}
+              <p className="grade-card-panel-context">{catB.context}</p>
+            </>
+          ) : (
+            <p className="grade-card-panel-unavailable">Report unavailable</p>
+          )}
         </div>
       </div>
-
-      {showVolume && (
-        <p className="compare-grade-card-volume">
-          {gpA != null ? `${nameA}: ${gpA} GP${seasonsA != null ? `, ${seasonsA} seasons` : ''}` : ''}
-          {gpA != null && gpB != null ? ' · ' : ''}
-          {gpB != null ? `${nameB}: ${gpB} GP${seasonsB != null ? `, ${seasonsB} seasons` : ''}` : ''}
-        </p>
-      )}
     </div>
   );
 }

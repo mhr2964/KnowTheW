@@ -1,10 +1,39 @@
 import { useMemo } from 'react';
 import GradeBadge from './GradeBadge';
-import { compareGrades, gradeIndex } from '../lib/gradeUtils';
+import CompareMagnitudeBar from './CompareMagnitudeBar';
+import { compareGrades } from '../lib/gradeUtils';
 
 const CATEGORIES = ['Scoring', 'Playmaking', 'Rebounding', 'Defense', 'Efficiency', 'Longevity'];
 
-function computeVerdict(reportA, reportB, mode) {
+// [accolades key, display label] — championships last since it's the marquee one.
+const ACCOLADE_LABELS = [
+  ['mvp', 'MVP'],
+  ['finalsMVP', 'Finals MVP'],
+  ['dpoy', 'DPOY'],
+  ['roy', 'ROY'],
+  ['sixth', '6th Player'],
+  ['allWnbaFirst', 'All-WNBA 1st'],
+  ['championships', 'Championships'],
+];
+
+// Renders nothing for a side with zero accolades — not an empty "0" row. Career facts, so shown
+// unfiltered by the Peak/Career/Playoffs mode toggle (a title won is a title won).
+function AccoladeChips({ accolades, sideClass }) {
+  if (!accolades) return null;
+  const chips = ACCOLADE_LABELS
+    .map(([key, label]) => ({ label, count: accolades[key]?.length ?? 0 }))
+    .filter(c => c.count > 0);
+  if (!chips.length) return null;
+  return (
+    <div className={`compare-accolade-chips ${sideClass}`}>
+      {chips.map(c => (
+        <span key={c.label} className="compare-accolade-chip">{c.label} ×{c.count}</span>
+      ))}
+    </div>
+  );
+}
+
+function computeVerdict(reportA, reportB) {
   if (!reportA || !reportB) return null;
 
   let wonByA = 0;
@@ -24,7 +53,6 @@ function computeVerdict(reportA, reportB, mode) {
   const overallA = reportA.overall?.grade;
   const overallB = reportB.overall?.grade;
   const overallCmp = (overallA && overallB) ? compareGrades(overallA, overallB) : 0;
-  const overallMargin = (overallA && overallB) ? Math.abs(gradeIndex(overallA) - gradeIndex(overallB)) : 0;
 
   const gpA = reportA.volume?.gp ?? 0;
   const gpB = reportB.volume?.gp ?? 0;
@@ -42,16 +70,15 @@ function computeVerdict(reportA, reportB, mode) {
       if (smallSample) {
         volumeSignal = `${smallerName}'s sample (${smallerGp} GP) is much smaller than ${biggerName}'s (${biggerGp} GP)`;
       } else {
-        const modeLabel = mode === 'peak' ? 'peak window' : mode === 'playoffs' ? 'playoff sample' : 'career';
-        volumeSignal = `${biggerName}'s ${modeLabel} is ${ratio.toFixed(1)}× ${smallerName}'s by games played`;
+        volumeSignal = `${biggerName}'s sample is ${ratio.toFixed(1)}× ${smallerName}'s by games played`;
       }
     }
   }
 
   let shortPeakWarning = null;
-  if (mode === 'peak') {
-    const peakA = reportA.peakSeasons?.length ?? 0;
-    const peakB = reportB.peakSeasons?.length ?? 0;
+  const peakA = reportA.peakSeasons?.length ?? 0;
+  const peakB = reportB.peakSeasons?.length ?? 0;
+  if (peakA > 0 || peakB > 0) {
     const nameA = reportA.playerName;
     const nameB = reportB.playerName;
     const warnings = [];
@@ -60,11 +87,11 @@ function computeVerdict(reportA, reportB, mode) {
     if (warnings.length) shortPeakWarning = warnings.join(' · ') + ' — limited sample for comparison';
   }
 
-  return { wonByA, wonByB, tied, overallCmp, overallMargin, overallA, overallB, volumeSignal, shortPeakWarning };
+  return { wonByA, wonByB, tied, overallCmp, overallA, overallB, volumeSignal, shortPeakWarning };
 }
 
-export default function CompareVerdict({ reportA, reportB, nameA, nameB, mode, loading, errorA, errorB, onRetryA, onRetryB }) {
-  const verdict = useMemo(() => computeVerdict(reportA, reportB, mode), [reportA, reportB, mode]);
+export default function CompareVerdict({ reportA, reportB, nameA, nameB, loading, errorA, errorB, onRetryA, onRetryB }) {
+  const verdict = useMemo(() => computeVerdict(reportA, reportB), [reportA, reportB]);
 
   if (loading) {
     return (
@@ -109,12 +136,10 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, mode, l
 
   if (!verdict) return null;
 
-  const { wonByA, wonByB, tied, overallCmp, overallA, overallB, overallMargin, volumeSignal, shortPeakWarning } = verdict;
+  const { wonByA, wonByB, tied, overallCmp, overallA, overallB, volumeSignal, shortPeakWarning } = verdict;
 
-  // Which side is the overall winner
   const aWinsOverall = overallCmp > 0;
   const bWinsOverall = overallCmp < 0;
-  const tiedOverall = overallCmp === 0;
 
   return (
     <div className="compare-verdict">
@@ -141,23 +166,28 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, mode, l
         </p>
       )}
 
-      {/* Adversarial overall grades */}
-      {overallA && overallB && (
-        <div className="compare-verdict-overall-row">
-          <span className="compare-verdict-overall-side compare-verdict-overall-side--left">
-            {aWinsOverall && <span className="compare-verdict-overall-arrow" aria-hidden="true">◀</span>}
-            <GradeBadge grade={overallA} size={aWinsOverall || tiedOverall ? 'large' : 'small'} muted={bWinsOverall} />
-          </span>
-          <span className="compare-verdict-overall-label">OVERALL</span>
-          <span className="compare-verdict-overall-side compare-verdict-overall-side--right">
-            <GradeBadge grade={overallB} size={bWinsOverall || tiedOverall ? 'large' : 'small'} muted={aWinsOverall} />
-            {bWinsOverall && <span className="compare-verdict-overall-arrow" aria-hidden="true">▶</span>}
-          </span>
+      {(reportA?.accolades || reportB?.accolades) && (
+        <div className="compare-accolade-row">
+          <AccoladeChips accolades={reportA?.accolades} sideClass="compare-accolade-chips--left" />
+          <AccoladeChips accolades={reportB?.accolades} sideClass="compare-accolade-chips--right" />
         </div>
       )}
 
-      {overallMargin >= 3 && !tiedOverall && (
-        <p className="compare-verdict-margin">{overallMargin} grades apart</p>
+      {/* Overall grade — one magnitude bar instead of a separate arrow glyph, same language as
+          each category card below. */}
+      {overallA && overallB && (
+        <div className="compare-verdict-overall-row">
+          <span className="compare-verdict-overall-side compare-verdict-overall-side--left">
+            <GradeBadge grade={overallA} size="large" winnerSide={aWinsOverall ? 'a' : null} />
+          </span>
+          <div className="compare-verdict-overall-center">
+            <span className="compare-verdict-overall-label">OVERALL</span>
+            <CompareMagnitudeBar gradeA={overallA} gradeB={overallB} size="lg" />
+          </div>
+          <span className="compare-verdict-overall-side compare-verdict-overall-side--right">
+            <GradeBadge grade={overallB} size="large" winnerSide={bWinsOverall ? 'b' : null} />
+          </span>
+        </div>
       )}
 
       {(reportA?.overall?.summary || reportB?.overall?.summary) && (

@@ -315,315 +315,258 @@
   justify-content: center;
 }
 
-.grade-badge--winner {
+.grade-badge--winner-a {
   box-shadow: 0 2px 0 var(--accent);
 }
-
-/* ── Grade Grid ── */
-.grade-grid {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  margin-bottom: var(--space-5);
+.grade-badge--winner-b {
+  box-shadow: 0 2px 0 var(--compare-b);
 }
 
-/* Column header strip */
-.grade-grid-header {
-  display: grid;
-  grid-template-columns: 1fr 7rem 1fr;
-  align-items: center;
-  padding: 0.45rem 1rem;
-  background: var(--surface-2);
-  border-bottom: 2px solid var(--border);
-}
-
-.grade-grid-header-name {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--text-muted);
-  text-transform: uppercase;
-}
-
-.grade-grid-header-name--left {
-  text-align: right;
-  padding-right: var(--space-4);
-}
-
-.grade-grid-header-name--right {
-  text-align: left;
-  padding-left: var(--space-4);
-}
-
-.grade-grid-header-sep {
-  /* spacer for the center column */
-}
-
-/* Rows */
-.grade-grid-row {
-  border-bottom: 1px solid var(--border);
-}
-.grade-grid-row:last-child {
-  border-bottom: none;
-}
-
-.grade-grid-row--overall > summary {
-  background: var(--surface);
-}
-.grade-grid-row--overall .grade-grid-row-label {
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: var(--text);
-}
-.grade-grid-row--overall .grade-badge--large {
-  font-size: 1.3rem;
-  padding: 0.38rem 1rem;
-}
-
-.grade-grid-row-summary {
-  display: grid;
-  grid-template-columns: 1fr 7rem 1fr;
-  align-items: center;
-  padding: 0.6rem 1rem;
-  cursor: pointer;
-  user-select: none;
-  list-style: none;
-  background: var(--surface);
-  gap: 0;
-}
-.grade-grid-row-summary::-webkit-details-marker { display: none; }
-.grade-grid-row-summary:hover { background: var(--surface-2); }
-
-/* Left cell — grade right-aligned toward center */
-.grade-grid-cell {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.grade-grid-cell--left {
-  justify-content: flex-end;
-  padding-right: 0.6rem;
-}
-
-.grade-grid-cell--right {
-  justify-content: flex-start;
-  padding-left: 0.6rem;
-}
-
-/* Center column — stat label + chevron */
-.grade-grid-center {
+/* ── Compare Magnitude Bar ── */
+/* Center-anchored bar shared by category cards (size sm) and the verdict overall row (size lg).
+   Replaces the old winner-arrow-vs-expand-chevron pair with one element that shows both who's
+   ahead (fill color/side) and by how much (fill length) — a letter grade alone can't show margin. */
+.compare-mag-bar {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0.15rem;
-  border-left: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-  padding: 0.35rem 0.5rem;
-  min-height: 2.4rem;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 3rem;
 }
-
-.grade-grid-row-label {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+.compare-mag-bar-track {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+}
+.compare-mag-bar--lg .compare-mag-bar-track { height: 6px; }
+.compare-mag-bar-center {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  width: 2px;
+  height: 8px;
+  background: var(--text-muted);
+  transform: translateX(-50%);
+}
+.compare-mag-bar--lg .compare-mag-bar-center { top: -3px; height: 12px; }
+.compare-mag-bar-fill {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 2px;
+}
+.compare-mag-bar-fill--a { right: 50%; background: var(--accent); }
+.compare-mag-bar-fill--b { left: 50%; background: var(--compare-b); }
+.compare-mag-bar-margin {
+  font-size: var(--text-2xs);
   color: var(--text-muted);
   white-space: nowrap;
-  text-align: center;
 }
 
-.grade-grid-row-chevron {
-  font-size: var(--text-md);
-  color: var(--text-muted);
-  transition: transform 0.18s ease;
-  line-height: 1;
-}
-.grade-grid-row[open] > summary .grade-grid-row-chevron {
-  transform: rotate(180deg);
+/* ── Grade Cards ── */
+/* Always-expanded — no collapse, no chevron. Stats + AI context render immediately. */
+.grade-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
 }
 
-/* Position-adjustment tag — shown in Rebounding center column when either player is guard/fwd adjusted */
-.grade-grid-pos-adj-label {
-  font-size: 0.52rem;
+.grade-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.grade-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0.65rem 1rem;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.grade-card-category {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.grade-card-pos-adj {
+  font-size: var(--text-2xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   color: var(--text-muted);
   text-transform: uppercase;
   opacity: 0.7;
+  white-space: nowrap;
 }
 
-/* Winner arrow — lives in the center column, stacked below the stat name */
-.grade-grid-winner-arrow {
-  font-size: var(--text-md);
-  color: var(--accent);
-  line-height: 1;
-}
-
-/* Expand panel */
-.grade-grid-expand {
+.grade-card-panels {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 0;
-  background: var(--surface-2);
-  border-top: 1px solid var(--border);
+  grid-template-columns: 1fr 1fr;
 }
 
-.grade-grid-expand-divider {
-  width: 1px;
-  background: var(--border);
-  align-self: stretch;
-}
-
-.grade-grid-expand-panel {
+.grade-card-panel {
   padding: 0.85rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  border-left: 3px solid transparent;
 }
 
-.grade-grid-expand-panel--left {
-  text-align: right;
-  align-items: flex-end;
+.grade-card-panel:first-child { border-right: 1px solid var(--border); }
+
+.grade-card-panel--winner-a {
+  background: rgba(255, 107, 0, 0.05);
+  border-left-color: var(--accent);
+}
+.grade-card-panel--winner-b {
+  background: rgba(127, 179, 212, 0.08);
+  border-left-color: var(--compare-b);
 }
 
-.grade-grid-expand-panel--right {
-  text-align: left;
-  align-items: flex-start;
+.grade-card-panel-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 
-.grade-grid-expand-name {
-  font-size: var(--text-2xs);
+.grade-card-panel-name {
+  font-size: 0.78rem;
   font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-label);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
-.grade-grid-expand-stats {
+.grade-card-panel-stats {
   font-size: 0.75rem;
   color: var(--text-muted);
   line-height: 1.4;
 }
 
-.grade-grid-expand-context {
+.grade-card-panel-context {
   font-size: 0.78rem;
   color: var(--text);
   line-height: 1.5;
 }
 
-.grade-grid-expand-unavailable {
+.grade-card-panel-unavailable {
   font-size: 0.75rem;
   color: var(--text-muted);
   font-style: italic;
 }
 
 /* Skeleton */
-.grade-grid--skeleton {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-.grade-grid-skeleton-row {
-  height: 3.2rem;
-  background: var(--surface);
+.grade-card--skeleton { padding: 0; }
+.grade-card-skeleton-header {
+  height: 2.5rem;
+  background: var(--surface-2);
   border-bottom: 1px solid var(--border);
   animation: pulse 1.4s ease-in-out infinite;
 }
-.grade-grid-skeleton-row:last-child { border-bottom: none; }
+.grade-card--skeleton .grade-card-skeleton-panel {
+  height: 6rem;
+  background: var(--surface);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.grade-card--skeleton .grade-card-skeleton-panel:first-child { border-right: 1px solid var(--border); }
 
-/* Mobile — collapse adversarial 3-col to 2-row stack */
 @media (max-width: 600px) {
-  .grade-grid-header {
-    display: none;
-  }
-
-  /* Row 1: stat label full-width; Row 2: left grade | right grade */
-  .grade-grid-row-summary {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
-    grid-template-areas:
-      "center center"
-      "left   right";
-    gap: 0;
-    padding: 0.55rem 0.75rem;
-  }
-
-  .grade-grid-center {
-    grid-area: center;
-    border-left: none;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: 0 0 0.35rem 0;
-    margin-bottom: 0.35rem;
-    min-height: unset;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .grade-grid-row-label {
-    font-size: 0.62rem;
-    text-align: left;
-  }
-
-  /* On mobile the center is a row; push chevron to the far right */
-  .grade-grid-center .grade-grid-row-chevron {
-    margin-left: auto;
-  }
-
-  /* Winner arrow sits inline after the label at a smaller size */
-  .grade-grid-winner-arrow {
-    font-size: 0.75rem;
-    margin-left: 0.3rem;
-  }
-
-  .grade-grid-cell--left {
-    grid-area: left;
-    justify-content: center;
-    padding: 0.25rem 0.4rem;
-    border-right: 1px solid var(--border);
-  }
-
-  .grade-grid-cell--right {
-    grid-area: right;
-    justify-content: center;
-    padding: 0.25rem 0.4rem;
-  }
-
-  .grade-badge--large {
-    font-size: 0.95rem;
-    padding: 0.22rem 0.55rem;
-    min-width: 2.5rem;
-  }
-
-  .grade-grid-expand {
+  .grade-card-panels,
+  .grade-card--skeleton .grade-card-panels {
     grid-template-columns: 1fr;
   }
-
-  .grade-grid-expand-divider {
-    width: auto;
-    height: 1px;
-    align-self: auto;
+  .grade-card-panel:first-child {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
   }
-
-  .grade-grid-expand-panel--left,
-  .grade-grid-expand-panel--right {
-    text-align: left;
-    align-items: flex-start;
-    padding: 0.6rem 0.75rem;
+  .grade-card--skeleton .grade-card-skeleton-panel:first-child {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
   }
+}
 
-  .grade-grid-expand-stats {
-    font-size: 0.72rem;
-    line-height: 1.35;
-  }
+/* ── Playstyle Radar ── */
+.compare-radar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) 0;
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.compare-radar-caption {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 26rem;
+  padding: 0 var(--space-4);
+}
+.compare-radar-section .fp-radar { width: 220px; height: 220px; }
+.compare-radar-legend {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-5);
+}
+.compare-radar-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.compare-radar-legend-item::before {
+  content: '';
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+.compare-radar-legend-item--a::before { background: var(--accent); }
+.compare-radar-legend-item--b::before { background: var(--compare-b); }
 
-  .grade-grid-expand-context {
-    font-size: 0.75rem;
-    line-height: 1.35;
-  }
+/* ── Accolade chips ── */
+.compare-accolade-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.compare-accolade-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.compare-accolade-chips--left { justify-content: flex-end; }
+.compare-accolade-chips--right { justify-content: flex-start; }
+.compare-accolade-chip {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.1rem 0.4rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .compare-accolade-row { flex-direction: column; align-items: center; }
+  .compare-accolade-chips--left,
+  .compare-accolade-chips--right { justify-content: center; }
 }
 
 /* ── Mode Toggle ── */
@@ -783,17 +726,13 @@
   white-space: nowrap;
 }
 
-.compare-verdict-overall-arrow {
-  font-size: 0.65rem;
-  color: var(--accent);
+.compare-verdict-overall-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
   flex-shrink: 0;
-}
-
-.compare-verdict-margin {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  text-align: center;
-  margin: 0;
+  min-width: 8rem;
 }
 
 .compare-verdict-volume {
@@ -836,129 +775,6 @@
   animation: pulse 1.4s ease-in-out infinite;
 }
 .compare-verdict-skeleton-line--short { width: 45%; }
-
-/* ── Grade Cards ── */
-.compare-grade-cards {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  margin-bottom: var(--space-5);
-}
-
-.compare-grade-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.compare-grade-card-header {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.65rem 1rem;
-  background: var(--surface-2);
-  border-bottom: 1px solid var(--border);
-}
-
-.compare-grade-card-category {
-  font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--text);
-}
-
-.compare-grade-card-leader {
-  font-size: var(--text-2xs);
-  font-weight: 600;
-  color: var(--accent);
-  margin-left: auto;
-}
-
-.compare-grade-card-tie {
-  font-size: var(--text-2xs);
-  font-weight: 600;
-  color: var(--text-muted);
-  margin-left: auto;
-}
-
-.compare-grade-card-panels {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  border-bottom: 1px solid var(--border);
-}
-
-.compare-grade-panel {
-  padding: 0.85rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.compare-grade-panel:first-child {
-  border-right: 1px solid var(--border);
-}
-
-.compare-grade-panel--winner {
-  background: rgba(255, 107, 0, 0.04);
-}
-
-.compare-grade-panel-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.compare-grade-panel-name {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.compare-grade-panel-stats {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  line-height: 1.4;
-}
-
-.compare-grade-panel-context {
-  font-size: 0.78rem;
-  color: var(--text);
-  line-height: 1.5;
-}
-
-.compare-grade-panel-unavailable {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-.compare-grade-card-volume {
-  font-size: var(--text-2xs);
-  color: var(--text-muted);
-  padding: 0.5rem 1rem;
-}
-
-/* Grade card skeleton */
-.compare-grade-card--skeleton {
-  padding: 0;
-}
-.compare-grade-skeleton-header {
-  height: 2.5rem;
-  background: var(--surface-2);
-  border-bottom: 1px solid var(--border);
-  animation: pulse 1.4s ease-in-out infinite;
-}
-.compare-grade-skeleton-body {
-  height: 6rem;
-  background: var(--surface);
-  animation: pulse 1.4s ease-in-out infinite;
-}
 
 /* ── Compare AI states ── */
 .compare-ai-unavailable {

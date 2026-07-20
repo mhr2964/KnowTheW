@@ -70,15 +70,6 @@
   /* Hide Team column on merged compare table — low-value at extreme widths */
   .compare-team-col { display: none; }
 
-  /* Grade cards: stack panels vertically on narrow screens */
-  .compare-grade-card-panels {
-    grid-template-columns: 1fr;
-  }
-  .compare-grade-panel:first-child {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-
   /* Mode toggle full-width */
   .compare-mode-toggle { flex-wrap: wrap; }
   .compare-mode-btn { flex: 1; text-align: center; }

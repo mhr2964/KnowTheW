@@ -4,7 +4,9 @@ import useLazyFetch from '../hooks/useLazyFetch';
 import ComparePickerModal from '../components/ComparePickerModal';
 import CompareModeToggle from '../components/CompareModeToggle';
 import CompareVerdict from '../components/CompareVerdict';
-import GradeGrid from '../components/GradeGrid';
+import GradeCard, { CATEGORIES } from '../components/GradeCard';
+import ArchetypeBadge from '../components/ArchetypeBadge';
+import FingerprintRadar from '../components/FingerprintRadar';
 import { initialsOf } from '../lib/initials';
 
 // ESPN canonical headshot URL — used as fallback when the roster feed omits a headshot.
@@ -102,17 +104,46 @@ function PlayerHero({ player, loading, error, onChangeSide, sideB, finalTeamName
           )}
         </div>
         <h2 className="compare-hero-name">{p.name}</h2>
+        <ArchetypeBadge playerId={p.id} />
         <button type="button" className="compare-change-link" onClick={onChangeSide}>Change</button>
       </div>
     </div>
   );
 }
 
-function GradeGridSkeleton() {
+// Career-wide playstyle profile — independent of the Peak/Career/Playoffs mode toggle, so it
+// typically resolves well before the AI-graded report does and fills the page during that wait
+// instead of leaving it blank. Renders nothing if either side's sample is too thin for a fingerprint
+// (server returns dimensions: null), matching how ArchetypeBadge already handles that case.
+function ArchetypeRadarSection({ archA, archB, nameA, nameB }) {
+  const dimsA = archA?.dimensions;
+  const dimsB = archB?.dimensions;
+  if (!Array.isArray(dimsA) || !Array.isArray(dimsB)) return null;
   return (
-    <div className="grade-grid grade-grid--skeleton">
-      {Array.from({ length: 7 }).map((_, i) => (
-        <div key={i} className="grade-grid-skeleton-row" />
+    <div className="compare-radar-section">
+      <p className="compare-radar-caption">
+        Career playstyle profile — percentile-based, not affected by the mode toggle above.
+      </p>
+      <FingerprintRadar dimensions={dimsA} overlay={dimsB} />
+      <div className="compare-radar-legend">
+        <span className="compare-radar-legend-item compare-radar-legend-item--a">{nameA}</span>
+        <span className="compare-radar-legend-item compare-radar-legend-item--b">{nameB}</span>
+      </div>
+    </div>
+  );
+}
+
+function GradeCardListSkeleton() {
+  return (
+    <div className="grade-card-list">
+      {CATEGORIES.map(cat => (
+        <div key={cat} className="grade-card grade-card--skeleton">
+          <div className="grade-card-skeleton-header" />
+          <div className="grade-card-panels">
+            <div className="grade-card-skeleton-panel" />
+            <div className="grade-card-skeleton-panel" />
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -144,6 +175,13 @@ export default function ComparePage() {
   const reportUrlB = `/api/players/${idB}/graded-report?mode=${mode}`;
   const { data: reportA, loading: loadingReportA, error: errorReportA, refetch: refetchA } = useLazyFetch(reportUrlA, reportsEnabled);
   const { data: reportB, loading: loadingReportB, error: errorReportB, refetch: refetchB } = useLazyFetch(reportUrlB, reportsEnabled);
+
+  // Archetype/playstyle fingerprints for the radar overlay — career-wide, not mode-scoped, so this
+  // fetch is independent of `mode` and (being Mongo-cached, not an LLM call) usually resolves long
+  // before the graded reports do. A second, independent hit of the same endpoint ArchetypeBadge
+  // calls internally in the hero above — an accepted cheap duplicate rather than prop-drilling.
+  const { data: archA } = useLazyFetch(`/api/players/${idA}/archetype`, reportsEnabled);
+  const { data: archB } = useLazyFetch(`/api/players/${idB}/archetype`, reportsEnabled);
 
   const nameA = playerA?.player?.name ?? playerA?.name ?? 'Player A';
   const nameB = playerB?.player?.name ?? playerB?.name ?? 'Player B';
@@ -232,6 +270,8 @@ export default function ComparePage() {
             loadingB={loadingReportB}
           />
 
+          <ArchetypeRadarSection archA={archA} archB={archB} nameA={nameA} nameB={nameB} />
+
           {bothUnavailable ? (
             <div className="compare-ai-unavailable">
               <p>AI-graded reports are temporarily unavailable.</p>
@@ -253,7 +293,6 @@ export default function ComparePage() {
                 reportB={effectiveReportB}
                 nameA={nameA}
                 nameB={nameB}
-                mode={mode}
                 loading={bothReportsLoading}
                 errorA={errorReportA}
                 errorB={errorReportB}
@@ -261,15 +300,23 @@ export default function ComparePage() {
                 onRetryB={refetchB}
               />
 
-              {/* Grade grid */}
+              {/* Category cards — always expanded, no collapse */}
               {bothReportsLoading
-                ? <GradeGridSkeleton />
-                : <GradeGrid
-                    reportA={effectiveReportA}
-                    reportB={effectiveReportB}
-                    nameA={nameA}
-                    nameB={nameB}
-                  />
+                ? <GradeCardListSkeleton />
+                : (
+                  <div className="grade-card-list">
+                    {CATEGORIES.map(cat => (
+                      <GradeCard
+                        key={cat}
+                        category={cat}
+                        reportA={effectiveReportA}
+                        reportB={effectiveReportB}
+                        nameA={nameA}
+                        nameB={nameB}
+                      />
+                    ))}
+                  </div>
+                )
               }
             </>
           )}
