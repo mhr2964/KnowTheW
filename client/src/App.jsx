@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
 import { useRecentDecks } from './hooks/useRecentDecks';
 import StudyFlow from './components/StudyFlow';
+import AdSlot from './components/AdSlot';
 import HomePage from './pages/HomePage';
 import TeamPage from './pages/TeamPage';
 import TeamDashboard from './pages/TeamDashboard';
@@ -120,6 +121,9 @@ export default function App() {
         <SearchBar />
       </header>
 
+      <AdSlot slotId={import.meta.env.VITE_AD_SLOT_TOP} className="ad-slot--top" />
+      <AdSlot slotId={import.meta.env.VITE_AD_SLOT_SIDEBAR} className="ad-slot--sidebar" />
+
       <main className="main">
         <Routes>
           <Route
@@ -186,6 +190,7 @@ export default function App() {
 
       <footer className="footer">
         <p>Stats and data sourced from ESPN. KnowTheW is not affiliated with the WNBA.</p>
+        <AdSlot slotId={import.meta.env.VITE_AD_SLOT_FOOTER} className="ad-slot--footer" />
         <nav className="footer-links">
           <button type="button" className="footer-link-btn" onClick={() => navigate('/about')}>About</button>
           <button type="button" className="footer-link-btn" onClick={() => navigate('/data-sources')}>Data Sources</button>
