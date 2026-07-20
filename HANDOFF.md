@@ -8,6 +8,10 @@ last-session: 2026-07-20
 state: green
 ```
 
+**Backlog cleanup this session (`3537455`, `1120e11`), while waiting on AdSense review:**
+- **`getGameLogEvents` caching gap — closed.** It was hitting ESPN fresh on every call (up to 3x per player-page load, since `getSeasonPBPSummary`/`onOffClient`/`pbpStatsClient` each independently call `getRegularSeasonEventIds` → `getGameLogEvents`). Now mirrors `getPlayerGameLog`'s existing `withCache`/`withTtlCache` pattern (`gamelog.js`) — its own cache-object pair (`pastGameLogEventsCache`/`currentGameLogEventsCache`), since it parses the identical ESPN response into a different shape than `getPlayerGameLog` does. Verified live: `/players/:id/pbp-stats` cold ~716-901ms → cached ~185-256ms, byte-identical, both past- and current-season branches.
+- **Spacing/type-scale token sweep — closed (scoped down from the "~40" estimate).** The real candidate count across `team.css`/`compare.css`/`shared.css` was closer to 220, but most were shorthand-partial matches or ambiguous — converted only single-value spacing/font-size/letter-spacing declarations with an exact token match, resolving the 1rem/1.25rem/1.5rem/2rem space-vs-text collision by property type. Left `@media`-block values, width/height/position values, and multi-value shorthand untouched, same discipline as the original token-layer commit. No stylelint/CSS test exists in this repo (confirmed), so verification was `npm run build`/`lint` clean plus a live Playwright pass (team dashboard/history/schedule/roster, Compare page incl. grade-grid after AI load, field-picker modal, flashcard study overlay) — zero console errors, zero visual change anywhere.
+
 **Heroku auto-deploys from `origin/master` via its own GitHub integration.** This is invisible in `.github/workflows/ci.yml` (that workflow is lint/test only) — it's configured on Heroku's dashboard side (Deploy tab → GitHub), not in this repo. Confirmed 2026-07-18: `git push origin master` alone (no `git push heroku master`) produced Heroku release v156 within ~2 minutes, matching the pushed commit hash exactly. **A push to `origin/master` IS a production deploy.** Do not treat "push to origin" and "deploy to Heroku" as two separate confirmable actions — they're the same action now.
 
 
@@ -101,9 +105,9 @@ The version this replaces (`683873d`, dated 2026-05-28) described On/Off-Court I
 
 ## Next action
 
-Site is live. Phase 3 is closed. Phase 2 is functionally closed: GA4 live, AdSense wired and application submitted, manual ad-slot code built and ready. **Nothing to do until Google approves the AdSense application** — then create the three ad units, set the three `VITE_AD_SLOT_*` config vars on Heroku, and disable Auto Ads (see the ad-placement section above for exact steps).
+Site is live. Phase 3 is closed. Phase 2 is functionally closed: GA4 live, AdSense wired and application submitted, manual ad-slot code built and ready. **Nothing to do until Google approves the AdSense application** — then create the three ad units, set the three `VITE_AD_SLOT_*` config vars on Heroku, and disable Auto Ads (see the ad-placement section above for exact steps). The two non-blocking backlog items (`getGameLogEvents` caching, CSS token sweep) are also closed — see above.
 
-All commits through `65152c6` are pushed to `origin/master` and live on Heroku — see the auto-deploy note above.
+Commits through `65152c6` are pushed and live on Heroku. **`3537455`/`1120e11` (this session's backlog work) are committed locally but not yet pushed** — since a push to `origin/master` is a production deploy (see auto-deploy note above), confirm with the user before pushing.
 
 ## Traps
 
