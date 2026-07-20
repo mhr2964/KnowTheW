@@ -6,7 +6,6 @@ import CompareModeToggle from '../components/CompareModeToggle';
 import CompareVerdict from '../components/CompareVerdict';
 import GradeCard, { CATEGORIES } from '../components/GradeCard';
 import ArchetypeBadge from '../components/ArchetypeBadge';
-import FingerprintRadar from '../components/FingerprintRadar';
 import { initialsOf } from '../lib/initials';
 
 // ESPN canonical headshot URL — used as fallback when the roster feed omits a headshot.
@@ -106,28 +105,6 @@ function PlayerHero({ player, loading, error, onChangeSide, sideB, finalTeamName
         <h2 className="compare-hero-name">{p.name}</h2>
         <ArchetypeBadge playerId={p.id} />
         <button type="button" className="compare-change-link" onClick={onChangeSide}>Change</button>
-      </div>
-    </div>
-  );
-}
-
-// Career-wide playstyle profile — independent of the Peak/Career/Playoffs mode toggle, so it
-// typically resolves well before the AI-graded report does and fills the page during that wait
-// instead of leaving it blank. Renders nothing if either side's sample is too thin for a fingerprint
-// (server returns dimensions: null), matching how ArchetypeBadge already handles that case.
-function ArchetypeRadarSection({ archA, archB, nameA, nameB }) {
-  const dimsA = archA?.dimensions;
-  const dimsB = archB?.dimensions;
-  if (!Array.isArray(dimsA) || !Array.isArray(dimsB)) return null;
-  return (
-    <div className="compare-radar-section">
-      <p className="compare-radar-caption">
-        Career playstyle profile — percentile-based, not affected by the mode toggle above.
-      </p>
-      <FingerprintRadar dimensions={dimsA} overlay={dimsB} />
-      <div className="compare-radar-legend">
-        <span className="compare-radar-legend-item compare-radar-legend-item--a">{nameA}</span>
-        <span className="compare-radar-legend-item compare-radar-legend-item--b">{nameB}</span>
       </div>
     </div>
   );
@@ -270,8 +247,6 @@ export default function ComparePage() {
             loadingB={loadingReportB}
           />
 
-          <ArchetypeRadarSection archA={archA} archB={archB} nameA={nameA} nameB={nameB} />
-
           {bothUnavailable ? (
             <div className="compare-ai-unavailable">
               <p>AI-graded reports are temporarily unavailable.</p>
@@ -293,6 +268,8 @@ export default function ComparePage() {
                 reportB={effectiveReportB}
                 nameA={nameA}
                 nameB={nameB}
+                archA={archA}
+                archB={archB}
                 loading={bothReportsLoading}
                 errorA={errorReportA}
                 errorB={errorReportB}

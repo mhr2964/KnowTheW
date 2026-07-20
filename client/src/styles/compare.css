@@ -300,10 +300,10 @@
 }
 
 .grade-badge--large {
-  font-size: 1.1rem;
-  padding: 0.28rem 0.8rem;
+  font-size: 1.35rem;
+  padding: 0.32rem 0.9rem;
   border-radius: 6px;
-  min-width: 3rem;
+  min-width: 3.4rem;
   justify-content: center;
 }
 
@@ -337,31 +337,32 @@
 .compare-mag-bar-track {
   position: relative;
   width: 100%;
-  height: 4px;
-  background: var(--border);
-  border-radius: 2px;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
 }
-.compare-mag-bar--lg .compare-mag-bar-track { height: 6px; }
+.compare-mag-bar--lg .compare-mag-bar-track { height: 10px; }
 .compare-mag-bar-center {
   position: absolute;
   left: 50%;
   top: -2px;
   width: 2px;
-  height: 8px;
+  height: 11px;
   background: var(--text-muted);
   transform: translateX(-50%);
 }
-.compare-mag-bar--lg .compare-mag-bar-center { top: -3px; height: 12px; }
+.compare-mag-bar--lg .compare-mag-bar-center { top: -3px; height: 16px; }
 .compare-mag-bar-fill {
   position: absolute;
   top: 0;
   height: 100%;
-  border-radius: 2px;
+  border-radius: 999px;
 }
 .compare-mag-bar-fill--a { right: 50%; background: var(--accent); }
 .compare-mag-bar-fill--b { left: 50%; background: var(--compare-b); }
 .compare-mag-bar-margin {
-  font-size: var(--text-2xs);
+  font-size: var(--text-xs);
+  font-weight: 600;
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -409,9 +410,65 @@
   white-space: nowrap;
 }
 
+/* Always-visible badge row — name + a large grade badge per side, the full "at a glance" scan
+   alongside the header's magnitude bar. Stats/context (below) are opt-in via the toggle. */
+.grade-card-badges {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0.9rem 1rem;
+}
+.grade-card-badge-side {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+.grade-card-badge-side--right { flex-direction: row-reverse; }
+.grade-card-badge-name {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Expand toggle — the ONLY click target on the card, spatially separate from the header's
+   magnitude bar so it can never be confused with the winner signal the way the old design's
+   arrow-sharing-the-chevron-column did. Defaults closed. */
+.grade-card-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  transition: color 0.12s, background 0.12s;
+}
+.grade-card-toggle::-webkit-details-marker { display: none; }
+.grade-card-toggle:hover { color: var(--text); background: var(--surface-2); }
+.grade-card-toggle-chevron {
+  transition: transform 0.18s ease;
+  line-height: 1;
+}
+.grade-card-details[open] .grade-card-toggle-chevron {
+  transform: rotate(180deg);
+}
+
 .grade-card-panels {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--border);
 }
 
 .grade-card-panel {
@@ -431,23 +488,6 @@
 .grade-card-panel--winner-b {
   background: rgba(127, 179, 212, 0.08);
   border-left-color: var(--compare-b);
-}
-
-.grade-card-panel-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
-.grade-card-panel-name {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
 }
 
 .grade-card-panel-stats {
@@ -498,76 +538,86 @@
   }
 }
 
+/* ── AT A GLANCE: radar + score, two columns on desktop ── */
+/* The radar is a peer of the fight-score/overall content now, not its own bare-looking box —
+   featured inside the same card instead of sitting isolated between the mode toggle and verdict. */
+.compare-verdict-glance-grid {
+  display: grid;
+  grid-template-columns: minmax(160px, 200px) 1fr;
+  gap: var(--space-4);
+  align-items: center;
+}
+.compare-verdict-score-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+@media (max-width: 600px) {
+  .compare-verdict-glance-grid { grid-template-columns: 1fr; }
+}
+
 /* ── Playstyle Radar ── */
-.compare-radar-section {
+.compare-verdict-radar-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-4) 0;
-  margin-bottom: var(--space-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
+  gap: 0.3rem;
 }
+.compare-verdict-radar-col .fp-radar { width: 170px; height: 170px; }
 .compare-radar-caption {
   font-size: var(--text-2xs);
   color: var(--text-muted);
   text-align: center;
-  max-width: 26rem;
-  padding: 0 var(--space-4);
 }
-.compare-radar-section .fp-radar { width: 220px; height: 220px; }
 .compare-radar-legend {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: var(--space-5);
+  gap: 0.7rem;
 }
 .compare-radar-legend-item {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: var(--text-xs);
+  gap: 0.3rem;
+  font-size: var(--text-2xs);
   color: var(--text-muted);
+  white-space: nowrap;
 }
 .compare-radar-legend-item::before {
   content: '';
-  width: 11px;
-  height: 11px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 .compare-radar-legend-item--a::before { background: var(--accent); }
 .compare-radar-legend-item--b::before { background: var(--compare-b); }
 
 /* ── Accolade chips ── */
-.compare-accolade-row {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
+/* Rendered inside each side's own fight-column (see .compare-verdict-fight-col below) — directly
+   under that player's name/score, never a shared row disconnected from either name — plus a
+   side-colored left border so the same accent/compare-b language answers "whose" at a glance. */
 .compare-accolade-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
 }
-.compare-accolade-chips--left { justify-content: flex-end; }
-.compare-accolade-chips--right { justify-content: flex-start; }
+.compare-verdict-fight-col--left .compare-accolade-chips { justify-content: flex-end; }
+.compare-verdict-fight-col--right .compare-accolade-chips { justify-content: flex-start; }
 .compare-accolade-chip {
   font-size: var(--text-2xs);
   font-weight: 600;
   color: var(--text-muted);
   background: var(--surface-2);
   border: 1px solid var(--border);
+  border-left: 3px solid transparent;
   border-radius: 3px;
-  padding: 0.1rem 0.4rem;
+  padding: 0.1rem 0.4rem 0.1rem 0.35rem;
   white-space: nowrap;
 }
-
-@media (max-width: 600px) {
-  .compare-accolade-row { flex-direction: column; align-items: center; }
-  .compare-accolade-chips--left,
-  .compare-accolade-chips--right { justify-content: center; }
-}
+.compare-accolade-chip--a { border-left-color: var(--accent); }
+.compare-accolade-chip--b { border-left-color: var(--compare-b); }
 
 /* ── Mode Toggle ── */
 .compare-mode-toggle-wrap {
@@ -629,15 +679,26 @@
 /* Fight-night score row */
 .compare-verdict-fight {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0;
 }
+
+/* Column wrapping each side's name+score row plus that side's accolade chips underneath —
+   physical placement is what makes "whose chips are whose" unambiguous. */
+.compare-verdict-fight-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+}
+.compare-verdict-fight-col--left { align-items: flex-end; }
+.compare-verdict-fight-col--right { align-items: flex-start; }
 
 .compare-verdict-fight-side {
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  flex: 1;
 }
 
 .compare-verdict-fight-side--left {
