@@ -117,25 +117,20 @@ function RadarBlock({ archA, archB, nameA, nameB }) {
 
 export default function CompareVerdict({ reportA, reportB, nameA, nameB, archA, archB, loading, errorA, errorB, onRetryA, onRetryB }) {
   const verdict = useMemo(() => computeVerdict(reportA, reportB), [reportA, reportB]);
-  // Boolean gate, not the element itself — RadarBlock can return null internally, and a JSX
-  // element wrapping that (`<RadarBlock/>`) is still a truthy object, so the ternaries below need
-  // this checked directly rather than truthiness-testing the rendered element.
-  const hasRadar = Array.isArray(archA?.dimensions) && Array.isArray(archB?.dimensions);
+  // RadarBlock renders null internally when there's no fingerprint data — safe to render
+  // unconditionally here since it's just stacked inline, not chosen between two different wrapper
+  // layouts (the prior two-column grid stranded the score content at wide viewports; see git history).
   const radar = <RadarBlock archA={archA} archB={archB} nameA={nameA} nameB={nameB} />;
 
   if (loading) {
-    const skeleton = (
-      <div className="compare-verdict-score-col">
-        <div className="compare-verdict-skeleton-line" />
-        <div className="compare-verdict-skeleton-line compare-verdict-skeleton-line--short" />
-      </div>
-    );
     return (
       <div className="compare-verdict compare-verdict--skeleton">
         <p className="compare-verdict-label">AT A GLANCE</p>
-        {hasRadar ? (
-          <div className="compare-verdict-glance-grid">{radar}{skeleton}</div>
-        ) : skeleton}
+        {radar}
+        <div className="compare-verdict-score-col">
+          <div className="compare-verdict-skeleton-line" />
+          <div className="compare-verdict-skeleton-line compare-verdict-skeleton-line--short" />
+        </div>
       </div>
     );
   }
@@ -146,35 +141,31 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, archA, 
     const gradeB = reportB?.overall?.grade ?? null;
     const failingName = errorA ? nameA : nameB;
     const onRetry = errorA ? onRetryA : onRetryB;
-    const errorCol = (
-      <div className="compare-verdict-score-col">
-        <div className="compare-verdict-fight">
-          <span className="compare-verdict-fight-side compare-verdict-fight-side--left">
-            <span className="compare-verdict-fight-name">{nameA}</span>
-            {gradeA ? <GradeBadge grade={gradeA} size="large" /> : <span className="compare-verdict-grade-dash">—</span>}
-          </span>
-          <span className="compare-verdict-fight-divider">vs</span>
-          <span className="compare-verdict-fight-side compare-verdict-fight-side--right">
-            {gradeB ? <GradeBadge grade={gradeB} size="large" /> : <span className="compare-verdict-grade-dash">—</span>}
-            <span className="compare-verdict-fight-name">{nameB}</span>
-          </span>
-        </div>
-        <p className="compare-verdict-error-notice">
-          Couldn&apos;t load graded report for {failingName}
-          {onRetry && (
-            <button type="button" className="btn-ghost compare-verdict-retry" onClick={onRetry}>
-              Try again
-            </button>
-          )}
-        </p>
-      </div>
-    );
     return (
       <div className="compare-verdict">
         <p className="compare-verdict-label">AT A GLANCE</p>
-        {hasRadar ? (
-          <div className="compare-verdict-glance-grid">{radar}{errorCol}</div>
-        ) : errorCol}
+        {radar}
+        <div className="compare-verdict-score-col">
+          <div className="compare-verdict-fight">
+            <span className="compare-verdict-fight-side compare-verdict-fight-side--left">
+              <span className="compare-verdict-fight-name">{nameA}</span>
+              {gradeA ? <GradeBadge grade={gradeA} size="large" /> : <span className="compare-verdict-grade-dash">—</span>}
+            </span>
+            <span className="compare-verdict-fight-divider">vs</span>
+            <span className="compare-verdict-fight-side compare-verdict-fight-side--right">
+              {gradeB ? <GradeBadge grade={gradeB} size="large" /> : <span className="compare-verdict-grade-dash">—</span>}
+              <span className="compare-verdict-fight-name">{nameB}</span>
+            </span>
+          </div>
+          <p className="compare-verdict-error-notice">
+            Couldn&apos;t load graded report for {failingName}
+            {onRetry && (
+              <button type="button" className="btn-ghost compare-verdict-retry" onClick={onRetry}>
+                Try again
+              </button>
+            )}
+          </p>
+        </div>
       </div>
     );
   }
@@ -239,14 +230,8 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, archA, 
     <div className="compare-verdict">
       <p className="compare-verdict-label">AT A GLANCE</p>
 
-      {hasRadar ? (
-        <div className="compare-verdict-glance-grid">
-          {radar}
-          <div className="compare-verdict-score-col">{scoreCol}</div>
-        </div>
-      ) : (
-        <div className="compare-verdict-score-col compare-verdict-score-col--full">{scoreCol}</div>
-      )}
+      {radar}
+      <div className="compare-verdict-score-col">{scoreCol}</div>
 
       {(reportA?.overall?.summary || reportB?.overall?.summary) && (
         <div className="compare-overall-summaries">

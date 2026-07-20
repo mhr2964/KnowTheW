@@ -538,23 +538,16 @@
   }
 }
 
-/* ── AT A GLANCE: radar + score, two columns on desktop ── */
-/* The radar is a peer of the fight-score/overall content now, not its own bare-looking box —
-   featured inside the same card instead of sitting isolated between the mode toggle and verdict. */
-.compare-verdict-glance-grid {
-  display: grid;
-  grid-template-columns: minmax(160px, 200px) 1fr;
-  gap: var(--space-4);
-  align-items: center;
-}
+/* ── AT A GLANCE: radar (if available), then the score block, always stacked ── */
+/* A two-column grid (radar | score) was tried here and removed — at wider viewports the score
+   column's flex-based content had no fixed anchor and drifted away from both the radar and the
+   card's own edge as the grid track widened. A centered vertical stack has no such failure mode:
+   it looks identical (and correct) at every width, so there's no breakpoint to maintain either. */
 .compare-verdict-score-col {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.6rem;
-}
-
-@media (max-width: 600px) {
-  .compare-verdict-glance-grid { grid-template-columns: 1fr; }
 }
 
 /* ── Playstyle Radar ── */
@@ -563,8 +556,9 @@
   flex-direction: column;
   align-items: center;
   gap: 0.3rem;
+  margin-bottom: 0.2rem;
 }
-.compare-verdict-radar-col .fp-radar { width: 170px; height: 170px; }
+.compare-verdict-radar-col .fp-radar { width: 195px; height: 195px; }
 .compare-radar-caption {
   font-size: var(--text-2xs);
   color: var(--text-muted);
