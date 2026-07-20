@@ -5,10 +5,10 @@
 }
 
 .footer-links {
-  margin-top: 0.5rem;
+  margin-top: var(--space-2);
   display: flex;
   justify-content: center;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .footer-link-btn {
@@ -22,7 +22,7 @@
 .team-spoke-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: var(--space-1);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius) var(--radius) 0 0;
@@ -62,35 +62,35 @@
   border: 1px solid var(--border);
   border-top: none;
   border-radius: 0 0 var(--radius) var(--radius);
-  padding: 1.5rem;
+  padding: var(--space-6);
 }
 
 /* ── Team Dashboard ── */
 .team-dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .team-dashboard-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 1.25rem;
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .team-dashboard-card-headline {
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .team-dashboard-badge {
@@ -109,7 +109,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .team-dashboard-player-row {
@@ -132,7 +132,7 @@
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
 }
 
 .team-dashboard-player-name {
@@ -146,7 +146,7 @@
 }
 
 .team-dashboard-player-pos {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   font-weight: 600;
   flex-shrink: 0;
@@ -169,7 +169,7 @@
 
 /* ── Team Stats Page ── */
 .team-stats-header {
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--space-5);
 }
 
 .team-stats-season {
@@ -187,8 +187,8 @@
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 0.75rem;
+  letter-spacing: var(--tracking-label);
+  margin-bottom: var(--space-3);
   padding-bottom: 0.2rem;
 }
 
@@ -209,7 +209,7 @@
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
 }
 
 .team-stat-value {
@@ -219,11 +219,11 @@
 }
 
 /* ── Team History Page ── */
-.team-history-page { display: flex; flex-direction: column; gap: 1.25rem; }
+.team-history-page { display: flex; flex-direction: column; gap: var(--space-5); }
 
 .team-history-meta {
   display: flex; align-items: center; gap: 0.5rem;
-  font-size: 0.82rem; font-weight: 600; color: rgba(255,255,255,0.7);
+  font-size: var(--text-sm); font-weight: 600; color: rgba(255,255,255,0.7);
 }
 .team-history-meta-sep { color: var(--border); }
 
@@ -231,7 +231,7 @@
   font-size: 0.78rem;
   color: var(--text-muted);
   font-style: italic;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 .team-history-champs {
@@ -244,10 +244,10 @@
 }
 .team-history-champs-icon { font-size: 1.2rem; flex-shrink: 0; }
 .team-history-champs-text {
-  font-size: 0.9rem; font-weight: 700; color: var(--champion-text);
+  font-size: var(--text-base); font-weight: 700; color: var(--champion-text);
 }
 .team-history-champs-years {
-  font-size: 0.82rem; font-weight: 600; color: #b8a030;
+  font-size: var(--text-sm); font-weight: 600; color: #b8a030;
 }
 
 .team-history-champs--none {
@@ -282,7 +282,7 @@
 
 .team-history-cell--head {
   background: var(--surface-2);
-  font-size: 0.68rem;
+  font-size: var(--text-2xs);
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -309,11 +309,11 @@
   color: #000;
   font-size: 0.6rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   padding: 0.1rem 0.45rem;
   border-radius: 3px;
-  margin-left: 0.5rem;
+  margin-left: var(--space-2);
   vertical-align: middle;
 }
 
@@ -324,7 +324,7 @@
 }
 
 .team-history-narrative-error {
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   color: var(--text-muted);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -337,11 +337,11 @@
   flex-direction: column;
   gap: 1.1rem;
   border-top: 1px solid var(--border);
-  padding-top: 1.25rem;
+  padding-top: var(--space-5);
 }
 
 .team-history-narrative-title {
-  font-size: 1rem;
+  font-size: var(--text-md);
   font-weight: 700;
   color: var(--text);
   margin: 0;
@@ -358,11 +358,11 @@
 .team-history-narrative-identity {
   color: var(--text-muted);
   border-top: 1px solid var(--border);
-  padding-top: 1rem;
+  padding-top: var(--space-4);
 }
 
 .team-history-narrative-disclaimer {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   font-style: italic;
   margin: 0;
@@ -385,7 +385,7 @@
   margin: 0 1.1rem 0.45rem;
 }
 .team-history-era-card > *:not(summary):last-child {
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 
 .team-history-era-summary {
@@ -406,7 +406,7 @@
 
 .team-history-era-label {
   flex: 1;
-  font-size: 0.9rem;
+  font-size: var(--text-base);
   font-weight: 700;
   color: var(--text);
   margin: 0;
@@ -456,15 +456,15 @@
 }
 
 /* ── Team Schedule Page ── */
-.team-schedule-page { display: flex; flex-direction: column; gap: 1.25rem; }
+.team-schedule-page { display: flex; flex-direction: column; gap: var(--space-5); }
 
 .team-schedule-subheader {
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-top: 0.5rem;
+  letter-spacing: var(--tracking-label);
+  margin-top: var(--space-2);
 }
 
 .team-schedule-table { width: 100%; }
@@ -512,7 +512,7 @@
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 3px;
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -536,7 +536,7 @@
 }
 
 .team-schedule-final {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   font-weight: 600;
 }
@@ -571,7 +571,7 @@
 .team-schedule-divider-inner {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .team-schedule-divider-rule {
@@ -582,7 +582,7 @@
 }
 
 .team-schedule-divider-label {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   color: var(--accent);
   letter-spacing: 0.06em;
@@ -668,7 +668,7 @@
 
 .team-schedule-season-complete {
   font-style: italic;
-  margin-top: 0.25rem;
+  margin-top: var(--space-1);
 }
 
 /* ── Season Picker ── */

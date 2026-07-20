@@ -2,8 +2,8 @@
 .compare-hero-pair {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -14,7 +14,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   font-weight: 800;
   color: var(--text-muted);
   letter-spacing: 0.1em;
@@ -26,7 +26,7 @@
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
   min-width: 0;
 }
 
@@ -42,7 +42,7 @@
 .compare-hero-error {
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .compare-hero-skeleton .compare-hero-img {
@@ -69,7 +69,7 @@
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 1rem;
+  font-size: var(--text-md);
   letter-spacing: 0.04em;
 }
 
@@ -87,7 +87,7 @@
 }
 
 .compare-hero-name {
-  font-size: 1rem;
+  font-size: var(--text-md);
   font-weight: 800;
   line-height: 1.2;
   white-space: nowrap;
@@ -122,7 +122,7 @@
 
 /* Season toggle row above merged table */
 .compare-season-header {
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-3);
 }
 
 /* Merged comparison table cells */
@@ -164,7 +164,7 @@
   font-size: 0.8rem;
   color: var(--error);
   padding: 0.5rem 0;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 /* Skeleton state while both sides load */
@@ -180,14 +180,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-4);
   padding: 3rem 0;
   text-align: center;
 }
 
 /* Compare tabs — extends existing .stat-type-tabs */
 .compare-tabs {
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
   border-radius: var(--radius);
   border-bottom: 1px solid var(--border);
 }
@@ -219,7 +219,7 @@
   padding: 1.1rem 1.25rem;
   border-bottom: 1px solid var(--border);
 }
-.compare-picker-header h3 { font-size: 1rem; font-weight: 700; }
+.compare-picker-header h3 { font-size: var(--text-md); font-weight: 700; }
 
 .compare-picker-body {
   flex: 1;
@@ -227,7 +227,7 @@
   padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .compare-picker-input { border-radius: var(--radius); border-right: 1px solid var(--border); }
@@ -308,7 +308,7 @@
 }
 
 .grade-badge--small {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   padding: 0.14rem 0.5rem;
   border-radius: 4px;
   min-width: 2.2rem;
@@ -324,7 +324,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--space-5);
 }
 
 /* Column header strip */
@@ -347,12 +347,12 @@
 
 .grade-grid-header-name--left {
   text-align: right;
-  padding-right: 1rem;
+  padding-right: var(--space-4);
 }
 
 .grade-grid-header-name--right {
   text-align: left;
-  padding-left: 1rem;
+  padding-left: var(--space-4);
 }
 
 .grade-grid-header-sep {
@@ -434,7 +434,7 @@
 }
 
 .grade-grid-row-chevron {
-  font-size: 1rem;
+  font-size: var(--text-md);
   color: var(--text-muted);
   transition: transform 0.18s ease;
   line-height: 1;
@@ -455,7 +455,7 @@
 
 /* Winner arrow — lives in the center column, stacked below the stat name */
 .grade-grid-winner-arrow {
-  font-size: 1rem;
+  font-size: var(--text-md);
   color: var(--accent);
   line-height: 1;
 }
@@ -493,11 +493,11 @@
 }
 
 .grade-grid-expand-name {
-  font-size: 0.68rem;
+  font-size: var(--text-2xs);
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
 }
 
 .grade-grid-expand-stats {
@@ -628,12 +628,12 @@
 
 /* ── Mode Toggle ── */
 .compare-mode-toggle-wrap {
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 
 .compare-mode-toggle {
   display: flex;
-  gap: 0.25rem;
+  gap: var(--space-1);
   margin-bottom: 0.4rem;
 }
 
@@ -659,7 +659,7 @@
 .compare-mode-peak-window {
   font-size: 0.73rem;
   color: var(--text-muted);
-  margin-top: 0.25rem;
+  margin-top: var(--space-1);
 }
 
 /* ── Compare Verdict ── */
@@ -669,7 +669,7 @@
   border-top: 3px solid var(--accent);
   border-radius: var(--radius);
   padding: 1rem 1.25rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--space-5);
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -741,7 +741,7 @@
 
 /* Tied categories note */
 .compare-verdict-tied {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   text-align: center;
   margin: 0;
@@ -800,7 +800,7 @@
   font-size: 0.75rem;
   color: var(--text-muted);
   border-top: 1px solid var(--border);
-  padding-top: 0.5rem;
+  padding-top: var(--space-2);
   margin-top: 0.1rem;
   line-height: 1.5;
 }
@@ -815,7 +815,7 @@
   font-size: 0.78rem;
   color: var(--text-muted);
   border-top: 1px solid var(--border);
-  padding-top: 0.5rem;
+  padding-top: var(--space-2);
   margin-top: 0.1rem;
   display: flex; align-items: center; gap: 0.6rem;
 }
@@ -826,7 +826,7 @@
 }
 
 .compare-verdict--skeleton {
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 .compare-verdict-skeleton-line {
   height: 1rem;
@@ -841,8 +841,8 @@
 .compare-grade-cards {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
 }
 
 .compare-grade-card {
@@ -862,21 +862,21 @@
 }
 
 .compare-grade-card-category {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--text);
 }
 
 .compare-grade-card-leader {
-  font-size: 0.68rem;
+  font-size: var(--text-2xs);
   font-weight: 600;
   color: var(--accent);
   margin-left: auto;
 }
 
 .compare-grade-card-tie {
-  font-size: 0.68rem;
+  font-size: var(--text-2xs);
   font-weight: 600;
   color: var(--text-muted);
   margin-left: auto;
@@ -907,7 +907,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .compare-grade-panel-name {
@@ -939,7 +939,7 @@
 }
 
 .compare-grade-card-volume {
-  font-size: 0.68rem;
+  font-size: var(--text-2xs);
   color: var(--text-muted);
   padding: 0.5rem 1rem;
 }
@@ -965,26 +965,26 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 1.5rem;
+  padding: var(--space-6);
   text-align: center;
   color: var(--text-muted);
   font-size: 0.88rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--space-5);
 }
 .compare-ai-unavailable-retries {
   display: flex;
   justify-content: center;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
 }
 
 .compare-loading-hint {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   color: var(--text-muted);
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-3);
 }
 
 .compare-loading-dot {
@@ -1008,11 +1008,11 @@
   font-size: 0.85rem;
   color: var(--text-muted);
   padding: 0.5rem 0;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 
 .compare-ai-disclaimer {
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   font-style: italic;
   text-align: center;
@@ -1025,7 +1025,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 1rem 1.25rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--space-5);
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
@@ -1034,15 +1034,15 @@
 .compare-overall-summary {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 
 .compare-overall-summary-name {
-  font-size: 0.68rem;
+  font-size: var(--text-2xs);
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
 }
 
 .compare-overall-summary p {
