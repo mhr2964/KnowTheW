@@ -6,11 +6,14 @@ export const CATEGORIES = ['Scoring', 'Playmaking', 'Rebounding', 'Defense', 'Ef
 
 const POS_ADJ_RE = /^\((guard|forward)-adj\)/;
 
-// Header (category + magnitude bar) and the badge row are always visible — the full "at a glance"
-// scan: category, who's ahead, by how much, both grades. Stats + AI context sit behind one
-// details/summary toggle per card, collapsed by default, spatially separate from the header so
-// the expand chevron never competes with the winner signal the way the old design (arrow and
-// chevron sharing one column) did.
+// Header (just the category label, centered) and the badge row (names + grades + the magnitude
+// bar between them) are always visible — the full "at a glance" scan: category, who's ahead, by
+// how much, both grades. The bar lives in the badge row, not the header, specifically so it gets a
+// fixed width instead of sharing space with a variable-length category label — every card's bar is
+// now identical regardless of whether the label is "SCORING" or "REBOUNDING" (+ pos-adj tag).
+// Stats + AI context sit behind one details/summary toggle per card, collapsed by default,
+// spatially separate from the bar so the expand chevron never competes with the winner signal the
+// way the old design (arrow and chevron sharing one column) did.
 export default function GradeCard({ category, reportA, reportB, nameA, nameB }) {
   const catA = reportA?.categories?.[category] ?? null;
   const catB = reportB?.categories?.[category] ?? null;
@@ -29,7 +32,6 @@ export default function GradeCard({ category, reportA, reportB, nameA, nameB }) 
       <div className="grade-card-header">
         <span className="grade-card-category">{category.toUpperCase()}</span>
         {hasPosAdj && <span className="grade-card-pos-adj">pos-adj</span>}
-        <CompareMagnitudeBar gradeA={gradeA} gradeB={gradeB} size="sm" />
       </div>
 
       <div className="grade-card-badges">
@@ -37,6 +39,7 @@ export default function GradeCard({ category, reportA, reportB, nameA, nameB }) 
           <span className="grade-card-badge-name">{nameA}</span>
           <GradeBadge grade={gradeA} size="large" winnerSide={aWins ? 'a' : null} />
         </div>
+        <CompareMagnitudeBar gradeA={gradeA} gradeB={gradeB} size="sm" />
         <div className="grade-card-badge-side grade-card-badge-side--right">
           <GradeBadge grade={gradeB} size="large" winnerSide={bWins ? 'b' : null} />
           <span className="grade-card-badge-name">{nameB}</span>

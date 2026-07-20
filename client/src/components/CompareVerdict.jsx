@@ -17,24 +17,15 @@ const ACCOLADE_LABELS = [
   ['championships', 'Championships'],
 ];
 
-// Renders nothing for a side with zero accolades — not an empty "0" row. Career facts, so shown
-// unfiltered by the Peak/Career/Playoffs mode toggle (a title won is a title won). Rendered directly
-// under that side's own name/score (not a separate row below both) so whose is whose is never
-// ambiguous, reinforced by a side-colored border matching the same accent/compare-b language used
-// by the magnitude bars and grade-card winner tint.
-function AccoladeChips({ accolades, side }) {
+// One flowing text line, not a row of bordered chips — chips read as filter/tag controls, which
+// this isn't. `null` for a side with zero accolades (not an empty line).
+function accoladeSummary(accolades) {
   if (!accolades) return null;
-  const chips = ACCOLADE_LABELS
+  const parts = ACCOLADE_LABELS
     .map(([key, label]) => ({ label, count: accolades[key]?.length ?? 0 }))
-    .filter(c => c.count > 0);
-  if (!chips.length) return null;
-  return (
-    <div className="compare-accolade-chips">
-      {chips.map(c => (
-        <span key={c.label} className={`compare-accolade-chip compare-accolade-chip--${side}`}>{c.label} ×{c.count}</span>
-      ))}
-    </div>
-  );
+    .filter(c => c.count > 0)
+    .map(c => `${c.label} ×${c.count}`);
+  return parts.length ? parts.join(' · ') : null;
 }
 
 function computeVerdict(reportA, reportB) {
@@ -96,15 +87,14 @@ function computeVerdict(reportA, reportB) {
 
 // Radar block is driven entirely by archA/archB — independent of report loading/error state, so
 // it can render while the AI grades are still generating (archetype data is Mongo-cached, not an
-// LLM call, and usually resolves first). Keeping it out of the loading/error early-returns below
-// is what preserves that "fills the page during the wait" behavior now that it lives inside the
-// same card as the score line, instead of being gated behind the same `loading` flag as the grades.
+// LLM call, and usually resolves first).
 function RadarBlock({ archA, archB, nameA, nameB }) {
   const dimsA = archA?.dimensions;
   const dimsB = archB?.dimensions;
   if (!Array.isArray(dimsA) || !Array.isArray(dimsB)) return null;
   return (
     <div className="compare-verdict-radar-col">
+      <span className="compare-profile-label">Playstyle</span>
       <FingerprintRadar dimensions={dimsA} overlay={dimsB} />
       <div className="compare-radar-legend">
         <span className="compare-radar-legend-item compare-radar-legend-item--a">{nameA}</span>
@@ -118,7 +108,7 @@ function RadarBlock({ archA, archB, nameA, nameB }) {
 export default function CompareVerdict({ reportA, reportB, nameA, nameB, archA, archB, loading, errorA, errorB, onRetryA, onRetryB }) {
   const verdict = useMemo(() => computeVerdict(reportA, reportB), [reportA, reportB]);
   // RadarBlock renders null internally when there's no fingerprint data — safe to render
-  // unconditionally here since it's just stacked inline, not chosen between two different wrapper
+  // unconditionally since it's just stacked inline, not chosen between two different wrapper
   // layouts (the prior two-column grid stranded the score content at wide viewports; see git history).
   const radar = <RadarBlock archA={archA} archB={archB} nameA={nameA} nameB={nameB} />;
 
@@ -126,11 +116,11 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, archA, 
     return (
       <div className="compare-verdict compare-verdict--skeleton">
         <p className="compare-verdict-label">AT A GLANCE</p>
-        {radar}
         <div className="compare-verdict-score-col">
           <div className="compare-verdict-skeleton-line" />
           <div className="compare-verdict-skeleton-line compare-verdict-skeleton-line--short" />
         </div>
+        {radar}
       </div>
     );
   }
@@ -144,7 +134,6 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, archA, 
     return (
       <div className="compare-verdict">
         <p className="compare-verdict-label">AT A GLANCE</p>
-        {radar}
         <div className="compare-verdict-score-col">
           <div className="compare-verdict-fight">
             <span className="compare-verdict-fight-side compare-verdict-fight-side--left">
@@ -166,6 +155,7 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, archA, 
             )}
           </p>
         </div>
+        {radar}
       </div>
     );
   }
@@ -177,61 +167,73 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, archA, 
   const aWinsOverall = overallCmp > 0;
   const bWinsOverall = overallCmp < 0;
 
-  const scoreCol = (
-    <>
-      {/* Fight-night score line — each side's accolades sit directly under that side's own
-          name/score, never in a shared row disconnected from either name. */}
-      <div className="compare-verdict-fight">
-        <div className="compare-verdict-fight-col compare-verdict-fight-col--left">
-          <span className={`compare-verdict-fight-side compare-verdict-fight-side--left${aWinsOverall ? ' compare-verdict-fight-side--winner' : ''}`}>
-            <span className="compare-verdict-fight-name">{nameA}</span>
-            <span className={`compare-verdict-score${aWinsOverall ? ' compare-verdict-score--winner' : ''}`}>{wonByA}</span>
-          </span>
-          <AccoladeChips accolades={reportA?.accolades} side="a" />
-        </div>
-
-        <span className="compare-verdict-fight-divider">—</span>
-
-        <div className="compare-verdict-fight-col compare-verdict-fight-col--right">
-          <span className={`compare-verdict-fight-side compare-verdict-fight-side--right${bWinsOverall ? ' compare-verdict-fight-side--winner' : ''}`}>
-            <span className={`compare-verdict-score${bWinsOverall ? ' compare-verdict-score--winner' : ''}`}>{wonByB}</span>
-            <span className="compare-verdict-fight-name">{nameB}</span>
-          </span>
-          <AccoladeChips accolades={reportB?.accolades} side="b" />
-        </div>
-      </div>
-
-      {tied > 0 && (
-        <p className="compare-verdict-tied">
-          {tied} tied categor{tied === 1 ? 'y' : 'ies'}
-        </p>
-      )}
-
-      {/* Overall grade — one magnitude bar instead of a separate arrow glyph, same language as
-          each category card below. */}
-      {overallA && overallB && (
-        <div className="compare-verdict-overall-row">
-          <span className="compare-verdict-overall-side compare-verdict-overall-side--left">
-            <GradeBadge grade={overallA} size="large" winnerSide={aWinsOverall ? 'a' : null} />
-          </span>
-          <div className="compare-verdict-overall-center">
-            <span className="compare-verdict-overall-label">OVERALL</span>
-            <CompareMagnitudeBar gradeA={overallA} gradeB={overallB} size="lg" />
-          </div>
-          <span className="compare-verdict-overall-side compare-verdict-overall-side--right">
-            <GradeBadge grade={overallB} size="large" winnerSide={bWinsOverall ? 'b' : null} />
-          </span>
-        </div>
-      )}
-    </>
-  );
+  const hasRadar = Array.isArray(archA?.dimensions) && Array.isArray(archB?.dimensions);
+  const accSummaryA = accoladeSummary(reportA?.accolades);
+  const accSummaryB = accoladeSummary(reportB?.accolades);
+  const hasAccolades = Boolean(accSummaryA || accSummaryB);
 
   return (
     <div className="compare-verdict">
       <p className="compare-verdict-label">AT A GLANCE</p>
 
-      {radar}
-      <div className="compare-verdict-score-col">{scoreCol}</div>
+      {/* Headline facts first: who's ahead, then by how much. */}
+      <div className="compare-verdict-score-col">
+        <div className="compare-verdict-fight">
+          <span className={`compare-verdict-fight-side compare-verdict-fight-side--left${aWinsOverall ? ' compare-verdict-fight-side--winner' : ''}`}>
+            <span className="compare-verdict-fight-name">{nameA}</span>
+            <span className={`compare-verdict-score${aWinsOverall ? ' compare-verdict-score--winner' : ''}`}>{wonByA}</span>
+          </span>
+          <span className="compare-verdict-fight-divider">—</span>
+          <span className={`compare-verdict-fight-side compare-verdict-fight-side--right${bWinsOverall ? ' compare-verdict-fight-side--winner' : ''}`}>
+            <span className={`compare-verdict-score${bWinsOverall ? ' compare-verdict-score--winner' : ''}`}>{wonByB}</span>
+            <span className="compare-verdict-fight-name">{nameB}</span>
+          </span>
+        </div>
+
+        {tied > 0 && (
+          <p className="compare-verdict-tied">
+            {tied} tied categor{tied === 1 ? 'y' : 'ies'}
+          </p>
+        )}
+
+        {overallA && overallB && (
+          <div className="compare-verdict-overall-row">
+            <span className="compare-verdict-overall-side compare-verdict-overall-side--left">
+              <GradeBadge grade={overallA} size="large" winnerSide={aWinsOverall ? 'a' : null} />
+            </span>
+            <div className="compare-verdict-overall-center">
+              <span className="compare-verdict-overall-label">OVERALL</span>
+              <CompareMagnitudeBar gradeA={overallA} gradeB={overallB} size="lg" />
+            </div>
+            <span className="compare-verdict-overall-side compare-verdict-overall-side--right">
+              <GradeBadge grade={overallB} size="large" winnerSide={bWinsOverall ? 'b' : null} />
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Supporting context, paired side by side rather than a lone graph swimming in margin:
+          how they play (radar) next to what they've won (accolades). Either half is optional. */}
+      {(hasRadar || hasAccolades) && (
+        <div className="compare-verdict-profile-row">
+          {radar}
+          {hasAccolades && (
+            <div className="compare-verdict-accolades-col">
+              <span className="compare-profile-label">Accolades</span>
+              {accSummaryA && (
+                <p className="compare-accolade-line compare-accolade-line--a">
+                  <span className="compare-accolade-name">{nameA}</span> {accSummaryA}
+                </p>
+              )}
+              {accSummaryB && (
+                <p className="compare-accolade-line compare-accolade-line--b">
+                  <span className="compare-accolade-name">{nameB}</span> {accSummaryB}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {(reportA?.overall?.summary || reportB?.overall?.summary) && (
         <div className="compare-overall-summaries">

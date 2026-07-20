@@ -331,8 +331,6 @@
   flex-direction: column;
   align-items: center;
   gap: 0.2rem;
-  flex: 1;
-  min-width: 3rem;
 }
 .compare-mag-bar-track {
   position: relative;
@@ -386,6 +384,7 @@
 .grade-card-header {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-3);
   padding: 0.65rem 1rem;
   background: var(--surface-2);
@@ -435,6 +434,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+
+/* Fixed width, not flex:1 — the bar used to share the header row with the (variable-length)
+   category label, so its width shifted per card. Now it sits between the two badge-sides (which
+   absorb any name-length variance via their own flex:1), so it's identical on every card. */
+.grade-card-badges .compare-mag-bar {
+  flex: 0 0 auto;
+  width: 8rem;
 }
 
 /* Expand toggle — the ONLY click target on the card, spatially separate from the header's
@@ -538,11 +545,12 @@
   }
 }
 
-/* ── AT A GLANCE: radar (if available), then the score block, always stacked ── */
+/* ── AT A GLANCE: headline (fight score + overall grade) first, profile row (radar + accolades)
+   below it ── */
 /* A two-column grid (radar | score) was tried here and removed — at wider viewports the score
    column's flex-based content had no fixed anchor and drifted away from both the radar and the
-   card's own edge as the grid track widened. A centered vertical stack has no such failure mode:
-   it looks identical (and correct) at every width, so there's no breakpoint to maintain either. */
+   card's own edge as the grid track widened. Stacking top-to-bottom, everything centered, has no
+   such failure mode — it looks identical (and correct) at every width, no breakpoint needed. */
 .compare-verdict-score-col {
   display: flex;
   flex-direction: column;
@@ -588,30 +596,48 @@
 .compare-radar-legend-item--a::before { background: var(--accent); }
 .compare-radar-legend-item--b::before { background: var(--compare-b); }
 
-/* ── Accolade chips ── */
-/* Rendered inside each side's own fight-column (see .compare-verdict-fight-col below) — directly
-   under that player's name/score, never a shared row disconnected from either name — plus a
-   side-colored left border so the same accent/compare-b language answers "whose" at a glance. */
-.compare-accolade-chips {
+/* ── Profile row: playstyle radar + accolades, paired side by side ── */
+/* Neither child stretches (no flex:1/1fr) — they size to content and center as a group, which is
+   what avoids the drift bug the earlier two-column grid had. flex-wrap handles narrow viewports
+   without a breakpoint: the pair just stacks instead of squeezing. Either half is optional. */
+.compare-verdict-profile-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2.5rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
 }
-.compare-verdict-fight-col--left .compare-accolade-chips { justify-content: flex-end; }
-.compare-verdict-fight-col--right .compare-accolade-chips { justify-content: flex-start; }
-.compare-accolade-chip {
+
+.compare-profile-label {
   font-size: var(--text-2xs);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-muted);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-left: 3px solid transparent;
-  border-radius: 3px;
-  padding: 0.1rem 0.4rem 0.1rem 0.35rem;
-  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
 }
-.compare-accolade-chip--a { border-left-color: var(--accent); }
-.compare-accolade-chip--b { border-left-color: var(--compare-b); }
+
+/* Accolades — one flowing text line per side, not bordered chips (chips read as filter/tag
+   controls, which these aren't). The player's name is bold and side-colored so "whose" reads from
+   color alone, same language as the magnitude bars and grade-card winner tint. */
+.compare-verdict-accolades-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 22rem;
+  padding-top: 0.1rem;
+}
+.compare-accolade-line {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.5;
+}
+.compare-accolade-name { font-weight: 700; }
+.compare-accolade-line--a .compare-accolade-name { color: var(--accent); }
+.compare-accolade-line--b .compare-accolade-name { color: var(--compare-b); }
 
 /* ── Mode Toggle ── */
 .compare-mode-toggle-wrap {
@@ -673,26 +699,15 @@
 /* Fight-night score row */
 .compare-verdict-fight {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0;
 }
-
-/* Column wrapping each side's name+score row plus that side's accolade chips underneath —
-   physical placement is what makes "whose chips are whose" unambiguous. */
-.compare-verdict-fight-col {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  flex: 1;
-  min-width: 0;
-}
-.compare-verdict-fight-col--left { align-items: flex-end; }
-.compare-verdict-fight-col--right { align-items: flex-start; }
 
 .compare-verdict-fight-side {
   display: flex;
   align-items: center;
   gap: 0.45rem;
+  flex: 1;
 }
 
 .compare-verdict-fight-side--left {
@@ -789,6 +804,7 @@
   flex-shrink: 0;
   min-width: 8rem;
 }
+.compare-verdict-overall-center .compare-mag-bar { width: 100%; }
 
 .compare-verdict-volume {
   font-size: 0.75rem;
