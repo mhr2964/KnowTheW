@@ -115,14 +115,29 @@ function extractGameLogEvents(data) {
   return out;
 }
 
-/** Fetch the gamelog and return per-event metadata for PBP selection. Null on non-2xx. */
-async function getGameLogEvents(playerId, season, seasontype) {
+// Same ESPN endpoint as getPlayerGameLog above, parsed into an unrelated shape (flat event array
+// vs {columns, games}) — kept on its own pair of cache objects rather than sharing pastGameLogCache/
+// currentGameLogCache, same reasoning as that pair: a shape mismatch on a season-boundary reclass
+// would be a real bug, not just a wasted cache slot.
+const pastGameLogEventsCache = {};
+const currentGameLogEventsCache = {};
+
+async function fetchGameLogEventsRaw(playerId, season, seasontype) {
   const url = new URL(`${ESPN_WEB}/athletes/${playerId}/gamelog`);
   if (season) url.searchParams.set('season', season);
   if (seasontype) url.searchParams.set('seasontype', seasontype);
   const raw = await fetch(url.toString());
   if (!raw.ok) return null;
   return extractGameLogEvents(await raw.json());
+}
+
+/** Fetch the gamelog and return per-event metadata for PBP selection. Null on non-2xx. */
+function getGameLogEvents(playerId, season, seasontype) {
+  const key = `${playerId}-${season ?? 'current'}-${seasontype ?? 2}`;
+  if (isPastSeason(season)) {
+    return withCache(pastGameLogEventsCache, key, () => fetchGameLogEventsRaw(playerId, season, seasontype));
+  }
+  return withTtlCache(currentGameLogEventsCache, key, CURRENT_SEASON_TTL_MS, () => fetchGameLogEventsRaw(playerId, season, seasontype));
 }
 
 module.exports = { getPlayerGameLog, normalizeGameLog, getGameLogEvents, extractGameLogEvents };
