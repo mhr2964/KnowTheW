@@ -4,7 +4,7 @@ Forward-looking handoff for the active work-stream. **Overwrite** each session; 
 
 ```yaml
 last-model: claude-sonnet-5
-last-session: 2026-07-18
+last-session: 2026-07-20
 state: green
 ```
 
@@ -48,13 +48,15 @@ Phase 3 (as originally scoped) is now closed.
 
 **Phase 2 (analytics + AdSense) — in progress, `4b880ff`.** Wired up Google Analytics 4 (`client/src/lib/analytics.js`, called once from `main.jsx`): no-ops with no measurement ID set (verified — local dev/tests never send real events), loads `gtag.js` only when `VITE_GA_MEASUREMENT_ID` is present. **Because Vite bakes `import.meta.env.VITE_*` vars in at build time, this only works if the config var is set on Heroku *before* a deploy** — `heroku-postbuild` runs `npm run build --prefix client`, and Heroku config vars are exposed during that build step, same mechanism as any other Heroku env var. Route-change tracking needs no extra code: React Router uses the History API, and GA4's Enhanced Measurement ("Page changes based on browser history events") picks that up automatically once enabled on the property — no manual `page_view` firing was added or needed. Privacy Policy's cookies section now names Google Analytics explicitly (was a vague "privacy-conscious analytics tools" placeholder written before the tool was chosen).
 
-**What still needs YOUR side (account-level, can't be done for you):**
-1. Create a GA4 property in Google Analytics (analytics.google.com) for the site, add a Web data stream for the live URL.
-2. In that data stream's settings → Enhanced measurement, confirm "Page changes based on browser history events" is ON (should default on for new properties, but verify).
-3. Copy the Measurement ID (`G-XXXXXXXXXX`) and set it as a Heroku config var: `heroku config:set VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX -a knowthew`. This alone triggers a rebuild+redeploy with analytics live.
-4. Once GA is live and has collected a few days of real traffic, apply for Google AdSense (adsense.google.com) — the required pages (Privacy Policy, Terms, About, clear nav) are already in place from Phase 0.
+**GA4 — done, closed.** User set `VITE_GA_MEASUREMENT_ID` on Heroku; confirmed via live Playwright check that `window.gtag` fires and Realtime shows traffic. Runbook artifact from 07-18 (`https://claude.ai/code/artifact/cb622fac-9479-49dd-8b1f-ee9af8c18700`) covers the full GA4 + AdSense walkthrough if it's ever needed again.
 
-Not started: the AdSense application itself — needs your login, see the "Everything you need to do" runbook artifact from this session for the full walkthrough of both the GA4 setup and the AdSense application/review/ad-placement flow.
+**AdSense — application submitted 2026-07-20, awaiting Google review.** Account is a **different Google account from GA4** (deliberate — a prior Google-side issue forced this split; user will migrate GA4 to the AdSense account once there's revenue to justify it. Don't assume they're the same account in any future automation). Site ownership verified via the AdSense `<head>` script snippet (not GA4-linked auto-verify, since accounts differ) — publisher ID `pub-7287853597361020`, wired in `4b880ff`'s sibling commit `15a1567`:
+- `client/index.html` — `adsbygoogle.js` script tag in `<head>` (static, unlike GA4 which is gated dynamically — AdSense's own docs call for a static tag for verification).
+- `client/public/ads.txt` (new) — `google.com, pub-7287853597361020, DIRECT, f08c47fec0942fa0`, served via the existing `express.static(client/build)` mount since Vite copies `public/` verbatim into `build/`.
+
+Both files are static, not env-var-driven — a plain `git push origin master` was sufficient to go live (no separate Heroku restart needed, unlike the GA4 `config:set` gotcha above). Verified live via curl (`/ads.txt` + script tag in homepage HTML) and CI green.
+
+**Next up: ad placement.** User explicitly dislikes Google Auto Ads' default placement and wants manual control over where ads render instead. Nothing decided yet — first topic for the next session. Likely direction: disable Auto Ads, hand-place `<ins class="adsbygoogle">` slot components at chosen spots once AdSense approves (ad units can't be created/configured until the site is approved).
 
 **Trap hit and fixed this session:** one of the refactor-pass-2 agents junctioned its worktree's `client/node_modules` to the main checkout's, to run lint/test without a fresh `npm install`. Removing that worktree afterward (`rm -rf .claude/worktrees/agent-...`) appears to have followed the junction and deleted the real `client/node_modules/.bin` in the main checkout — `npm start`/`vite` broke with "not recognized" until `npm install` restored it (fixed, confirmed working). **If a future session junctions `node_modules` into an agent worktree again, remove the worktree with `git worktree remove` (not a raw `rm -rf`) and verify `client/node_modules/.bin/vite` still exists afterward.**
 
@@ -90,9 +92,9 @@ The version this replaces (`683873d`, dated 2026-05-28) described On/Off-Court I
 
 ## Next action
 
-Site is live. Phase 3 is closed: table unification reviewed (`RosterTable` rewritten as a real `<table>` in `ac3dec4`; `ScheduleTable`/`TeamHistoryPage` deliberately left alone), CSV export and Home/Away/Monthly/Opponent splits shipped in `c6d76a2`. Next up is Phase 2 (analytics + Google AdSense application) — needs the user's own AdSense account/login, don't start unprompted.
+Site is live. Phase 3 is closed. Phase 2 is functionally closed too: GA4 live, AdSense wired and application submitted, awaiting Google's review. **Next session opens directly on ad placement** — user wants manual ad-slot placement instead of Google Auto Ads' default positions; don't start unprompted, wait for direction on which spots.
 
-All commits through `b15be19` are pushed to `origin/master` and live on Heroku (release v156, confirmed via matching asset hashes) — see the auto-deploy note above.
+All commits through `15a1567` are pushed to `origin/master` and live on Heroku — see the auto-deploy note above.
 
 ## Traps
 
