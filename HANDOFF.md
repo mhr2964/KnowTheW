@@ -56,7 +56,12 @@ Phase 3 (as originally scoped) is now closed.
 
 Both files are static, not env-var-driven — a plain `git push origin master` was sufficient to go live (no separate Heroku restart needed, unlike the GA4 `config:set` gotcha above). Verified live via curl (`/ads.txt` + script tag in homepage HTML) and CI green.
 
-**Next up: ad placement.** User explicitly dislikes Google Auto Ads' default placement and wants manual control over where ads render instead. Nothing decided yet — first topic for the next session. Likely direction: disable Auto Ads, hand-place `<ins class="adsbygoogle">` slot components at chosen spots once AdSense approves (ad units can't be created/configured until the site is approved).
+**Ad placement — code ready, blocked on AdSense approval.** User dislikes Google Auto Ads' default placement; chose three spots (top banner under header, footer above the legal nav, sidebar on wide desktop viewports) and gave discretion on exact tastefulness. Built:
+- `client/src/components/AdSlot.jsx` — renders `<ins class="adsbygoogle" data-ad-client="ca-pub-7287853597361020" data-ad-slot={slotId}>` and pushes to `window.adsbygoogle` once per mount; renders **nothing** if `slotId` is falsy (same no-op-until-configured pattern as `analytics.js`), so it's safe to ship before ad units exist.
+- Wired into `App.jsx` at three spots, each reading its own env var: `VITE_AD_SLOT_TOP` (below header), `VITE_AD_SLOT_FOOTER` (above footer nav), `VITE_AD_SLOT_SIDEBAR` (fixed position, `layout.css` `.ad-slot--sidebar`, only shown ≥1500px viewport so it never competes with the 1100px-wide `.main` column).
+- Verified: build clean, lint clean, live Playwright pass on the built prod server — homepage renders identically to before (all three slots correctly render nothing with no env vars set), no console errors.
+
+**What's still needed once Google approves the site:** (1) create three ad units in the AdSense dashboard, one per placement; (2) set `VITE_AD_SLOT_TOP`/`VITE_AD_SLOT_FOOTER`/`VITE_AD_SLOT_SIDEBAR` as Heroku config vars (same `heroku-postbuild`-time mechanism as `VITE_GA_MEASUREMENT_ID` — must be set *before* the next deploy, since Vite bakes them in at build time); (3) turn off Auto Ads in the AdSense site-level dashboard toggle so it stops fighting with the manual slots. None of this can happen before approval — no action pending on my side until then.
 
 **Trap hit and fixed this session:** one of the refactor-pass-2 agents junctioned its worktree's `client/node_modules` to the main checkout's, to run lint/test without a fresh `npm install`. Removing that worktree afterward (`rm -rf .claude/worktrees/agent-...`) appears to have followed the junction and deleted the real `client/node_modules/.bin` in the main checkout — `npm start`/`vite` broke with "not recognized" until `npm install` restored it (fixed, confirmed working). **If a future session junctions `node_modules` into an agent worktree again, remove the worktree with `git worktree remove` (not a raw `rm -rf`) and verify `client/node_modules/.bin/vite` still exists afterward.**
 
@@ -92,9 +97,9 @@ The version this replaces (`683873d`, dated 2026-05-28) described On/Off-Court I
 
 ## Next action
 
-Site is live. Phase 3 is closed. Phase 2 is functionally closed too: GA4 live, AdSense wired and application submitted, awaiting Google's review. **Next session opens directly on ad placement** — user wants manual ad-slot placement instead of Google Auto Ads' default positions; don't start unprompted, wait for direction on which spots.
+Site is live. Phase 3 is closed. Phase 2 is functionally closed: GA4 live, AdSense wired and application submitted, manual ad-slot code built and ready. **Nothing to do until Google approves the AdSense application** — then create the three ad units, set the three `VITE_AD_SLOT_*` config vars on Heroku, and disable Auto Ads (see the ad-placement section above for exact steps).
 
-All commits through `15a1567` are pushed to `origin/master` and live on Heroku — see the auto-deploy note above.
+All commits through `65152c6` are pushed to `origin/master` and live on Heroku — see the auto-deploy note above.
 
 ## Traps
 
