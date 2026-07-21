@@ -212,25 +212,28 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, archA, 
         )}
       </div>
 
-      {/* Supporting context, paired side by side rather than a lone graph swimming in margin:
-          how they play (radar) next to what they've won (accolades). Either half is optional. */}
-      {(hasRadar || hasAccolades) && (
-        <div className="compare-verdict-profile-row">
+      {/* Radar and accolades each get their own row now, sized purely by their own content —
+          pairing them as equal-height siblings (an earlier attempt) meant stretching the short
+          accolades text to match the radar's height, which just redistributed the dead space
+          instead of removing it. A naturally-sized box has no dead space by construction. */}
+      {hasRadar && (
+        <div className="compare-verdict-radar-row">
           {radar}
-          {hasAccolades && (
-            <div className="compare-verdict-accolades-col">
-              <span className="compare-profile-label">Accolades</span>
-              {accSummaryA && (
-                <p className="compare-accolade-line compare-accolade-line--a">
-                  <span className="compare-accolade-name">{nameA}</span> {accSummaryA}
-                </p>
-              )}
-              {accSummaryB && (
-                <p className="compare-accolade-line compare-accolade-line--b">
-                  <span className="compare-accolade-name">{nameB}</span> {accSummaryB}
-                </p>
-              )}
-            </div>
+        </div>
+      )}
+
+      {hasAccolades && (
+        <div className="compare-verdict-accolades-col">
+          <span className="compare-profile-label">Accolades</span>
+          {accSummaryA && (
+            <p className="compare-accolade-line compare-accolade-line--a">
+              <span className="compare-accolade-name">{nameA}</span> {accSummaryA}
+            </p>
+          )}
+          {accSummaryB && (
+            <p className="compare-accolade-line compare-accolade-line--b">
+              <span className="compare-accolade-name">{nameB}</span> {accSummaryB}
+            </p>
           )}
         </div>
       )}

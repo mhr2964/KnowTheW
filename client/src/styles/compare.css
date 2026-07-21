@@ -315,11 +315,14 @@
   justify-content: center;
 }
 
+/* Full colored border, not a bottom box-shadow line — a thin underline was easy to miss entirely,
+   especially on a green/blue tier-colored badge where the win color and tier color blend together.
+   A border frames the whole badge, so the highlight registers at a glance. */
 .grade-badge--winner-a {
-  box-shadow: 0 2px 0 var(--accent);
+  border: 2px solid var(--accent);
 }
 .grade-badge--winner-b {
-  box-shadow: 0 2px 0 var(--compare-b);
+  border: 2px solid var(--compare-b);
 }
 
 /* ── Compare Magnitude Bar ── */
@@ -335,21 +338,21 @@
 .compare-mag-bar-track {
   position: relative;
   width: 100%;
-  height: 7px;
+  height: 10px;
   background: rgba(255, 255, 255, 0.14);
   border-radius: 999px;
 }
-.compare-mag-bar--lg .compare-mag-bar-track { height: 10px; }
+.compare-mag-bar--lg .compare-mag-bar-track { height: 13px; }
 .compare-mag-bar-center {
   position: absolute;
   left: 50%;
   top: -2px;
   width: 2px;
-  height: 11px;
+  height: 14px;
   background: var(--text-muted);
   transform: translateX(-50%);
 }
-.compare-mag-bar--lg .compare-mag-bar-center { top: -3px; height: 16px; }
+.compare-mag-bar--lg .compare-mag-bar-center { top: -3px; height: 19px; }
 .compare-mag-bar-fill {
   position: absolute;
   top: 0;
@@ -441,7 +444,7 @@
    absorb any name-length variance via their own flex:1), so it's identical on every card. */
 .grade-card-badges .compare-mag-bar {
   flex: 0 0 auto;
-  width: 8rem;
+  width: 14rem;
 }
 
 /* Expand toggle — the ONLY click target on the card, spatially separate from the header's
@@ -543,6 +546,12 @@
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
+  /* The 14rem fixed bar width (desktop) left almost no room for player names beside it at phone
+     widths — names weren't just truncated, they rendered at ~0 width and vanished entirely. */
+  .grade-card-badges .compare-mag-bar {
+    width: 4rem;
+  }
+  .grade-card-badges { gap: var(--space-2); }
 }
 
 /* ── AT A GLANCE: headline (fight score + overall grade) first, profile row (radar + accolades)
@@ -559,14 +568,23 @@
 }
 
 /* ── Playstyle Radar ── */
+/* Its own full-width row now, not paired with accolades — that pairing kept needing rescue passes
+   (drift, then a height-mismatch, then dead space even once heights matched) because a rich, tall
+   visual and a couple of short text lines are never really equal-weight siblings. Standalone, the
+   radar can be as big as it deserves without a partner box needing to match its height. */
+.compare-verdict-radar-row {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+}
 .compare-verdict-radar-col {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.3rem;
-  margin-bottom: 0.2rem;
 }
-.compare-verdict-radar-col .fp-radar { width: 195px; height: 195px; }
+.compare-verdict-radar-col .fp-radar { width: 260px; height: 260px; }
 .compare-radar-caption {
   font-size: var(--text-2xs);
   color: var(--text-muted);
@@ -596,23 +614,6 @@
 .compare-radar-legend-item--a::before { background: var(--accent); }
 .compare-radar-legend-item--b::before { background: var(--compare-b); }
 
-/* ── Profile row: playstyle radar + accolades, paired side by side ── */
-/* Neither child grows horizontally (no flex:1/1fr) — they size to content and center as a group,
-   which is what avoids the drift bug the earlier two-column grid had. flex-wrap handles narrow
-   viewports without a breakpoint: the pair just stacks instead of squeezing. Either half is
-   optional. Vertically, `stretch` (not flex-start) gives both columns the height of the taller one
-   (almost always the radar) — the accolades column then centers its own short content within that
-   full height instead of clinging to the top with a large empty gap trailing below it. */
-.compare-verdict-profile-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: stretch;
-  gap: 2.5rem;
-  padding-top: 0.6rem;
-  border-top: 1px solid var(--border);
-}
-
 .compare-profile-label {
   font-size: var(--text-2xs);
   font-weight: 700;
@@ -621,18 +622,20 @@
   letter-spacing: var(--tracking-label);
 }
 
-/* Accolades — one flowing text line per side, not bordered chips (chips read as filter/tag
-   controls, which these aren't). The player's name is bold and side-colored so "whose" reads from
-   color alone, same language as the magnitude bars and grade-card winner tint. `justify-content:
-   center` is what centers the (usually short) content within the row's full stretched height. */
+/* Accolades — its own naturally-sized block, not stretched to match the radar's height. One
+   flowing text line per side, not bordered chips (chips read as filter/tag controls, which these
+   aren't). The player's name is bold and side-colored so "whose" reads from color alone, same
+   language as the magnitude bars and grade-card winner highlight. A box sized by its own content
+   has no dead space by construction — whether it's one line, two, or absent entirely. */
 .compare-verdict-accolades-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 0.35rem;
-  max-width: 22rem;
-  padding-top: 0.1rem;
+  max-width: 26rem;
+  margin: 0 auto;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
 }
 .compare-accolade-line {
   font-size: var(--text-2xs);
@@ -807,9 +810,16 @@
   align-items: center;
   gap: 0.2rem;
   flex-shrink: 0;
-  min-width: 8rem;
+  min-width: 18rem;
 }
 .compare-verdict-overall-center .compare-mag-bar { width: 100%; }
+
+/* 18rem plus both overall badges overflows a narrow phone's own card width (measured: 402px row
+   inside a 358px card at 390px viewport) — the bar's fixed floor doesn't shrink like flex-wrap
+   content does, so this needs an explicit narrower floor at phone widths, not a wrap. */
+@media (max-width: 480px) {
+  .compare-verdict-overall-center { min-width: 9rem; }
+}
 
 .compare-verdict-volume {
   font-size: 0.75rem;
