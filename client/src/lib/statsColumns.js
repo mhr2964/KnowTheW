@@ -1,4 +1,8 @@
 export const HIDDEN = new Set(['PLAYER_ID', 'LEAGUE_ID', 'TEAM_ID']);
+// Hidden at the narrowest mobile tier on Per Game/Totals only (BrefTable gates by viewMode) --
+// TRB/G/MP/shooting-pct already cover the same ground more usefully at a glance than these do,
+// so these are the lowest-value columns to lose first when the row can't fit.
+export const LOW_PRIORITY_COLS = new Set(['GS', 'OREB', 'DREB', 'PF']);
 export const PCT_COLS = new Set(['FG_PCT', 'FG3_PCT', 'FT_PCT', 'TS_PCT', 'EFG_PCT', 'TPAr', 'FTr', 'WS_PER48']);
 export const PCT100_COLS = new Set(['TOV_PCT', 'USG_PCT', 'AST_PCT', 'ORB_PCT', 'DRB_PCT', 'TRB_PCT', 'STL_PCT', 'BLK_PCT']);
 export const LABELS = {

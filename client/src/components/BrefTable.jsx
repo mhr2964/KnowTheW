@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import HeaderTooltip from './HeaderTooltip';
-import { HIDDEN, LABELS, PCT_COLS, PCT100_COLS } from '../lib/statsColumns';
+import { HIDDEN, LABELS, LOW_PRIORITY_COLS, PCT_COLS, PCT100_COLS } from '../lib/statsColumns';
 import { STAT_DEFINITIONS } from '../lib/statDefinitions';
 
 export const LEFT_COLS = new Set(['SEASON_ID', 'TEAM_ABBREVIATION', 'date', 'opp', 'result']);
@@ -94,6 +94,9 @@ export default function BrefTable({ regular, career, percentiles, viewMode = 'pe
             .filter(c => !HIDDEN.has(c.key))
         : [];
   const careerRow = career?.rows?.[0];
+  // Column-hiding at the narrowest mobile tier is scoped to Per Game/Totals only for now --
+  // Advanced/Game Log/Splits/PBP use different key schemes and haven't had this pass yet.
+  const hideLowPriority = viewMode === 'perGame' || viewMode === 'totals';
 
   const sortedRows = useMemo(() => {
     if (!rows || !sort) return rows;
@@ -137,7 +140,7 @@ export default function BrefTable({ regular, career, percentiles, viewMode = 'pe
             <tr>{cols.map(c => (
               <th
                 key={c.key}
-                className="bref-th-sortable"
+                className={['bref-th-sortable', hideLowPriority && LOW_PRIORITY_COLS.has(c.key) ? 'bref-col-low-priority' : ''].filter(Boolean).join(' ')}
                 aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}
                 onClick={() => toggleSort(c.key)}
               >
@@ -160,7 +163,11 @@ export default function BrefTable({ regular, career, percentiles, viewMode = 'pe
                     return (
                       <td
                         key={c.key}
-                        className={[LEFT_COLS.has(c.key) ? 'td-l' : '', extraClass].filter(Boolean).join(' ')}
+                        className={[
+                          LEFT_COLS.has(c.key) ? 'td-l' : '',
+                          hideLowPriority && LOW_PRIORITY_COLS.has(c.key) ? 'bref-col-low-priority' : '',
+                          extraClass,
+                        ].filter(Boolean).join(' ')}
                         style={{ backgroundColor: percColor(perc) }}
                         title={perc !== null && perc !== undefined ? `${ordinal(perc)} percentile` : undefined}
                       >
@@ -174,7 +181,13 @@ export default function BrefTable({ regular, career, percentiles, viewMode = 'pe
             {careerRow && (
               <tr className="career-row">
                 {cols.map(c => (
-                  <td key={c.key} className={LEFT_COLS.has(c.key) ? 'td-l' : ''}>
+                  <td
+                    key={c.key}
+                    className={[
+                      LEFT_COLS.has(c.key) ? 'td-l' : '',
+                      hideLowPriority && LOW_PRIORITY_COLS.has(c.key) ? 'bref-col-low-priority' : '',
+                    ].filter(Boolean).join(' ')}
+                  >
                     {c.key === 'SEASON_ID' ? 'Career'
                       : c.key === 'TEAM_ABBREVIATION' ? ''
                       : fmt(c.kind, careerRow[c.idx])}

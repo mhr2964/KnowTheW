@@ -19,7 +19,7 @@
   font-size: 1rem; font-weight: 800; color: var(--accent);
 }
 .player-hero-team { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
-.player-hero-name { font-size: 2rem; font-weight: 800; line-height: 1.1; }
+.player-hero-name { font-size: clamp(1.3rem, 6vw, 2rem); font-weight: 800; line-height: 1.1; }
 /* Sibling hero actions (Compare with... / Similar players →) sit in a wrapping row. */
 .player-hero-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.35rem; }
 

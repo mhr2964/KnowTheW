@@ -69,6 +69,10 @@
   .search-btn { padding: 0.65rem 0.55rem; }
   .search-input { min-width: 70px; }
 
+  /* GS/ORB/DRB/PF on Per Game and Totals only (BrefTable.jsx gates by viewMode) -- TRB/G/MP/
+     shooting-pct already cover the same ground more usefully at a glance at this width. */
+  .bref-col-low-priority { display: none; }
+
   .th-full { display: none; }
   .th-short { display: inline; }
   /* Row-level gold accent + top banner already signal championship; pill is redundant here. */
