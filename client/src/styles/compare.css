@@ -597,14 +597,17 @@
 .compare-radar-legend-item--b::before { background: var(--compare-b); }
 
 /* ── Profile row: playstyle radar + accolades, paired side by side ── */
-/* Neither child stretches (no flex:1/1fr) — they size to content and center as a group, which is
-   what avoids the drift bug the earlier two-column grid had. flex-wrap handles narrow viewports
-   without a breakpoint: the pair just stacks instead of squeezing. Either half is optional. */
+/* Neither child grows horizontally (no flex:1/1fr) — they size to content and center as a group,
+   which is what avoids the drift bug the earlier two-column grid had. flex-wrap handles narrow
+   viewports without a breakpoint: the pair just stacks instead of squeezing. Either half is
+   optional. Vertically, `stretch` (not flex-start) gives both columns the height of the taller one
+   (almost always the radar) — the accolades column then centers its own short content within that
+   full height instead of clinging to the top with a large empty gap trailing below it. */
 .compare-verdict-profile-row {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 2.5rem;
   padding-top: 0.6rem;
   border-top: 1px solid var(--border);
@@ -620,11 +623,13 @@
 
 /* Accolades — one flowing text line per side, not bordered chips (chips read as filter/tag
    controls, which these aren't). The player's name is bold and side-colored so "whose" reads from
-   color alone, same language as the magnitude bars and grade-card winner tint. */
+   color alone, same language as the magnitude bars and grade-card winner tint. `justify-content:
+   center` is what centers the (usually short) content within the row's full stretched height. */
 .compare-verdict-accolades-col {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
   max-width: 22rem;
   padding-top: 0.1rem;
