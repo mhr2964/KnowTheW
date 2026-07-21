@@ -340,7 +340,7 @@
   width: 100%;
   height: 10px;
   background: rgba(255, 255, 255, 0.10);
-  border-radius: 999px;
+  border-radius: 3px;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.03);
 }
 .compare-mag-bar--lg .compare-mag-bar-track { height: 13px; }
@@ -357,9 +357,11 @@
 /* Rounded on the outer tip only, square on the center-facing edge — a partial fill rounded on
    both ends reads as a separate floating capsule sitting inside the track's own capsule ("oval on
    top of oval"). Squaring the center edge makes the fill look like it's growing out of the center
-   divider instead. Gradient (vs. a flat solid color) adds a subtle glossy roundness so the fill
-   doesn't read as a flat sticker; a single vertical (not horizontal) gradient direction works
-   identically regardless of which side is extending, so both --a/--b need only one variant each. */
+   divider instead. A small (not pill-full) radius on the track/tip keeps this a sharp rectangular
+   bar rather than an oblong capsule shape. Gradient (vs. a flat solid color) adds a subtle glossy
+   roundness so the fill doesn't read as a flat sticker; a single vertical (not horizontal)
+   gradient direction works identically regardless of which side is extending, so both --a/--b
+   need only one variant each. */
 .compare-mag-bar-fill {
   position: absolute;
   top: 0;
@@ -367,12 +369,12 @@
 }
 .compare-mag-bar-fill--a {
   right: 50%;
-  border-radius: 999px 0 0 999px;
+  border-radius: 3px 0 0 3px;
   background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 100%, white 18%), var(--accent));
 }
 .compare-mag-bar-fill--b {
   left: 50%;
-  border-radius: 0 999px 999px 0;
+  border-radius: 0 3px 3px 0;
   background: linear-gradient(180deg, color-mix(in srgb, var(--compare-b) 100%, white 18%), var(--compare-b));
 }
 .compare-mag-bar-margin {
