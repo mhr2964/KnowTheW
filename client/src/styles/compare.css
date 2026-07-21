@@ -767,17 +767,24 @@
 }
 
 /* Fight-night score row */
+/* Grid, not flex — a flex row with two flex:1 sides shrink-wraps to each side's own content width,
+   so the divider (the true visual center a viewer's eye anchors to) drifts off the card's actual
+   center by half the difference between the two player names' rendered widths. A grid with two
+   explicitly equal 1fr columns forces both sides to the same width regardless of name length, so
+   the divider always sits at the true center. */
 .compare-verdict-fight {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 0;
+  width: 100%;
+  max-width: 32rem;
+  margin: 0 auto;
 }
 
 .compare-verdict-fight-side {
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  flex: 1;
 }
 
 .compare-verdict-fight-side--left {
@@ -788,30 +795,46 @@
   justify-content: flex-start;
 }
 
+/* Side identity (orange/blue) is permanent, matching the same accent/compare-b convention used
+   everywhere else on this card (accolade names, radar legend, grade-badge winner border) — not
+   conditional on who's winning, which previously left the loser in plain gray and the winner in
+   flat white/orange regardless of side, breaking that convention. Winning is signaled by weight
+   and opacity instead, since color is now spoken for. */
 .compare-verdict-fight-name {
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-muted);
   white-space: nowrap;
+  opacity: 0.75;
+}
+
+.compare-verdict-fight-side--left .compare-verdict-fight-name,
+.compare-verdict-fight-side--left .compare-verdict-score {
+  color: var(--accent);
+}
+
+.compare-verdict-fight-side--right .compare-verdict-fight-name,
+.compare-verdict-fight-side--right .compare-verdict-score {
+  color: var(--compare-b);
 }
 
 .compare-verdict-fight-side--winner .compare-verdict-fight-name {
-  color: var(--text);
+  font-weight: 900;
+  opacity: 1;
 }
 
 .compare-verdict-score {
   font-size: 1.6rem;
   font-weight: 900;
-  color: var(--text-muted);
   line-height: 1;
   min-width: 1.4ch;
   text-align: center;
+  opacity: 0.6;
 }
 
 .compare-verdict-score--winner {
-  color: var(--accent);
+  opacity: 1;
 }
 
 .compare-verdict-fight-divider {
@@ -819,7 +842,6 @@
   font-weight: 300;
   color: var(--text-muted);
   padding: 0 0.5rem;
-  flex-shrink: 0;
 }
 
 /* Tied categories note */
@@ -831,10 +853,17 @@
 }
 
 /* Adversarial overall grades row */
+/* Grid, not flex, same reason as the fight-score row above: two flex:1 sides shrink-wrap to their
+   own badge's content width, so if the two grade badges render at different widths (e.g. "A+" vs
+   "F" — a longer string past the badge's min-width floor) the bar drifts off the card's true
+   center. Equal 1fr columns force both badge slots to the same width regardless of grade text. */
 .compare-verdict-overall-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 0;
+  width: 100%;
+  max-width: 36rem;
+  margin: 0 auto;
   border-top: 1px solid var(--border);
   padding-top: 0.55rem;
 }
@@ -843,7 +872,6 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  flex: 1;
 }
 
 .compare-verdict-overall-side--left {
