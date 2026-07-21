@@ -294,10 +294,12 @@
 .archetype-conf-dot.conf-medium { background: var(--champion-text); }
 .archetype-conf-dot.conf-low    { background: var(--text-muted); }
 
+/* Portal-rendered to body with position:fixed + JS-computed left/top (ArchetypeBadge.jsx),
+   same approach as .stat-help-pop -- isn't clipped by an ancestor's overflow, and the JS clamps
+   left within the viewport instead of assuming the pill sits near the left edge (the mobile hero
+   centers it, so left:0-relative-to-pill used to run the card off the right edge of the screen). */
 .archetype-card {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
+  position: fixed;
   z-index: 40;
   width: 320px;
   max-width: 90vw;

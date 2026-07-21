@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import FingerprintRadar from './FingerprintRadar';
+
+const CARD_MAX = 320;
 
 // Archetype badge. The pill names the archetype; the card (radar + descriptor + expandable 13-bar
 // detail) opens on hover/focus and can be PINNED open by click/tap.
@@ -28,7 +31,9 @@ export default function ArchetypeBadge({ playerId, name = null, confidence = nul
   // `armed` gates the fetch: eager when we have no name to show (player hero), otherwise deferred
   // until the card is first opened. Once armed it stays armed (useLazyFetch fetches once).
   const [armed, setArmed] = useState(!name);
+  const [pos, setPos] = useState(null);
   const wrapRef = useRef(null);
+  const cardRef = useRef(null);
   const { data } = useLazyFetch(`/api/players/${playerId}/archetype`, armed);
 
   const show = hovered || pinned;
@@ -36,13 +41,38 @@ export default function ArchetypeBadge({ playerId, name = null, confidence = nul
   // First open arms the deferred fetch.
   useEffect(() => { if (show) setArmed(true); }, [show]);
 
+  // Card is portal-rendered to <body> with position:fixed and JS-computed coordinates (same
+  // approach as HeaderTooltip) so it isn't clipped by an ancestor's overflow, and isn't anchored
+  // left:0 against a pill that the mobile hero centers — clamp within the viewport instead of
+  // assuming the pill sits near the left edge.
+  useEffect(() => {
+    if (!show) return undefined;
+    const reposition = () => {
+      const r = wrapRef.current?.getBoundingClientRect();
+      if (!r) return;
+      const cardWidth = Math.min(CARD_MAX, window.innerWidth * 0.9);
+      const left = Math.min(Math.max(r.left, 8), window.innerWidth - cardWidth - 8);
+      setPos({ left, top: r.bottom + 8 });
+    };
+    reposition();
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
+    return () => {
+      window.removeEventListener('resize', reposition);
+      window.removeEventListener('scroll', reposition, true);
+    };
+  }, [show]);
+
   // Escape and outside-click dismiss the card entirely (covers the pinned/keyboard cases that
   // mouseleave doesn't).
   useEffect(() => {
     if (!show) return undefined;
     const dismiss = () => { setPinned(false); setHovered(false); };
     const onKey = (e) => { if (e.key === 'Escape') dismiss(); };
-    const onDown = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) dismiss(); };
+    const onDown = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)
+        && cardRef.current && !cardRef.current.contains(e.target)) dismiss();
+    };
     document.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onDown);
     return () => {
@@ -85,8 +115,14 @@ export default function ArchetypeBadge({ playerId, name = null, confidence = nul
         {pillName}
       </button>
 
-      {show && (
-        <div className="archetype-card" role="dialog" aria-label={`${pillName} fingerprint`}>
+      {show && pos && createPortal(
+        <div
+          ref={cardRef}
+          className="archetype-card"
+          role="dialog"
+          aria-label={`${pillName} fingerprint`}
+          style={{ left: pos.left, top: pos.top }}
+        >
           {!loaded ? (
             <p className="archetype-descriptor">Loading fingerprint…</p>
           ) : (
@@ -132,7 +168,8 @@ export default function ArchetypeBadge({ playerId, name = null, confidence = nul
               )}
             </>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
