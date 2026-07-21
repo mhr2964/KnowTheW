@@ -138,6 +138,9 @@
   border-radius: var(--radius); color: var(--accent);
   padding: 0.4rem 0.9rem; font-size: 0.8rem; font-weight: 600;
   cursor: pointer; transition: background 0.12s, border-color 0.12s;
+  /* Squeezing this into 3 lines inside a flex row read as broken, not just cramped --
+     wrap the row instead (stat-table-header/player-hero-actions both allow it). */
+  white-space: nowrap;
 }
 .study-trigger-btn:hover, .compare-trigger-btn:hover { background: var(--surface); border-color: var(--accent); }
 

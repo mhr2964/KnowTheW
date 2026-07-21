@@ -18,9 +18,25 @@
   .player-hero-meta { justify-content: center; }
 
   .stat-type-tabs { padding: 0.5rem 0.5rem 0; gap: 0.15rem; }
-  .stat-type-tab { font-size: 0.7rem; padding: 0.32rem 0.55rem 0.42rem; }
+  .stat-type-tab {
+    font-size: 0.7rem; padding: 0.32rem 0.55rem 0.42rem;
+    display: inline-flex; align-items: center; min-height: var(--touch-target-min);
+  }
   .bref-table { font-size: 0.7rem; }
   .bref-table th, .bref-table td { padding: 0.3rem 0.45rem; }
+
+  /* Player-page controls never got a mobile tap-target pass -- these all sat well under
+     --touch-target-min (some as low as ~24px tall). */
+  .stat-season-tab {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: var(--touch-target-min);
+  }
+  .gl-select { min-height: var(--touch-target-min); padding: 0.55rem 0.6rem; }
+  .gl-page-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: var(--touch-target-min);
+  }
+  .archetype-detail-toggle { min-height: var(--touch-target-min); display: flex; align-items: center; }
 
   /* Cell value size reduction */
   .compare-cell-a, .compare-cell-b, .compare-cell-single { font-size: 0.7rem; }
