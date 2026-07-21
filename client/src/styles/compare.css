@@ -1,10 +1,17 @@
 /* ── Compare Page ── */
-/* Photo (PlayerAvatar) sits beside whichever row currently shows the player's name — the
-   fight-score row once grades load — instead of stacked inside a hero block; team/jersey/Change
-   (PlayerMeta) stays paired with the grade badge below. Splitting these apart (rather than one
-   combined PlayerHero block) is what let the photo move next to the name without dragging
-   team/jersey/Change along, and dropped the redundant name/archetype-badge repeat this card used
-   to have flanking the overall grade. */
+/* Photo (PlayerAvatar) and team/jersey/Change (PlayerMeta) travel together as one
+   `.compare-hero-cluster` unit, sitting beside whichever row currently shows the player's name —
+   the fight-score row once grades load — with extra gap between the cluster and the name so it
+   reads as its own grouping rather than crowding the name/score. Splitting the photo and meta into
+   two components (rather than one combined PlayerHero block) is what let them move as a pair
+   without also dragging along the name/archetype-badge repeat this card used to have. */
+.compare-hero-cluster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
 .compare-hero-avatar {
   width: 64px;
   height: 64px;
@@ -742,14 +749,17 @@
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   width: 100%;
-  max-width: 32rem;
+  max-width: 44rem;
   margin: 0 auto;
 }
 
+/* Bigger gap than a normal inline gap — separates the photo/team/Change cluster from the
+   name+score as two distinct groupings instead of one crowded row. The name and score keep a
+   tighter gap between themselves via `.compare-verdict-fight-namescore`. */
 .compare-verdict-fight-side {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 1.1rem;
   min-width: 0;
 }
 
@@ -761,9 +771,30 @@
   justify-content: flex-start;
 }
 
+.compare-verdict-fight-namescore {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+/* Stacked instead of side-by-side at phone widths — the cluster (photo+team+Change) and the
+   name+score were competing for the same ~130px of horizontal room, leaving the name only ~25px
+   and truncating it to a couple of letters. Stacking removes the competition entirely instead of
+   continuing to shrink text to fit. */
 @media (max-width: 480px) {
-  .compare-verdict-fight-side { gap: 0.35rem; }
-  .compare-verdict-fight-name { font-size: 0.68rem; letter-spacing: 0.03em; }
+  /* flex-end, not center — with the cluster stacked above the name+score, each side's column is
+     much taller than the single-line divider; centering the divider against the whole column's
+     height stranded it up near the cluster row instead of level with the actual name/score text. */
+  .compare-verdict-fight { align-items: flex-end; }
+  .compare-verdict-fight-side { flex-direction: column; gap: 0.3rem; }
+  /* Force the same top-to-bottom order on both sides (cluster, then name+score) — the DOM order
+     is mirrored (cluster first on the left, last on the right) so it reads left-to-right as
+     "outside → center" in the desktop horizontal layout; stacked vertically that mirroring just
+     made the two sides inconsistent with each other. */
+  .compare-hero-cluster { order: 1; }
+  .compare-verdict-fight-namescore { order: 2; gap: 0.35rem; }
+  .compare-verdict-fight-name { font-size: 0.68rem; letter-spacing: 0.03em; max-width: 8rem; }
   .compare-verdict-score { font-size: 1.3rem; }
 }
 

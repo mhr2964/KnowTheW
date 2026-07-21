@@ -117,16 +117,24 @@ export default function CompareVerdict({
   // layouts (the prior two-column grid stranded the score content at wide viewports; see git history).
   const radar = <RadarBlock archA={archA} archB={archB} nameA={nameA} nameB={nameB} />;
 
-  // Photo (PlayerAvatar) and team/jersey/Change (PlayerMeta) are split apart deliberately — the
-  // photo travels with whichever row is currently showing the player's name (the fight-score row
-  // once grades load; a plain name label before that), while meta stays paired with the grade
-  // badge/skeleton below. Both are driven by the player-profile fetch, independent of report
-  // loading (a player's photo/team resolves long before the AI grade does), matching the same
-  // independence `RadarBlock` already relies on.
-  const avatarA = <PlayerAvatar player={playerA} loading={loadingHeroA} error={errorHeroA} />;
-  const avatarB = <PlayerAvatar player={playerB} loading={loadingHeroB} error={errorHeroB} />;
-  const metaA = <PlayerMeta player={playerA} loading={loadingHeroA} error={errorHeroA} onChangeSide={onChangeSideA} finalTeamName={finalTeamNameA} />;
-  const metaB = <PlayerMeta player={playerB} loading={loadingHeroB} error={errorHeroB} onChangeSide={onChangeSideB} finalTeamName={finalTeamNameB} />;
+  // Photo (PlayerAvatar) and team/jersey/Change (PlayerMeta) travel together as one cluster,
+  // separated from the name by extra gap so the cluster reads as its own unit rather than
+  // crowding the name/score — the cluster sits with whichever row currently shows the player's
+  // name (the fight-score row once grades load; a plain name label before that). Both are driven
+  // by the player-profile fetch, independent of report loading (a player's photo/team resolves
+  // long before the AI grade does), matching the same independence `RadarBlock` already relies on.
+  const clusterA = (
+    <div className="compare-hero-cluster">
+      <PlayerAvatar player={playerA} loading={loadingHeroA} error={errorHeroA} />
+      <PlayerMeta player={playerA} loading={loadingHeroA} error={errorHeroA} onChangeSide={onChangeSideA} finalTeamName={finalTeamNameA} />
+    </div>
+  );
+  const clusterB = (
+    <div className="compare-hero-cluster">
+      <PlayerAvatar player={playerB} loading={loadingHeroB} error={errorHeroB} />
+      <PlayerMeta player={playerB} loading={loadingHeroB} error={errorHeroB} onChangeSide={onChangeSideB} finalTeamName={finalTeamNameB} />
+    </div>
+  );
 
   if (loading) {
     return (
@@ -134,18 +142,16 @@ export default function CompareVerdict({
         <p className="compare-verdict-label">AT A GLANCE</p>
         <div className="compare-verdict-overall-row">
           <div className="compare-verdict-overall-side compare-verdict-overall-side--left">
-            {avatarA}
+            {clusterA}
             <span className="compare-verdict-fight-name">{nameA}</span>
-            {metaA}
           </div>
           <div className="compare-verdict-overall-center">
             <div className="compare-verdict-skeleton-line" />
             <div className="compare-verdict-skeleton-line compare-verdict-skeleton-line--short" />
           </div>
           <div className="compare-verdict-overall-side compare-verdict-overall-side--right">
-            {avatarB}
+            {clusterB}
             <span className="compare-verdict-fight-name">{nameB}</span>
-            {metaB}
           </div>
         </div>
         {radar}
@@ -164,9 +170,8 @@ export default function CompareVerdict({
         <p className="compare-verdict-label">AT A GLANCE</p>
         <div className="compare-verdict-overall-row">
           <div className="compare-verdict-overall-side compare-verdict-overall-side--left">
-            {avatarA}
+            {clusterA}
             <span className="compare-verdict-fight-name">{nameA}</span>
-            {metaA}
             {gradeA ? <GradeBadge grade={gradeA} size="large" /> : <span className="compare-verdict-grade-dash">—</span>}
           </div>
           <div className="compare-verdict-overall-center">
@@ -181,9 +186,8 @@ export default function CompareVerdict({
             </p>
           </div>
           <div className="compare-verdict-overall-side compare-verdict-overall-side--right">
-            {avatarB}
+            {clusterB}
             <span className="compare-verdict-fight-name">{nameB}</span>
-            {metaB}
             {gradeB ? <GradeBadge grade={gradeB} size="large" /> : <span className="compare-verdict-grade-dash">—</span>}
           </div>
         </div>
@@ -212,15 +216,19 @@ export default function CompareVerdict({
       <div className="compare-verdict-score-col">
         <div className="compare-verdict-fight">
           <span className={`compare-verdict-fight-side compare-verdict-fight-side--left${aWinsOverall ? ' compare-verdict-fight-side--winner' : ''}`}>
-            {avatarA}
-            <span className="compare-verdict-fight-name">{nameA}</span>
-            <span className={`compare-verdict-score${aWinsOverall ? ' compare-verdict-score--winner' : ''}`}>{wonByA}</span>
+            {clusterA}
+            <span className="compare-verdict-fight-namescore">
+              <span className="compare-verdict-fight-name">{nameA}</span>
+              <span className={`compare-verdict-score${aWinsOverall ? ' compare-verdict-score--winner' : ''}`}>{wonByA}</span>
+            </span>
           </span>
           <span className="compare-verdict-fight-divider">—</span>
           <span className={`compare-verdict-fight-side compare-verdict-fight-side--right${bWinsOverall ? ' compare-verdict-fight-side--winner' : ''}`}>
-            <span className={`compare-verdict-score${bWinsOverall ? ' compare-verdict-score--winner' : ''}`}>{wonByB}</span>
-            <span className="compare-verdict-fight-name">{nameB}</span>
-            {avatarB}
+            <span className="compare-verdict-fight-namescore">
+              <span className={`compare-verdict-score${bWinsOverall ? ' compare-verdict-score--winner' : ''}`}>{wonByB}</span>
+              <span className="compare-verdict-fight-name">{nameB}</span>
+            </span>
+            {clusterB}
           </span>
         </div>
 
@@ -233,7 +241,6 @@ export default function CompareVerdict({
         {overallA && overallB && (
           <div className="compare-verdict-overall-row">
             <div className="compare-verdict-overall-side compare-verdict-overall-side--left">
-              {metaA}
               <GradeBadge grade={overallA} size="large" winnerSide={aWinsOverall ? 'a' : null} />
             </div>
             <div className="compare-verdict-overall-center">
@@ -241,7 +248,6 @@ export default function CompareVerdict({
               <CompareMagnitudeBar gradeA={overallA} gradeB={overallB} size="lg" />
             </div>
             <div className="compare-verdict-overall-side compare-verdict-overall-side--right">
-              {metaB}
               <GradeBadge grade={overallB} size="large" winnerSide={bWinsOverall ? 'b' : null} />
             </div>
           </div>
