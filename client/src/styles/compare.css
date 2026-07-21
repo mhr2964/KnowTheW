@@ -13,11 +13,6 @@
   flex-shrink: 0;
 }
 
-/* Nudged toward the card's center via transform (doesn't affect layout width/flow) — a shared
-   fixed-width side column already centers the avatar within itself, but the user wants the photo
-   itself to sit a bit closer to the middle rather than dead-center of its own column. */
-.compare-verdict-headline-side:first-child .compare-hero-avatar { transform: translateX(0.45rem); }
-.compare-verdict-headline-side:last-child .compare-hero-avatar { transform: translateX(-0.45rem); }
 .compare-hero-avatar.placeholder {
   background: var(--surface-2);
   color: var(--text-muted);
@@ -37,8 +32,6 @@
    issue: this alone doesn't replace the shrink fix above, it just gives shrinking more room to work with. */
 @media (max-width: 480px) {
   .compare-hero-avatar { width: 56px; height: 56px; }
-  .compare-verdict-headline-side:first-child .compare-hero-avatar { transform: translateX(0.2rem); }
-  .compare-verdict-headline-side:last-child .compare-hero-avatar { transform: translateX(-0.2rem); }
 }
 
 .compare-hero-meta-skeleton {
@@ -542,6 +535,15 @@
   min-width: 0;
 }
 
+/* Nudges the whole photo+badge+Change cluster toward center as one rigid unit (transform on the
+   column itself, not on the avatar alone) — an earlier round transformed only the avatar, which
+   left the badge/Change link behind on the column's untransformed axis once the photo visually
+   shifted. Value is measured, not guessed: aims for the true midpoint between the card's inner
+   edge and the fight-name row's actual rendered text edge (not the wider grid-track boundary),
+   calibrated against short- and long-name matchups so no single pair's name length dictates it. */
+.compare-verdict-headline-side:first-child { transform: translateX(5.7rem); }
+.compare-verdict-headline-side:last-child { transform: translateX(-5.7rem); }
+
 .compare-verdict-headline-center {
   display: flex;
   flex-direction: column;
@@ -552,6 +554,11 @@
 
 @media (max-width: 480px) {
   .compare-verdict-headline { grid-template-columns: 4.75rem 1fr 4.75rem; gap: 0.4rem; }
+  /* Small nudge, not the desktop value scaled down — at this width the 56px avatar already sits
+     close to the fight-name text, and any further push toward center risks the same overlap the
+     name's own max-width below is guarding against. */
+  .compare-verdict-headline-side:first-child { transform: translateX(0.2rem); }
+  .compare-verdict-headline-side:last-child { transform: translateX(-0.2rem); }
 }
 
 /* Radar + accolades share this row. Stacked on narrow/medium viewports (each already centers
@@ -568,7 +575,12 @@
 @media (min-width: 820px) {
   .compare-verdict-profile-row {
     flex-direction: row;
-    align-items: flex-start;
+    /* center, not flex-start — a short accolades block (few/no chips) next to the taller radar
+       used to top-align and dump all its slack below; centering splits it evenly instead, which
+       reads as deliberate rather than "ran out of content." Nothing's height is forced to match
+       (that was tried and abandoned earlier in this card's history) — each box still sizes to its
+       own content, only its position within the row's height changes. */
+    align-items: center;
     justify-content: center;
     gap: 3rem;
   }
@@ -642,9 +654,14 @@
   gap: 0.5rem;
   max-width: 32rem;
 }
+/* align-items: center (not the flex default stretch) — a lopsided matchup (one side 6 chips, the
+   other a single "None") used to stretch both columns to equal height, top-anchoring the shorter
+   column's content and dumping its slack below. Centering sizes each column to its own content and
+   centers it against the taller sibling instead. */
 .compare-accolades-row {
   display: flex;
   width: 100%;
+  align-items: center;
   gap: 1.5rem;
 }
 .compare-accolades-col {
@@ -661,10 +678,14 @@
 }
 .compare-accolades-col--a .compare-accolade-col-name { color: var(--accent); }
 .compare-accolades-col--b .compare-accolade-col-name { color: var(--compare-b); }
+/* Stacked one-per-line, not a wrapped row — reads as a clean list and gives a many-accolade player
+   (up to 7 possible chips) room to grow downward toward the radar's own height instead of wrapping
+   into an uneven multi-row block. Centered rather than stretched to a uniform width since chip text
+   length varies a lot ("MVP" vs. "All-WNBA 1st ×3"). */
 .compare-accolade-chips {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   gap: 0.35rem;
 }
 .compare-accolade-chip {
@@ -760,6 +781,14 @@
   text-align: center;
 }
 
+/* .compare-verdict's flex `gap` applies uniformly between every direct child (label, headline,
+   profile-row, summaries, volume note) and can't be made non-uniform on its own — this scoped
+   negative margin pulls just the headline row closer to the label above it. Every gap after this
+   one stays at the container's full gap value, just shifted upward as a block. */
+.compare-verdict-label + .compare-verdict-headline {
+  margin-top: -0.7rem;
+}
+
 /* Fight-night score row — its own grid with symmetric `1fr` name columns flanking the score
    cluster. A flex row centered via `justify-content` only centers the row's own shrink-wrapped
    width; it does nothing to center the dash itself when the two names are different lengths,
@@ -779,6 +808,18 @@
    grade-badge winner border) — not conditional on who's winning, which previously left the loser
    in plain gray and the winner in flat white/orange regardless of side. Winning is signaled by
    weight and opacity instead, since color is now spoken for. */
+/* justify-self: end/start (a non-stretch alignment) sizes the item to its own content instead of
+   stretching it to fill the whole (possibly very wide) 1fr track — which is exactly what lets a
+   short name hug close to the score/dash instead of floating wherever a wide track happens to put
+   it. That only becomes a problem when there's no `max-width` at all to fall back on: with no cap,
+   the item's content-based size has nothing bounding it, so overflow/ellipsis has no box to clip
+   against and it renders at full natural width (this broke mobile once `max-width` was dropped to
+   `none` for that breakpoint — see the mobile override below, which restores a real cap instead of
+   removing it. An earlier attempt at this fix tried `width: 100%` instead, which does force a
+   bounded box, but ALSO makes short names balloon out to the full max-width cap even when they
+   don't need it — at desktop's much wider track that pushed a short name's left edge into the
+   avatar. Keeping justify-self content-sizing and just ensuring max-width is always a real number,
+   never `none`, is the fix that doesn't have that side effect.) */
 .compare-verdict-fight-name {
   font-size: 0.94rem;
   font-weight: 700;
@@ -830,9 +871,18 @@
    column is already the real constraint — names still fit within their column and don't need to be
    individually clamped once font-size drops from 0.94rem down to phone-appropriate size. */
 @media (max-width: 480px) {
-  .compare-verdict-fight-name { font-size: 0.74rem; max-width: none; }
+  /* max-width here must be a real number, never `none` — with `none`, a content-sized
+     (justify-self: end/start) item has nothing to cap it, so it renders at full natural width and
+     overflows into whatever's next to it (this caught a real overlap with the avatar, live, on a
+     long-name matchup). 4.5rem is roughly proportional to the halved avatar-column width at this
+     breakpoint (4.75rem vs. desktop's 8.5rem). */
+  .compare-verdict-fight-name { font-size: 0.74rem; max-width: 2.2rem; }
   .compare-verdict-score { font-size: 1.5rem; }
   .compare-verdict-fight-divider { font-size: 1.2rem; }
+  /* The center track is only ~136px wide at this breakpoint; the three auto-sized columns (score,
+     divider, score) plus 4 full-size gaps ate most of it — shrinking just the gap (not the font
+     sizes bumped up this same round) gives the name columns a bit more room to work with. */
+  .compare-verdict-fight { gap: 0.25rem; }
 }
 
 /* Tied categories note */
