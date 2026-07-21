@@ -16,6 +16,7 @@ export default function SplitsTab({ playerId, playerName, availableSeasons }) {
   const [retryCount, setRetryCount] = useState(0);
   const abortRef = useRef(null);
   const fetchedRef = useRef(new Set());
+  const exportRef = useRef(null);
 
   useEffect(() => {
     if (!season && availableSeasons.length > 0) setSeason(availableSeasons[0]);
@@ -67,6 +68,11 @@ export default function SplitsTab({ playerId, playerName, availableSeasons }) {
         <select className="gl-select" value={splitType} onChange={e => setSplitType(e.target.value)}>
           {SPLIT_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
         </select>
+        {current && (
+          <button type="button" className="btn-ghost bref-export-btn" onClick={() => exportRef.current?.()}>
+            Export CSV
+          </button>
+        )}
       </div>
       {loading && <p className="status-msg" style={{ padding: '1rem 0' }}>Loading splits…</p>}
       {error && (
@@ -80,6 +86,7 @@ export default function SplitsTab({ playerId, playerName, availableSeasons }) {
           regular={current}
           emptyMessage="No split data available."
           filename={`${playerName}-splits-${splitLabel.toLowerCase().replace(/\W+/g, '-')}-${season}.csv`}
+          exportRef={exportRef}
         />
       )}
     </>

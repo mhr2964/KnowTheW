@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import BrefTable from './BrefTable';
 
 export default function AdvancedTab({ pbpAllData, pbpAllLoading, pbpAllError, refetchPbp }) {
   const [advSeason, setAdvSeason] = useState('regular');
+  const exportRef = useRef(null);
 
   return (
     <>
@@ -27,10 +28,14 @@ export default function AdvancedTab({ pbpAllData, pbpAllLoading, pbpAllError, re
                   <button type="button" className={`stat-season-tab${advSeason === 'playoffs' ? ' active' : ''}`} onClick={() => setAdvSeason('playoffs')}>Playoffs</button>
                 )}
               </div>
+              <button type="button" className="btn-ghost bref-export-btn" onClick={() => exportRef.current?.()}>
+                Export CSV
+              </button>
             </div>
             <BrefTable
               regular={{ columns: pbpAllData.columns, rows: advSplit?.rows ?? [] }}
               career={advSplit?.careerRow ? { columns: pbpAllData.columns, rows: [advSplit.careerRow] } : null}
+              exportRef={exportRef}
             />
           </>
         );

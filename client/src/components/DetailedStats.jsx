@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import StudyFlow from './StudyFlow';
 import BrefTable from './BrefTable';
 import useLazyFetch from '../hooks/useLazyFetch';
@@ -33,6 +33,7 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
   const [activeSeason, setActiveSeason] = useState('regular');
   const [studyConfig, setStudyConfig] = useState(null);
   const [showPercentiles, setShowPercentiles] = useState(false);
+  const exportRef = useRef(null);
 
   const { data, loading, error, refetch: refetchCareer } = useLazyFetch(
     `/api/players/${playerId}/detailed-stats`,
@@ -179,9 +180,14 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
                 </label>
               )}
               {regular && (
-                <button type="button" className="study-trigger-btn" onClick={openStudy}>
-                  Study this table
-                </button>
+                <>
+                  <button type="button" className="study-trigger-btn" onClick={openStudy}>
+                    Study this table
+                  </button>
+                  <button type="button" className="btn-ghost bref-export-btn" onClick={() => exportRef.current?.()}>
+                    Export CSV
+                  </button>
+                </>
               )}
             </div>
             <BrefTable
@@ -191,6 +197,7 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
               viewMode={safeType}
               emptyMessage={isEmpty ? "Hasn't played WNBA games yet." : undefined}
               filename={`${playerName}-${safeType}${curSeason === 'playoffs' ? '-playoffs' : ''}.csv`}
+              exportRef={exportRef}
             />
           </>
         )}

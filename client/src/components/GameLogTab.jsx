@@ -33,7 +33,7 @@ function toBrefShape(log, games) {
   return { columns, rows };
 }
 
-function GameLogTable({ log, games, filename }) {
+function GameLogTable({ log, games, filename, exportRef }) {
   const regular = toBrefShape(log, games);
   return (
     <BrefTable
@@ -41,6 +41,7 @@ function GameLogTable({ log, games, filename }) {
       emptyMessage="No games logged yet."
       cellClassName={(row, col) => col.key === 'result' ? (row[col.idx]?.startsWith('W') ? 'gl-win' : 'gl-loss') : undefined}
       filename={filename}
+      exportRef={exportRef}
     />
   );
 }
@@ -55,6 +56,7 @@ export default function GameLogTab({ playerId, playerName, availableSeasons }) {
   const [glPageSize, setGlPageSize] = useState(25);
   const gameLogAbortRef = useRef(null);
   const gameLogFetchedRef = useRef(new Set());
+  const exportRef = useRef(null);
 
   useEffect(() => {
     if (!gameLogSeason && availableSeasons.length > 0) {
@@ -133,7 +135,12 @@ export default function GameLogTab({ playerId, playerName, availableSeasons }) {
           ))}
         </select>
         {allGames.length > 0 && (
-          <span className="gl-game-count">{allGames.length} games</span>
+          <>
+            <span className="gl-game-count">{allGames.length} games</span>
+            <button type="button" className="btn-ghost bref-export-btn" onClick={() => exportRef.current?.()}>
+              Export CSV
+            </button>
+          </>
         )}
       </div>
       {gameLogLoading && <p className="status-msg" style={{ padding: '1rem 0' }}>Loading game log…</p>}
@@ -145,7 +152,7 @@ export default function GameLogTab({ playerId, playerName, availableSeasons }) {
       )}
       {!gameLogLoading && !gameLogError && (
         <>
-          <GameLogTable log={currentLog} games={pagedGames} filename={`${playerName}-gamelog-${gameLogSeason}.csv`} />
+          <GameLogTable log={currentLog} games={pagedGames} filename={`${playerName}-gamelog-${gameLogSeason}.csv`} exportRef={exportRef} />
           {totalPages > 1 && (
             <div className="gl-pagination">
               <button

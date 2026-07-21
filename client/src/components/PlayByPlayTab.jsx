@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import useLazyFetch from '../hooks/useLazyFetch';
 import BrefTable from './BrefTable';
 
@@ -33,6 +34,7 @@ const COL_LABELS = {
 };
 
 export default function PlayByPlayTab({ playerId }) {
+  const exportRef = useRef(null);
   const { data, loading, error, refetch } = useLazyFetch(
     `/api/players/${playerId}/pbp-table`,
     true
@@ -56,10 +58,18 @@ export default function PlayByPlayTab({ playerId }) {
   const displayHeaders = data.headers.map(h => COL_LABELS[h] ?? h);
 
   return (
-    <BrefTable
-      headerGroups={HEADER_GROUPS}
-      regular={{ headers: displayHeaders, rows: data.regular.rows }}
-      career={data.regular.careerRow ? { headers: displayHeaders, rows: [data.regular.careerRow] } : null}
-    />
+    <>
+      <div className="bref-toolbar">
+        <button type="button" className="btn-ghost bref-export-btn" onClick={() => exportRef.current?.()}>
+          Export CSV
+        </button>
+      </div>
+      <BrefTable
+        headerGroups={HEADER_GROUPS}
+        regular={{ headers: displayHeaders, rows: data.regular.rows }}
+        career={data.regular.careerRow ? { headers: displayHeaders, rows: [data.regular.careerRow] } : null}
+        exportRef={exportRef}
+      />
+    </>
   );
 }

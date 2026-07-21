@@ -241,6 +241,9 @@
 }
 .gl-select:focus { border-color: var(--accent); }
 .gl-game-count { font-size: 0.8rem; color: var(--text-muted); margin-left: auto; }
+/* Pushes Export CSV to the row's right edge -- a no-op when gl-game-count already claims the
+   auto margin (Game Log), and the thing that right-aligns it when nothing else does (Splits). */
+.gl-controls .bref-export-btn { margin-left: auto; }
 .gl-pagination {
   display: flex; align-items: center; gap: 0.6rem;
   justify-content: center; padding: 0.65rem 0 0.25rem;

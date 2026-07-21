@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import HeaderTooltip from './HeaderTooltip';
 import { HIDDEN, LABELS, LOW_PRIORITY_COLS, PCT_COLS, PCT100_COLS } from '../lib/statsColumns';
 import { STAT_DEFINITIONS } from '../lib/statDefinitions';
@@ -79,20 +79,22 @@ function downloadCsv(filename, cols, rows, careerRow) {
   URL.revokeObjectURL(url);
 }
 
-export default function BrefTable({ regular, career, percentiles, viewMode = 'perGame', emptyMessage, headerGroups, cellClassName, filename }) {
+export default function BrefTable({ regular, career, percentiles, viewMode = 'perGame', emptyMessage, headerGroups, cellClassName, filename, exportRef }) {
   const [sort, setSort] = useState(null); // {key, dir: 1|-1} | null
 
   // Server-emitted `columns` ({key,label,kind}) is the primary path (detailed-stats,
   // advanced-pbp-all). A bare `headers` array is still a fallback for PlayByPlayTab, whose
   // PBP_TABLE_HEADERS keys live outside statColumns.js and aren't part of this migration.
   const { columns, headers, rows } = regular ?? {};
-  const cols = columns
-    ? columns.map((c, i) => ({ ...c, idx: i }))
-    : headers
-        ? headers
-            .map((h, i) => ({ key: h, idx: i, label: LABELS[h] ?? h, kind: PCT_COLS.has(h) ? 'pct' : PCT100_COLS.has(h) ? 'pct100' : 'num' }))
-            .filter(c => !HIDDEN.has(c.key))
-        : [];
+  const cols = useMemo(() => (
+    columns
+      ? columns.map((c, i) => ({ ...c, idx: i }))
+      : headers
+          ? headers
+              .map((h, i) => ({ key: h, idx: i, label: LABELS[h] ?? h, kind: PCT_COLS.has(h) ? 'pct' : PCT100_COLS.has(h) ? 'pct100' : 'num' }))
+              .filter(c => !HIDDEN.has(c.key))
+          : []
+  ), [columns, headers]);
   const careerRow = career?.rows?.[0];
   // Column-hiding at the narrowest mobile tier is scoped to Per Game/Totals only for now --
   // Advanced/Game Log/Splits/PBP use different key schemes and haven't had this pass yet.
@@ -112,92 +114,91 @@ export default function BrefTable({ regular, career, percentiles, viewMode = 'pe
     return null;
   });
 
+  // Export lives in whatever control row the caller already renders above this table (Study
+  // this table's row, gl-controls, etc.) instead of a second toolbar row of its own -- a stray
+  // row here was adding a visible gap between that row and the table. Callers that pass
+  // exportRef get a callback to wire their own button's onClick to.
+  useEffect(() => {
+    if (!exportRef) return undefined;
+    exportRef.current = regular ? () => downloadCsv(filename ?? 'stats.csv', cols, sortedRows ?? [], careerRow) : null;
+    return () => { exportRef.current = null; };
+  }, [exportRef, filename, cols, sortedRows, careerRow, regular]);
+
   if (!regular) return <p className="stats-na">{emptyMessage ?? 'No data available.'}</p>;
 
   return (
-    <>
-      <div className="bref-toolbar">
-        <button
-          type="button"
-          className="btn-ghost bref-export-btn"
-          onClick={() => downloadCsv(filename ?? 'stats.csv', cols, sortedRows, careerRow)}
-        >
-          Export CSV
-        </button>
-      </div>
-      <div className="bref-wrap">
-        <table className="bref-table">
-          <thead>
-            {headerGroups && (
-              <tr className="bref-group-row">
-                {headerGroups.map((g, i) => (
-                  <th key={i} colSpan={g.span} className={g.label ? 'bref-group-header' : 'bref-group-empty'}>
-                    {g.label}
-                  </th>
-                ))}
+    <div className="bref-wrap">
+      <table className="bref-table">
+        <thead>
+          {headerGroups && (
+            <tr className="bref-group-row">
+              {headerGroups.map((g, i) => (
+                <th key={i} colSpan={g.span} className={g.label ? 'bref-group-header' : 'bref-group-empty'}>
+                  {g.label}
+                </th>
+              ))}
+            </tr>
+          )}
+          <tr>{cols.map(c => (
+            <th
+              key={c.key}
+              className={['bref-th-sortable', hideLowPriority && LOW_PRIORITY_COLS.has(c.key) ? 'bref-col-low-priority' : ''].filter(Boolean).join(' ')}
+              aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}
+              onClick={() => toggleSort(c.key)}
+            >
+              <HeaderTooltip label={c.label} definition={STAT_DEFINITIONS[c.key]} />
+              <span className="bref-sort-indicator">
+                {sort?.key === c.key ? (sort.dir === 1 ? '▲' : '▼') : ''}
+              </span>
+            </th>
+          ))}</tr>
+        </thead>
+        <tbody>
+          {sortedRows.map((row, ri) => {
+            const seasonPerc = percentiles?.[String(row[0])]?.[viewMode];
+            return (
+              <tr key={ri}>
+                {cols.map(c => {
+                  const raw  = row[c.idx];
+                  const perc = seasonPerc?.[c.key];
+                  const extraClass = cellClassName?.(row, c) ?? '';
+                  return (
+                    <td
+                      key={c.key}
+                      className={[
+                        LEFT_COLS.has(c.key) ? 'td-l' : '',
+                        hideLowPriority && LOW_PRIORITY_COLS.has(c.key) ? 'bref-col-low-priority' : '',
+                        extraClass,
+                      ].filter(Boolean).join(' ')}
+                      style={{ backgroundColor: percColor(perc) }}
+                      title={perc !== null && perc !== undefined ? `${ordinal(perc)} percentile` : undefined}
+                    >
+                      {fmt(c.kind, raw)}
+                    </td>
+                  );
+                })}
               </tr>
-            )}
-            <tr>{cols.map(c => (
-              <th
-                key={c.key}
-                className={['bref-th-sortable', hideLowPriority && LOW_PRIORITY_COLS.has(c.key) ? 'bref-col-low-priority' : ''].filter(Boolean).join(' ')}
-                aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}
-                onClick={() => toggleSort(c.key)}
-              >
-                <HeaderTooltip label={c.label} definition={STAT_DEFINITIONS[c.key]} />
-                <span className="bref-sort-indicator">
-                  {sort?.key === c.key ? (sort.dir === 1 ? '▲' : '▼') : ''}
-                </span>
-              </th>
-            ))}</tr>
-          </thead>
-          <tbody>
-            {sortedRows.map((row, ri) => {
-              const seasonPerc = percentiles?.[String(row[0])]?.[viewMode];
-              return (
-                <tr key={ri}>
-                  {cols.map(c => {
-                    const raw  = row[c.idx];
-                    const perc = seasonPerc?.[c.key];
-                    const extraClass = cellClassName?.(row, c) ?? '';
-                    return (
-                      <td
-                        key={c.key}
-                        className={[
-                          LEFT_COLS.has(c.key) ? 'td-l' : '',
-                          hideLowPriority && LOW_PRIORITY_COLS.has(c.key) ? 'bref-col-low-priority' : '',
-                          extraClass,
-                        ].filter(Boolean).join(' ')}
-                        style={{ backgroundColor: percColor(perc) }}
-                        title={perc !== null && perc !== undefined ? `${ordinal(perc)} percentile` : undefined}
-                      >
-                        {fmt(c.kind, raw)}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-            {careerRow && (
-              <tr className="career-row">
-                {cols.map(c => (
-                  <td
-                    key={c.key}
-                    className={[
-                      LEFT_COLS.has(c.key) ? 'td-l' : '',
-                      hideLowPriority && LOW_PRIORITY_COLS.has(c.key) ? 'bref-col-low-priority' : '',
-                    ].filter(Boolean).join(' ')}
-                  >
-                    {c.key === 'SEASON_ID' ? 'Career'
-                      : c.key === 'TEAM_ABBREVIATION' ? ''
-                      : fmt(c.kind, careerRow[c.idx])}
-                  </td>
-                ))}
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </>
+            );
+          })}
+          {careerRow && (
+            <tr className="career-row">
+              {cols.map(c => (
+                <td
+                  key={c.key}
+                  className={[
+                    LEFT_COLS.has(c.key) ? 'td-l' : '',
+                    hideLowPriority && LOW_PRIORITY_COLS.has(c.key) ? 'bref-col-low-priority' : '',
+                  ].filter(Boolean).join(' ')}
+                >
+                  {c.key === 'SEASON_ID' ? 'Career'
+                    : c.key === 'TEAM_ABBREVIATION' ? ''
+                    : fmt(c.kind, careerRow[c.idx])}
+                </td>
+              ))}
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
   );
 }
