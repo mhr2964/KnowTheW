@@ -117,41 +117,35 @@ export default function CompareVerdict({
   // layouts (the prior two-column grid stranded the score content at wide viewports; see git history).
   const radar = <RadarBlock archA={archA} archB={archB} nameA={nameA} nameB={nameB} />;
 
-  // Photo (PlayerAvatar) and the Change link (PlayerMeta) travel together as one cluster,
-  // separated from the name by extra gap so the cluster reads as its own unit rather than
-  // crowding the name/score — the cluster sits with whichever row currently shows the player's
-  // name (the fight-score row once grades load; a plain name label before that). The avatar is
+  // Avatar and Change link always sit in the same fixed-width side column as the grade badge
+  // below them — a single shared grid (`.compare-verdict-headline`) rather than two separately
+  // laid-out rows, so the photo and the badge are guaranteed to land on the same vertical axis
+  // instead of drifting apart based on how wide the center content happens to be. The avatar is
   // driven by the player-profile fetch, independent of report loading (a player's photo resolves
   // long before the AI grade does), matching the same independence `RadarBlock` already relies on.
-  const clusterA = (
-    <div className="compare-hero-cluster">
-      <PlayerAvatar player={playerA} loading={loadingHeroA} error={errorHeroA} />
-      <PlayerMeta loading={loadingHeroA} onChangeSide={onChangeSideA} />
-    </div>
-  );
-  const clusterB = (
-    <div className="compare-hero-cluster">
-      <PlayerAvatar player={playerB} loading={loadingHeroB} error={errorHeroB} />
-      <PlayerMeta loading={loadingHeroB} onChangeSide={onChangeSideB} />
-    </div>
-  );
+  const avatarA = <PlayerAvatar player={playerA} loading={loadingHeroA} error={errorHeroA} />;
+  const avatarB = <PlayerAvatar player={playerB} loading={loadingHeroB} error={errorHeroB} />;
+  const metaA = <PlayerMeta loading={loadingHeroA} onChangeSide={onChangeSideA} />;
+  const metaB = <PlayerMeta loading={loadingHeroB} onChangeSide={onChangeSideB} />;
 
   if (loading) {
     return (
       <div className="compare-verdict compare-verdict--skeleton">
         <p className="compare-verdict-label">AT A GLANCE</p>
-        <div className="compare-verdict-overall-row">
-          <div className="compare-verdict-overall-side compare-verdict-overall-side--left">
-            {clusterA}
-            <span className="compare-verdict-fight-name">{nameA}</span>
+        <div className="compare-verdict-headline">
+          <div className="compare-verdict-headline-side">
+            {avatarA}
+            <span className="compare-verdict-fight-name compare-verdict-fight-name--a">{nameA}</span>
+            {metaA}
           </div>
-          <div className="compare-verdict-overall-center">
+          <div className="compare-verdict-headline-center">
             <div className="compare-verdict-skeleton-line" />
             <div className="compare-verdict-skeleton-line compare-verdict-skeleton-line--short" />
           </div>
-          <div className="compare-verdict-overall-side compare-verdict-overall-side--right">
-            {clusterB}
-            <span className="compare-verdict-fight-name">{nameB}</span>
+          <div className="compare-verdict-headline-side">
+            {avatarB}
+            <span className="compare-verdict-fight-name compare-verdict-fight-name--b">{nameB}</span>
+            {metaB}
           </div>
         </div>
         {radar}
@@ -168,13 +162,14 @@ export default function CompareVerdict({
     return (
       <div className="compare-verdict">
         <p className="compare-verdict-label">AT A GLANCE</p>
-        <div className="compare-verdict-overall-row">
-          <div className="compare-verdict-overall-side compare-verdict-overall-side--left">
-            {clusterA}
-            <span className="compare-verdict-fight-name">{nameA}</span>
-            {gradeA ? <GradeBadge grade={gradeA} size="large" /> : <span className="compare-verdict-grade-dash">—</span>}
+        <div className="compare-verdict-headline">
+          <div className="compare-verdict-headline-side">
+            {avatarA}
+            <span className="compare-verdict-fight-name compare-verdict-fight-name--a">{nameA}</span>
+            <GradeBadge grade={gradeA} size="large" />
+            {metaA}
           </div>
-          <div className="compare-verdict-overall-center">
+          <div className="compare-verdict-headline-center">
             <span className="compare-verdict-overall-label">vs</span>
             <p className="compare-verdict-error-notice">
               Couldn&apos;t load graded report for {failingName}
@@ -185,10 +180,11 @@ export default function CompareVerdict({
               )}
             </p>
           </div>
-          <div className="compare-verdict-overall-side compare-verdict-overall-side--right">
-            {clusterB}
-            <span className="compare-verdict-fight-name">{nameB}</span>
-            {gradeB ? <GradeBadge grade={gradeB} size="large" /> : <span className="compare-verdict-grade-dash">—</span>}
+          <div className="compare-verdict-headline-side">
+            {avatarB}
+            <span className="compare-verdict-fight-name compare-verdict-fight-name--b">{nameB}</span>
+            <GradeBadge grade={gradeB} size="large" />
+            {metaB}
           </div>
         </div>
         {radar}
@@ -212,46 +208,45 @@ export default function CompareVerdict({
     <div className="compare-verdict">
       <p className="compare-verdict-label">AT A GLANCE</p>
 
-      {/* Headline facts first: who's ahead, then by how much. */}
-      <div className="compare-verdict-score-col">
-        <div className="compare-verdict-fight">
-          <span className={`compare-verdict-fight-side compare-verdict-fight-side--left${aWinsOverall ? ' compare-verdict-fight-side--winner' : ''}`}>
-            {clusterA}
-            <span className="compare-verdict-fight-namescore">
-              <span className="compare-verdict-fight-name">{nameA}</span>
-              <span className={`compare-verdict-score${aWinsOverall ? ' compare-verdict-score--winner' : ''}`}>{wonByA}</span>
-            </span>
-          </span>
-          <span className="compare-verdict-fight-divider">—</span>
-          <span className={`compare-verdict-fight-side compare-verdict-fight-side--right${bWinsOverall ? ' compare-verdict-fight-side--winner' : ''}`}>
-            <span className="compare-verdict-fight-namescore">
-              <span className={`compare-verdict-score${bWinsOverall ? ' compare-verdict-score--winner' : ''}`}>{wonByB}</span>
-              <span className="compare-verdict-fight-name">{nameB}</span>
-            </span>
-            {clusterB}
-          </span>
+      {/* Headline facts first: who's ahead, then by how much. Avatar/badge/Change all sit in the
+          same fixed-width side column (`.compare-verdict-headline-side`) so the photo and the
+          grade badge always land on the same vertical axis, regardless of how wide the name/score/
+          bar content in the center column happens to be. */}
+      <div className="compare-verdict-headline">
+        <div className="compare-verdict-headline-side">
+          {avatarA}
+          <GradeBadge grade={overallA} size="large" winnerSide={aWinsOverall ? 'a' : null} />
+          {metaA}
         </div>
 
-        {tied > 0 && (
-          <p className="compare-verdict-tied">
-            {tied} tied categor{tied === 1 ? 'y' : 'ies'}
-          </p>
-        )}
+        <div className="compare-verdict-headline-center">
+          <div className="compare-verdict-fight">
+            <span className={`compare-verdict-fight-name compare-verdict-fight-name--a${aWinsOverall ? ' compare-verdict-fight-name--winner' : ''}`}>{nameA}</span>
+            <span className={`compare-verdict-score compare-verdict-score--a${aWinsOverall ? ' compare-verdict-score--winner' : ''}`}>{wonByA}</span>
+            <span className="compare-verdict-fight-divider">—</span>
+            <span className={`compare-verdict-score compare-verdict-score--b${bWinsOverall ? ' compare-verdict-score--winner' : ''}`}>{wonByB}</span>
+            <span className={`compare-verdict-fight-name compare-verdict-fight-name--b${bWinsOverall ? ' compare-verdict-fight-name--winner' : ''}`}>{nameB}</span>
+          </div>
 
-        {overallA && overallB && (
-          <div className="compare-verdict-overall-row">
-            <div className="compare-verdict-overall-side compare-verdict-overall-side--left">
-              <GradeBadge grade={overallA} size="large" winnerSide={aWinsOverall ? 'a' : null} />
-            </div>
+          {tied > 0 && (
+            <p className="compare-verdict-tied">
+              {tied} tied categor{tied === 1 ? 'y' : 'ies'}
+            </p>
+          )}
+
+          {overallA && overallB && (
             <div className="compare-verdict-overall-center">
               <span className="compare-verdict-overall-label">OVERALL</span>
               <CompareMagnitudeBar gradeA={overallA} gradeB={overallB} size="lg" />
             </div>
-            <div className="compare-verdict-overall-side compare-verdict-overall-side--right">
-              <GradeBadge grade={overallB} size="large" winnerSide={bWinsOverall ? 'b' : null} />
-            </div>
-          </div>
-        )}
+          )}
+        </div>
+
+        <div className="compare-verdict-headline-side">
+          {avatarB}
+          <GradeBadge grade={overallB} size="large" winnerSide={bWinsOverall ? 'b' : null} />
+          {metaB}
+        </div>
       </div>
 
       {/* Radar and accolades each get their own row now, sized purely by their own content —

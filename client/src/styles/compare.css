@@ -1,17 +1,10 @@
 /* ── Compare Page ── */
-/* Photo (PlayerAvatar) and the Change link (PlayerMeta) travel together as one
-   `.compare-hero-cluster` unit, sitting beside whichever row currently shows the player's name —
-   the fight-score row once grades load — with extra gap between the cluster and the name so it
-   reads as its own grouping rather than crowding the name/score. Team/jersey text and the
-   archetype badge were both dropped from this placement per feedback — the photo is the point,
-   name is already shown beside it, and team/jersey were redundant clutter. */
-.compare-hero-cluster {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.3rem;
-}
-
+/* Photo (PlayerAvatar) and the Change link (PlayerMeta) sit directly in the shared
+   `.compare-verdict-headline-side` column (see compare.css further down), stacked with the grade
+   badge between them — no separate wrapper needed now that column alignment is handled by the
+   grid itself rather than by grouping photo+Change together. Team/jersey text and the archetype
+   badge were both dropped from this placement per feedback — the photo is the point, name is
+   already shown beside it, and team/jersey were redundant clutter. */
 .compare-hero-avatar {
   width: 88px;
   height: 88px;
@@ -516,17 +509,41 @@
   .grade-card-badges { gap: var(--space-2); }
 }
 
-/* ── AT A GLANCE: headline (fight score + overall grade) first, profile row (radar + accolades)
-   below it ── */
-/* A two-column grid (radar | score) was tried here and removed — at wider viewports the score
-   column's flex-based content had no fixed anchor and drifted away from both the radar and the
-   card's own edge as the grid track widened. Stacking top-to-bottom, everything centered, has no
-   such failure mode — it looks identical (and correct) at every width, no breakpoint needed. */
-.compare-verdict-score-col {
+/* ── AT A GLANCE: headline (photo/badge + fight score/overall grade) first, profile row (radar +
+   accolades) below it ── */
+/* One shared grid for the whole headline instead of two separately-laid-out rows (fight-score row,
+   overall-grade row) — that's what caused the "photos and grades don't line up" complaint: each
+   row was its own `1fr auto 1fr` grid, and since the two rows' middle (auto) tracks were different
+   widths (a thin "—" divider vs. a wide magnitude bar), the two rows' `1fr` side tracks resolved to
+   different pixel widths even though both were nominally "centered." Fixed (not `1fr`) side-column
+   widths, shared by one grid, guarantee the photo and the badge beneath it land on the same
+   vertical axis no matter what's in the middle. */
+.compare-verdict-headline {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr 8.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.compare-verdict-headline-side {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.compare-verdict-headline-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+@media (max-width: 480px) {
+  .compare-verdict-headline { grid-template-columns: 4.75rem 1fr 4.75rem; gap: 0.4rem; }
 }
 
 /* ── Playstyle Radar ── */
@@ -713,71 +730,23 @@
   text-align: center;
 }
 
-/* Fight-night score row */
-/* Grid, not flex — a flex row with two flex:1 sides shrink-wraps to each side's own content width,
-   so the divider (the true visual center a viewer's eye anchors to) drifts off the card's actual
-   center by half the difference between the two player names' rendered widths. A grid with two
-   explicitly equal 1fr columns forces both sides to the same width regardless of name length, so
-   the divider always sits at the true center. */
+/* Fight-night score row — now just a simple centered flex line inside `.compare-verdict-headline-
+   center`, not its own grid. It no longer needs to solve its own centering problem (a fixed-width
+   shared grid at the parent level already guarantees the whole headline is symmetric), so this can
+   be as simple as the content actually is. */
 .compare-verdict-fight {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  width: 100%;
-  max-width: 44rem;
-  margin: 0 auto;
-}
-
-/* Bigger gap than a normal inline gap — separates the photo/team/Change cluster from the
-   name+score as two distinct groupings instead of one crowded row. The name and score keep a
-   tighter gap between themselves via `.compare-verdict-fight-namescore`. */
-.compare-verdict-fight-side {
   display: flex;
   align-items: center;
-  gap: 1.1rem;
-  min-width: 0;
-}
-
-.compare-verdict-fight-side--left {
-  justify-content: flex-end;
-}
-
-.compare-verdict-fight-side--right {
-  justify-content: flex-start;
-}
-
-.compare-verdict-fight-namescore {
-  display: flex;
-  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 0.55rem;
-  min-width: 0;
 }
 
-/* Stacked instead of side-by-side at phone widths — the cluster (photo+team+Change) and the
-   name+score were competing for the same ~130px of horizontal room, leaving the name only ~25px
-   and truncating it to a couple of letters. Stacking removes the competition entirely instead of
-   continuing to shrink text to fit. */
-@media (max-width: 480px) {
-  /* flex-end, not center — with the cluster stacked above the name+score, each side's column is
-     much taller than the single-line divider; centering the divider against the whole column's
-     height stranded it up near the cluster row instead of level with the actual name/score text. */
-  .compare-verdict-fight { align-items: flex-end; }
-  .compare-verdict-fight-side { flex-direction: column; gap: 0.3rem; }
-  /* Force the same top-to-bottom order on both sides (cluster, then name+score) — the DOM order
-     is mirrored (cluster first on the left, last on the right) so it reads left-to-right as
-     "outside → center" in the desktop horizontal layout; stacked vertically that mirroring just
-     made the two sides inconsistent with each other. */
-  .compare-hero-cluster { order: 1; }
-  .compare-verdict-fight-namescore { order: 2; gap: 0.35rem; }
-  .compare-verdict-fight-name { font-size: 0.68rem; letter-spacing: 0.03em; max-width: 8rem; }
-  .compare-verdict-score { font-size: 1.3rem; }
-}
-
-/* Side identity (orange/blue) is permanent, matching the same accent/compare-b convention used
-   everywhere else on this card (accolade names, radar legend, grade-badge winner border) — not
-   conditional on who's winning, which previously left the loser in plain gray and the winner in
-   flat white/orange regardless of side, breaking that convention. Winning is signaled by weight
-   and opacity instead, since color is now spoken for. */
+/* Side identity (orange/blue) is permanent via an explicit `--a`/`--b` modifier, matching the same
+   accent/compare-b convention used everywhere else on this card (accolade names, radar legend,
+   grade-badge winner border) — not conditional on who's winning, which previously left the loser
+   in plain gray and the winner in flat white/orange regardless of side. Winning is signaled by
+   weight and opacity instead, since color is now spoken for. */
 .compare-verdict-fight-name {
   font-size: 0.78rem;
   font-weight: 700;
@@ -786,25 +755,15 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 9rem;
   min-width: 0;
   opacity: 0.75;
 }
 
-/* Also matches the same name label when it appears inside the overall-row-shaped placeholder used
-   by the loading/one-side-errored branches (those don't have a separate fight-score row yet). */
-.compare-verdict-fight-side--left .compare-verdict-fight-name,
-.compare-verdict-fight-side--left .compare-verdict-score,
-.compare-verdict-overall-side--left .compare-verdict-fight-name {
-  color: var(--accent);
-}
+.compare-verdict-fight-name--a { color: var(--accent); }
+.compare-verdict-fight-name--b { color: var(--compare-b); }
 
-.compare-verdict-fight-side--right .compare-verdict-fight-name,
-.compare-verdict-fight-side--right .compare-verdict-score,
-.compare-verdict-overall-side--right .compare-verdict-fight-name {
-  color: var(--compare-b);
-}
-
-.compare-verdict-fight-side--winner .compare-verdict-fight-name {
+.compare-verdict-fight-name--winner {
   font-weight: 900;
   opacity: 1;
 }
@@ -818,6 +777,9 @@
   opacity: 0.6;
 }
 
+.compare-verdict-score--a { color: var(--accent); }
+.compare-verdict-score--b { color: var(--compare-b); }
+
 .compare-verdict-score--winner {
   opacity: 1;
 }
@@ -826,7 +788,7 @@
   font-size: 1.3rem;
   font-weight: 300;
   color: var(--text-muted);
-  padding: 0 0.5rem;
+  padding: 0 0.25rem;
 }
 
 /* Tied categories note */
@@ -835,30 +797,6 @@
   color: var(--text-muted);
   text-align: center;
   margin: 0;
-}
-
-/* Adversarial overall grades row */
-/* Grid, not flex, same reason as the fight-score row above: two flex:1 sides shrink-wrap to their
-   own badge's content width, so if the two grade badges render at different widths (e.g. "A+" vs
-   "F" — a longer string past the badge's min-width floor) the bar drifts off the card's true
-   center. Equal 1fr columns force both badge slots to the same width regardless of grade text. */
-.compare-verdict-overall-row {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  width: 100%;
-  max-width: 44rem;
-  margin: 0 auto;
-}
-
-/* Each side is just the player's overall grade badge — the hero cluster (photo/Change) now lives
-   up in the fight-score row instead of flanking this badge. */
-.compare-verdict-overall-side {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.6rem;
-  min-width: 0;
 }
 
 .compare-verdict-overall-label {
