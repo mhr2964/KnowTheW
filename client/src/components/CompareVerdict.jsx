@@ -93,14 +93,16 @@ function RadarBlock({ archA, archB, nameA, nameB }) {
   const dimsB = archB?.dimensions;
   if (!Array.isArray(dimsA) || !Array.isArray(dimsB)) return null;
   return (
-    <div className="compare-verdict-radar-col">
+    <div className="compare-verdict-radar-col compare-profile-chunk">
       <span className="compare-profile-label">Playstyle</span>
-      <FingerprintRadar dimensions={dimsA} overlay={dimsB} />
-      <div className="compare-radar-legend">
-        <span className="compare-radar-legend-item compare-radar-legend-item--a">{nameA}</span>
-        <span className="compare-radar-legend-item compare-radar-legend-item--b">{nameB}</span>
+      <div className="compare-profile-chunk-body">
+        <FingerprintRadar dimensions={dimsA} overlay={dimsB} />
+        <div className="compare-radar-legend">
+          <span className="compare-radar-legend-item compare-radar-legend-item--a">{nameA}</span>
+          <span className="compare-radar-legend-item compare-radar-legend-item--b">{nameB}</span>
+        </div>
+        <p className="compare-radar-caption">Career playstyle — not affected by mode</p>
       </div>
-      <p className="compare-radar-caption">Career playstyle — not affected by mode</p>
     </div>
   );
 }
@@ -193,7 +195,7 @@ export default function CompareVerdict({
 
   if (!verdict) return null;
 
-  const { wonByA, wonByB, tied, overallCmp, overallA, overallB, volumeSignal, shortPeakWarning } = verdict;
+  const { wonByA, wonByB, tied, overallCmp, volumeSignal, shortPeakWarning } = verdict;
 
   const aWinsOverall = overallCmp > 0;
   const bWinsOverall = overallCmp < 0;
@@ -207,14 +209,14 @@ export default function CompareVerdict({
     <div className="compare-verdict">
       <p className="compare-verdict-label">AT A GLANCE</p>
 
-      {/* Headline facts first: who's ahead, then by how much. Avatar/badge/Change all sit in the
-          same fixed-width side column (`.compare-verdict-headline-side`) so the photo and the
-          grade badge always land on the same vertical axis, regardless of how wide the name/score/
-          bar content in the center column happens to be. */}
+      {/* Headline facts first: who's ahead, then by how much. Avatar/Change sit in the same
+          fixed-width side column (`.compare-verdict-headline-side`) so the photo lands on the same
+          vertical axis regardless of how wide the name/score content in the center column happens
+          to be. The overall grade badge was dropped from here — the fight-score row's win count
+          already carries the overall comparison, so a flanking badge was redundant. */}
       <div className="compare-verdict-headline">
         <div className="compare-verdict-headline-side">
           {avatarA}
-          <GradeBadge grade={overallA} size="large" winnerSide={aWinsOverall ? 'a' : null} />
           {metaA}
         </div>
 
@@ -236,7 +238,6 @@ export default function CompareVerdict({
 
         <div className="compare-verdict-headline-side">
           {avatarB}
-          <GradeBadge grade={overallB} size="large" winnerSide={bWinsOverall ? 'b' : null} />
           {metaB}
         </div>
       </div>
@@ -256,31 +257,37 @@ export default function CompareVerdict({
           )}
 
           {hasAccolades && (
-            <div className="compare-accolades-section">
+            <div className="compare-accolades-section compare-profile-chunk">
               <span className="compare-profile-label">Accolades</span>
-              <div className="compare-accolades-row">
-                <div className="compare-accolades-col compare-accolades-col--a">
-                  <span className="compare-accolade-col-name">{nameA}</span>
-                  <div className="compare-accolade-chips">
-                    {chipsA.length
-                      ? chipsA.map(c => (
-                          <span key={c.key} className={`compare-accolade-chip compare-accolade-chip--${c.tier}`}>
-                            {c.label}{c.count > 1 ? ` ×${c.count}` : ''}
-                          </span>
-                        ))
-                      : <span className="compare-accolade-chip compare-accolade-chip--none">None</span>}
+              <div className="compare-profile-chunk-body">
+                <div className="compare-accolades-row">
+                  <div className="compare-accolades-col compare-accolades-col--a">
+                    <span className="compare-accolade-col-name">{nameA}</span>
+                    <div className="compare-accolade-col-body">
+                      <div className="compare-accolade-chips">
+                        {chipsA.length
+                          ? chipsA.map(c => (
+                              <span key={c.key} className={`compare-accolade-chip compare-accolade-chip--${c.tier}`}>
+                                {c.label}{c.count > 1 ? ` ×${c.count}` : ''}
+                              </span>
+                            ))
+                          : <span className="compare-accolade-chip compare-accolade-chip--none">None</span>}
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="compare-accolades-col compare-accolades-col--b">
-                  <span className="compare-accolade-col-name">{nameB}</span>
-                  <div className="compare-accolade-chips">
-                    {chipsB.length
-                      ? chipsB.map(c => (
-                          <span key={c.key} className={`compare-accolade-chip compare-accolade-chip--${c.tier}`}>
-                            {c.label}{c.count > 1 ? ` ×${c.count}` : ''}
-                          </span>
-                        ))
-                      : <span className="compare-accolade-chip compare-accolade-chip--none">None</span>}
+                  <div className="compare-accolades-col compare-accolades-col--b">
+                    <span className="compare-accolade-col-name">{nameB}</span>
+                    <div className="compare-accolade-col-body">
+                      <div className="compare-accolade-chips">
+                        {chipsB.length
+                          ? chipsB.map(c => (
+                              <span key={c.key} className={`compare-accolade-chip compare-accolade-chip--${c.tier}`}>
+                                {c.label}{c.count > 1 ? ` ×${c.count}` : ''}
+                              </span>
+                            ))
+                          : <span className="compare-accolade-chip compare-accolade-chip--none">None</span>}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
