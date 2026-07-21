@@ -121,6 +121,11 @@
   border-collapse: collapse;
   font-size: 0.78rem;
   white-space: nowrap;
+  /* Column 1's sticky-offset partner (below) reads this same value, so the two can't drift out
+     of sync the way two independent literals could. 70px comfortably fits "Career", the widest
+     column-1 content across every tab (perGame/totals/per36/advanced/gamelog/splits/PBP), at
+     both the desktop and mobile font-size/padding combination. */
+  --bref-col1-w: 70px;
 }
 
 .bref-table th {
@@ -181,9 +186,14 @@
 }
 .bref-table th:nth-child(-n+2) { background: var(--surface-2); }
 .bref-table th:first-child,
-.bref-table td:first-child { left: 0; }
+.bref-table td:first-child {
+  left: 0;
+  width: var(--bref-col1-w);
+  min-width: var(--bref-col1-w);
+  max-width: var(--bref-col1-w);
+}
 .bref-table th:nth-child(2),
-.bref-table td:nth-child(2) { left: 64px; }
+.bref-table td:nth-child(2) { left: var(--bref-col1-w); }
 .career-row td:nth-child(-n+2) { background: var(--surface-2); }
 
 .bref-table td {
