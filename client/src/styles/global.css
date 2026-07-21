@@ -49,6 +49,10 @@
   --text-xl: 1.5rem;
   --text-2xl: 2rem;
   --tracking-label: 0.08em;
+
+  /* Minimum tap target for interactive controls on touch screens (WCAG 2.5.5 / Apple HIG both land
+     near 44px). .team-spoke-tab already used this value as a literal before this token existed. */
+  --touch-target-min: 44px;
 }
 
 body {
