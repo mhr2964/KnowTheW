@@ -622,30 +622,76 @@
   letter-spacing: var(--tracking-label);
 }
 
-/* Accolades — its own naturally-sized block, not stretched to match the radar's height. One
-   flowing text line per side, not bordered chips (chips read as filter/tag controls, which these
-   aren't). The player's name is bold and side-colored so "whose" reads from color alone, same
-   language as the magnitude bars and grade-card winner highlight. A box sized by its own content
-   has no dead space by construction — whether it's one line, two, or absent entirely. */
-.compare-verdict-accolades-col {
+/* Accolades — side-by-side columns (position carries "whose", same left/right convention as the
+   fight score, overall row, and category-card badges) instead of two stacked text lines. Each
+   accolade is its own tier-colored chip so importance reads from color alone without having to
+   parse the label. A side with zero accolades still renders a muted "None" chip rather than an
+   empty column — an intentionally-empty column reads as broken/lopsided, a placeholder doesn't. */
+.compare-accolades-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
-  max-width: 26rem;
+  gap: 0.5rem;
+  max-width: 32rem;
   margin: 0 auto;
   padding-top: 0.6rem;
   border-top: 1px solid var(--border);
 }
-.compare-accolade-line {
-  font-size: var(--text-2xs);
-  color: var(--text-muted);
-  text-align: center;
-  line-height: 1.5;
+.compare-accolades-row {
+  display: flex;
+  width: 100%;
+  gap: 1.5rem;
 }
-.compare-accolade-name { font-weight: 700; }
-.compare-accolade-line--a .compare-accolade-name { color: var(--accent); }
-.compare-accolade-line--b .compare-accolade-name { color: var(--compare-b); }
+.compare-accolades-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.compare-accolade-col-name {
+  font-size: var(--text-2xs);
+  font-weight: 700;
+}
+.compare-accolades-col--a .compare-accolade-col-name { color: var(--accent); }
+.compare-accolades-col--b .compare-accolade-col-name { color: var(--compare-b); }
+.compare-accolade-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+}
+.compare-accolade-chip {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  padding: 0.18rem 0.55rem;
+  border-radius: 5px;
+  white-space: nowrap;
+  border: 1px solid;
+}
+.compare-accolade-chip--gold {
+  background: rgba(250, 204, 21, 0.15);
+  color: #facc15;
+  border-color: rgba(250, 204, 21, 0.35);
+}
+.compare-accolade-chip--blue {
+  background: rgba(96, 165, 250, 0.18);
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.3);
+}
+.compare-accolade-chip--gray {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border);
+}
+.compare-accolade-chip--none {
+  background: none;
+  color: var(--text-muted);
+  border-color: var(--border);
+  border-style: dashed;
+  font-weight: 400;
+}
 
 /* ── Mode Toggle ── */
 .compare-mode-toggle-wrap {

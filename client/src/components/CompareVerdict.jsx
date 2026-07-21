@@ -6,26 +6,25 @@ import { compareGrades } from '../lib/gradeUtils';
 
 const CATEGORIES = ['Scoring', 'Playmaking', 'Rebounding', 'Defense', 'Efficiency', 'Longevity'];
 
-// [accolades key, display label] — championships last since it's the marquee one.
+// [accolades key, display label, importance tier] — gold (championship/MVP-caliber) first, so a
+// column's chips lead with its biggest accolade rather than following alphabetical/data order.
 const ACCOLADE_LABELS = [
-  ['mvp', 'MVP'],
-  ['finalsMVP', 'Finals MVP'],
-  ['dpoy', 'DPOY'],
-  ['roy', 'ROY'],
-  ['sixth', '6th Player'],
-  ['allWnbaFirst', 'All-WNBA 1st'],
-  ['championships', 'Championships'],
+  ['mvp', 'MVP', 'gold'],
+  ['finalsMVP', 'Finals MVP', 'gold'],
+  ['championships', 'Championships', 'gold'],
+  ['dpoy', 'DPOY', 'blue'],
+  ['allWnbaFirst', 'All-WNBA 1st', 'blue'],
+  ['roy', 'ROY', 'gray'],
+  ['sixth', '6th Player', 'gray'],
 ];
 
-// One flowing text line, not a row of bordered chips — chips read as filter/tag controls, which
-// this isn't. `null` for a side with zero accolades (not an empty line).
-function accoladeSummary(accolades) {
-  if (!accolades) return null;
-  const parts = ACCOLADE_LABELS
-    .map(([key, label]) => ({ label, count: accolades[key]?.length ?? 0 }))
-    .filter(c => c.count > 0)
-    .map(c => `${c.label} ×${c.count}`);
-  return parts.length ? parts.join(' · ') : null;
+// Individual tier-colored chips instead of one flowing text line — lets a viewer tell which
+// accolades are the heavy-hitters (gold) vs role-player/early-career ones (gray) at a glance.
+function accoladeChips(accolades) {
+  if (!accolades) return [];
+  return ACCOLADE_LABELS
+    .map(([key, label, tier]) => ({ key, label, tier, count: accolades[key]?.length ?? 0 }))
+    .filter(c => c.count > 0);
 }
 
 function computeVerdict(reportA, reportB) {
@@ -168,9 +167,9 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, archA, 
   const bWinsOverall = overallCmp < 0;
 
   const hasRadar = Array.isArray(archA?.dimensions) && Array.isArray(archB?.dimensions);
-  const accSummaryA = accoladeSummary(reportA?.accolades);
-  const accSummaryB = accoladeSummary(reportB?.accolades);
-  const hasAccolades = Boolean(accSummaryA || accSummaryB);
+  const chipsA = accoladeChips(reportA?.accolades);
+  const chipsB = accoladeChips(reportB?.accolades);
+  const hasAccolades = chipsA.length > 0 || chipsB.length > 0;
 
   return (
     <div className="compare-verdict">
@@ -223,18 +222,34 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, archA, 
       )}
 
       {hasAccolades && (
-        <div className="compare-verdict-accolades-col">
+        <div className="compare-accolades-section">
           <span className="compare-profile-label">Accolades</span>
-          {accSummaryA && (
-            <p className="compare-accolade-line compare-accolade-line--a">
-              <span className="compare-accolade-name">{nameA}</span> {accSummaryA}
-            </p>
-          )}
-          {accSummaryB && (
-            <p className="compare-accolade-line compare-accolade-line--b">
-              <span className="compare-accolade-name">{nameB}</span> {accSummaryB}
-            </p>
-          )}
+          <div className="compare-accolades-row">
+            <div className="compare-accolades-col compare-accolades-col--a">
+              <span className="compare-accolade-col-name">{nameA}</span>
+              <div className="compare-accolade-chips">
+                {chipsA.length
+                  ? chipsA.map(c => (
+                      <span key={c.key} className={`compare-accolade-chip compare-accolade-chip--${c.tier}`}>
+                        {c.label}{c.count > 1 ? ` ×${c.count}` : ''}
+                      </span>
+                    ))
+                  : <span className="compare-accolade-chip compare-accolade-chip--none">None</span>}
+              </div>
+            </div>
+            <div className="compare-accolades-col compare-accolades-col--b">
+              <span className="compare-accolade-col-name">{nameB}</span>
+              <div className="compare-accolade-chips">
+                {chipsB.length
+                  ? chipsB.map(c => (
+                      <span key={c.key} className={`compare-accolade-chip compare-accolade-chip--${c.tier}`}>
+                        {c.label}{c.count > 1 ? ` ×${c.count}` : ''}
+                      </span>
+                    ))
+                  : <span className="compare-accolade-chip compare-accolade-chip--none">None</span>}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
