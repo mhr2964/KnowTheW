@@ -15,7 +15,11 @@ export default function CompareMagnitudeBar({ gradeA, gradeB, size = 'sm', showM
   const cmp = hasBoth ? compareGrades(gradeA, gradeB) : 0;
   const gap = hasBoth ? Math.abs(gradeIndex(gradeA) - gradeIndex(gradeB)) : 0;
   const fillSide = cmp > 0 ? 'a' : cmp < 0 ? 'b' : null;
-  const fillPct = fillSide ? (gap / MAX_GAP) * 50 : 0;
+  // sqrt (not linear) so small gaps — the overwhelming majority of real comparisons — still read
+  // as a visible fill instead of a barely-there sliver; a 1-grade gap out of a possible 11-grade
+  // span is a real difference and should look like one. Still maxes out at 50% (track edge) for
+  // the largest possible gap, same as before.
+  const fillPct = fillSide ? Math.sqrt(gap / MAX_GAP) * 50 : 0;
   const caption = !hasBoth ? null : gap === 0 ? 'Even' : `${gap} grade${gap === 1 ? '' : 's'} apart`;
 
   return (
