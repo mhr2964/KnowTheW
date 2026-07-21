@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import GradeBadge from './GradeBadge';
-import CompareMagnitudeBar from './CompareMagnitudeBar';
 import FingerprintRadar from './FingerprintRadar';
 import PlayerAvatar from './PlayerAvatar';
 import PlayerMeta from './PlayerMeta';
@@ -233,13 +232,6 @@ export default function CompareVerdict({
               {tied} tied categor{tied === 1 ? 'y' : 'ies'}
             </p>
           )}
-
-          {overallA && overallB && (
-            <div className="compare-verdict-overall-center">
-              <span className="compare-verdict-overall-label">OVERALL</span>
-              <CompareMagnitudeBar gradeA={overallA} gradeB={overallB} size="lg" />
-            </div>
-          )}
         </div>
 
         <div className="compare-verdict-headline-side">
@@ -249,45 +241,51 @@ export default function CompareVerdict({
         </div>
       </div>
 
-      {/* Radar and accolades each get their own row now, sized purely by their own content —
-          pairing them as equal-height siblings (an earlier attempt) meant stretching the short
-          accolades text to match the radar's height, which just redistributed the dead space
-          instead of removing it. A naturally-sized box has no dead space by construction. */}
-      {hasRadar && (
-        <div className="compare-verdict-radar-row">
-          {radar}
-        </div>
-      )}
+      {/* Radar and accolades sit side by side on wider viewports (see .compare-verdict-profile-row)
+          instead of always stacking — stacking unconditionally left a lot of dead horizontal space
+          next to the radar on desktop widths, since neither section needs the full card width. Each
+          still sizes purely by its own content — pairing them as equal-height siblings (an earlier
+          attempt) meant stretching the short accolades text to match the radar's height, which just
+          redistributed the dead space instead of removing it. */}
+      {(hasRadar || hasAccolades) && (
+        <div className="compare-verdict-profile-row">
+          {hasRadar && (
+            <div className="compare-verdict-radar-row">
+              {radar}
+            </div>
+          )}
 
-      {hasAccolades && (
-        <div className="compare-accolades-section">
-          <span className="compare-profile-label">Accolades</span>
-          <div className="compare-accolades-row">
-            <div className="compare-accolades-col compare-accolades-col--a">
-              <span className="compare-accolade-col-name">{nameA}</span>
-              <div className="compare-accolade-chips">
-                {chipsA.length
-                  ? chipsA.map(c => (
-                      <span key={c.key} className={`compare-accolade-chip compare-accolade-chip--${c.tier}`}>
-                        {c.label}{c.count > 1 ? ` ×${c.count}` : ''}
-                      </span>
-                    ))
-                  : <span className="compare-accolade-chip compare-accolade-chip--none">None</span>}
+          {hasAccolades && (
+            <div className="compare-accolades-section">
+              <span className="compare-profile-label">Accolades</span>
+              <div className="compare-accolades-row">
+                <div className="compare-accolades-col compare-accolades-col--a">
+                  <span className="compare-accolade-col-name">{nameA}</span>
+                  <div className="compare-accolade-chips">
+                    {chipsA.length
+                      ? chipsA.map(c => (
+                          <span key={c.key} className={`compare-accolade-chip compare-accolade-chip--${c.tier}`}>
+                            {c.label}{c.count > 1 ? ` ×${c.count}` : ''}
+                          </span>
+                        ))
+                      : <span className="compare-accolade-chip compare-accolade-chip--none">None</span>}
+                  </div>
+                </div>
+                <div className="compare-accolades-col compare-accolades-col--b">
+                  <span className="compare-accolade-col-name">{nameB}</span>
+                  <div className="compare-accolade-chips">
+                    {chipsB.length
+                      ? chipsB.map(c => (
+                          <span key={c.key} className={`compare-accolade-chip compare-accolade-chip--${c.tier}`}>
+                            {c.label}{c.count > 1 ? ` ×${c.count}` : ''}
+                          </span>
+                        ))
+                      : <span className="compare-accolade-chip compare-accolade-chip--none">None</span>}
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="compare-accolades-col compare-accolades-col--b">
-              <span className="compare-accolade-col-name">{nameB}</span>
-              <div className="compare-accolade-chips">
-                {chipsB.length
-                  ? chipsB.map(c => (
-                      <span key={c.key} className={`compare-accolade-chip compare-accolade-chip--${c.tier}`}>
-                        {c.label}{c.count > 1 ? ` ×${c.count}` : ''}
-                      </span>
-                    ))
-                  : <span className="compare-accolade-chip compare-accolade-chip--none">None</span>}
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -295,13 +293,13 @@ export default function CompareVerdict({
         <div className="compare-overall-summaries">
           {reportA?.overall?.summary && (
             <div className="compare-overall-summary">
-              <span className="compare-overall-summary-name">{nameA}</span>
+              <span className="compare-overall-summary-name compare-overall-summary-name--a">{nameA}</span>
               <p>{reportA.overall.summary}</p>
             </div>
           )}
           {reportB?.overall?.summary && (
             <div className="compare-overall-summary">
-              <span className="compare-overall-summary-name">{nameB}</span>
+              <span className="compare-overall-summary-name compare-overall-summary-name--b">{nameB}</span>
               <p>{reportB.overall.summary}</p>
             </div>
           )}

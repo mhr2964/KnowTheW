@@ -6,12 +6,18 @@
    badge were both dropped from this placement per feedback — the photo is the point, name is
    already shown beside it, and team/jersey were redundant clutter. */
 .compare-hero-avatar {
-  width: 88px;
-  height: 88px;
+  width: 108px;
+  height: 108px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
 }
+
+/* Nudged toward the card's center via transform (doesn't affect layout width/flow) — a shared
+   fixed-width side column already centers the avatar within itself, but the user wants the photo
+   itself to sit a bit closer to the middle rather than dead-center of its own column. */
+.compare-verdict-headline-side:first-child .compare-hero-avatar { transform: translateX(0.45rem); }
+.compare-verdict-headline-side:last-child .compare-hero-avatar { transform: translateX(-0.45rem); }
 .compare-hero-avatar.placeholder {
   background: var(--surface-2);
   color: var(--text-muted);
@@ -30,7 +36,9 @@
    1fr grid column instead of forcing an overflow — same fix pattern as the overall-row min-width
    issue: this alone doesn't replace the shrink fix above, it just gives shrinking more room to work with. */
 @media (max-width: 480px) {
-  .compare-hero-avatar { width: 44px; height: 44px; }
+  .compare-hero-avatar { width: 56px; height: 56px; }
+  .compare-verdict-headline-side:first-child .compare-hero-avatar { transform: translateX(0.2rem); }
+  .compare-verdict-headline-side:last-child .compare-hero-avatar { transform: translateX(-0.2rem); }
 }
 
 .compare-hero-meta-skeleton {
@@ -546,6 +554,26 @@
   .compare-verdict-headline { grid-template-columns: 4.75rem 1fr 4.75rem; gap: 0.4rem; }
 }
 
+/* Radar + accolades share this row. Stacked on narrow/medium viewports (each already centers
+   itself individually); side by side on wide viewports, since stacking unconditionally left a
+   wide band of empty space beside the radar once the card had a full 1100px-max-width column to
+   work with. 820px roughly matches "both sections' natural widths fit side by side inside the
+   compare card's own max-width" rather than an arbitrary device breakpoint. */
+.compare-verdict-profile-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.4rem;
+}
+@media (min-width: 820px) {
+  .compare-verdict-profile-row {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 3rem;
+  }
+}
+
 /* ── Playstyle Radar ── */
 /* Its own full-width row now, not paired with accolades — that pairing kept needing rescue passes
    (drift, then a height-mismatch, then dead space even once heights matched) because a rich, tall
@@ -591,12 +619,15 @@
 .compare-radar-legend-item--a::before { background: var(--accent); }
 .compare-radar-legend-item--b::before { background: var(--compare-b); }
 
+/* Bumped up from a near-invisible muted 2xs — this heads its own section (Playstyle, Accolades),
+   the same job `.compare-verdict-label` does for the whole card, so it needs to actually read as
+   a header at a glance instead of blending into the caption text below it. */
 .compare-profile-label {
-  font-size: var(--text-2xs);
-  font-weight: 700;
-  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 800;
+  color: var(--text);
   text-transform: uppercase;
-  letter-spacing: var(--tracking-label);
+  letter-spacing: 0.08em;
 }
 
 /* Accolades — side-by-side columns (position carries "whose", same left/right convention as the
@@ -610,7 +641,6 @@
   align-items: center;
   gap: 0.5rem;
   max-width: 32rem;
-  margin: 0 auto;
 }
 .compare-accolades-row {
   display: flex;
@@ -730,16 +760,18 @@
   text-align: center;
 }
 
-/* Fight-night score row — now just a simple centered flex line inside `.compare-verdict-headline-
-   center`, not its own grid. It no longer needs to solve its own centering problem (a fixed-width
-   shared grid at the parent level already guarantees the whole headline is symmetric), so this can
-   be as simple as the content actually is. */
+/* Fight-night score row — its own grid with symmetric `1fr` name columns flanking the score
+   cluster. A flex row centered via `justify-content` only centers the row's own shrink-wrapped
+   width; it does nothing to center the dash itself when the two names are different lengths,
+   since the whole row just shifts as a block. Two equal `1fr` columns guarantee the score/dash
+   cluster sits dead-center regardless of name length, with each name hugging its own inner edge
+   (`justify-self: end`/`start`) so slack space lands on the outside, not next to the dash. */
 .compare-verdict-fight {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 0.55rem;
+  gap: 0.6rem;
+  width: 100%;
 }
 
 /* Side identity (orange/blue) is permanent via an explicit `--a`/`--b` modifier, matching the same
@@ -748,7 +780,7 @@
    in plain gray and the winner in flat white/orange regardless of side. Winning is signaled by
    weight and opacity instead, since color is now spoken for. */
 .compare-verdict-fight-name {
-  font-size: 0.78rem;
+  font-size: 0.94rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -760,8 +792,8 @@
   opacity: 0.75;
 }
 
-.compare-verdict-fight-name--a { color: var(--accent); }
-.compare-verdict-fight-name--b { color: var(--compare-b); }
+.compare-verdict-fight-name--a { color: var(--accent); justify-self: end; text-align: right; }
+.compare-verdict-fight-name--b { color: var(--compare-b); justify-self: start; text-align: left; }
 
 .compare-verdict-fight-name--winner {
   font-weight: 900;
@@ -769,7 +801,7 @@
 }
 
 .compare-verdict-score {
-  font-size: 1.6rem;
+  font-size: 2rem;
   font-weight: 900;
   line-height: 1;
   min-width: 1.4ch;
@@ -785,10 +817,22 @@
 }
 
 .compare-verdict-fight-divider {
-  font-size: 1.3rem;
+  font-size: 1.6rem;
   font-weight: 300;
   color: var(--text-muted);
   padding: 0 0.25rem;
+}
+
+/* Placed after the base rules above (not in the earlier 480px block near .compare-verdict-headline)
+   so it actually wins the cascade — a same-specificity override defined earlier in the source loses
+   to a later unconditional rule for the same selector even when its media query matches. Drops
+   max-width entirely rather than just shrinking it, since at this width the grid's own minmax(0, 1fr)
+   column is already the real constraint — names still fit within their column and don't need to be
+   individually clamped once font-size drops from 0.94rem down to phone-appropriate size. */
+@media (max-width: 480px) {
+  .compare-verdict-fight-name { font-size: 0.74rem; max-width: none; }
+  .compare-verdict-score { font-size: 1.5rem; }
+  .compare-verdict-fight-divider { font-size: 1.2rem; }
 }
 
 /* Tied categories note */
@@ -811,22 +855,6 @@
   white-space: nowrap;
 }
 
-.compare-verdict-overall-center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  flex-shrink: 0;
-  min-width: 18rem;
-}
-.compare-verdict-overall-center .compare-mag-bar { width: 100%; }
-
-/* 18rem plus both overall badges overflows a narrow phone's own card width (measured: 402px row
-   inside a 358px card at 390px viewport) — the bar's fixed floor doesn't shrink like flex-wrap
-   content does, so this needs an explicit narrower floor at phone widths, not a wrap. */
-@media (max-width: 480px) {
-  .compare-verdict-overall-center { min-width: 9rem; }
-}
 
 .compare-verdict-volume {
   font-size: 0.75rem;
@@ -943,13 +971,17 @@
   gap: var(--space-1);
 }
 
+/* Color carries "whose" the same way it does everywhere else on this card (accolade names, radar
+   legend, fight-row names) instead of flat muted gray, which read as disconnected from the rest
+   of the orange/blue side convention. */
 .compare-overall-summary-name {
   font-size: var(--text-2xs);
   font-weight: 700;
-  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: var(--tracking-label);
 }
+.compare-overall-summary-name--a { color: var(--accent); }
+.compare-overall-summary-name--b { color: var(--compare-b); }
 
 .compare-overall-summary p {
   font-size: 0.86rem;
