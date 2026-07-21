@@ -109,7 +109,7 @@ function RadarBlock({ archA, archB, nameA, nameB }) {
 export default function CompareVerdict({
   reportA, reportB, nameA, nameB, archA, archB, loading, errorA, errorB, onRetryA, onRetryB,
   playerA, playerB, loadingHeroA, loadingHeroB, errorHeroA, errorHeroB,
-  finalTeamNameA, finalTeamNameB, onChangeSideA, onChangeSideB,
+  onChangeSideA, onChangeSideB,
 }) {
   const verdict = useMemo(() => computeVerdict(reportA, reportB), [reportA, reportB]);
   // RadarBlock renders null internally when there's no fingerprint data — safe to render
@@ -117,22 +117,22 @@ export default function CompareVerdict({
   // layouts (the prior two-column grid stranded the score content at wide viewports; see git history).
   const radar = <RadarBlock archA={archA} archB={archB} nameA={nameA} nameB={nameB} />;
 
-  // Photo (PlayerAvatar) and team/jersey/Change (PlayerMeta) travel together as one cluster,
+  // Photo (PlayerAvatar) and the Change link (PlayerMeta) travel together as one cluster,
   // separated from the name by extra gap so the cluster reads as its own unit rather than
   // crowding the name/score — the cluster sits with whichever row currently shows the player's
-  // name (the fight-score row once grades load; a plain name label before that). Both are driven
-  // by the player-profile fetch, independent of report loading (a player's photo/team resolves
+  // name (the fight-score row once grades load; a plain name label before that). The avatar is
+  // driven by the player-profile fetch, independent of report loading (a player's photo resolves
   // long before the AI grade does), matching the same independence `RadarBlock` already relies on.
   const clusterA = (
     <div className="compare-hero-cluster">
       <PlayerAvatar player={playerA} loading={loadingHeroA} error={errorHeroA} />
-      <PlayerMeta player={playerA} loading={loadingHeroA} error={errorHeroA} onChangeSide={onChangeSideA} finalTeamName={finalTeamNameA} />
+      <PlayerMeta loading={loadingHeroA} onChangeSide={onChangeSideA} />
     </div>
   );
   const clusterB = (
     <div className="compare-hero-cluster">
       <PlayerAvatar player={playerB} loading={loadingHeroB} error={errorHeroB} />
-      <PlayerMeta player={playerB} loading={loadingHeroB} error={errorHeroB} onChangeSide={onChangeSideB} finalTeamName={finalTeamNameB} />
+      <PlayerMeta loading={loadingHeroB} onChangeSide={onChangeSideB} />
     </div>
   );
 

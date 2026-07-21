@@ -1,52 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import ComparePickerModal from '../components/ComparePickerModal';
 import CompareModeToggle from '../components/CompareModeToggle';
 import CompareVerdict from '../components/CompareVerdict';
 import GradeCard, { CATEGORIES } from '../components/GradeCard';
-
-// Abbreviated → full team name for the teams that appear in WNBA history.
-const TEAM_ABBR_MAP = {
-  SEA: 'Seattle Storm',
-  PHX: 'Phoenix Mercury',
-  MIN: 'Minnesota Lynx',
-  IND: 'Indiana Fever',
-  NY:  'New York Liberty',
-  NYL: 'New York Liberty',
-  LVA: 'Las Vegas Aces',
-  LAS: 'Las Vegas Aces',
-  SA:  'San Antonio Stars',
-  SAS: 'San Antonio Silver Stars',
-  UTA: 'Utah Starzz',
-  LAL: 'Los Angeles Sparks',
-  LA:  'Los Angeles Sparks',
-  CON: 'Connecticut Sun',
-  ORL: 'Orlando Miracle',
-  WAS: 'Washington Mystics',
-  CHI: 'Chicago Sky',
-  ATL: 'Atlanta Dream',
-  DAL: 'Dallas Wings',
-  TUL: 'Tulsa Shock',
-  DET: 'Detroit Shock',
-  GSV: 'Golden State Valkyries',
-};
-
-// Pull the most recent season's team abbreviation from a detailed-stats response.
-// Returns the full team name (or abbreviation as fallback) or null if unavailable.
-function deriveLastTeamName(details) {
-  const table = details?.perGame?.regular;
-  const rows = table?.rows;
-  if (!Array.isArray(rows) || rows.length === 0) return null;
-  // Rows are ordered ascending by season year; last row = most recent season.
-  const lastRow = rows[rows.length - 1];
-  // Resolve the team-abbreviation column by NAME from the response's own columns, rather than a
-  // hardcoded positional index — the client shouldn't depend on the server's column ordering.
-  const abbrIdx = table.columns?.findIndex(c => c.key === 'TEAM_ABBREVIATION') ?? -1;
-  const abbr = abbrIdx >= 0 ? lastRow?.[abbrIdx] : null;
-  if (!abbr || abbr === '') return null;
-  return TEAM_ABBR_MAP[abbr] ?? abbr;
-}
 
 function GradeCardListSkeleton() {
   return (
@@ -78,13 +36,6 @@ export default function ComparePage() {
   const { data: playerA, loading: loadingA, error: errorA } = useLazyFetch(`/api/players/${idA}`, true);
   const { data: playerB, loading: loadingB, error: errorB } = useLazyFetch(`/api/players/${idB}`, true);
 
-  // Detailed stats — fetched only for retired players to derive their final team name.
-  // Retired flag is not known until the profile resolves, so we enable only after.
-  const retiredA = (playerA?.player ?? playerA)?.retired === true;
-  const retiredB = (playerB?.player ?? playerB)?.retired === true;
-  const { data: detailsA } = useLazyFetch(`/api/players/${idA}/detailed-stats`, retiredA && !loadingA);
-  const { data: detailsB } = useLazyFetch(`/api/players/${idB}/detailed-stats`, retiredB && !loadingB);
-
   // Graded reports — re-fetch when mode changes (url key changes)
   const reportUrlA = `/api/players/${idA}/graded-report?mode=${mode}`;
   const reportUrlB = `/api/players/${idB}/graded-report?mode=${mode}`;
@@ -100,9 +51,6 @@ export default function ComparePage() {
 
   const nameA = playerA?.player?.name ?? playerA?.name ?? 'Player A';
   const nameB = playerB?.player?.name ?? playerB?.name ?? 'Player B';
-
-  const finalTeamNameA = useMemo(() => deriveLastTeamName(detailsA), [detailsA]);
-  const finalTeamNameB = useMemo(() => deriveLastTeamName(detailsB), [detailsB]);
 
   useEffect(() => {
     if (isSamePlayer) {
@@ -200,8 +148,6 @@ export default function ComparePage() {
                 loadingHeroB={loadingB}
                 errorHeroA={errorA}
                 errorHeroB={errorB}
-                finalTeamNameA={finalTeamNameA}
-                finalTeamNameB={finalTeamNameB}
                 onChangeSideA={() => openPickerFor('a')}
                 onChangeSideB={() => openPickerFor('b')}
               />

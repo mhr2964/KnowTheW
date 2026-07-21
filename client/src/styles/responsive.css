@@ -21,30 +21,6 @@
   .bref-table { font-size: 0.7rem; }
   .bref-table th, .bref-table td { padding: 0.3rem 0.45rem; }
 
-  /* Compare hero — stack vertically at narrow widths */
-  .compare-hero-pair {
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 0.65rem 0.85rem;
-  }
-  .compare-hero-vs {
-    width: auto;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    padding: 0.25rem 0;
-    font-size: 0.62rem;
-    text-align: center;
-  }
-  /* Both sides left-aligned in stacked layout */
-  .compare-hero-player.compare-hero-side-b {
-    flex-direction: row;
-    text-align: left;
-  }
-  .compare-hero-player.compare-hero-side-b .compare-hero-info {
-    align-items: flex-start;
-  }
-  .compare-hero-name { font-size: 0.9rem; }
-  .compare-hero-img { width: 36px; height: 36px; }
   /* Cell value size reduction */
   .compare-cell-a, .compare-cell-b, .compare-cell-single { font-size: 0.7rem; }
 
