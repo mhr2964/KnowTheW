@@ -5,13 +5,6 @@ import ComparePickerModal from '../components/ComparePickerModal';
 import CompareModeToggle from '../components/CompareModeToggle';
 import CompareVerdict from '../components/CompareVerdict';
 import GradeCard, { CATEGORIES } from '../components/GradeCard';
-import ArchetypeBadge from '../components/ArchetypeBadge';
-import { initialsOf } from '../lib/initials';
-
-// ESPN canonical headshot URL — used as fallback when the roster feed omits a headshot.
-function espnHeadshotUrl(id) {
-  return `https://a.espncdn.com/i/headshots/wnba/players/full/${id}.png`;
-}
 
 // Abbreviated → full team name for the teams that appear in WNBA history.
 const TEAM_ABBR_MAP = {
@@ -53,61 +46,6 @@ function deriveLastTeamName(details) {
   const abbr = abbrIdx >= 0 ? lastRow?.[abbrIdx] : null;
   if (!abbr || abbr === '') return null;
   return TEAM_ABBR_MAP[abbr] ?? abbr;
-}
-
-function PlayerHero({ player, loading, error, onChangeSide, sideB, finalTeamName }) {
-  const sideBClass = sideB ? ' compare-hero-side-b' : '';
-  const [imgError, setImgError] = useState(false);
-
-  if (loading) {
-    return (
-      <div className={`compare-hero-player compare-hero-skeleton${sideBClass}`}>
-        <div className="compare-hero-img placeholder" />
-        <div className="compare-hero-info">
-          <div className="compare-hero-skeleton-name" />
-        </div>
-      </div>
-    );
-  }
-  if (error) return (
-    <div className={`compare-hero-player compare-hero-error${sideBClass}`}>
-      <p className="status-msg error">Could not load player.</p>
-      <button type="button" className="compare-change-link" onClick={onChangeSide}>Change</button>
-    </div>
-  );
-  if (!player) return null;
-
-  const p = player.player ?? player;
-  const isRetired = p.retired === true;
-  const displayTeam = p.teamName ?? (isRetired ? finalTeamName : null);
-  const imgSrc = p.headshot ?? espnHeadshotUrl(p.id);
-
-  return (
-    <div className={`compare-hero-player${sideBClass}`}>
-      {!imgError
-        ? <img
-            src={imgSrc}
-            alt={p.name}
-            className="compare-hero-img"
-            onError={() => setImgError(true)}
-          />
-        : <div className="compare-hero-img placeholder">{initialsOf(p.name)}</div>
-      }
-      <div className="compare-hero-info">
-        <div className="compare-hero-meta">
-          {p.jersey && <span className="player-hero-jersey">#{p.jersey}</span>}
-          {displayTeam && (
-            <span className="player-hero-team">
-              {displayTeam}{isRetired && !p.teamName && <em className="compare-hero-former"> (former)</em>}
-            </span>
-          )}
-        </div>
-        <h2 className="compare-hero-name">{p.name}</h2>
-        <ArchetypeBadge playerId={p.id} />
-        <button type="button" className="compare-change-link" onClick={onChangeSide}>Change</button>
-      </div>
-    </div>
-  );
 }
 
 function GradeCardListSkeleton() {
@@ -219,25 +157,6 @@ export default function ComparePage() {
         </div>
       ) : (
         <>
-          <div className="compare-hero-pair">
-            <PlayerHero
-              player={playerA}
-              loading={loadingA}
-              error={errorA}
-              onChangeSide={() => openPickerFor('a')}
-              finalTeamName={finalTeamNameA}
-            />
-            <div className="compare-hero-vs">VS</div>
-            <PlayerHero
-              player={playerB}
-              loading={loadingB}
-              error={errorB}
-              onChangeSide={() => openPickerFor('b')}
-              sideB
-              finalTeamName={finalTeamNameB}
-            />
-          </div>
-
           <CompareModeToggle
             mode={mode}
             onChange={setMode}
@@ -275,6 +194,16 @@ export default function ComparePage() {
                 errorB={errorReportB}
                 onRetryA={refetchA}
                 onRetryB={refetchB}
+                playerA={playerA}
+                playerB={playerB}
+                loadingHeroA={loadingA}
+                loadingHeroB={loadingB}
+                errorHeroA={errorA}
+                errorHeroB={errorB}
+                finalTeamNameA={finalTeamNameA}
+                finalTeamNameB={finalTeamNameB}
+                onChangeSideA={() => openPickerFor('a')}
+                onChangeSideB={() => openPickerFor('b')}
               />
 
               {/* Category cards — always expanded, no collapse */}

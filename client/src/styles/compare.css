@@ -1,47 +1,20 @@
 /* ── Compare Page ── */
-.compare-hero-pair {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-5);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.75rem 1rem;
-}
-
-.compare-hero-vs {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--text-xs);
-  font-weight: 800;
-  color: var(--text-muted);
-  letter-spacing: 0.1em;
-  flex-shrink: 0;
-  width: 2.5rem;
-}
-
+/* PlayerHero now renders inside CompareVerdict's AT A GLANCE card, flanking the overall grade,
+   instead of a standalone top-of-page hero pair with a "VS" divider — that separate section was
+   pure duplication once the same photo/team/name/archetype info lived here too. Always a centered
+   column (photo, then name/team/archetype/Change stacked below) — side identity comes from which
+   grid column it sits in, not from a per-side layout mirror. */
 .compare-hero-player {
-  flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
+  text-align: center;
+  gap: 0.3rem;
   min-width: 0;
 }
 
-.compare-hero-player.compare-hero-side-b {
-  flex-direction: row-reverse;
-  text-align: right;
-}
-
-.compare-hero-player.compare-hero-side-b .compare-hero-info {
-  align-items: flex-end;
-}
-
 .compare-hero-error {
-  flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-2);
 }
 
@@ -49,15 +22,15 @@
   background: var(--surface-2);
 }
 .compare-hero-skeleton-name {
-  width: 8rem;
-  height: 1rem;
+  width: 6rem;
+  height: 0.9rem;
   border-radius: 4px;
   background: var(--surface-2);
 }
 
 .compare-hero-img {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
@@ -76,6 +49,7 @@
 .compare-hero-info {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.15rem;
   min-width: 0;
 }
@@ -83,16 +57,18 @@
 .compare-hero-meta {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
 }
 
 .compare-hero-name {
-  font-size: var(--text-md);
+  font-size: var(--text-sm);
   font-weight: 800;
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 9rem;
 }
 
 .compare-hero-former {
@@ -758,12 +734,17 @@
   gap: 0.6rem;
 }
 
+/* Centered and sized/colored like a top-level section header should be — bigger and brighter than
+   a category card's own header (var(--text-xs), var(--text)), since this heads the whole card that
+   the category cards sit below, not a peer of them. Was left-aligned and near-invisible-small
+   before (0.65rem, muted gray). */
 .compare-verdict-label {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: var(--text-muted);
+  font-size: var(--text-md);
+  font-weight: 800;
+  color: var(--text);
   text-transform: uppercase;
   letter-spacing: 0.1em;
+  text-align: center;
 }
 
 /* Fight-night score row */
@@ -862,24 +843,21 @@
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   width: 100%;
-  max-width: 36rem;
+  max-width: 44rem;
   margin: 0 auto;
   border-top: 1px solid var(--border);
   padding-top: 0.55rem;
 }
 
+/* Each side is now the player's hero (photo/name/team/archetype/Change) stacked above their
+   overall grade badge — this row replaced the old top-of-page hero pair entirely, so both live
+   together here instead of in two separate sections. */
 .compare-verdict-overall-side {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
-}
-
-.compare-verdict-overall-side--left {
-  justify-content: flex-end;
-}
-
-.compare-verdict-overall-side--right {
-  justify-content: flex-start;
+  gap: 0.6rem;
+  min-width: 0;
 }
 
 .compare-verdict-overall-label {

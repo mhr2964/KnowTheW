@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import GradeBadge from './GradeBadge';
 import CompareMagnitudeBar from './CompareMagnitudeBar';
 import FingerprintRadar from './FingerprintRadar';
+import PlayerHero from './PlayerHero';
 import { compareGrades } from '../lib/gradeUtils';
 
 const CATEGORIES = ['Scoring', 'Playmaking', 'Rebounding', 'Defense', 'Efficiency', 'Longevity'];
@@ -104,20 +105,37 @@ function RadarBlock({ archA, archB, nameA, nameB }) {
   );
 }
 
-export default function CompareVerdict({ reportA, reportB, nameA, nameB, archA, archB, loading, errorA, errorB, onRetryA, onRetryB }) {
+export default function CompareVerdict({
+  reportA, reportB, nameA, nameB, archA, archB, loading, errorA, errorB, onRetryA, onRetryB,
+  playerA, playerB, loadingHeroA, loadingHeroB, errorHeroA, errorHeroB,
+  finalTeamNameA, finalTeamNameB, onChangeSideA, onChangeSideB,
+}) {
   const verdict = useMemo(() => computeVerdict(reportA, reportB), [reportA, reportB]);
   // RadarBlock renders null internally when there's no fingerprint data — safe to render
   // unconditionally since it's just stacked inline, not chosen between two different wrapper
   // layouts (the prior two-column grid stranded the score content at wide viewports; see git history).
   const radar = <RadarBlock archA={archA} archB={archB} nameA={nameA} nameB={nameB} />;
 
+  // Player photo/team/jersey/archetype/Change-link now lives here, flanking whatever center content
+  // this component is showing (skeleton, single-grade fallback, or the real overall bar) — the old
+  // top-of-page hero pair + "VS" divider was pure duplication once this existed, so it's gone.
+  // Hero loading/error is driven by the player-profile fetch, independent of report loading (a
+  // player's photo/team resolves long before the AI grade does), matching the same independence
+  // `RadarBlock` already relies on.
+  const heroA = <PlayerHero player={playerA} loading={loadingHeroA} error={errorHeroA} onChangeSide={onChangeSideA} finalTeamName={finalTeamNameA} />;
+  const heroB = <PlayerHero player={playerB} loading={loadingHeroB} error={errorHeroB} onChangeSide={onChangeSideB} finalTeamName={finalTeamNameB} />;
+
   if (loading) {
     return (
       <div className="compare-verdict compare-verdict--skeleton">
         <p className="compare-verdict-label">AT A GLANCE</p>
-        <div className="compare-verdict-score-col">
-          <div className="compare-verdict-skeleton-line" />
-          <div className="compare-verdict-skeleton-line compare-verdict-skeleton-line--short" />
+        <div className="compare-verdict-overall-row">
+          <div className="compare-verdict-overall-side compare-verdict-overall-side--left">{heroA}</div>
+          <div className="compare-verdict-overall-center">
+            <div className="compare-verdict-skeleton-line" />
+            <div className="compare-verdict-skeleton-line compare-verdict-skeleton-line--short" />
+          </div>
+          <div className="compare-verdict-overall-side compare-verdict-overall-side--right">{heroB}</div>
         </div>
         {radar}
       </div>
@@ -133,26 +151,26 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, archA, 
     return (
       <div className="compare-verdict">
         <p className="compare-verdict-label">AT A GLANCE</p>
-        <div className="compare-verdict-score-col">
-          <div className="compare-verdict-fight">
-            <span className="compare-verdict-fight-side compare-verdict-fight-side--left">
-              <span className="compare-verdict-fight-name">{nameA}</span>
-              {gradeA ? <GradeBadge grade={gradeA} size="large" /> : <span className="compare-verdict-grade-dash">—</span>}
-            </span>
-            <span className="compare-verdict-fight-divider">vs</span>
-            <span className="compare-verdict-fight-side compare-verdict-fight-side--right">
-              {gradeB ? <GradeBadge grade={gradeB} size="large" /> : <span className="compare-verdict-grade-dash">—</span>}
-              <span className="compare-verdict-fight-name">{nameB}</span>
-            </span>
+        <div className="compare-verdict-overall-row">
+          <div className="compare-verdict-overall-side compare-verdict-overall-side--left">
+            {heroA}
+            {gradeA ? <GradeBadge grade={gradeA} size="large" /> : <span className="compare-verdict-grade-dash">—</span>}
           </div>
-          <p className="compare-verdict-error-notice">
-            Couldn&apos;t load graded report for {failingName}
-            {onRetry && (
-              <button type="button" className="btn-ghost compare-verdict-retry" onClick={onRetry}>
-                Try again
-              </button>
-            )}
-          </p>
+          <div className="compare-verdict-overall-center">
+            <span className="compare-verdict-overall-label">vs</span>
+            <p className="compare-verdict-error-notice">
+              Couldn&apos;t load graded report for {failingName}
+              {onRetry && (
+                <button type="button" className="btn-ghost compare-verdict-retry" onClick={onRetry}>
+                  Try again
+                </button>
+              )}
+            </p>
+          </div>
+          <div className="compare-verdict-overall-side compare-verdict-overall-side--right">
+            {heroB}
+            {gradeB ? <GradeBadge grade={gradeB} size="large" /> : <span className="compare-verdict-grade-dash">—</span>}
+          </div>
         </div>
         {radar}
       </div>
@@ -197,16 +215,18 @@ export default function CompareVerdict({ reportA, reportB, nameA, nameB, archA, 
 
         {overallA && overallB && (
           <div className="compare-verdict-overall-row">
-            <span className="compare-verdict-overall-side compare-verdict-overall-side--left">
+            <div className="compare-verdict-overall-side compare-verdict-overall-side--left">
+              {heroA}
               <GradeBadge grade={overallA} size="large" winnerSide={aWinsOverall ? 'a' : null} />
-            </span>
+            </div>
             <div className="compare-verdict-overall-center">
               <span className="compare-verdict-overall-label">OVERALL</span>
               <CompareMagnitudeBar gradeA={overallA} gradeB={overallB} size="lg" />
             </div>
-            <span className="compare-verdict-overall-side compare-verdict-overall-side--right">
+            <div className="compare-verdict-overall-side compare-verdict-overall-side--right">
+              {heroB}
               <GradeBadge grade={overallB} size="large" winnerSide={bWinsOverall ? 'b' : null} />
-            </span>
+            </div>
           </div>
         )}
       </div>
