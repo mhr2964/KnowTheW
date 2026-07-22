@@ -6,7 +6,7 @@ Durable design/architecture docs for this project, committed to the repo so they
 | --- | --- | --- |
 | [provider-architecture.md](./provider-architecture.md) | `SportsDataProvider` contract, per-call resolution, caching discipline, test isolation | Current |
 | [archetype-fingerprinting.md](./archetype-fingerprinting.md) | Archetype badge fingerprint math, position-pooling, recency decay, versioning | Current |
-| [deployment-ops.md](./deployment-ops.md) | Heroku auto-deploy mechanism, env-var bake-in gotcha, domain/DNS setup | Current |
+| [deployment-ops.md](./deployment-ops.md) | Heroku auto-deploy mechanism, env-var bake-in gotcha, domain/DNS setup, security headers/CORS | Current |
 | [team-layer.md](./team-layer.md) | Team hub/roster/stats/history pages, first LLM integration in the codebase | Shipped 2026-05-10 |
 | [routing.md](./routing.md) | Client-side routing (bookmarkable team/player/tab URLs) | Shipped 2026-05-09 |
 | [tooltips.md](./tooltips.md) | Hover/tap stat-abbreviation definitions on table headers | Shipped 2026-05-09 |
