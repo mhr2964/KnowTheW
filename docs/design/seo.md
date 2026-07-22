@@ -66,6 +66,7 @@ Verified locally in `NODE_ENV=production` via Playwright: `#page-jsonld` renders
 ## Done
 
 - **Google Search Console** — verification file (`client/public/googlede4ffe6ab6d8b4dd.html`) shipped and confirmed live; site verified; sitemap submitted via the dashboard. Per-URL indexing requests were offered and declined by the user (not necessary — sitemap submission alone gets pages crawled).
+- **Bing Webmaster Tools** — site added via "Import from Google Search Console" (carries over GSC verification, no separate file/DNS/meta-tag step); sitemap registered under Sitemaps.
 - **Favicon** — now a real crawlable `/favicon.svg` file per Google's requirements (see Phase 3 above).
 - **Structured data** — per-page `Person`/`SportsTeam` JSON-LD on player and team pages (see Phase 4 above).
 - **PWA icon set** — `client/public/manifest.json`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png` (all generated from `favicon.svg`), plus `<meta name="theme-color">`. Deliberately minimal (`"display": "browser"`, no service worker) — this is a stats-lookup site, not an installable app, so Chrome's installability criteria are intentionally never met regardless of manifest content. Fixes the prior gap where iOS/Android home-screen saves and browser manifest checks had nothing but the SVG favicon (unusable for `apple-touch-icon`, since iOS doesn't support SVG there).
