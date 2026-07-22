@@ -17,6 +17,6 @@ Durable design/architecture docs for this project, committed to the repo so they
 | [compare-v2.md](./compare-v2.md) | Compare v2 — AI-graded player reports (the architecture the current Compare page is still built on) | Shipped 2026-05-11, actively evolving — see `HANDOFF.md` for the current round of UI feedback |
 | [pbp-cache-refactor.md](./pbp-cache-refactor.md) | Play-by-play cache redesign after a Mongo free-tier quota outage | Shipped 2026-05-11 |
 | [mobile-refresh.md](./mobile-refresh.md) | Mobile UI refresh breakpoint convention, do-not-touch zones, round sequencing | Shipped 2026-07-22 |
-| [seo.md](./seo.md) | Sitemap/robots.txt, per-route title/description/canonical, Search Console verification, bot-only social-preview middleware (`og:image`); what's deferred (full SSR, retired-player sitemap entries) | Shipped 2026-07-22 |
+| [seo.md](./seo.md) | Sitemap/robots.txt, per-route title/description/canonical, Search Console verification, bot-only social-preview middleware (`og:image`), favicon, per-page JSON-LD, PWA icon set; what's deferred (full SSR, retired-player sitemap entries) | Shipped 2026-07-22 |
 
 Shipped docs are kept as historical design record — they explain *why* a shipped feature is shaped the way it is, which git log alone doesn't answer well. Update a doc in place if its subject's architecture changes again; don't append a new dated entry to the same file (that's what git history is for).

@@ -6,6 +6,7 @@ import { nameForYear } from '../constants/wnbaFranchiseLineageClient';
 import SeasonPicker from '../components/SeasonPicker';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
+import { setStructuredData, clearStructuredData } from '../lib/structuredData';
 
 const TAB_META = {
   roster:   { label: 'Roster',   desc: 'roster' },
@@ -30,8 +31,18 @@ export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }
       tab ? `${team.name} ${tab.label} — KnowTheW` : `${team.name} — KnowTheW`,
       `${team.name} ${tab ? tab.desc : 'roster, stats, schedule, and history'} — KnowTheW.`
     );
-    return resetPageMeta;
-  }, [team, location.pathname]);
+    setStructuredData({
+      '@context': 'https://schema.org',
+      '@type': 'SportsTeam',
+      name: team.name,
+      url: `${window.location.origin}/team/${slug}`,
+      sport: 'Basketball',
+      memberOf: { '@type': 'SportsOrganization', name: "Women's National Basketball Association" },
+      ...(team.logo && { logo: team.logo }),
+      ...(team.location && { location: { '@type': 'Place', name: team.location } }),
+    });
+    return () => { resetPageMeta(); clearStructuredData(); };
+  }, [team, location.pathname, slug]);
 
   const currentSeason = getCurrentSeason();
   const isDefunct = !!team?.defunct;

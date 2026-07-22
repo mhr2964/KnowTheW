@@ -1,4 +1,4 @@
-# SEO — indexing phase 1 + social preview (phase 2)
+# SEO — indexing phase 1 + social preview (phase 2) + favicon (phase 3) + structured data (phase 4)
 
 Why: the site (a client-side-only React SPA — no SSR/prerendering, per `routing.md` and `team-layer.md`) had zero SEO infrastructure — no `robots.txt`, no sitemap, no meta description, no per-route `<title>`. Nothing about the site was individually indexable beyond the homepage. This document records the scoped fix and, deliberately, what was left out.
 
@@ -53,7 +53,19 @@ What shipped: the same orange-square "K" mark, pulled out into a real static fil
 
 As of this session, `site:knowthew.net` returns zero Google results — the site was verified in Search Console only days ago, and indexing takes time regardless of code correctness. The favicon and per-route descriptions are both in the right shape now; nothing further to do here except wait for Google to crawl.
 
+## Phase 4 — per-page structured data (`client/src/lib/structuredData.js`)
+
+Why: the only JSON-LD on the site was the static, site-wide `WebSite` block baked into `index.html` — every route reported the same generic block, so nothing about a specific player or team was ever eligible for a Google rich snippet.
+
+Considered instead of this: extending `server/middleware/socialPreview.js` (phase 2) to also emit JSON-LD. Rejected — that middleware's bot allowlist deliberately excludes Googlebot (it executes JS and already gets the real SPA, same as any user), and link-preview crawlers don't read `schema.org` markup anyway (they read `og:*` tags). JSON-LD only has value on the path Googlebot actually executes, so it has to live client-side.
+
+What shipped: `setStructuredData(obj)`/`clearStructuredData()`, following `pageMeta.js`'s existing imperative-DOM pattern — one dedicated `<script id="page-jsonld">`, overwritten per route rather than appended fresh, so SPA navigation never accumulates stale tags. Wired into the same `useEffect`s that already call `setPageMeta` in `PlayerRoutePage.jsx` (`Person` schema: name, url, image, jobTitle, affiliation, birthPlace — only fields the API actually returns; no fabricated birth date or jersey-number property, since schema.org has no real "jersey number" field) and `TeamPage.jsx` (`SportsTeam` schema: name, url, sport, memberOf, logo, location — identity fields only, not the season-derived display strings computed later in that component's effect chain).
+
+Verified locally in `NODE_ENV=production` via Playwright: `#page-jsonld` renders the correct `Person`/`SportsTeam` object on a real player/team page, is absent on routes that don't set it (home), and doesn't duplicate across navigation. No console errors. Full suite (176/176, 4 new in `test/security-headers.test.js` — see `deployment-ops.md`) passes.
+
 ## Done
 
 - **Google Search Console** — verification file (`client/public/googlede4ffe6ab6d8b4dd.html`) shipped and confirmed live; site verified; sitemap submitted via the dashboard. Per-URL indexing requests were offered and declined by the user (not necessary — sitemap submission alone gets pages crawled).
 - **Favicon** — now a real crawlable `/favicon.svg` file per Google's requirements (see Phase 3 above).
+- **Structured data** — per-page `Person`/`SportsTeam` JSON-LD on player and team pages (see Phase 4 above).
+- **PWA icon set** — `client/public/manifest.json`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png` (all generated from `favicon.svg`), plus `<meta name="theme-color">`. Deliberately minimal (`"display": "browser"`, no service worker) — this is a stats-lookup site, not an installable app, so Chrome's installability criteria are intentionally never met regardless of manifest content. Fixes the prior gap where iOS/Android home-screen saves and browser manifest checks had nothing but the SVG favicon (unusable for `apple-touch-icon`, since iOS doesn't support SVG there).
