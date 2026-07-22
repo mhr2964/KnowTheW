@@ -45,6 +45,15 @@ What shipped: a small Express middleware, mounted unconditionally in `server/ind
 - **Full SSR / framework migration** — would remove the JS-execution dependency entirely (faster first paint, one render path for everyone) but nothing today requires it: Googlebot already renders the SPA fine, and phase 2 above solves the social-card gap without it. Revisit as its own `>>think` pass if a concrete need shows up (e.g. real performance complaints).
 - **`og:image` for pages without a real photo/logo** (home, legal pages, legacy/defunct entries) — no generic placeholder graphic exists; those cards render as `summary` (title+description only, no image) rather than get a fake image.
 
+## Phase 3 — favicon in search results
+
+Why: Google's own favicon-in-search requirements (checked directly against `developers.google.com/search/docs/appearance/favicon-in-search` before making this change) say the favicon has to be an independently crawlable file URL — Googlebot-Image fetches it separately from the page. The site's favicon was a `data:image/svg+xml` URI inlined straight into `index.html`'s `<link rel="icon">` — not a real fetchable resource, so it wasn't eligible to show in search results regardless of indexing state.
+
+What shipped: the same orange-square "K" mark, pulled out into a real static file (`client/public/favicon.svg`), referenced via a normal `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />`. Verified locally in `NODE_ENV=production`: served with `Content-Type: image/svg+xml` and a stable ETag, not blocked by `robots.txt`.
+
+As of this session, `site:knowthew.net` returns zero Google results — the site was verified in Search Console only days ago, and indexing takes time regardless of code correctness. The favicon and per-route descriptions are both in the right shape now; nothing further to do here except wait for Google to crawl.
+
 ## Done
 
 - **Google Search Console** — verification file (`client/public/googlede4ffe6ab6d8b4dd.html`) shipped and confirmed live; site verified; sitemap submitted via the dashboard. Per-URL indexing requests were offered and declined by the user (not necessary — sitemap submission alone gets pages crawled).
+- **Favicon** — now a real crawlable `/favicon.svg` file per Google's requirements (see Phase 3 above).
