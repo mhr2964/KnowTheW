@@ -16,10 +16,14 @@ Standardize on three tiers, all already precedented somewhere in the codebase be
 
 ## Scope and sequencing
 
-This refresh runs as a sequence of small, independently-verified rounds (mirroring how the Compare page's own mobile work shipped — 18 rounds, not one rewrite), rather than a single pass. Current state:
+This refresh ran as a sequence of small, independently-verified rounds (mirroring how the Compare page's own mobile work shipped — 18 rounds, not one rewrite), rather than a single pass. Full sweep closed 2026-07-22:
 
-- Player page (flagged as the known weak spot) — sticky-column desync, control-row overflow, sub-44px touch targets, archetype-card clipping, wide-table column-hiding. In progress.
-- Global header/footer — CSS-only fix (tap targets, wrapping); no hamburger/drawer — the header has no nav links to hide (just logo + search) and the footer is 4 legal links, not enough surface to justify new drawer machinery.
-- Team Roster/Stats, Similar Players, Compare (conditional), Home/Search/legal — deferred, pending review of the Player-page + header/footer rounds first.
+- **Player page** (the named weak spot) — sticky-column desync, control-row overflow, sub-44px touch targets, archetype-card clipping, wide-table column-hiding (Per Game/Totals). Shipped.
+- **Global header/footer** — CSS-only fix (tap targets, wrapping); no hamburger/drawer — the header has no nav links to hide (just logo + search) and the footer is 4 legal links, not enough surface to justify new drawer machinery. Shipped.
+- **Team Roster** — the archetype-card clipping risk was already resolved by the Player-page portal fix (it's a shared component); the one real bug was the 4-column table overflowing ~8px past a 320px viewport from full-size cell padding on narrow Jersey/Pos columns. Row/touch-target sizing turned out already fine on measurement (every row is ~59-60px regardless of content). Shipped.
+- **Team Stats** — verified already fine, `auto-fill` grid reflows cleanly at every width checked. No change needed.
+- **Similar Players** — the row's stat/confidence-tag block (all `white-space:nowrap`) was squeezing player names down to unreadable 6-7 character fragments at ≤480px; fixed by wrapping the stat onto its own line. Shipped.
+- **Compare page** — conditional round, skipped: a full viewport sweep (320/480/600/820/1280px) after every other round found no regression. The two do-not-touch zones' truncation behavior is unchanged (pre-existing, intentional).
+- **Home/Search/legal/Team Dashboard/History/Schedule** — spot-check sweep at 320px, all clean (no horizontal overflow, no layout breakage). No change needed.
 
-Update this doc in place as each area's mobile treatment lands or changes — don't append a dated log here; git history is the log.
+Update this doc in place as any area's mobile treatment changes again — don't append a dated log here; git history is the log.
