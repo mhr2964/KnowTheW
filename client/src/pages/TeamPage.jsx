@@ -5,6 +5,14 @@ import { WNBA_FOUNDED_CLIENT } from '../constants/wnbaFoundedClient';
 import { nameForYear } from '../constants/wnbaFranchiseLineageClient';
 import SeasonPicker from '../components/SeasonPicker';
 import useLazyFetch from '../hooks/useLazyFetch';
+import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
+
+const TAB_META = {
+  roster:   { label: 'Roster',   desc: 'roster' },
+  stats:    { label: 'Stats',    desc: 'team stats' },
+  history:  { label: 'History',  desc: 'franchise history' },
+  schedule: { label: 'Schedule', desc: 'schedule' },
+};
 
 export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }) {
   const { slug } = useParams();
@@ -15,9 +23,15 @@ export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }
   const team = teams.find(t => t.slug === slug) ?? null;
 
   useEffect(() => {
-    if (team) document.title = `${team.name} — KnowTheW`;
-    return () => { document.title = 'KnowTheW'; };
-  }, [team]);
+    if (!team) return undefined;
+    const tabKey = location.pathname.split('/').pop();
+    const tab = TAB_META[tabKey];
+    setPageMeta(
+      tab ? `${team.name} ${tab.label} — KnowTheW` : `${team.name} — KnowTheW`,
+      `${team.name} ${tab ? tab.desc : 'roster, stats, schedule, and history'} — KnowTheW.`
+    );
+    return resetPageMeta;
+  }, [team, location.pathname]);
 
   const currentSeason = getCurrentSeason();
   const isDefunct = !!team?.defunct;

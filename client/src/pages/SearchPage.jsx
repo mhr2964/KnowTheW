@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { initialsOf } from '../lib/initials';
+import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 
 export default function SearchPage() {
   const [searchParams] = useSearchParams();
@@ -9,6 +10,17 @@ export default function SearchPage() {
 
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Query-driven results page — excluded from indexing (see robots.txt) since content is thin and
+  // duplicated across near-identical queries; not a good search landing page.
+  useEffect(() => {
+    setPageMeta(
+      q ? `Search: ${q} — KnowTheW` : 'Search — KnowTheW',
+      'Search WNBA players and teams on KnowTheW.',
+      { noindex: true }
+    );
+    return resetPageMeta;
+  }, [q]);
 
   useEffect(() => {
     if (!q.trim()) { setResults(null); return; }

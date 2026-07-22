@@ -1,6 +1,13 @@
+import { useEffect } from 'react';
 import LegalFooterNav from '../components/LegalFooterNav';
+import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 
 export default function PrivacyPage() {
+  useEffect(() => {
+    setPageMeta('Privacy Policy — KnowTheW', 'What information KnowTheW collects, how analytics and advertising cookies are used, and how to opt out.');
+    return resetPageMeta;
+  }, []);
+
   return (
     <div className="legal-page">
       <h1>Privacy Policy</h1>

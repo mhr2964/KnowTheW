@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /search
+Disallow: /compare/
+Disallow: /similar/
+
+Sitemap: https://knowthew.net/sitemap.xml

@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RecentDecks from '../components/RecentDecks';
+import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 
 function LogoPlaceholder({ abbreviation }) {
   return (
@@ -47,6 +49,11 @@ function TeamCard({ team }) {
 }
 
 export default function HomePage({ teams, decks, onRestudy, loading, error }) {
+  useEffect(() => {
+    setPageMeta('KnowTheW — WNBA Stats & Analytics', 'Browse every WNBA team, roster, and player stat line — current and historical, back to the league’s 1997 founding.');
+    return resetPageMeta;
+  }, []);
+
   if (loading) return <p className="status-msg">Loading teams...</p>;
   if (error) return <p className="status-msg error">{error}</p>;
 

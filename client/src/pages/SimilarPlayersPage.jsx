@@ -4,6 +4,7 @@ import useLazyFetch from '../hooks/useLazyFetch';
 import ComparePickerModal from '../components/ComparePickerModal';
 import SimilarPlayersSection from '../components/SimilarPlayersSection';
 import { initialsOf } from '../lib/initials';
+import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 
 // Dedicated "players like X" page (mirrors ComparePage): a target-player header with a "Change player"
 // picker that swaps who you're looking at via the URL, and the ranked similar list below. Reached from
@@ -24,9 +25,11 @@ export default function SimilarPlayersPage() {
   const player = data?.player ?? data ?? null;
   const name = player?.name ?? null;
 
+  // Excluded from indexing (see robots.txt/sitemap.js) — derived from /player/:id already in the
+  // sitemap, not a distinct landing page worth surfacing in search on its own.
   useEffect(() => {
-    if (name) document.title = `Players like ${name} — KnowTheW`;
-    return () => { document.title = 'KnowTheW'; };
+    if (name) setPageMeta(`Players like ${name} — KnowTheW`, `WNBA players with a playstyle closest to ${name}, ranked by fingerprint similarity on KnowTheW.`, { noindex: true });
+    return resetPageMeta;
   }, [name]);
 
   // Reset the headshot-fallback flag when the target changes (swap).

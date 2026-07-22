@@ -5,6 +5,7 @@ import ComparePickerModal from '../components/ComparePickerModal';
 import CompareModeToggle from '../components/CompareModeToggle';
 import CompareVerdict from '../components/CompareVerdict';
 import GradeCard, { CATEGORIES } from '../components/GradeCard';
+import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 
 function GradeCardListSkeleton() {
   return (
@@ -52,13 +53,16 @@ export default function ComparePage() {
   const nameA = playerA?.player?.name ?? playerA?.name ?? 'Player A';
   const nameB = playerB?.player?.name ?? playerB?.name ?? 'Player B';
 
+  // Combinatorial player-pair pages are excluded from indexing (see robots.txt/sitemap.js) — too
+  // many low-uniqueness permutations to be a good search landing page — but still get real
+  // title/description for tab titles, bookmarks, and social shares of a specific comparison.
   useEffect(() => {
     if (isSamePlayer) {
-      document.title = 'Compare players — KnowTheW';
+      setPageMeta('Compare players — KnowTheW', 'Compare WNBA player stats and AI-graded reports side by side on KnowTheW.', { noindex: true });
     } else if (nameA !== 'Player A' && nameB !== 'Player B') {
-      document.title = `${nameA} vs ${nameB} — KnowTheW`;
+      setPageMeta(`${nameA} vs ${nameB} — KnowTheW`, `Side-by-side stat comparison and AI-graded report: ${nameA} vs ${nameB} on KnowTheW.`, { noindex: true });
     }
-    return () => { document.title = 'KnowTheW'; };
+    return resetPageMeta;
   }, [nameA, nameB, isSamePlayer]);
 
   function openPickerFor(target) {

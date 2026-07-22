@@ -1,6 +1,13 @@
+import { useEffect } from 'react';
 import LegalFooterNav from '../components/LegalFooterNav';
+import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 
 export default function AboutPage() {
+  useEffect(() => {
+    setPageMeta('About — KnowTheW', 'What KnowTheW is, how it sources WNBA data, and how AI-assisted content is labeled.');
+    return resetPageMeta;
+  }, []);
+
   return (
     <div className="legal-page">
       <h1>About KnowTheW</h1>

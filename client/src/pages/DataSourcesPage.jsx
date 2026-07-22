@@ -1,6 +1,13 @@
+import { useEffect } from 'react';
 import LegalFooterNav from '../components/LegalFooterNav';
+import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 
 export default function DataSourcesPage() {
+  useEffect(() => {
+    setPageMeta('Data Sources & Attribution — KnowTheW', 'Where KnowTheW’s WNBA stats come from: ESPN for 2002-present, a Basketball-Reference-derived dataset for 1997-2001.');
+    return resetPageMeta;
+  }, []);
+
   return (
     <div className="legal-page">
       <h1>Data Sources &amp; Attribution</h1>

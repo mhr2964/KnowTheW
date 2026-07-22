@@ -10,6 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api', require('./routes/api'));
+app.use(require('./routes/sitemap'));
 
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/build')));

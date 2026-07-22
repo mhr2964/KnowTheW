@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import PlayerPage from '../components/PlayerPage';
 import useLazyFetch from '../hooks/useLazyFetch';
+import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 
 const VALID_TABS = new Set(['totals', 'per36', 'per100', 'advanced', 'gamelog', 'splits', 'pbp']);
 
@@ -15,8 +16,15 @@ export default function PlayerRoutePage({ onSaveDeck }) {
   );
 
   useEffect(() => {
-    if (playerData?.player?.name) document.title = `${playerData.player.name} — KnowTheW`;
-    return () => { document.title = 'KnowTheW'; };
+    const player = playerData?.player;
+    if (player?.name) {
+      const teamBit = player.teamName ? ` (${player.teamName})` : '';
+      setPageMeta(
+        `${player.name} — KnowTheW`,
+        `${player.name}${teamBit} career stats, game log, advanced metrics, and playstyle analysis on KnowTheW.`
+      );
+    }
+    return resetPageMeta;
   }, [playerData]);
 
   // Redirect invalid :tab so URL and UI stay in sync — hooks must come first

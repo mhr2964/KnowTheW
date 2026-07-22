@@ -1,6 +1,13 @@
+import { useEffect } from 'react';
 import LegalFooterNav from '../components/LegalFooterNav';
+import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 
 export default function TermsPage() {
+  useEffect(() => {
+    setPageMeta('Terms of Use — KnowTheW', 'Terms for using KnowTheW, an independent WNBA stats and analytics reference.');
+    return resetPageMeta;
+  }, []);
+
   return (
     <div className="legal-page">
       <h1>Terms of Use</h1>
