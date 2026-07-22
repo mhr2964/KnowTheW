@@ -79,6 +79,12 @@
      scrollbar on the page, not just a tight fit). */
   .roster-cell, .roster-cell--head { padding-left: 0.6rem; padding-right: 0.6rem; }
 
+  /* Similar Players rows: .similar-row-stat (position/match%/confidence tag, all nowrap) was
+     squeezing .similar-row-name down to almost nothing, truncating names to unreadable
+     fragments like "Aliyah..." Drop the stat onto its own line instead of shrinking the name. */
+  .similar-row-btn { flex-wrap: wrap; row-gap: 0.3rem; }
+  .similar-row-stat { flex-basis: 100%; padding-left: 45px; }
+
   .th-full { display: none; }
   .th-short { display: inline; }
   /* Row-level gold accent + top banner already signal championship; pill is redundant here. */
