@@ -73,6 +73,12 @@
      shooting-pct already cover the same ground more usefully at a glance at this width. */
   .bref-col-low-priority { display: none; }
 
+  /* Roster table's 4 columns each carry full 1rem horizontal cell padding even though Jersey/Pos
+     hold 1-2 characters -- at 320px that padding alone was enough to overflow the table ~8px
+     past the viewport (roster-table-wrap has no overflow-x, so this was a real horizontal
+     scrollbar on the page, not just a tight fit). */
+  .roster-cell, .roster-cell--head { padding-left: 0.6rem; padding-right: 0.6rem; }
+
   .th-full { display: none; }
   .th-short { display: inline; }
   /* Row-level gold accent + top banner already signal championship; pill is redundant here. */
