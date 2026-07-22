@@ -4,13 +4,13 @@ Forward-looking handoff for the active work-stream. **Overwrite** each session; 
 
 ```yaml
 last-model: claude-sonnet-5
-last-session: 2026-07-22 (mobile refresh + SEO phase 1 + Search Console verified, all pushed; social-preview middleware built, verified locally, not yet committed)
-state: yellow — one new file (server/middleware/socialPreview.js) + doc updates uncommitted, pending user go-ahead to commit/push
+last-session: 2026-07-22 (mobile refresh + SEO phase 1 + Search Console verified + social-preview middleware — all pushed to origin/master, commit 8c00a78)
+state: green — nothing pending; local master in sync with origin/master
 ```
 
 ## Next action
 
-**Waiting on user go-ahead to commit + push the social-preview middleware.** Everything through Search Console verification (mobile refresh, SEO phase 1, sitemap submission) is already pushed and live. This session added `server/middleware/socialPreview.js` (bot-only `og:image`/title/description for player and team pages — see `docs/design/seo.md` "Phase 2") — built, lint-clean, `npm test` 172/172 passing, and manually verified locally in `NODE_ENV=production` against active/legacy players and teams with spoofed bot user-agents. Not yet committed (per the multi-model git rule: only commit when asked) or pushed (a push to `origin/master` is a Heroku production deploy — see `docs/design/deployment-ops.md`).
+Nothing queued. Mobile refresh, SEO phase 1 (sitemap/robots/per-route meta), Google Search Console verification + sitemap submission, and the phase-2 bot-only social-preview middleware (`server/middleware/socialPreview.js` — real `og:image`/title/description for player and team pages when a known crawler UA hits, see `docs/design/seo.md`) are all shipped, committed, and pushed (`8c00a78`). This is a live Heroku auto-deploy — give it a few minutes to roll out before verifying in production (e.g. Facebook's Sharing Debugger or `curl -A "facebookexternalhit/1.1" https://knowthew.net/player/<id>`).
 
 Open threads, if picked back up later: retired (2002+) players missing from the sitemap (needs a Mongo `playerIndex` audit — user is fine deferring until a provider switch, since that data isn't considered complete under ESPN anyway) and full SSR (explicitly not needed right now — see `docs/design/seo.md` "Explicitly deferred").
 
