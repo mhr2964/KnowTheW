@@ -4,15 +4,15 @@ Forward-looking handoff for the active work-stream. **Overwrite** each session; 
 
 ```yaml
 last-model: claude-sonnet-5
-last-session: 2026-07-22 (mobile refresh complete; SEO phase 1 built, uncommitted)
-state: yellow — 10 mobile-refresh commits local-only + SEO phase 1 uncommitted, nothing pushed to origin/master
+last-session: 2026-07-22 (mobile refresh + SEO phase 1 + Search Console verified, all pushed; social-preview middleware built, verified locally, not yet committed)
+state: yellow — one new file (server/middleware/socialPreview.js) + doc updates uncommitted, pending user go-ahead to commit/push
 ```
 
 ## Next action
 
-**Waiting on user's push decision — now covering two pieces of work.** The full mobile UI refresh (see `docs/design/mobile-refresh.md`) is complete and committed on `master`. SEO phase 1 (see `docs/design/seo.md`) — `robots.txt`, dynamic `/sitemap.xml`, per-route title/description/canonical/robots meta — is built and verified locally (server boots, sitemap serves correctly with the roster-prefetch race fixed, `npm run lint` clean) but **not yet committed**. Neither is pushed to `origin/master` (a push there is a Heroku production deploy — see `docs/design/deployment-ops.md` — held pending explicit go-ahead per prior user choice).
+**Waiting on user go-ahead to commit + push the social-preview middleware.** Everything through Search Console verification (mobile refresh, SEO phase 1, sitemap submission) is already pushed and live. This session added `server/middleware/socialPreview.js` (bot-only `og:image`/title/description for player and team pages — see `docs/design/seo.md` "Phase 2") — built, lint-clean, `npm test` 172/172 passing, and manually verified locally in `NODE_ENV=production` against active/legacy players and teams with spoofed bot user-agents. Not yet committed (per the multi-model git rule: only commit when asked) or pushed (a push to `origin/master` is a Heroku production deploy — see `docs/design/deployment-ops.md`).
 
-Once pushed, Search Console verification/sitemap submission is a dashboard-only step tied to the user's Google account (same pattern as AdSense) — not something this assistant can do directly.
+Open threads, if picked back up later: retired (2002+) players missing from the sitemap (needs a Mongo `playerIndex` audit — user is fine deferring until a provider switch, since that data isn't considered complete under ESPN anyway) and full SSR (explicitly not needed right now — see `docs/design/seo.md` "Explicitly deferred").
 
 Mobile refresh — everything shipped:
 - Rounds 0-5: Player page (the named weak spot) — foundation, header/footer, sticky-column desync, control-row wrap + touch targets, archetype-card portal fix, hero-name clamp + column-hiding.

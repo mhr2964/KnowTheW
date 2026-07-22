@@ -1,4 +1,4 @@
-# SEO — indexing phase 1
+# SEO — indexing phase 1 + social preview (phase 2)
 
 Why: the site (a client-side-only React SPA — no SSR/prerendering, per `routing.md` and `team-layer.md`) had zero SEO infrastructure — no `robots.txt`, no sitemap, no meta description, no per-route `<title>`. Nothing about the site was individually indexable beyond the homepage. This document records the scoped fix and, deliberately, what was left out.
 
@@ -25,9 +25,26 @@ Why: the site (a client-side-only React SPA — no SSR/prerendering, per `routin
 - **`/similar/:id`** — derived from a player already in the sitemap via `/player/:id`; not a distinct enough landing page.
 - **`NotFoundPage`** — the Express catch-all always returns HTTP 200 (it serves `index.html` for literally any unmatched path, by design, since the SPA needs client-side routing to work). That makes every truly-missing URL a "soft 404" from Google's perspective. `noindex` on the client-rendered not-found state is the mitigation; a real 404 status code isn't achievable without breaking the SPA catch-all.
 
+## Phase 2 — social preview meta for bots (`server/middleware/socialPreview.js`)
+
+Why: Discord/Twitter/Facebook/Slack/etc. link-preview crawlers don't execute JavaScript, so they never see the per-route title/description/`og:image` that `pageMeta.js` sets client-side after React mounts — every shared link showed the static `index.html` defaults regardless of which player or team it was. Googlebot itself doesn't have this problem (it executes JS and had already indexed per-route titles correctly, confirmed via Search Console), so this is purely a social-share-card fix, not an indexing fix.
+
+Considered instead of this: full SSR migration (React Router v7 framework mode) — rejected via `>>think` as disproportionate to the actual problem. It would touch routing/data-loading across every page and the build/deploy pipeline, right after the mobile-refresh pass, for a benefit (real SSR HTML) nothing today actually needs.
+
+What shipped: a small Express middleware, mounted unconditionally in `server/index.js` right after `sitemap.js` and before the production static/catch-all block.
+- Matches request `User-Agent` against a known-bot allowlist (`facebookexternalhit`, `Twitterbot`, `Slackbot`, `Discordbot`, `LinkedInBot`, `WhatsApp`, `TelegramBot`, `redditbot`, `SkypeUriPreview`, `Pinterest`). Non-matching UAs (real users, Googlebot) hit `next()` immediately — zero overhead, SPA untouched.
+- Only intercepts `/player/:id(/:tab)?` and `/team/:slug(/:sub)?` — the only routes with real per-entity data. Everything else (home, legal pages, `/search`, `/compare/*`, `/similar/*`, 404s) falls through to `index.html`'s static defaults, which is fine since the excluded routes are already `noindex` and generic defaults are a reasonable fallback for the rest.
+- Player lookup chain: `findActivePlayer` (in-memory, sync) → `getRetiredPlayer` (live ESPN fetch, TTL-cached) → `LEGACY_PLAYERS_BULK` (static 1997-2001 data). Team lookup: `getTeams()` active list → `LEGACY_DEFUNCT_TEAMS`.
+- `og:image` is only emitted when a real photo/logo exists (active-player ESPN headshot, active-team ESPN logo). Legacy/defunct entries have no photo on file — the card renders as a `summary` (title+description, no image) rather than a fake generic image. No sitewide placeholder graphic exists or was worth adding for this.
+- On any lookup miss or error, falls through to `next()` (never renders a broken/empty card, never 500s).
+- Verified locally in `NODE_ENV=production` with spoofed bot UAs against: an active player (headshot present), an active team (logo present), a legacy defunct team, a legacy 1997-2001 player (no headshot), a non-matching route (`/compare/...`), and an unknown id — all behaved correctly. Full `npm test` (172/172) still passes; this file has no dedicated test (same precedent as `sitemap.js` — verified via manual curl, not an automated suite entry).
+
 ## Explicitly deferred (not this pass)
 
-- **Retired (2002+) players in the MongoDB `playerIndex` collection** — used by `/api/search` for retired-player lookups but not enumerated into the sitemap. Unlike the 1997-2001 bulk legacy data (a static in-process object, free to iterate), this needs a live Mongo query and its actual population/size wasn't audited this session. Worth adding once confirmed populated in production.
-- **Prerendering / SSR / dynamic-rendering-for-bots** — the real fix for social-preview cards (Discord/Twitter/Facebook scrapers don't execute JS, so they'll only ever see the static `index.html` OG tags, never a player-specific one) and for the most reliable search-engine rendering. Explicitly scoped out of this pass per user direction ("do the stuff from option 3 at a later date" — see the `>>think` block in the session this shipped from). Options considered: bot-user-agent-triggered prerender middleware (e.g. a headless-browser render cache) vs. full SSR framework migration. Both are real rearchitecture work with their own tradeoffs (Heroku free/hobby dyno resource cost for a render step, one-way framework-choice door) — don't attempt piecemeal; revisit as its own `>>think` pass when picked back up.
-- **Google Search Console verification + sitemap submission** — dashboard-only, tied to the user's Google account, same pattern as AdSense (see `Brain/Memory/project_knowthew_adsense_account.md`). Not something this assistant can do directly; can add a verification `<meta>` tag or file to the codebase once the user has one from the dashboard.
-- **`og:image`** — omitted; no real image asset exists to point it at. A generic placeholder wasn't worth adding for this pass.
+- **Retired (2002+) players in the MongoDB `playerIndex` collection** — used by `/api/search` for retired-player lookups but not enumerated into the sitemap. Unlike the 1997-2001 bulk legacy data (a static in-process object, free to iterate), this needs a live Mongo query and its actual population/size wasn't audited this session. User explicitly OK'd leaving these out until a provider switch, since the current ESPN-provider data for these players isn't considered complete anyway.
+- **Full SSR / framework migration** — would remove the JS-execution dependency entirely (faster first paint, one render path for everyone) but nothing today requires it: Googlebot already renders the SPA fine, and phase 2 above solves the social-card gap without it. Revisit as its own `>>think` pass if a concrete need shows up (e.g. real performance complaints).
+- **`og:image` for pages without a real photo/logo** (home, legal pages, legacy/defunct entries) — no generic placeholder graphic exists; those cards render as `summary` (title+description only, no image) rather than get a fake image.
+
+## Done
+
+- **Google Search Console** — verification file (`client/public/googlede4ffe6ab6d8b4dd.html`) shipped and confirmed live; site verified; sitemap submitted via the dashboard. Per-URL indexing requests were offered and declined by the user (not necessary — sitemap submission alone gets pages crawled).
