@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const compression = require('compression');
 const path = require('path');
 
 const app = express();
@@ -17,6 +18,10 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: false,
 }));
+
+// Heroku's router doesn't compress responses itself — gzip JSON API responses and the static
+// JS/CSS bundle at the app level instead.
+app.use(compression());
 
 // GET-only public API, no cookies/auth beyond a custom header (server/routes/api.js) — this
 // allowlist only stops browser JS on other sites from reading responses, it's not an access-
