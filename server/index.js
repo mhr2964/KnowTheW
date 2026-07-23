@@ -50,6 +50,14 @@ app.use(require('./routes/sitemap'));
 app.use(require('./middleware/socialPreview'));
 
 if (process.env.NODE_ENV === 'production') {
+  // Vite content-hashes filenames under /assets on every build, so a cached copy under a given
+  // URL is never stale — safe to cache for a year, immutable. Everything else (index.html,
+  // favicon.svg, manifest.json, robots.txt, ...) is unhashed and must stay revalidate-on-request
+  // so a deploy actually reaches returning visitors.
+  app.use('/assets', express.static(path.join(__dirname, '../client/build/assets'), {
+    maxAge: '1y',
+    immutable: true,
+  }));
   app.use(express.static(path.join(__dirname, '../client/build')));
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
