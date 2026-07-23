@@ -26,6 +26,24 @@ CORS (also `server/index.js`) was tightened from a bare `cors()` (reflected any 
 
 Covered by `test/security-headers.test.js`.
 
+## Rate limiting, compression, and caching
+
+`server/index.js` applies `express-rate-limit` (100 req/min/IP) to the `/api` mount only — `server/routes/api.js` is GET-only with no cookies/auth, so this is purely an abuse/scraping brake, not an access-control mechanism. Not applied to `sitemap.js` (already 6h in-memory cached) or `socialPreview.js` (UA-gated to known bots).
+
+`compression()` is mounted right after `helmet()`, before routes — Heroku's router doesn't gzip responses itself, so this has to happen at the app level.
+
+`express.static` for the production client build is split into two mounts: `/assets` (Vite's content-hashed JS/CSS output) gets `maxAge: '1y', immutable: true` since a cached copy under a given hashed URL is never stale; everything else (`index.html`, `favicon.svg`, `manifest.json`, `robots.txt`) keeps default (no long-lived cache) headers so a deploy actually reaches returning visitors.
+
+## `npm audit` triage
+
+As of this session, `npm audit` reports a moderate-severity chain (`body-parser` → `qs` → `express`) with no semver-compatible fix available (`npm audit fix`, even with `--force`, is a no-op — confirmed via dry run). Checked whether the underlying advisories are actually reachable through this app's code before deciding to leave it:
+
+- **`qs.stringify` crash (GHSA-q8mj-m7cp-5q26)** — the app never calls `qs.stringify` directly, and neither does `express`/`body-parser`'s own usage of `qs` (they only call `qs.parse`, for incoming query strings/bodies). Not a reachable path here.
+- **`body-parser` "invalid limit silently disables enforcement" (GHSA-v422-hmwv-36x6)** — requires the caller to pass a bad `limit` value to `body-parser`. `server/index.js` calls `express.json()` with no options, so `body-parser`'s own default (100kb) limit applies unaffected.
+- **`brace-expansion` / `js-yaml` (dev-only, via `eslint`'s config parsing and `nodemon`'s file watching)** — never shipped to production, never parse network/attacker-controlled input.
+
+Nothing here is being silently ignored — revisit when a compatible upstream release actually exists (not on a timer; there's no code change being deferred, just a package version that doesn't exist yet).
+
 ## MongoDB Atlas capacity
 
 Free-tier cap is 512MB. A prior incident (`pbp-cache-refactor.md`) saturated it by caching raw ESPN summaries per-game instead of computed aggregates — every deploy's release phase failed trying to `bulkWrite` into a full database. If Atlas usage climbs again, check what's being cached raw vs. computed before reaching for a paid tier.
