@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 
 const app = express();
@@ -30,7 +31,16 @@ app.use(cors({
 }));
 app.use(express.json());
 
-app.use('/api', require('./routes/api'));
+// GET-only public API, no cookies/auth beyond a custom header — 100 req/min/IP is generous for a
+// single page load (which fans out to several API calls) but stops scripted scraping/DoS. Not
+// applied to sitemap.js (already 6h in-memory cached) or socialPreview.js (UA-gated to known bots).
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api', apiLimiter, require('./routes/api'));
 app.use(require('./routes/sitemap'));
 app.use(require('./middleware/socialPreview'));
 
