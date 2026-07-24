@@ -1,4 +1,12 @@
 require('dotenv').config();
+
+// Sentry's auto-instrumentation patches other modules (express, http, etc.) at require time, so
+// this has to run before they're required — no-ops entirely if SENTRY_DSN isn't set (local dev/test).
+const Sentry = require('@sentry/node');
+if (process.env.SENTRY_DSN) {
+  Sentry.init({ dsn: process.env.SENTRY_DSN });
+}
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -62,6 +70,11 @@ if (process.env.NODE_ENV === 'production') {
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
   });
+}
+
+// Must come after all routes but before any other error-handling middleware (there isn't one here).
+if (process.env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
 }
 
 // Listen only when run directly (`node server/index.js`), not when imported by tests.

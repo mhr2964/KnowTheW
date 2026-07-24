@@ -44,6 +44,16 @@ As of this session, `npm audit` reports a moderate-severity chain (`body-parser`
 
 Nothing here is being silently ignored — revisit when a compatible upstream release actually exists (not on a timer; there's no code change being deferred, just a package version that doesn't exist yet).
 
+## Uptime and error monitoring
+
+Two free-tier third-party services, chosen over Heroku's own dashboard because it only shows dyno-restart counts (not a real external HTTP check) and has no client-side error visibility at all:
+
+- **UptimeRobot** — external HTTP check against `https://knowthew.net` (catches DNS/Cloudflare/Heroku-level outages) and `https://knowthew.net/api/status` (catches an app-level failure that still serves the static shell). Pure dashboard config, no code in this repo — set up like the AdSense account (see `project_knowthew_adsense_account` in workspace memory), alerts go to whatever contact method is configured there.
+- **Sentry** — separate projects for the Node server and the React client, each behind its own env var so both are no-ops until configured:
+  - Server: `SENTRY_DSN`. `server/index.js` calls `Sentry.init()` before requiring `express` (required by Sentry's auto-instrumentation, which patches other modules at require time) and `Sentry.setupExpressErrorHandler(app)` after all routes. Skipped entirely if `SENTRY_DSN` is unset, same as local dev/test today.
+  - Client: `VITE_SENTRY_DSN`, read in `client/src/lib/sentry.js` (`initErrorMonitoring()`, called from `main.jsx` — mirrors the existing `initAnalytics()` no-op-if-unset pattern). `main.jsx` also wraps `<App />` in `<Sentry.ErrorBoundary>` so an uncaught render error shows a "Something went wrong" fallback instead of a white screen, regardless of whether Sentry itself is configured.
+  - `VITE_SENTRY_DSN` is baked in at build time like the other `VITE_*` vars — see "Env vars baked in at build time" above. Set it on Heroku *before* the deploy that's supposed to carry it, or force a rebuild with an empty commit + push afterward.
+
 ## MongoDB Atlas capacity
 
 Free-tier cap is 512MB. A prior incident (`pbp-cache-refactor.md`) saturated it by caching raw ESPN summaries per-game instead of computed aggregates — every deploy's release phase failed trying to `bulkWrite` into a full database. If Atlas usage climbs again, check what's being cached raw vs. computed before reaching for a paid tier.
