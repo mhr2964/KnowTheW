@@ -67,8 +67,9 @@ router.get('/players/:id', async (req, res) => {
     const retired = await getProvider().getRetiredPlayer(playerId);
     if (!retired) return res.status(404).json({ error: 'player not found' });
     res.json({ player: retired });
-  } catch {
-    res.status(500).json({ error: 'failed to load player' });
+  } catch (err) {
+    console.error(`players/${req.params.id}:`, err.message);
+    res.status(502).json({ error: 'failed to load player' });
   }
 });
 
@@ -114,7 +115,7 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('detailed-stats:', err.message);
-    res.status(500).json({ error: 'failed to load detailed stats' });
+    res.status(502).json({ error: 'failed to load detailed stats' });
   }
 });
 
@@ -125,7 +126,7 @@ router.get('/players/:id/gamelog', async (req, res) => {
     res.json(log);
   } catch (err) {
     console.error('gamelog:', err.message);
-    res.status(500).json({ error: 'failed to load gamelog' });
+    res.status(502).json({ error: 'failed to load gamelog' });
   }
 });
 
@@ -140,7 +141,7 @@ router.get('/players/:id/splits', async (req, res) => {
     res.json(buildSplits(log, log.games, splitType) ?? { columns: [], rows: [] });
   } catch (err) {
     console.error('splits:', err.message);
-    res.status(500).json({ error: 'failed to load splits' });
+    res.status(502).json({ error: 'failed to load splits' });
   }
 });
 
@@ -154,7 +155,7 @@ router.get('/players/:id/onoff', async (req, res) => {
     res.json({ result: result ?? null, season });
   } catch (err) {
     console.error('onoff:', err.message);
-    res.status(500).json({ error: 'failed to compute on/off stats' });
+    res.status(502).json({ error: 'failed to compute on/off stats' });
   }
 });
 
@@ -168,7 +169,7 @@ router.get('/players/:id/pbp-stats', async (req, res) => {
     res.json({ result: result ?? null, season });
   } catch (err) {
     console.error('pbp-stats:', err.message);
-    res.status(500).json({ error: 'failed to compute play-by-play stats' });
+    res.status(502).json({ error: 'failed to compute play-by-play stats' });
   }
 });
 
@@ -210,7 +211,7 @@ router.get('/players/:id/pbp-table', async (req, res) => {
     res.json({ headers: PBP_TABLE_HEADERS, regular: { rows, careerRow } });
   } catch (err) {
     console.error('pbp-table:', err.message);
-    res.status(500).json({ error: 'failed to compute pbp table' });
+    res.status(502).json({ error: 'failed to compute pbp table' });
   }
 });
 
@@ -295,7 +296,7 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
     res.json(advResult);
   } catch (err) {
     console.error('advanced-pbp-all:', err.message);
-    res.status(500).json({ error: 'failed to compute advanced stats' });
+    res.status(502).json({ error: 'failed to compute advanced stats' });
   }
 });
 
@@ -306,7 +307,7 @@ router.get('/players/:id/percentiles', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('percentiles:', err.message);
-    res.status(500).json({ error: 'failed to compute percentiles' });
+    res.status(502).json({ error: 'failed to compute percentiles' });
   }
 });
 
@@ -341,7 +342,7 @@ router.get('/players/:id/archetype', async (req, res) => {
     });
   } catch (err) {
     console.error('archetype:', err.message);
-    res.status(500).json({ error: 'failed to compute archetype' });
+    res.status(502).json({ error: 'failed to compute archetype' });
   }
 });
 
@@ -394,7 +395,7 @@ router.get('/players/:id/similar', async (req, res) => {
     });
   } catch (err) {
     console.error('similar:', err.message);
-    res.status(500).json({ error: 'failed to compute similar players' });
+    res.status(502).json({ error: 'failed to compute similar players' });
   }
 });
 

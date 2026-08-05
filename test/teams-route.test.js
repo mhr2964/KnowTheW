@@ -43,11 +43,11 @@ test('GET /api/teams returns the active provider\'s teams', async () => {
   assert.deepStrictEqual(body, FAKE_TEAMS);
 });
 
-test('GET /api/teams returns 500 when the provider throws', async () => {
+test('GET /api/teams returns 502 when the provider throws', async () => {
   providers._setProviderForTest({
     name: 'mock',
     getTeams: async () => { throw new Error('source down'); },
   });
   const res = await fetch(`${baseUrl}/api/teams`);
-  assert.strictEqual(res.status, 500);
+  assert.strictEqual(res.status, 502);
 });

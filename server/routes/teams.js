@@ -36,8 +36,9 @@ const fetchTeamSchedule       = (...a) => getProvider().getTeamSchedule(...a);
 router.get('/teams', async (req, res) => {
   try {
     res.json(await getProvider().getTeams());
-  } catch {
-    res.status(500).json({ error: 'failed to load teams' });
+  } catch (err) {
+    console.error('teams:', err.message);
+    res.status(502).json({ error: 'failed to load teams' });
   }
 });
 
@@ -127,7 +128,7 @@ router.get('/teams/:id/roster', async (req, res) => {
     res.json({ team, players, season });
   } catch (err) {
     console.error(`teams/${teamId}/roster season=${season}:`, err.message);
-    res.status(500).json({ error: 'failed to load roster' });
+    res.status(502).json({ error: 'failed to load roster' });
   }
 });
 

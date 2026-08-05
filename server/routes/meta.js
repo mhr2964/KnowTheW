@@ -39,8 +39,9 @@ router.get('/search', async (req, res) => {
 
     const matchedPlayers = [...activePlayers, ...retiredPlayers, ...bulkLegacyMatches].slice(0, 30);
     res.json({ teams: matchedTeams, players: matchedPlayers });
-  } catch {
-    res.status(500).json({ error: 'search failed' });
+  } catch (err) {
+    console.error('search:', err.message);
+    res.status(502).json({ error: 'search failed' });
   }
 });
 
