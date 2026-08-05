@@ -4,30 +4,22 @@ Forward-looking handoff for the active work-stream. **Overwrite** each session; 
 
 ```yaml
 last-model: claude-sonnet-5
-last-session: 2026-07-22 (mobile refresh + SEO phase 1 + Search Console verified + social-preview middleware — all pushed to origin/master, commit 8c00a78)
+last-session: 2026-08-04 (server/routes/api.js God-Module refactor — split into teams/players/playerAnalysis/reports/meta + lib/ helpers, 500→502 error-code standardization — all pushed to origin/master, commit 5e3b533)
 state: green — nothing pending; local master in sync with origin/master
 ```
 
 ## Next action
 
-Nothing queued. Mobile refresh, SEO phase 1 (sitemap/robots/per-route meta), Google Search Console verification + sitemap submission, and the phase-2 bot-only social-preview middleware (`server/middleware/socialPreview.js` — real `og:image`/title/description for player and team pages when a known crawler UA hits, see `docs/design/seo.md`) are all shipped, committed, and pushed (`8c00a78`). This is a live Heroku auto-deploy — give it a few minutes to roll out before verifying in production (e.g. Facebook's Sharing Debugger or `curl -A "facebookexternalhit/1.1" https://knowthew.net/player/<id>`).
-
-Open threads, if picked back up later: retired (2002+) players missing from the sitemap (needs a Mongo `playerIndex` audit — user is fine deferring until a provider switch, since that data isn't considered complete under ESPN anyway) and full SSR (explicitly not needed right now — see `docs/design/seo.md` "Explicitly deferred").
-
-Mobile refresh — everything shipped:
-- Rounds 0-5: Player page (the named weak spot) — foundation, header/footer, sticky-column desync, control-row wrap + touch targets, archetype-card portal fix, hero-name clamp + column-hiding.
-- A general fix (unrelated to the round numbering): Export CSV moved out of its own standalone row into each tab's existing control row, closing a visible UI gap the user flagged directly.
-- Round 6: Team Roster overflow fix + Similar Players name-truncation fix (Team Stats verified already fine).
-- Round 7 (Compare page): skipped — full viewport sweep found no regression.
-- Round 8 (Home/Search/legal/Team Dashboard/History/Schedule): spot-check sweep, all clean, no changes needed.
+Nothing queued. The `server/routes/api.js` refactor (route split + `lib/` helper extraction + error-code standardization) is shipped, tested (180/180, lint clean), and pushed. A previously-unpushed Sentry monitoring commit (`bc76520`, from an earlier session) went out in the same push — worth a quick sanity check that Sentry is behaving as expected in production if anyone's watching that dashboard, though it's DSN-gated and was already verified locally.
 
 ## Traps
 
-- The Compare-page breakpoints at `compare.css:567-574`/`585-596` are still the do-not-touch zone (commits `fd68637`/`5d7cb68`) — confirmed unaffected by this refresh, but still don't touch without reading those commits first.
-- `.bref-col-low-priority` (GS/ORB/DRB/PF hidden at ≤480px) is scoped to Per Game/Totals only via `BrefTable.jsx`'s `viewMode` gate — don't assume it also applies to Advanced/Game Log/Splits/PBP.
-- `BrefTable.jsx` no longer renders its own Export CSV button — it exposes an `exportRef` callback instead. Any new BrefTable consumer needs to create its own ref, pass it in, and render its own button (see GameLogTab.jsx/SplitsTab.jsx for the `.gl-controls` pattern, DetailedStats.jsx/AdvancedTab.jsx for the `.stat-table-header` pattern).
-- AdSense application submitted 2026-07-20, still awaiting Google review.
-- `server/routes/sitemap.js`'s `activePlayersReady` guard is load-bearing — don't simplify it away. Confirmed locally that the ESPN roster prefetch takes 20-30s+ after boot; without the guard, a crawler hitting `/sitemap.xml` in that window locks an active-player-less sitemap into the 6h cache. See `docs/design/seo.md`.
+- `server/routes/api.js` is now a thin aggregator only (`router.use(...)` x5) — it has no route logic. If you're hunting for a specific endpoint, it's in one of: `teams.js` (teams/roster/season-info/stats/history/schedule), `players.js` (profile/detailed-stats/gamelog/splits/percentiles), `playerAnalysis.js` (onoff/pbp-stats/pbp-table/advanced-pbp-all/archetype/similar), `reports.js` (graded-report AND narrative — both AI-generated cached content, grouped together even though one is player-scoped and one is team-scoped), or `meta.js` (search/status).
+- Shared route helpers live in `server/lib/`: `routeValidation.js` (numeric-id middleware), `teamLookup.js` (find-team-by-id), `seasonQuery.js`, `adminAuth.js`, `legacyRoster.js`, `analysis/archetypeAttach.js`, `deterministicHash.js` (sha1-over-JSON, used by both routes in `reports.js`), `playerSeasonData.js` (shared by `players.js` and `playerAnalysis.js`). Don't reintroduce a duplicate inline copy of any of these in a new route file — grep `server/lib/` first.
+- `graded-report`'s and `narrative`'s caching *strategies* are deliberately NOT unified (hash-baked-into-`_id` vs fixed-`_id`-with-hash-field-comparison) — only the hashing and admin-refresh-gate helpers are shared. Don't try to force them onto the same cache-aside function without re-reading why they differ (session note 2026-08-04).
+- The Compare-page breakpoints and `BrefTable.jsx` export-ref pattern are still do-not-touch zones — see `docs/design/mobile-refresh.md` for specifics, not repeated here.
+- AdSense application submitted 2026-07-20 — still awaiting Google review as of last check.
+- `server/routes/sitemap.js`'s `activePlayersReady` guard is load-bearing — don't simplify it away. See `docs/design/seo.md`.
 
 ## Do not touch
 
@@ -35,7 +27,6 @@ Mobile refresh — everything shipped:
 
 ## Recent context
 
-- Live at `https://knowthew.net`; local `master` is 10 commits ahead of `origin/master` (mobile refresh) plus SEO phase 1 uncommitted on top — pending the user's push decision.
-- `docs/design/mobile-refresh.md` has the full breakpoint convention, do-not-touch zones, and closed-out round-by-round summary.
-- `docs/design/seo.md` (new this session): `robots.txt` + dynamic `/sitemap.xml` + per-route meta, what's excluded (`/search`, `/compare/*`, `/similar/*` — noindex, thin/combinatorial content) and what's deferred (retired-player sitemap entries from Mongo `playerIndex`, prerendering/SSR for real social-preview cards — user said explicitly to revisit that "at a later date", Search Console verification/submission).
-- Compare-page round 18 (chunked sections, grade-notch bars, bigger photos) shipped and is live as of the prior session — no open thread there right now.
+- 2026-08-04: `server/routes/api.js` (1127 lines, ~20 endpoints across 5 unrelated resources) identified as a God Module and split across three commits — `10f863b` (teams/players/meta split + `lib/` extraction), `cd0f7b1` (500→502 standardization + fixed 3 silent `catch{}` blocks), `5e3b533` (further split: `playerAnalysis.js` + `reports.js` pulled out of the still-565-line `players.js`). Full reasoning in session note 2026-08-04.
+- Live at `https://knowthew.net`; production Heroku auto-deploys on every push to `origin/master` (GitHub integration, not visible in the repo's own CI config).
+- Prior work-streams (mobile refresh, SEO phase 1, Search Console verification, Sentry monitoring) all shipped in earlier sessions — see `docs/design/mobile-refresh.md` and `docs/design/seo.md` for permanent details.
