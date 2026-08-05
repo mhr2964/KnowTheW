@@ -1,15 +1,16 @@
-// routes/teams.js — team-scoped endpoints (roster, season-info, stats, history, schedule,
-// narrative) split out of the former monolithic routes/api.js. See routes/api.js for the
-// aggregator that mounts this alongside players.js and meta.js.
+// routes/teams.js — team-scoped endpoints (roster, season-info, stats, history,
+// schedule) split out of the former monolithic routes/api.js. The AI-generated
+// narrative endpoint moved to routes/reports.js (grouped with the other AI-generated,
+// cached-content route rather than staying here just because it's team-scoped). See
+// routes/api.js for the aggregator that mounts this alongside players.js,
+// playerAnalysis.js, reports.js, and meta.js.
 const express = require('express');
 const router  = express.Router();
 
-const { getDb }                                                          = require('../db');
 const { WNBA_FOUNDED }                                                   = require('../constants/wnbaFounded');
 const { buildHistory, buildLegacyHistory }                               = require('../lib/historyAggregator');
 const { buildSeasonInfo }                                                = require('../lib/seasonInfo');
 const { readOrFetch }                                                    = require('../lib/teamSeasonCache');
-const narrativeClient                                                    = require('../lib/narrativeClient');
 const { LEGACY_DEFUNCT_TEAMS, getLegacyRoster, tricodeForEspnId,
         tricodeForDefunctId }                                            = require('../constants/legacyTeamRosters');
 const { getProvider }                                                    = require('../providers');
@@ -17,10 +18,8 @@ const { getProvider }                                                    = requi
 const { requireNumericId }          = require('../lib/routeValidation');
 const { findTeam }                  = require('../lib/teamLookup');
 const { parseSeasonQuery }          = require('../lib/seasonQuery');
-const { authorizeAdminRefresh }     = require('../lib/adminAuth');
 const { buildLegacyRosterResponse } = require('../lib/legacyRoster');
 const { attachArchetypeNames }      = require('../lib/analysis/archetypeAttach');
-const { sha1Json }                  = require('../lib/deterministicHash');
 
 // Data-source access goes through the active provider (see server/providers). These thin locals
 // keep the call sites below unchanged while removing the direct espnClient import; each resolves
@@ -322,123 +321,6 @@ router.get('/teams/:id/schedule', requireNumericId('id'), async (req, res) => {
   } catch (err) {
     console.error(`teams/${teamId}/schedule season=${season} seasontype=${seasontype}:`, err.message);
     res.status(502).json({ error: 'upstream error fetching team schedule' });
-  }
-});
-
-router.get('/teams/:id/narrative', async (req, res) => {
-  if (!narrativeClient.enabled) {
-    return res.status(503).json({ error: 'narrative service unavailable' });
-  }
-
-  const rawId  = req.params.id;
-  const teamId = rawId; // used as MongoDB _id and in log messages for both active and legacy teams
-
-  let team, history;
-
-  try {
-    if (typeof rawId === 'string' && rawId.startsWith('legacy-')) {
-      // Defunct franchise — resolve via LEGACY_DEFUNCT_TEAMS, build history by ESPN name-match.
-      const tricode = tricodeForDefunctId(rawId);
-      if (!tricode) return res.status(404).json({ error: 'team not found' });
-      const defunct = LEGACY_DEFUNCT_TEAMS[tricode];
-      team    = { id: defunct.id, name: defunct.name };
-      history = await buildLegacyHistory(defunct);
-    } else {
-      if (!/^\d+$/.test(rawId)) {
-        return res.status(400).json({ error: 'team id must be a numeric string' });
-      }
-      team = await findTeam(rawId);
-      if (!team) return res.status(404).json({ error: 'team not found' });
-      history = await buildHistory(team);
-    }
-  } catch (err) {
-    console.error(`teams/${rawId}/narrative (team/history resolve):`, err.message);
-    return res.status(502).json({ error: 'upstream error generating narrative' });
-  }
-
-  try {
-
-    // Deterministic source hash over the data Claude will receive.
-    // Includes teamName and current-record fields so a mid-season record update (wins/losses/seed
-    // on seasons[0]) invalidates the cache — the currentCtx line in the prompt depends on these.
-    // buildHistory() is itself MongoDB cache-aside via teamHistories collection — calling it before
-    // the narrative cache lookup costs one DB roundtrip on warm hits, not a full ESPN walk. The
-    // narrative cache is layered on top of the history cache.
-    const sourceHash = sha1Json({
-      promptVersion: narrativeClient.PROMPT_VERSION,
-      teamName:      team.name,
-      championships: [...(history.championships ?? [])].sort((a, b) => a - b),
-      currentRecord: {
-        wins:   history.seasons[0]?.wins   ?? null,
-        losses: history.seasons[0]?.losses ?? null,
-        seed:   history.seasons[0]?.seed   ?? null,
-      },
-      seasons: [...(history.seasons ?? [])]
-        .sort((a, b) => a.year - b.year)
-        .map(s => ({
-          year:          s.year,
-          wins:          s.wins,
-          losses:        s.losses,
-          seed:          s.seed,
-          playoffResult: s.playoffResult,
-          champion:      s.champion,
-        })),
-    });
-
-    const db = getDb();
-
-    // Dev path: no MongoDB — skip cache lookup and call Claude directly.
-    // In production this would cause repeated Claude calls; document as acceptable dev-only behaviour.
-    if (!db) {
-      console.warn(`[narrative] MongoDB unavailable — calling Claude directly for teamId=${teamId}`);
-      const data = await narrativeClient.getNarrative({ team, history });
-      return res.json({ data, generatedAt: new Date().toISOString(), sourceHash });
-    }
-
-    const coll = db.collection('teamNarratives');
-
-    // Admin-gated manual refresh — see authorizeAdminRefresh (shared with the graded-report route).
-    const forceRefresh = authorizeAdminRefresh(req);
-
-    if (!forceRefresh) {
-      let cached;
-      try {
-        cached = await coll.findOne({ _id: teamId });
-      } catch (err) {
-        console.error(`[narrative] mongo read failed teamId=${teamId}:`, err.message);
-        cached = null;
-      }
-      if (cached && cached.sourceHash === sourceHash) {
-        return res.json({
-          data:        cached.data,
-          generatedAt: cached.generatedAt instanceof Date
-            ? cached.generatedAt.toISOString()
-            : cached.generatedAt,
-          sourceHash:  cached.sourceHash,
-        });
-      }
-    }
-
-    // Cache miss or forced refresh — call Claude.
-    const data        = await narrativeClient.getNarrative({ team, history });
-    const generatedAt = new Date();
-
-    try {
-      // If write fails after Claude succeeds, the next request will re-bill Claude.
-      // Acceptable risk at 12 teams + ~yearly regen frequency.
-      await coll.replaceOne(
-        { _id: teamId },
-        { _id: teamId, data, generatedAt, sourceHash },
-        { upsert: true },
-      );
-    } catch (err) {
-      console.error(`[narrative] mongo write failed teamId=${teamId}:`, err.message);
-    }
-
-    return res.json({ data, generatedAt: generatedAt.toISOString(), sourceHash });
-  } catch (err) {
-    console.error(`teams/${rawId}/narrative:`, err.message);
-    res.status(502).json({ error: 'upstream error generating narrative' });
   }
 });
 
