@@ -4,22 +4,27 @@ Forward-looking handoff for the active work-stream. **Overwrite** each session; 
 
 ```yaml
 last-model: claude-sonnet-5
-last-session: 2026-08-04 (server/routes/api.js God-Module refactor — split into teams/players/playerAnalysis/reports/meta + lib/ helpers, 500→502 error-code standardization — all pushed to origin/master, commit 5e3b533)
-state: green — nothing pending; local master in sync with origin/master
+last-session: 2026-08-16 (Auth system built, critic-reviewed across 2 rounds, 201 passing tests, lint clean, client build clean; committed locally in 3 commits)
+state: yellow — committed locally, not yet browser-smoke-tested or pushed; JWT_SECRET is not set anywhere yet (not in local .env, not in Heroku config)
 ```
 
 ## Next action
 
-Nothing queued. The `server/routes/api.js` refactor (route split + `lib/` helper extraction + error-code standardization) is shipped, tested (180/180, lint clean), and pushed. A previously-unpushed Sentry monitoring commit (`bc76520`, from an earlier session) went out in the same push — worth a quick sanity check that Sentry is behaving as expected in production if anyone's watching that dashboard, though it's DSN-gated and was already verified locally.
+**Browser-smoke-test locally, then push.**
+1. Set a real `JWT_SECRET` in local `.env` (e.g. `openssl rand -hex 32`) — without it every auth endpoint 500s.
+2. Manually walk signup → logout → login → set team rep → clear team rep in a real browser against `npm run dev` + `npm run client`. Confirm `ktw_token` shows in DevTools → Application → Cookies as `httpOnly`, `sameSite=lax` (and `secure` once tested against a prod build).
+3. Before pushing to `origin/master` (which auto-deploys), set `JWT_SECRET` in Heroku config (`heroku config:set JWT_SECRET=...`) — the deploy will otherwise go live with auth silently 500ing.
+4. Post-deploy: signup a throwaway account on https://knowthew.net, confirm the team-rep dropdown only offers active franchises.
+
+The 201 passing tests and two rounds of critic review (live-reproduced probes against a booted instance) cover the logic; this step is specifically about the real-browser cookie mechanics and UI flow, which weren't exercised by either.
 
 ## Traps
 
-- `server/routes/api.js` is now a thin aggregator only (`router.use(...)` x5) — it has no route logic. If you're hunting for a specific endpoint, it's in one of: `teams.js` (teams/roster/season-info/stats/history/schedule), `players.js` (profile/detailed-stats/gamelog/splits/percentiles), `playerAnalysis.js` (onoff/pbp-stats/pbp-table/advanced-pbp-all/archetype/similar), `reports.js` (graded-report AND narrative — both AI-generated cached content, grouped together even though one is player-scoped and one is team-scoped), or `meta.js` (search/status).
-- Shared route helpers live in `server/lib/`: `routeValidation.js` (numeric-id middleware), `teamLookup.js` (find-team-by-id), `seasonQuery.js`, `adminAuth.js`, `legacyRoster.js`, `analysis/archetypeAttach.js`, `deterministicHash.js` (sha1-over-JSON, used by both routes in `reports.js`), `playerSeasonData.js` (shared by `players.js` and `playerAnalysis.js`). Don't reintroduce a duplicate inline copy of any of these in a new route file — grep `server/lib/` first.
-- `graded-report`'s and `narrative`'s caching *strategies* are deliberately NOT unified (hash-baked-into-`_id` vs fixed-`_id`-with-hash-field-comparison) — only the hashing and admin-refresh-gate helpers are shared. Don't try to force them onto the same cache-aside function without re-reading why they differ (session note 2026-08-04).
-- The Compare-page breakpoints and `BrefTable.jsx` export-ref pattern are still do-not-touch zones — see `docs/design/mobile-refresh.md` for specifics, not repeated here.
-- AdSense application submitted 2026-07-20 — still awaiting Google review as of last check.
-- `server/routes/sitemap.js`'s `activePlayersReady` guard is load-bearing — don't simplify it away. See `docs/design/seo.md`.
+- **New `server/lib/auth.js` conventions:** Auth helpers (`signToken`, `cookieOptions`, `requireAuth`) follow the same fail-closed-on-missing-secret pattern as `server/lib/adminAuth.js`. When adding new protected routes, use `requireAuth` as middleware (see `server/routes/users.js` for the pattern) rather than checking a header/cookie inline.
+- **Shared numeric-id validation:** Both `server/lib/routeValidation.js` (team-rep body validation in users.js) and `client/src/pages/AccountPage.jsx` (team dropdown filtering) use `NUMERIC_ID_RE` (regex: `^\d+$`) to check ESPN team IDs. The regex is duplicated across client and server because there's no shared validation module — this is an accepted drift risk per the critic's nit. Both are gated behind an active-team lookup, so the risk is low. If you add a third use of this pattern (e.g., a new endpoint accepting team IDs), consider extracting to a shared constant or document the duplication explicitly.
+- **Team-rep scope:** The backend whitelist in `server/routes/users.js` (team ID validation) and the client dropdown in `AccountPage.jsx` (active-franchise-only list) must stay in sync. If a new team joins the WNBA (or a franchise relocates), both files need updates. The `findTeam()` helper in `server/lib/teamLookup.js` (backed by `server/providers/espn/client.js`'s `fetchTeams()`) is the source of truth for active teams.
+- **Existing route structure:** After the 2026-08-04 `server/routes/api.js` refactor, auth routes live in their own `server/routes/auth.js` (signup/login/logout/me) and `server/routes/users.js` (team-rep PUT/DELETE, requires `requireAuth`). Don't add new auth endpoints to `meta.js` or another generic bucket — keep auth grouped in `auth.js` or `users.js` or create a new focused route file.
+- The `api.js` God-Module refactor, Compare-page breakpoints, and BrefTable export pattern remain do-not-touch zones (see traps from prior handoff + `docs/design/mobile-refresh.md`).
 
 ## Do not touch
 
@@ -27,6 +32,6 @@ Nothing queued. The `server/routes/api.js` refactor (route split + `lib/` helper
 
 ## Recent context
 
-- 2026-08-04: `server/routes/api.js` (1127 lines, ~20 endpoints across 5 unrelated resources) identified as a God Module and split across three commits — `10f863b` (teams/players/meta split + `lib/` extraction), `cd0f7b1` (500→502 standardization + fixed 3 silent `catch{}` blocks), `5e3b533` (further split: `playerAnalysis.js` + `reports.js` pulled out of the still-565-line `players.js`). Full reasoning in session note 2026-08-04.
+- 2026-08-16: Username/password account system (signup/login/logout/me + team-rep PUT/DELETE) built via the agent-team pipeline, verified with 201 passing tests, lint clean, client build clean. Critic review round 1 and round 2 found and fixed: Heroku rate-limiter bucketing on dyno IP (fixed via `app.set('trust proxy', 1)`), signup race condition (JWT signed before insert), unawaited unique index on username (now awaited), defunct franchises in dropdown (now filtered client-side). Design doc (`docs/design/accounts.md`), CHANGELOG entry, and design.md index update all complete. Committed locally in 3 commits (backend, frontend, tests) — not yet pushed; see Next action.
+- 2026-08-04: `server/routes/api.js` God-Module refactor complete (split into teams/players/playerAnalysis/reports/meta). Pushed to origin/master.
 - Live at `https://knowthew.net`; production Heroku auto-deploys on every push to `origin/master` (GitHub integration, not visible in the repo's own CI config).
-- Prior work-streams (mobile refresh, SEO phase 1, Search Console verification, Sentry monitoring) all shipped in earlier sessions — see `docs/design/mobile-refresh.md` and `docs/design/seo.md` for permanent details.

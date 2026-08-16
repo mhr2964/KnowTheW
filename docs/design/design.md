@@ -4,6 +4,7 @@ Durable design/architecture docs for this project, committed to the repo so they
 
 | File | Covers | Status |
 | --- | --- | --- |
+| [accounts.md](./accounts.md) | JWT-in-httpOnly-cookie sessions, bcryptjs, fail-closed `JWT_SECRET`, active-teams-only team-rep scope, critic-caught security fixes | Shipped 2026-08-16 |
 | [provider-architecture.md](./provider-architecture.md) | `SportsDataProvider` contract, per-call resolution, caching discipline, test isolation | Current |
 | [archetype-fingerprinting.md](./archetype-fingerprinting.md) | Archetype badge fingerprint math, position-pooling, recency decay, versioning | Current |
 | [deployment-ops.md](./deployment-ops.md) | Heroku auto-deploy mechanism, env-var bake-in gotcha, domain/DNS setup, security headers/CORS | Current |
