@@ -1,0 +1,57 @@
+/* ── Header auth link ── */
+.auth-header-link {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 0.85rem; font-weight: 600;
+  padding: 0.5rem 0; flex-shrink: 0; transition: color 0.12s;
+}
+.auth-header-link:hover { color: var(--accent-light); }
+
+/* ── Login / Signup / Account ── */
+.auth-page {
+  max-width: 380px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 3rem;
+}
+
+.auth-page h1 {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.account-username {
+  font-size: var(--text-md); font-weight: 700; color: var(--accent-light);
+  margin-bottom: 1.75rem;
+}
+
+.auth-form {
+  display: flex; flex-direction: column; gap: var(--space-2);
+}
+
+.auth-label {
+  font-size: var(--text-xs); font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: var(--tracking-label);
+  margin-top: var(--space-3);
+}
+.auth-label:first-child { margin-top: 0; }
+
+.auth-input {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text);
+  padding: 0.6rem 0.85rem; font-size: 0.9rem; outline: none;
+  transition: border-color 0.15s;
+}
+.auth-input:focus { border-color: var(--accent); }
+.auth-input:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.auth-error {
+  color: var(--error); font-size: 0.85rem; margin-top: var(--space-1);
+}
+
+.auth-submit { margin-top: var(--space-4); }
+
+.auth-switch {
+  margin-top: var(--space-6); font-size: 0.85rem; color: var(--text-muted);
+}
+.auth-switch a { color: var(--accent-light); }
+
+.auth-logout { margin-top: var(--space-6); }

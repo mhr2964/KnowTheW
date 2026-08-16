@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
 import { useRecentDecks } from './hooks/useRecentDecks';
+import { useAuth } from './hooks/useAuth';
 import StudyFlow from './components/StudyFlow';
 import AdSlot from './components/AdSlot';
 import HomePage from './pages/HomePage';
@@ -19,6 +20,9 @@ import AboutPage from './pages/AboutPage';
 import DataSourcesPage from './pages/DataSourcesPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
+import AccountPage from './pages/AccountPage';
 import './styles/global.css';
 import './styles/layout.css';
 import './styles/shared.css';
@@ -27,6 +31,7 @@ import './styles/compare.css';
 import './styles/team.css';
 import './styles/responsive.css';
 import './styles/legal.css';
+import './styles/auth.css';
 
 function RedirectToPlayer() {
   const { idA } = useParams();
@@ -73,6 +78,7 @@ export default function App() {
 
   const navigate = useNavigate();
   const { decks, saveDeck } = useRecentDecks();
+  const { user } = useAuth();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -119,6 +125,9 @@ export default function App() {
           <span className="logo-sub">WNBA</span>
         </button>
         <SearchBar />
+        {user
+          ? <button type="button" className="auth-header-link" onClick={() => navigate('/account')}>{user.username}</button>
+          : <button type="button" className="auth-header-link" onClick={() => navigate('/login')}>Log in</button>}
       </header>
 
       <AdSlot slotId={import.meta.env.VITE_AD_SLOT_TOP} className="ad-slot--top" />
@@ -184,6 +193,12 @@ export default function App() {
           <Route path="/data-sources" element={<DataSourcesPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route
+            path="/account"
+            element={<AccountPage teams={teams} teamsLoading={teamsLoading} teamsError={teamsError} />}
+          />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
