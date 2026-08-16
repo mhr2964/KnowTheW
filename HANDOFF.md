@@ -4,19 +4,19 @@ Forward-looking handoff for the active work-stream. **Overwrite** each session; 
 
 ```yaml
 last-model: claude-sonnet-5
-last-session: 2026-08-16 (Auth system built, critic-reviewed across 2 rounds, 201 passing tests, lint clean, client build clean; committed locally in 3 commits)
-state: yellow — committed locally, not yet browser-smoke-tested or pushed; JWT_SECRET is not set anywhere yet (not in local .env, not in Heroku config)
+last-session: 2026-08-16 (Auth system built, critic-reviewed across 2 rounds, 201 passing tests, lint clean, client build clean; committed locally in 4 commits; API-level smoke test passed against a real Mongo-backed server)
+state: green — implementation + local smoke test both pass; not yet pushed (auto-deploys on push to origin/master, needs a user go-ahead first). Local `.env` now has a throwaway `JWT_SECRET` — regenerate before Heroku, don't reuse it.
 ```
 
 ## Next action
 
-**Browser-smoke-test locally, then push.**
-1. Set a real `JWT_SECRET` in local `.env` (e.g. `openssl rand -hex 32`) — without it every auth endpoint 500s.
-2. Manually walk signup → logout → login → set team rep → clear team rep in a real browser against `npm run dev` + `npm run client`. Confirm `ktw_token` shows in DevTools → Application → Cookies as `httpOnly`, `sameSite=lax` (and `secure` once tested against a prod build).
-3. Before pushing to `origin/master` (which auto-deploys), set `JWT_SECRET` in Heroku config (`heroku config:set JWT_SECRET=...`) — the deploy will otherwise go live with auth silently 500ing.
-4. Post-deploy: signup a throwaway account on https://knowthew.net, confirm the team-rep dropdown only offers active franchises.
+**Push when ready.** Before pushing to `origin/master` (which auto-deploys to https://knowthew.net):
+1. Set a real `JWT_SECRET` in Heroku config (`heroku config:set JWT_SECRET=...`, generate fresh — don't reuse the one in local `.env`) — without it every auth endpoint 500s in prod.
+2. Post-deploy: signup a throwaway account on https://knowthew.net, confirm the team-rep dropdown only offers active franchises, delete the throwaway account/row afterward.
 
-The 201 passing tests and two rounds of critic review (live-reproduced probes against a booted instance) cover the logic; this step is specifically about the real-browser cookie mechanics and UI flow, which weren't exercised by either.
+**What's already verified (2026-08-16):** full flow tested via curl against `NODE_ENV=production node server/index.js` (single origin, real MongoDB) — signup sets cookie, `/me` reflects it, team-rep PUT persists across logout+re-login, a legacy/defunct team id 400s, wrong password gets the generic 401, logout's `Set-Cookie` actually expires the cookie (`Secure` flag present since run in production mode). Test account (`smoketest_user`) was deleted from the DB afterward. A one-screenshot browser check also confirmed the Sign Up page renders correctly against the production build before the Chrome extension mid-session disconnected — full click-through wasn't re-attempted after that, so a final manual click-through (not just curl) is still worth doing if you want the last bit of confidence, but isn't blocking.
+
+**Unrelated environment note, not a bug:** `npm run dev` + `npm run client` (Vite dev server) renders a blank page in this machine's Chrome — some installed extension blocks any request whose URL contains the literal string "analytics" (`client/src/lib/analytics.js`, a static import in `main.jsx`), which aborts the whole module graph in dev mode only. Doesn't reproduce against the production build (bundled/hashed filenames) or in real users' browsers unless they have the same specific blocklist rule. Pre-existing file, unrelated to this session's changes — not something to fix here.
 
 ## Traps
 
