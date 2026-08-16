@@ -10,5 +10,7 @@ router.use(require('./players'));
 router.use(require('./playerAnalysis'));
 router.use(require('./reports'));
 router.use(require('./meta'));
+router.use(require('./auth'));
+router.use(require('./users'));
 
 module.exports = router;
