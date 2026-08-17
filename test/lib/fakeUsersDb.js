@@ -1,12 +1,15 @@
 // fakeUsersDb.js — test-support only, not a *.test.js file so `node --test` won't run it as
 // a suite. Implements just the subset of the Mongo Db/Collection API that server/lib/auth.js,
-// server/routes/auth.js, and server/routes/users.js actually call against
-// db.collection('users'): insertOne, findOne({username}|{_id}), updateOne({_id}, {$set}).
+// server/routes/auth.js, server/routes/users.js, and server/lib/notificationsJob.js actually
+// call against db.collection('users'): insertOne, findOne({username}|{_id}),
+// updateOne({_id}, {$set}), distinct('teamRepId', {teamRepId:{$ne:null}}), and
+// find({teamRepId}).project({_id:1}).toArray().
 //
 // Real ObjectId instances (not arbitrary strings) back every _id here because requireAuth does
 // `new ObjectId(payload.sub)` on every request — an arbitrary fake id string would blow up that
 // constructor (invalid hex) and mask real auth behavior behind a false 401.
 const { ObjectId } = require('mongodb');
+const { matchesFilter } = require('./fakeMongoFilter');
 
 function createFakeDb() {
   const usersById = new Map(); // key: ObjectId hex string -> stored doc (includes real _id)
@@ -58,6 +61,43 @@ function createFakeDb() {
         Object.assign(doc, update.$set);
       }
       return { matchedCount: 1, modifiedCount: 1 };
+    },
+
+    // notificationsJob.js: db.collection('users').distinct('teamRepId', { teamRepId: { $ne: null } })
+    // — every distinct team a user currently reps, so the job only checks schedules for teams
+    // that actually have someone to notify.
+    async distinct(field, filter = {}) {
+      const values = new Set();
+      for (const doc of usersById.values()) {
+        if (!matchesFilter(doc, filter)) continue;
+        const value = doc[field];
+        if (value !== undefined && value !== null) values.add(value);
+      }
+      return Array.from(values);
+    },
+
+    // notificationsJob.js: db.collection('users').find({ teamRepId: teamId }).project({ _id: 1 }).toArray()
+    // — everyone repping a given team, id-only. Real projection would also suppress _id given an
+    // explicit {_id:0}, but nothing here calls it that way, so that's out of scope.
+    find(filter = {}) {
+      const matched = Array.from(usersById.values()).filter(doc => matchesFilter(doc, filter));
+      return {
+        project(projection = {}) {
+          const keys = Object.keys(projection).filter(key => projection[key]);
+          return {
+            async toArray() {
+              return matched.map(doc => {
+                const projected = {};
+                for (const key of keys) projected[key] = doc[key];
+                return projected;
+              });
+            },
+          };
+        },
+        async toArray() {
+          return matched.map(doc => ({ ...doc }));
+        },
+      };
     },
   };
 
