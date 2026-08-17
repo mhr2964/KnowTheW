@@ -23,15 +23,17 @@ import TermsPage from './pages/TermsPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import AccountPage from './pages/AccountPage';
+import NotificationBell from './components/NotificationBell';
 import './styles/global.css';
 import './styles/layout.css';
 import './styles/shared.css';
 import './styles/player.css';
 import './styles/compare.css';
 import './styles/team.css';
-import './styles/responsive.css';
 import './styles/legal.css';
 import './styles/auth.css';
+import './styles/notifications.css';
+import './styles/responsive.css';
 
 function RedirectToPlayer() {
   const { idA } = useParams();
@@ -125,6 +127,7 @@ export default function App() {
           <span className="logo-sub">WNBA</span>
         </button>
         <SearchBar />
+        <NotificationBell teamRepId={user?.teamRepId ?? null} />
         {user
           ? <button type="button" className="auth-header-link" onClick={() => navigate('/account')}>{user.username}</button>
           : <button type="button" className="auth-header-link" onClick={() => navigate('/login')}>Log in</button>}

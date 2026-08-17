@@ -3,6 +3,7 @@
   .header { padding: 0.75rem 1rem; gap: 0.75rem; }
   .search-input { min-height: var(--touch-target-min); padding: 0.65rem 0.85rem; }
   .search-btn { padding: 0.65rem 0.85rem; min-height: var(--touch-target-min); }
+  .notif-bell-btn { min-width: var(--touch-target-min); min-height: var(--touch-target-min); }
   .main { padding: 1.25rem 1rem; }
   .picker-body { flex-direction: column; }
   .picker-arrow { display: none; }
@@ -63,11 +64,24 @@
   /* Logo + search were fighting over ~290px of usable header width; the search input was
      collapsing to ~40px (below any usable placeholder text). Shrink the logo and button
      footprint so the input keeps a workable minimum instead. */
-  .header { gap: 0.5rem; }
+  /* The bell (36-44px) pushed total header content past 390px, and with search-form's own
+     min-width:0 allowing it to shrink smaller than its input+button's min-content, the button
+     overflowed its own box and painted over the bell/username instead of wrapping. Give search
+     its own full-width row instead of fighting logo/bell/username for space on one line --
+     eliminates the overlap instead of tuning fragile crowded-row arithmetic. */
+  .header { gap: 0.5rem; flex-wrap: wrap; }
   .logo-text { font-size: 1.15rem; }
   .logo-sub { font-size: 0.55rem; }
   .search-btn { padding: 0.65rem 0.55rem; }
   .search-input { min-width: 70px; }
+  .search-form { order: 3; flex-basis: 100%; max-width: none; }
+
+  /* Dropdown was right-anchored to the bell's own tiny wrapper, so on narrow screens where the
+     bell sits well right-of-center, the panel's left edge landed off-screen. Drop the wrapper's
+     containing-block role so the dropdown anchors to .header (position: sticky also establishes
+     a containing block) instead, which spans the full viewport width edge-to-edge. */
+  .notif-bell-wrap { position: static; }
+  .notif-dropdown { left: 0; right: 0; width: auto; max-width: none; }
 
   /* GS/ORB/DRB/PF on Per Game and Totals only (BrefTable.jsx gates by viewMode) -- TRB/G/MP/
      shooting-pct already cover the same ground more usefully at a glance at this width. */

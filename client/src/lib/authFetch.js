@@ -44,3 +44,7 @@ export function setTeamRep(teamId) {
 export function clearTeamRep() {
   return authFetch('/api/users/me/team-rep', { method: 'DELETE' });
 }
+
+export function fetchNotifications(signal) {
+  return authFetch('/api/notifications', { signal });
+}

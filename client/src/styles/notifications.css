@@ -1,0 +1,38 @@
+/* ── Notification Bell ── */
+.notif-bell-wrap { position: relative; flex-shrink: 0; }
+
+.notif-bell-btn {
+  position: relative; background: none; border: none; cursor: pointer;
+  color: var(--text-muted); padding: 0.5rem; display: flex; align-items: center;
+  justify-content: center; transition: color 0.12s;
+}
+.notif-bell-btn:hover { color: var(--accent-light); }
+
+.notif-bell-badge {
+  position: absolute; top: 0.15rem; right: 0.15rem;
+  background: var(--accent); color: #fff;
+  font-size: var(--text-2xs); font-weight: 700; line-height: 1;
+  min-width: 15px; height: 15px; padding: 0 3px;
+  border-radius: 999px; display: flex; align-items: center; justify-content: center;
+}
+
+.notif-backdrop { position: fixed; inset: 0; z-index: 90; background: transparent; }
+
+.notif-dropdown {
+  position: absolute; top: calc(100% + 0.5rem); right: 0; z-index: 91;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); width: 280px; max-width: 90vw;
+  padding: var(--space-2); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.notif-list { list-style: none; display: flex; flex-direction: column; gap: var(--space-1); }
+
+.notif-item {
+  font-size: var(--text-sm); color: var(--text); padding: 0.5rem 0.6rem;
+  border-radius: var(--radius);
+}
+.notif-item:hover { background: var(--surface-2); }
+
+.notif-empty {
+  font-size: var(--text-sm); color: var(--text-muted); padding: 0.5rem 0.6rem;
+}
