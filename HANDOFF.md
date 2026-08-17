@@ -3,30 +3,18 @@
 Forward-looking handoff for the active work-stream. **Overwrite** each session; history lives in git. Durable architecture/design rules live in `docs/design/` (see `docs/design/design.md`), not here — this file is transient work-stream state only.
 
 ```yaml
-last-model: claude-haiku-4-5-20251001
-last-session: 2026-08-16 (Pre-game notification bell built across backend-dev ‖ frontend-dev → critic (2 rounds) → test-engineer (2 rounds); all pipeline tests passing, lint clean, client build clean; uncommitted in master branch)
-state: ready-for-review — feature fully implemented and tested; NOT yet committed/pushed/deployed; Heroku Scheduler provisioning is a fully manual pending step after deploy
+last-model: claude-sonnet-5
+last-session: 2026-08-17 (BallDontLie hybrid provider: Phase 1 + Phase 2 built, a real PBP-parsing bug found + fixed via live cross-checking, 13 new tests added (231/231 suite green). Not yet flipped on in production.)
+state: BDL hybrid provider is code-complete and unit-tested; shadow-compare against ESPN + STATS_PROVIDER rollout still pending (task #10 in the plan file)
 ```
 
 ## Next action
 
-**User decision required.** All changes are currently uncommitted in the working tree (master branch).
+**Notification feature: done.** Committed (`d8c36b3`→`02cbb02`), deployed (Heroku v223), Scheduler provisioned and running (`SCHEDULER_TOKEN` set via v222, job polls `/internal/jobs/notifications/poll` every 10 minutes). No pending steps.
 
-1. **Commit + push** (will auto-deploy via Heroku GitHub integration): Pending explicit user approval to commit and push to `origin/master`. Push will trigger automatic Heroku production deploy. After deploy, production will be live but notifications will NOT run until Scheduler is provisioned (see step 2).
+**BallDontLie GOAT-tier provider swap: implementation done, rollout not started.** Full plan (context, decisions, spike findings, both phases, the bug found mid-build, and the still-open test items) lives at `C:\Users\Owner\.claude\plans\can-we-plan-out-polished-catmull.md` — read that before continuing, it's the authoritative reference, not this file. Short version: `server/providers/balldontlie/` implements the full `SportsDataProvider` contract as a hybrid facade (ESPN for everything pre-2008 and for identity/roster/schedule always; BDL for team stats + PBP-derived stats at season ≥ 2008). Activate via `STATS_PROVIDER=balldontlie` — currently unset in production (still ESPN). Remaining before rollout: `test/balldontlie-idmap.test.js`, a cache-collision Mongo regression test, then shadow-compare vs ESPN across eras, then flip the env var on Heroku.
 
-2. **Heroku Scheduler provisioning** (fully manual, no automation): Even after a successful Heroku deploy, the notification-creation job will never run until manually provisioned. User must run:
-   ```
-   heroku addons:create scheduler:standard
-   heroku config:set SCHEDULER_TOKEN=<random-secret>
-   ```
-   Then configure a Heroku Scheduler job (via Heroku dashboard) to run every 10 minutes:
-   ```
-   POST https://knowthew.net/internal/jobs/notifications/poll
-   Header: x-scheduler-token: <SCHEDULER_TOKEN>
-   ```
-   (Use a strong random token, e.g., `openssl rand -hex 32`. The SCHEDULER_TOKEN env var is new and distinct from JWT_SECRET.)
-
-**What's ready to ship:** Feature is code-complete and fully tested via the complete pipeline. No blockers.
+See `docs/design/feature-backlog.md` for unscheduled feature ideas (shot charts, injury report, odds/spread on schedule) from the 2026-08-17 BallDontLie brainstorm.
 
 ## What's been tested
 
@@ -63,6 +51,8 @@ state: ready-for-review — feature fully implemented and tested; NOT yet commit
 
 - **`users.teamRepId` index performance:** This index is critical for avoiding a full collection scan on every poll cycle. Do not drop or rename without benchmarking the poll-time impact.
 
+- **BDL `/plays` text has no structured player field.** Every attribution in `server/providers/balldontlie/plays.js` is name-matched against free text, which means every new play-text phrasing is a potential silent undercount, not a crash. Confirmed example: blocked shots read `"<blocker> blocks <shooter>'s ..."` with no "makes"/"misses" — `isShotAttempt()` missed these entirely until caught by live cross-checking against real team totals (fixed 2026-08-17). If BDL PBP numbers ever look off, suspect an unhandled phrasing variant before suspecting the substitution/on-court logic (that part was hand-verified correct against a real game).
+
 ## Do not touch
 
 - `server/routes/api.js` (God-Module, already refactored as of 2026-08-04; do not add new routes directly to it).
@@ -71,5 +61,7 @@ state: ready-for-review — feature fully implemented and tested; NOT yet commit
 
 ## Recent context
 
+- 2026-08-17: Built the BallDontLie hybrid provider (Phase 1 team stats + Phase 2 PBP-walking, both season-conditional at 2008+). Mid-build discovered BDL's `/plays` has no structured player-attribution field (ESPN does), requiring name-based text parsing instead of a structural port. Live-testing surfaced and fixed a real bug: blocked shots weren't counted as FGA (see Traps). Added 13 tests (`test/balldontlie-plays.test.js`, `test/balldontlie-eventid-routing.test.js`, a `providers.test.js` contract block) — full suite 231/231. Cache keys across 5 call sites were prefixed with the provider name to make `STATS_PROVIDER` safely toggleable. Not yet flipped on in production; see Next action.
+- 2026-08-17: Notification feature's production deploy/Scheduler status confirmed live (was undocumented after the last commit). Brainstormed BallDontLie GOAT-tier feature ideas; logged non-props ideas to `docs/design/feature-backlog.md`. Started viability check on swapping the ESPN-PBP-reconstructed advanced stats (`server/lib/advancedStats.js`) for BallDontLie's GOAT-tier data — findings logged in `docs/design/provider-architecture.md`.
 - 2026-08-16: Pre-game notification bell feature completed via full agent-team pipeline (backend-dev ‖ frontend-dev → critic → test-engineer, 2 critic fix rounds and 2 test-engineer fix rounds). Notifications created by internal job (not yet running), expire via TTL, fetched by client on polling interval. Bell icon in header with count badge. All tests passing, lint clean, client build clean. One critical bug caught by critic (insertMany error handling) and fixed by backend-dev. Three UI bugs caught by test-engineer and fixed by frontend-dev. Feature uncommitted; next step is user decision to commit/push/deploy, followed by manual Heroku Scheduler provisioning step.
 - 2026-08-16: Username/password account system (signup/login/logout/me + team-rep PUT/DELETE) built and deployed. Critic review caught four security findings (rate-limiter bucketing, signup race condition, unawaited index, defunct franchises in dropdown) — all fixed. Committed in 5 commits, deployed to production (release v221).
