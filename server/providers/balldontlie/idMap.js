@@ -34,12 +34,9 @@ function getBdlTeams() {
 
 let teamMapPromise = null;
 
-// Builds { [espnTeamId]: bdlTeamId } by matching on abbreviation among real franchises only.
-// Memoized in-process for the process lifetime — team identity/abbreviations don't change at
-// runtime, and a restart is a fine way to pick up a genuine rename (matches how ESPN's own teams
-// cache uses a long TTL rather than "never changes").
-async function buildTeamMap() {
-  const [espnTeams, bdlTeams] = await Promise.all([espn.getTeams(), getBdlTeams()]);
+// Pure abbreviation-matching logic, split out so it's unit-testable without a network call —
+// mirrors plays.js's buildBoxscoreFromRows split for the same reason.
+function buildTeamMapFromLists(espnTeams, bdlTeams) {
   if (!bdlTeams) return {};
   const bdlByAbbr = new Map(
     bdlTeams.filter(isRealFranchise).map(t => [String(t.abbreviation).toUpperCase(), t.id])
@@ -50,6 +47,15 @@ async function buildTeamMap() {
     if (bdlId != null) map[String(t.id)] = bdlId;
   }
   return map;
+}
+
+// Builds { [espnTeamId]: bdlTeamId } by matching on abbreviation among real franchises only.
+// Memoized in-process for the process lifetime — team identity/abbreviations don't change at
+// runtime, and a restart is a fine way to pick up a genuine rename (matches how ESPN's own teams
+// cache uses a long TTL rather than "never changes").
+async function buildTeamMap() {
+  const [espnTeams, bdlTeams] = await Promise.all([espn.getTeams(), getBdlTeams()]);
+  return buildTeamMapFromLists(espnTeams, bdlTeams);
 }
 
 async function resolveBdlTeamId(espnTeamId) {
@@ -64,6 +70,17 @@ async function resolveBdlTeamId(espnTeamId) {
 // collision (e.g. two different "A. Johnson"s aren't full-name collisions, but true duplicates
 // happen in any sufficiently large sports history) -- logged and treated as unresolvable rather than
 // guessed, since a silent wrong match would corrupt stats without looking wrong.
+// Pure candidate-matching logic, split out so the actual correctness-risk part (exact vs zero vs
+// ambiguous name matching) is unit-testable without a network call or an ESPN dependency.
+function matchPlayerCandidate(fullName, bdlPlayers) {
+  const candidates = (bdlPlayers ?? []).filter(p =>
+    `${p.first_name} ${p.last_name}`.trim().toLowerCase() === fullName.toLowerCase()
+  );
+  if (candidates.length === 1) return { id: candidates[0].id, ambiguous: false };
+  if (candidates.length > 1) return { id: null, ambiguous: true };
+  return { id: null, ambiguous: false };
+}
+
 async function resolveBdlPlayerIdUncached(espnPlayerId) {
   const basics = await espn.getPlayerBasics(espnPlayerId) ?? await espn.getRetiredPlayer(espnPlayerId);
   const fullName = basics?.name?.trim();
@@ -71,15 +88,12 @@ async function resolveBdlPlayerIdUncached(espnPlayerId) {
 
   const lastName = fullName.split(/\s+/).pop();
   const results = await bdlFetch('/players', { search: lastName, per_page: 25 });
-  const candidates = (results?.data ?? []).filter(p =>
-    `${p.first_name} ${p.last_name}`.trim().toLowerCase() === fullName.toLowerCase()
-  );
+  const { id, ambiguous } = matchPlayerCandidate(fullName, results?.data);
 
-  if (candidates.length === 1) return candidates[0].id;
-  if (candidates.length > 1) {
-    console.warn(`[balldontlie/idMap] ambiguous player match for "${fullName}" (espnId=${espnPlayerId}): ${candidates.length} exact-name candidates — leaving unresolved`);
+  if (ambiguous) {
+    console.warn(`[balldontlie/idMap] ambiguous player match for "${fullName}" (espnId=${espnPlayerId}) — leaving unresolved`);
   }
-  return null;
+  return id;
 }
 
 async function resolveBdlPlayerId(espnPlayerId) {
@@ -94,4 +108,8 @@ async function resolveBdlPlayerId(espnPlayerId) {
   return bdlId;
 }
 
-module.exports = { isRealFranchise, getBdlTeams, resolveBdlTeamId, resolveBdlPlayerId };
+module.exports = {
+  isRealFranchise, getBdlTeams, resolveBdlTeamId, resolveBdlPlayerId,
+  // exported for unit tests:
+  buildTeamMapFromLists, matchPlayerCandidate,
+};
