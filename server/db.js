@@ -22,6 +22,30 @@ if (process.env.MONGODB_URI && process.env.NODE_ENV !== 'test') {
       } catch (err) {
         console.error('SECURITY: users.username unique index failed to create — duplicate usernames are NOT prevented:', err);
       }
+      // TTL index: MongoDB's background reaper deletes a notification doc once expiresAt is in
+      // the past (a few hours after kickoff — see lib/notificationsJob.js), so stale in-app
+      // notifications clean themselves up with no separate cron/job needed.
+      try {
+        await db.collection('notifications').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+      } catch (err) {
+        console.error('notifications.expiresAt TTL index failed to create — expired notifications will NOT be auto-cleaned:', err);
+      }
+      // Idempotency: the polling job (lib/notificationsJob.js) runs every 10 minutes and a game's
+      // ~5-15-minute due window can span more than one poll, so without this a user could get
+      // duplicate notifications for the same game. Unique on the pair so re-inserting an
+      // already-notified (user, game) is rejected (E11000) rather than silently duplicating.
+      try {
+        await db.collection('notifications').createIndex({ userId: 1, gameId: 1 }, { unique: true });
+      } catch (err) {
+        console.error('SECURITY: notifications.userId_gameId unique index failed to create — duplicate notifications are NOT prevented:', err);
+      }
+      // Non-unique: the polling job looks up "who reps team X" once per team every 10 minutes;
+      // without this it's a full collection scan that gets slower as the user base grows.
+      try {
+        await db.collection('users').createIndex({ teamRepId: 1 });
+      } catch (err) {
+        console.error('users.teamRepId index failed to create — the notifications job will full-scan users:', err);
+      }
       _resolveConnected(db);
     })
     .catch(err => {

@@ -12,5 +12,6 @@ router.use(require('./reports'));
 router.use(require('./meta'));
 router.use(require('./auth'));
 router.use(require('./users'));
+router.use(require('./notifications'));
 
 module.exports = router;

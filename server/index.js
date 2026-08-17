@@ -74,6 +74,13 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.use('/api', apiLimiter, require('./routes/api'));
+// Infrastructure-triggered, not browser/client-facing (Heroku Scheduler polls this every 10 min)
+// — deliberately outside /api so it skips apiLimiter (app.use(cors(...)) above has no path
+// scoping, so it still applies here — this route just never gets a matching Origin header from a
+// server-to-server caller like Scheduler); requireSchedulerAuth's shared-secret gate
+// (server/lib/schedulerAuth.js) is the actual control here, same pattern as other admin-token-
+// gated internal surfaces in this app.
+app.use('/internal/jobs', require('./routes/internalJobs'));
 app.use(require('./routes/sitemap'));
 app.use(require('./middleware/socialPreview'));
 
