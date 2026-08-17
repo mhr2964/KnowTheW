@@ -18,7 +18,8 @@ const CONTRACT_METHODS = [
   'getTeamStats', 'getTeamStatsRaw', 'getTeamPointsAllowed', 'getTeamPointsAllowedRaw',
   'getTeamSchedule', 'getPlayoffSchedule', 'getStandingsRaw',
   'getPlayerBasics', 'getRetiredPlayer', 'getPlayerSeasonStats', 'getPlayerGameLog',
-  'getGameLogEvents', 'getGamePbpStats', 'getSeasonPBPSummary', 'getActivePlayers', 'findActivePlayer',
+  'getGameLogEvents', 'getGamePbpStats', 'getSeasonPBPSummary', 'getRegularSeasonEventIds',
+  'getActivePlayers', 'findActivePlayer',
   'getLeagueStatLines', 'getLeagueReboundFoulStats', 'getPlayerSeasonAverages', 'getLeaguePlayerIndex',
 ];
 
@@ -61,6 +62,16 @@ test('the ESPN provider implements every contract method (no throwing defaults l
   for (const method of CONTRACT_METHODS) {
     assert.strictEqual(typeof provider[method], 'function', `missing ${method}`);
     // If a method weren't overridden, provider[method] would resolve to the base's throwing stub.
+    assert.notStrictEqual(provider[method], SportsDataProvider.prototype[method], `${method} not overridden`);
+  }
+});
+
+test('the balldontlie hybrid provider implements every contract method (no throwing defaults leak through)', () => {
+  process.env.STATS_PROVIDER = 'balldontlie';
+  _resetProviderCache();
+  const provider = getProvider();
+  for (const method of CONTRACT_METHODS) {
+    assert.strictEqual(typeof provider[method], 'function', `missing ${method}`);
     assert.notStrictEqual(provider[method], SportsDataProvider.prototype[method], `${method} not overridden`);
   }
 });
