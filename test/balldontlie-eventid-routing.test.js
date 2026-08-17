@@ -10,7 +10,6 @@
 
 process.env.NODE_ENV = 'test';
 
-const path = require('path');
 const Module = require('module');
 const { test } = require('node:test');
 const assert = require('node:assert');
@@ -97,7 +96,7 @@ test('getSeasonPBPSummary: pre-2008 delegates whole; 2008+ drives getRegularSeas
   assert.deepStrictEqual(pre, { source: 'espn' });
 
   calls.length = 0;
-  const post = await provider.getSeasonPBPSummary('player1', 2008);
+  await provider.getSeasonPBPSummary('player1', 2008);
   // Real aggregatePBPSummary runs over the one bdl-tagged event id, calling this.getGamePbpStats
   // (not a bare module reference) -- proven by the routing call showing up, not an ESPN call.
   assert.ok(calls.some(c => c[0] === 'plays.getRegularSeasonEventIdsBdl'));
