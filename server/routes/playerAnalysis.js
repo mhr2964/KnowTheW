@@ -112,8 +112,11 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
     const postGP = (pgPostTable?.rows ?? []).reduce((s, r) => s + (r[IPost.GP] ?? 0), 0);
     const currentGP = regGP + postGP;
     const db = getDb();
+    // Provider-scoped _id so toggling STATS_PROVIDER can't read back the other source's cached
+    // advanced-stats response for the same player.
+    const advCacheId = `${getProvider().name}-${req.params.id}`;
     if (db) {
-      const advCached = await db.collection('advancedStats').findOne({ _id: req.params.id });
+      const advCached = await db.collection('advancedStats').findOne({ _id: advCacheId });
       if (advCached?.gp === currentGP && advCached.v === 26 && advCached.data?.regular != null) return res.json(advCached.data);
     }
 
@@ -168,7 +171,7 @@ router.get('/players/:id/advanced-pbp-all', async (req, res) => {
     // v bumped 25->26: response shape changed from `headers` (bare strings) to `columns`
     // ({key,label,kind}) — force a rebuild of any Mongo-cached v25 documents.
     if (db) db.collection('advancedStats')
-      .replaceOne({ _id: req.params.id }, { _id: req.params.id, gp: currentGP, v: 26, data: advResult }, { upsert: true })
+      .replaceOne({ _id: advCacheId }, { _id: advCacheId, gp: currentGP, v: 26, data: advResult }, { upsert: true })
       .catch(err => console.error('mongo write advancedStats:', err.message));
     res.json(advResult);
   } catch (err) {

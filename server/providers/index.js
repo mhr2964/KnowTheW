@@ -5,6 +5,7 @@
 const PROVIDERS = {
   espn: () => require('./espn'),
   sportradar: () => require('./sportradar'),
+  balldontlie: () => require('./balldontlie'),
 };
 
 let cached = null;

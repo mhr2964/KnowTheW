@@ -205,7 +205,10 @@ router.get('/teams/:id/stats', requireNumericId('id'), async (req, res) => {
     // Past season: route through MongoDB teamSeasonStats cache.
     // Raw fetch functions bypass the in-process cache — past seasons are immutable and belong
     // in MongoDB only. In-process cache stays current-season-only for clean invalidation story.
-    const cacheKey = `${teamId}-${season}`;
+    // Cache key is provider-scoped so toggling STATS_PROVIDER can't read back the other source's
+    // cached payload for the same team/season (ESPN and BallDontLie both cover season 2008+, and
+    // their numbers legitimately differ).
+    const cacheKey = `${getProvider().name}-${teamId}-${season}`;
     const result = await readOrFetch('teamSeasonStats', cacheKey, async () => {
       const [rawStats, oppPpg] = await Promise.all([
         fetchTeamStatsRaw(teamId, season),

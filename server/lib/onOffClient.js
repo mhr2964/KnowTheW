@@ -36,7 +36,8 @@ async function computeSeasonOnOffUncached(playerId, season, seasontype = 2) {
  */
 async function computeSeasonOnOff(playerId, season, seasontype = 2) {
   if (isPastSeason(season)) {
-    const cacheKey = `${playerId}-${season}-${seasontype}`;
+    // Provider-scoped so toggling STATS_PROVIDER can't read back the other source's cached value.
+    const cacheKey = `${getProvider().name}-${playerId}-${season}-${seasontype}`;
     const cached   = await getCached('playerSeasonOnOff', cacheKey);
     if (cached !== null) return cached;
 

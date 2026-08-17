@@ -215,7 +215,9 @@ async function computeSeasonPBPUncached(playerId, season, playerRow, I, teamId, 
 // leave the cache slot open for a future complete fetch.
 async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, seasontype = 2) {
   if (isPastSeason(season)) {
-    const cacheKey = `${playerId}-${season}-${seasontype}`;
+    // Provider-scoped so toggling STATS_PROVIDER can't read back the other source's cached PBP
+    // reconstruction for the same player/season.
+    const cacheKey = `${getProvider().name}-${playerId}-${season}-${seasontype}`;
 
     // Check cache first — one findOne, no ESPN traffic on hit.
     const cached = await getCached('playerSeasonPbp', cacheKey);
