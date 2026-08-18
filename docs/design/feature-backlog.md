@@ -11,5 +11,3 @@ The user has a paid BallDontLie GOAT tier ($39.99/mo, 600 req/min, WNBA coverage
 - **Injury report.** BDL's `Player Injuries` endpoint (ALL-STAR tier and up) isn't something this codebase currently pulls from any source. Natural fit as a team/player-page widget, and ties into the existing pre-game notification bell (`server/lib/notificationsJob.js`) — e.g. "your repped player is now questionable" alongside the pre-game alert.
 
 - **Odds/spread on schedule pages.** Lighter-weight than a full props tracker: surface the betting line next to each upcoming game on `TeamSchedulePage`. Needs `Betting Odds` (GOAT tier).
-
-- **Advanced-stats provider swap.** Replace `server/lib/advancedStats.js`'s ESPN-play-by-play reconstruction (approximate USG%/AST%/PER/Win-Shares, see its own comments on why it's a reconstruction) with BDL's official advanced-stats data. This is the one with real architectural weight — see `provider-architecture.md` for the viability findings and the Option A/B fork. Not a "few ideas" item, tracked separately because it's a provider-contract change, not a new page.
