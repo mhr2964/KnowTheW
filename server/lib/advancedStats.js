@@ -1,4 +1,4 @@
-const { GAME_MINUTES, WNBA_LG } = require('../constants/leagueAverages');
+const { GAME_MINUTES, getLeagueAverage } = require('../constants/leagueAverages');
 const { getProvider } = require('../providers');
 // Source access via the active provider; thin locals keep call sites below unchanged.
 const fetchTeamStats      = (...a) => getProvider().getTeamStats(...a);
@@ -150,7 +150,7 @@ function buildAdvancedSplit(src, teamIdByYear, cache, totSrc) {
     const year = String(row[I.SEASON_ID]);
     const tid  = teamIdByYear[year];
     const tm   = tid ? (cache[`${tid}-${year}`] ?? null) : null;
-    const lg   = WNBA_LG[year] ?? null;
+    const lg   = getLeagueAverage(year) ?? null;
     return advancedRow(row, I, tm, lg, totByYear[year] ?? null);
   });
   return { headers: ADV_HEADERS_SRV, rows };
@@ -181,7 +181,7 @@ async function computeSeasonPBPUncached(playerId, season, playerRow, I, teamId, 
   if (!summary) return null;
   const { tmOC, tmForWS, pbpGames, complete } = summary;
 
-  const lg = WNBA_LG[season] ?? null;
+  const lg = getLeagueAverage(season) ?? null;
 
   // Fetch official team stats before advancedRow — used there for USG%, AST%, PER
   // (PBP undercounts team possessions/pace in older seasons).
@@ -299,9 +299,9 @@ async function computeAdvancedPbpAll(playerId) {
   // advanced-stats response for the same player.
   const advCacheId = `${getProvider().name}-${playerId}`;
 
-  const regSeasons  = [...new Set(pgTable.rows.map(r => String(r[I.SEASON_ID])))].filter(s => WNBA_LG[s]);
+  const regSeasons  = [...new Set(pgTable.rows.map(r => String(r[I.SEASON_ID])))].filter(s => getLeagueAverage(s));
   const postSeasons = pgPostTable
-    ? [...new Set(pgPostTable.rows.map(r => String(r[IPost.SEASON_ID])))].filter(s => WNBA_LG[s])
+    ? [...new Set(pgPostTable.rows.map(r => String(r[IPost.SEASON_ID])))].filter(s => getLeagueAverage(s))
     : [];
   const hadSeasonsToTry = regSeasons.length > 0 || postSeasons.length > 0;
 
@@ -311,7 +311,7 @@ async function computeAdvancedPbpAll(playerId) {
     // poisoned entry from a past systemic failure (see the write-side guard below for how new ones
     // are prevented) -- bypass it and recompute instead of serving it forever.
     const looksPoisoned = hadSeasonsToTry && advCached?.data?.regular?.rows?.length === 0;
-    if (advCached?.gp === currentGP && advCached.v === 26 && advCached.data?.regular != null && !looksPoisoned) {
+    if (advCached?.gp === currentGP && advCached.v === 27 && advCached.data?.regular != null && !looksPoisoned) {
       return advCached.data;
     }
   }
@@ -370,8 +370,11 @@ async function computeAdvancedPbpAll(playerId) {
 
   // v bumped 25->26: response shape changed from `headers` (bare strings) to `columns`
   // ({key,label,kind}) — force a rebuild of any Mongo-cached v25 documents.
+  // v bumped 26->27: getLeagueAverage() now covers the in-progress season -- force a rebuild of any
+  // v26 doc that was cached as legitimately-empty only because the current season had no WNBA_LG
+  // entry yet (a 2026-only rookie's advanced stats, for example). Self-heals with no manual cleanup.
   if (db && !looksLikeSystemicFailure) db.collection('advancedStats')
-    .replaceOne({ _id: advCacheId }, { _id: advCacheId, gp: currentGP, v: 26, data: advResult }, { upsert: true })
+    .replaceOne({ _id: advCacheId }, { _id: advCacheId, gp: currentGP, v: 27, data: advResult }, { upsert: true })
     .catch(err => console.error('mongo write advancedStats:', err.message));
 
   return advResult;

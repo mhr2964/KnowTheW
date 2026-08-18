@@ -23,7 +23,7 @@ const getTeams       = (...a) => getProvider().getTeams(...a);
 const fetchTeamStats = (...a) => getProvider().getTeamStats(...a);
 const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats, ESPN_DETAILED_HEADERS } = require('./statsParser');
 const { ADV_HEADERS_SRV, buildAdvancedSplit, computeSeasonPBP, buildPbpSplit } = require('./advancedStats');
-const { WNBA_LG } = require('../constants/leagueAverages');
+const { getLeagueAverage } = require('../constants/leagueAverages');
 const { getPlayerAccolades } = require('../constants/wnbaAccolades');
 const { isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyId } = require('../constants/legacyPlayerBulk');
 
@@ -147,7 +147,8 @@ function buildBulkLegacyInputs(playerId, mode) {
   const touchedYears = new Set(seasonRows.map(r => String(r.year)));
   const leagueByYear = {};
   for (const yr of touchedYears) {
-    if (WNBA_LG[yr]) leagueByYear[yr] = WNBA_LG[yr];
+    const lg = getLeagueAverage(yr);
+    if (lg) leagueByYear[yr] = lg;
   }
 
   const accolades     = getPlayerAccolades(bulk.name);
@@ -266,7 +267,7 @@ async function buildInputs(playerId, mode) {
 
     if (!isPlayoffs) {
       // Regular / peak: use regular-season advanced rows
-      const regSeasons = [...new Set(pgTable.rows.map(r => String(r[I.SEASON_ID])))].filter(s => WNBA_LG[s]);
+      const regSeasons = [...new Set(pgTable.rows.map(r => String(r[I.SEASON_ID])))].filter(s => getLeagueAverage(s));
       const regResults = await Promise.all(regSeasons.map(async season => {
         const playerRow = pgTable.rows.find(r => String(r[I.SEASON_ID]) === season);
         if (!playerRow) return null;
@@ -281,7 +282,7 @@ async function buildInputs(playerId, mode) {
     } else {
       // Playoffs: use playoff advanced rows
       const postSeasons = pgPostTable
-        ? [...new Set(pgPostTable.rows.map(r => String(r[IPost.SEASON_ID])))].filter(s => WNBA_LG[s])
+        ? [...new Set(pgPostTable.rows.map(r => String(r[IPost.SEASON_ID])))].filter(s => getLeagueAverage(s))
         : [];
       const postResults = await Promise.all(postSeasons.map(async season => {
         const playerRow = pgPostTable.rows.find(r => String(r[IPost.SEASON_ID]) === season);
@@ -315,7 +316,8 @@ async function buildInputs(playerId, mode) {
   const touchedYears = new Set(seasonRows.map(r => String(r.year)));
   const leagueByYear = {};
   for (const yr of touchedYears) {
-    if (WNBA_LG[yr]) leagueByYear[yr] = WNBA_LG[yr];
+    const lg = getLeagueAverage(yr);
+    if (lg) leagueByYear[yr] = lg;
   }
 
   // Individual accolades — MVP, Finals MVP, DPOY, ROY, Sixth Player, All-WNBA First Team,

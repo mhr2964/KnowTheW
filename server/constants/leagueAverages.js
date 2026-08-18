@@ -35,4 +35,15 @@ const WNBA_LG = {
   '2025': { pts:81.6993, fgm:29.5909, fga:67.3689, fg3m:8.1836,  fg3a:24.2238, ftm:14.3339, fta:18.215,  orb:8.4161,  drb:25.5262, trb:33.9423, ast:20.3304, stl:7.3794, blk:3.9283, tov:12.9038, pf:17.4633 },
 };
 
-module.exports = { GAME_MINUTES, WNBA_LG };
+// Synchronous accessor -- same call shape as a raw WNBA_LG[year] property read, so no caller needs
+// to become async. Falls through to the live-computed current-season average (see
+// server/lib/currentSeasonLeagueAverage.js) when year isn't in this static table and isn't a
+// finished season yet. Lazy require avoids a circular dependency (that module reads WNBA_LG back
+// from this one for its stl/blk/pf carry-forward).
+function getLeagueAverage(year) {
+  if (WNBA_LG[year]) return WNBA_LG[year];
+  const { peekCurrentSeasonLeagueAverage } = require('../lib/currentSeasonLeagueAverage');
+  return peekCurrentSeasonLeagueAverage(year);
+}
+
+module.exports = { GAME_MINUTES, WNBA_LG, getLeagueAverage };
