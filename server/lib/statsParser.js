@@ -1,3 +1,17 @@
+// Builds Per-Game/Totals/Per-36 detailed-stats tables from a provider-neutral list of normalized
+// PlayerSeasonRow objects (see server/providers/types.js). Each provider's own module is now
+// responsible for parsing its raw source format into that shape -- espn/playerStats.js relocated
+// ESPN's raw categories[]/dash-composite-name parsing there; this file no longer touches raw ESPN
+// JSON at all. Percentages (FG_PCT/FG3_PCT/FT_PCT) are derived from made/attempted totals uniformly
+// for every provider rather than trusting a source's own precomputed value, matching how per-36 was
+// already derived here before this file was normalized.
+//
+// FG_PCT/FG3_PCT/FT_PCT are stored as 0-1 fractions (not 0-100) in the ESPN_DETAILED_HEADERS rows
+// below -- this is the existing, pre-normalization convention (ESPN's raw pct fields arrived as
+// 0-100 and were divided by 100), kept unchanged so client rendering and gradedReportInputs.js's
+// rowToObj don't need to change. Note this differs from TeamStats.fgPct (0-100 scale) elsewhere in
+// this codebase -- two different, already-established conventions for two different tables.
+
 const { toColumnTable } = require('./statColumns');
 
 const ESPN_DETAILED_HEADERS = [
@@ -7,139 +21,109 @@ const ESPN_DETAILED_HEADERS = [
   'AST', 'STL', 'BLK', 'TOV', 'PF', 'PTS',
 ];
 
-function parseStat(name, val) {
-  const n = parseFloat(val);
-  if (isNaN(n)) return null;
-  return (name.endsWith('Pct') || name.endsWith('Percentage')) ? n / 100 : n;
+const TOTALS_FIELDS = ['fgm', 'fga', 'fg3m', 'fg3a', 'ftm', 'fta', 'oreb', 'dreb', 'reb', 'ast', 'stl', 'blk', 'tov', 'pf', 'pts'];
+
+// 0-1 fraction, matching the pre-existing ESPN_DETAILED_HEADERS convention (see file header).
+function pct(made, att) {
+  return att > 0 ? made / att : 0;
 }
 
-function parseStatMap(names, stats) {
-  const m = {};
-  names.forEach((name, i) => {
-    const val = stats?.[i];
-    if (name.includes('-')) {
-      const [n1, n2] = name.split('-');
-      if (typeof val === 'string' && val.includes('-')) {
-        const dash = val.indexOf('-');
-        m[n1] = parseStat(n1, val.slice(0, dash));
-        m[n2] = parseStat(n2, val.slice(dash + 1));
-      } else {
-        m[n1] = null;
-        m[n2] = null;
-      }
-    } else {
-      m[name] = parseStat(name, val);
-    }
-  });
-  return m;
-}
-
-function avgMapToRow(seasonId, teamAbbr, m) {
+function avgRow(seasonId, teamAbbr, row) {
+  const { gp, gs, totalMinutes, totals: t } = row;
+  const perGame = v => (gp > 0 ? v / gp : 0);
   return [
     seasonId, teamAbbr,
-    m.gamesPlayed, m.gamesStarted, m.avgMinutes,
-    m.avgFieldGoalsMade, m.avgFieldGoalsAttempted, m.fieldGoalPct,
-    m.avgThreePointFieldGoalsMade, m.avgThreePointFieldGoalsAttempted, m.threePointFieldGoalPct,
-    m.avgFreeThrowsMade, m.avgFreeThrowsAttempted, m.freeThrowPct,
-    m.avgOffensiveRebounds, m.avgDefensiveRebounds, m.avgRebounds,
-    m.avgAssists, m.avgSteals, m.avgBlocks, m.avgTurnovers, m.avgFouls, m.avgPoints,
+    gp, gs, gp > 0 ? totalMinutes / gp : 0,
+    perGame(t.fgm), perGame(t.fga), pct(t.fgm, t.fga),
+    perGame(t.fg3m), perGame(t.fg3a), pct(t.fg3m, t.fg3a),
+    perGame(t.ftm), perGame(t.fta), pct(t.ftm, t.fta),
+    perGame(t.oreb), perGame(t.dreb), perGame(t.reb),
+    perGame(t.ast), perGame(t.stl), perGame(t.blk), perGame(t.tov), perGame(t.pf), perGame(t.pts),
   ];
 }
 
-function totalsMapToRow(seasonId, teamAbbr, tm, gp, gs, totalMin) {
+function totalsRow(seasonId, teamAbbr, row) {
+  const { gp, gs, totalMinutes, totals: t } = row;
   return [
     seasonId, teamAbbr,
-    gp, gs ?? null, totalMin !== null ? Math.round(totalMin) : null,
-    tm.fieldGoalsMade, tm.fieldGoalsAttempted, tm.fieldGoalPct,
-    tm.threePointFieldGoalsMade, tm.threePointFieldGoalsAttempted, tm.threePointFieldGoalPct,
-    tm.freeThrowsMade, tm.freeThrowsAttempted, tm.freeThrowPct,
-    tm.offensiveRebounds, tm.defensiveRebounds, tm.totalRebounds,
-    tm.assists, tm.steals, tm.blocks, tm.turnovers, tm.fouls, tm.points,
+    gp, gs, totalMinutes,
+    t.fgm, t.fga, pct(t.fgm, t.fga),
+    t.fg3m, t.fg3a, pct(t.fg3m, t.fg3a),
+    t.ftm, t.fta, pct(t.ftm, t.fta),
+    t.oreb, t.dreb, t.reb,
+    t.ast, t.stl, t.blk, t.tov, t.pf, t.pts,
   ];
 }
 
-function per36MapToRow(seasonId, teamAbbr, tm, gp, gs, totalMin) {
-  const p = v => (v !== null && totalMin > 0) ? (v / totalMin) * 36 : null;
+function per36Row(seasonId, teamAbbr, row) {
+  const { gp, gs, totalMinutes, totals: t } = row;
+  const p36 = v => (totalMinutes > 0 ? (v / totalMinutes) * 36 : 0);
   return [
     seasonId, teamAbbr,
-    gp, gs ?? null, totalMin !== null ? Math.round(totalMin) : null,
-    p(tm.fieldGoalsMade), p(tm.fieldGoalsAttempted), tm.fieldGoalPct,
-    p(tm.threePointFieldGoalsMade), p(tm.threePointFieldGoalsAttempted), tm.threePointFieldGoalPct,
-    p(tm.freeThrowsMade), p(tm.freeThrowsAttempted), tm.freeThrowPct,
-    p(tm.offensiveRebounds), p(tm.defensiveRebounds), p(tm.totalRebounds),
-    p(tm.assists), p(tm.steals), p(tm.blocks), p(tm.turnovers), p(tm.fouls), p(tm.points),
+    gp, gs, totalMinutes,
+    p36(t.fgm), p36(t.fga), pct(t.fgm, t.fga),
+    p36(t.fg3m), p36(t.fg3a), pct(t.fg3m, t.fg3a),
+    p36(t.ftm), p36(t.fta), pct(t.ftm, t.fta),
+    p36(t.oreb), p36(t.dreb), p36(t.reb),
+    p36(t.ast), p36(t.stl), p36(t.blk), p36(t.tov), p36(t.pf), p36(t.pts),
   ];
 }
 
-function extractTeamIdByYear(data) {
-  if (!data?.categories) return {};
-  const avgCat = data.categories.find(c => c.name === 'averages');
-  if (!avgCat) return {};
+// Provider-neutral: { [year]: teamId } for every row in the season list. Trivial now that
+// PlayerSeasonRow carries teamId directly -- previously had to dig it out of ESPN's raw 'averages'
+// category.
+function extractTeamIdByYear(seasons) {
   const map = {};
-  for (const entry of avgCat.statistics) {
-    map[String(entry.season.year)] = String(entry.teamId);
-  }
+  for (const row of seasons ?? []) map[row.year] = row.teamId;
   return map;
 }
 
-function parseESPNSeasonData(data, teamsById) {
-  if (!data?.categories) return null;
-  const avgCat = data.categories.find(c => c.name === 'averages');
-  const totCat = data.categories.find(c => c.name === 'totals');
-  if (!avgCat || !totCat) return null;
+// Sums every row's totals/gp/gs/minutes into one synthetic career PlayerSeasonRow, so the exact
+// same avgRow/totalsRow/per36Row builders produce the career line too -- no separate
+// ESPN-precomputed "career totals" field to trust/parse anymore, which also means the career row
+// is always internally consistent with whatever per-year rows actually got returned (relevant once
+// some years come from ESPN and others from BDL, in the hybrid provider).
+function sumCareerRow(seasons) {
+  const totals = Object.fromEntries(TOTALS_FIELDS.map(k => [k, 0]));
+  let gp = 0, gs = 0, allHaveGs = true, totalMinutes = 0;
+  for (const row of seasons) {
+    for (const k of TOTALS_FIELDS) totals[k] += row.totals[k] ?? 0;
+    gp += row.gp ?? 0;
+    if (row.gs != null) gs += row.gs;
+    else allHaveGs = false; // any season missing GS (e.g. BDL-era, no such field) -> don't report a
+    // silently-undercounted career total; null is honest, a partial sum posing as complete isn't.
+    totalMinutes += row.totalMinutes ?? 0;
+  }
+  return { gp, gs: allHaveGs ? gs : null, totalMinutes, totals };
+}
 
-  const avgByYear = {};
-  avgCat.statistics.forEach(entry => {
-    const year = String(entry.season.year);
-    avgByYear[year] = {
-      map: parseStatMap(avgCat.names, entry.stats),
-      teamAbbr: teamsById[entry.teamId]?.abbreviation || '',
-    };
-  });
-
-  const totByYear = {};
-  totCat.statistics.forEach(entry => {
-    const year = String(entry.season.year);
-    totByYear[year] = {
-      map: parseStatMap(totCat.names, entry.stats),
-      teamAbbr: teamsById[entry.teamId]?.abbreviation || '',
-    };
-  });
-
-  const years = [...new Set([...Object.keys(avgByYear), ...Object.keys(totByYear)])].sort();
+// Builds the {pg, tot, p36} table set for one split (regular or playoffs) from its normalized
+// season rows. Returns null if there's no data at all for this split -- same degradation as before.
+function buildSeasonTables(seasons, teamsById) {
+  if (!seasons || seasons.length === 0) return null;
 
   const pgRows = [], totRows = [], p36Rows = [];
-  years.forEach(year => {
-    const avg = avgByYear[year];
-    const tot = totByYear[year];
-    if (avg) pgRows.push(avgMapToRow(year, avg.teamAbbr, avg.map));
-    if (avg && tot) {
-      const totalMin = (avg.map.avgMinutes || 0) * (avg.map.gamesPlayed || 0);
-      totRows.push(totalsMapToRow(year, tot.teamAbbr, tot.map, avg.map.gamesPlayed, avg.map.gamesStarted, totalMin));
-      p36Rows.push(per36MapToRow(year, tot.teamAbbr, tot.map, avg.map.gamesPlayed, avg.map.gamesStarted, totalMin));
-    }
+  seasons.forEach(row => {
+    const teamAbbr = teamsById[row.teamId]?.abbreviation || '';
+    pgRows.push(avgRow(row.year, teamAbbr, row));
+    totRows.push(totalsRow(row.year, teamAbbr, row));
+    p36Rows.push(per36Row(row.year, teamAbbr, row));
   });
 
-  const avgCareer = parseStatMap(avgCat.names, avgCat.totals);
-  const totCareer = parseStatMap(totCat.names, totCat.totals);
-  const careerGp = avgCareer.gamesPlayed;
-  const careerTotalMin = Object.values(avgByYear).reduce(
-    (s, a) => s + (a.map.avgMinutes || 0) * (a.map.gamesPlayed || 0), 0
-  );
-
+  const careerRow = sumCareerRow(seasons);
   const makeTable = rows => rows.length ? { headers: ESPN_DETAILED_HEADERS, rows } : null;
   const makeCareer = row => ({ headers: ESPN_DETAILED_HEADERS, rows: [row] });
 
   return {
-    pg:  { table: makeTable(pgRows),  career: makeCareer(avgMapToRow('Career', '', avgCareer)) },
-    tot: { table: makeTable(totRows), career: makeCareer(totalsMapToRow('Career', '', totCareer, careerGp, avgCareer.gamesStarted, careerTotalMin)) },
-    p36: { table: makeTable(p36Rows), career: makeCareer(per36MapToRow('Career', '', totCareer, careerGp, avgCareer.gamesStarted, careerTotalMin)) },
+    pg:  { table: makeTable(pgRows),  career: makeCareer(avgRow('Career', '', careerRow)) },
+    tot: { table: makeTable(totRows), career: makeCareer(totalsRow('Career', '', careerRow)) },
+    p36: { table: makeTable(p36Rows), career: makeCareer(per36Row('Career', '', careerRow)) },
   };
 }
 
-function buildDetailedStats(regData, postData, teamsById) {
-  const reg = parseESPNSeasonData(regData, teamsById);
-  const post = parseESPNSeasonData(postData, teamsById);
+function buildDetailedStats(regSeasons, postSeasons, teamsById) {
+  const reg = buildSeasonTables(regSeasons, teamsById);
+  const post = buildSeasonTables(postSeasons, teamsById);
   const makeSplit = getter => ({
     regular:       reg  ? toColumnTable(getter(reg).table)  : null,
     regularCareer: reg  ? toColumnTable(getter(reg).career) : null,
@@ -157,7 +141,6 @@ function buildDetailedStats(regData, postData, teamsById) {
 
 module.exports = {
   ESPN_DETAILED_HEADERS,
-  parseStat, parseStatMap,
-  avgMapToRow, totalsMapToRow, per36MapToRow,
-  extractTeamIdByYear, parseESPNSeasonData, buildDetailedStats,
+  pct, avgRow, totalsRow, per36Row,
+  extractTeamIdByYear, buildSeasonTables, sumCareerRow, buildDetailedStats,
 };

@@ -1,12 +1,93 @@
 // ESPN player-level fetches that previously lived as raw fetch() calls inside route handlers and
 // gradedReportInputs. Centralizing them here is the M3 step toward a clean provider boundary.
 //
-// Note: getPlayerSeasonStats still returns ESPN's raw stats JSON (regData/postData) because the
-// downstream parser (statsParser.parseESPNSeasonData) consumes that shape directly. Fully
-// normalizing the season-stats payload (so raw ESPN JSON stops crossing the boundary) is deferred
-// to a later milestone; for now this just consolidates WHERE the fetch happens, not its shape.
+// getPlayerSeasonStats returns normalized PlayerSeasonRow[] (see server/providers/types.js), not
+// ESPN's raw categories JSON -- the raw-shape parsing (dash-composite stat names, positional stats
+// arrays keyed by a parallel `names` array, season/team grouping) lives entirely in this file now,
+// so statsParser.js and its four downstream consumers (advancedStats.js, gradedReportInputs.js,
+// routes/playerAnalysis.js, routes/players.js) never touch ESPN-specific raw shape again. This is
+// the normalization this file's own header comment previously flagged as deferred.
 
 const { ESPN_WEB, withTtlCache } = require('./client');
+
+// ESPN's raw per-category stat encoding: `names` is a parallel array to `stats`; a composite name
+// like 'fieldGoalsMade-fieldGoalsAttempted' pairs with a "N-M" string value and gets split into two
+// keys. Returns a plain {name: number|null} map keyed by ESPN's own raw name strings. No `/100`
+// percentage handling here (unlike the pre-normalization version) -- normalized rows only carry raw
+// counts; percentages are derived from made/attempted uniformly downstream in statsParser.js.
+function parseRawStatMap(names, stats) {
+  const m = {};
+  (names ?? []).forEach((name, i) => {
+    const val = stats?.[i];
+    if (name.includes('-')) {
+      const [n1, n2] = name.split('-');
+      if (typeof val === 'string' && val.includes('-')) {
+        const dash = val.indexOf('-');
+        m[n1] = parseFloatOrNull(val.slice(0, dash));
+        m[n2] = parseFloatOrNull(val.slice(dash + 1));
+      } else {
+        m[n1] = null; m[n2] = null;
+      }
+    } else {
+      m[name] = parseFloatOrNull(val);
+    }
+  });
+  return m;
+}
+
+function parseFloatOrNull(val) {
+  const n = parseFloat(val);
+  return Number.isNaN(n) ? null : n;
+}
+
+// ESPN's raw categories payload -> normalized PlayerSeasonRow[] (server/providers/types.js), one
+// entry per year present in BOTH the 'averages' category (source of GP/GS/avg-minutes) and the
+// 'totals' category (source of made/attempted counts) -- a year needs both to build a complete row.
+// Returns null if the payload has no usable category data at all (non-2xx already returned null
+// upstream; this also covers a 200 with an unexpected/empty shape).
+function normalizeSeasonRows(data) {
+  if (!data?.categories) return null;
+  const avgCat = data.categories.find(c => c.name === 'averages');
+  const totCat = data.categories.find(c => c.name === 'totals');
+  if (!avgCat || !totCat) return null;
+
+  const avgByYear = {};
+  (avgCat.statistics ?? []).forEach(entry => {
+    avgByYear[String(entry.season.year)] = {
+      map: parseRawStatMap(avgCat.names, entry.stats),
+      teamId: String(entry.teamId),
+    };
+  });
+  const totByYear = {};
+  (totCat.statistics ?? []).forEach(entry => {
+    totByYear[String(entry.season.year)] = parseRawStatMap(totCat.names, entry.stats);
+  });
+
+  const years = Object.keys(avgByYear).filter(y => totByYear[y]).sort();
+  return years.map(year => {
+    const avg = avgByYear[year].map;
+    const tm = totByYear[year];
+    // ESPN gives no raw total-minutes field -- only a per-game average -- so total minutes is
+    // itself an approximation (avgMinutes * gamesPlayed), same derivation the pre-normalization
+    // code already used.
+    const totalMinutes = (avg.avgMinutes || 0) * (avg.gamesPlayed || 0);
+    return {
+      year,
+      teamId: avgByYear[year].teamId,
+      gp: avg.gamesPlayed ?? 0,
+      gs: avg.gamesStarted ?? null,
+      totalMinutes: Math.round(totalMinutes),
+      totals: {
+        fgm: tm.fieldGoalsMade ?? 0, fga: tm.fieldGoalsAttempted ?? 0,
+        fg3m: tm.threePointFieldGoalsMade ?? 0, fg3a: tm.threePointFieldGoalsAttempted ?? 0,
+        ftm: tm.freeThrowsMade ?? 0, fta: tm.freeThrowsAttempted ?? 0,
+        oreb: tm.offensiveRebounds ?? 0, dreb: tm.defensiveRebounds ?? 0, reb: tm.totalRebounds ?? 0,
+        ast: tm.assists ?? 0, stl: tm.steals ?? 0, blk: tm.blocks ?? 0,
+        tov: tm.turnovers ?? 0, pf: tm.fouls ?? 0, pts: tm.points ?? 0,
+      },
+    };
+  });
+}
 
 // These three are hit on every player-page load (basics on lookup, season stats behind every
 // Per Game/Totals/Per 36/Advanced tab) with no cache in front of them at all before this — every
@@ -75,12 +156,19 @@ async function fetchPlayerSeasonStatsRaw(playerId) {
     fetch(`${ESPN_WEB}/athletes/${playerId}/stats?seasontype=2`).then(r => (r.ok ? r.json() : null)),
     fetch(`${ESPN_WEB}/athletes/${playerId}/stats?seasontype=3`).then(r => (r.ok ? r.json() : null)),
   ]);
-  return { regData, postData };
+  return {
+    regSeasons: normalizeSeasonRows(regData),
+    postSeasons: normalizeSeasonRows(postData),
+  };
 }
 
-/** Raw regular-season + playoff season-stats payloads (each null on a non-2xx response). */
+/** Normalized regular-season + playoff PlayerSeasonRow[] (each null on a non-2xx/unparseable response). */
 function getPlayerSeasonStats(playerId) {
   return withTtlCache(seasonStatsCache, playerId, PLAYER_TTL_MS, () => fetchPlayerSeasonStatsRaw(playerId));
 }
 
-module.exports = { getPlayerBasics, getRetiredPlayer, getPlayerSeasonStats };
+module.exports = {
+  getPlayerBasics, getRetiredPlayer, getPlayerSeasonStats,
+  // exported for unit tests and reuse by other providers building the same normalized shape:
+  normalizeSeasonRows, parseRawStatMap,
+};

@@ -55,6 +55,12 @@ function buildStatsBag(row) {
 // Filters to real franchise-vs-franchise games only (both sides isRealFranchise), same exclusion
 // idMap.js's team map and plays.js's getRegularSeasonEventIdsBdl already apply -- an All-Star or
 // exhibition game a player appears in via /player_stats must not show up in their game log.
+//
+// `postseason` is carried through even though this module's own consumer (fetchPlayerGameLogRawBdl,
+// below) doesn't filter on it -- a combined career game log intentionally includes both regular and
+// playoff games in one list, matching ESPN's own gamelog behavior. seasonStats.js (Phase 1b) reuses
+// this same map and DOES need the flag, to split a season's games into regular-season vs playoff
+// totals the way ESPN's raw categories structure requires.
 function buildGameMetaMap(gamesRows, teamId) {
   const map = new Map();
   for (const g of gamesRows ?? []) {
@@ -71,6 +77,7 @@ function buildGameMetaMap(gamesRows, teamId) {
       result: hasScores ? (teamScore > oppScore ? 'W' : 'L') : '?',
       teamScore: hasScores ? teamScore : null,
       oppScore: hasScores ? oppScore : null,
+      postseason: !!g.postseason,
     });
   }
   return map;

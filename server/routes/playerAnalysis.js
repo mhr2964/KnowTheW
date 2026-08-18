@@ -7,7 +7,7 @@
 const express = require('express');
 const router  = express.Router();
 
-const { parseESPNSeasonData }                                            = require('../lib/statsParser');
+const { buildSeasonTables }                                              = require('../lib/statsParser');
 const { computeAdvancedPbpAll }                                          = require('../lib/advancedStats');
 const { loadFingerprintIndex }                                           = require('../lib/percentileClient');
 const { getPlayerFingerprint, AXES, buildDimensions }                    = require('../lib/analysis/playerFingerprint');
@@ -52,8 +52,8 @@ router.get('/players/:id/pbp-stats', async (req, res) => {
 router.get('/players/:id/pbp-table', async (req, res) => {
   try {
     const playerId = String(req.params.id);
-    const { regData, teamsById } = await fetchPlayerSeasonData(playerId);
-    const regParsed = parseESPNSeasonData(regData, teamsById);
+    const { regSeasons, teamsById } = await fetchPlayerSeasonData(playerId);
+    const regParsed = buildSeasonTables(regSeasons, teamsById);
     const pgTable = regParsed?.pg?.table;
     if (!pgTable) return res.status(404).json({ error: 'no stats for this player' });
     const I = Object.fromEntries(pgTable.headers.map((h, i) => [h, i]));

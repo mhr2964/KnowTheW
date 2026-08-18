@@ -5,7 +5,7 @@ const fetchTeamStats      = (...a) => getProvider().getTeamStats(...a);
 const fetchTeamPtsAllowed = (...a) => getProvider().getTeamPointsAllowed(...a);
 const { computeBasicRatioStats, computePER, computeWinShares } = require('./statFormulas');
 const { getCached, writeCache } = require('./teamSeasonCache');
-const { ESPN_DETAILED_HEADERS, parseESPNSeasonData, extractTeamIdByYear } = require('./statsParser');
+const { ESPN_DETAILED_HEADERS, buildSeasonTables, extractTeamIdByYear } = require('./statsParser');
 const { isPastSeason } = require('./seasonWindow');
 const { getDb } = require('../db');
 const { columnsFor } = require('./statColumns');
@@ -278,9 +278,12 @@ function buildPbpSplit(valid, pgRows, rowI) {
 // this to 404). Throws on genuine upstream failures (caller maps to 502) -- same contract the route
 // had inline before this extraction, no behavior change.
 async function computeAdvancedPbpAll(playerId) {
-  const { regData, postData, teamsById } = await fetchPlayerSeasonData(playerId);
-  const regParsed  = parseESPNSeasonData(regData,  teamsById);
-  const postParsed = parseESPNSeasonData(postData, teamsById);
+  // Aliased (not destructured as `regSeasons`/`postSeasons` directly) because this function
+  // already uses those names below for a different thing: the filtered list of season-id strings
+  // worth computing PBP for, not the raw provider rows.
+  const { regSeasons: rawRegSeasons, postSeasons: rawPostSeasons, teamsById } = await fetchPlayerSeasonData(playerId);
+  const regParsed  = buildSeasonTables(rawRegSeasons,  teamsById);
+  const postParsed = buildSeasonTables(rawPostSeasons, teamsById);
   const pgTable = regParsed?.pg?.table;
   if (!pgTable) return null;
   const I = Object.fromEntries(pgTable.headers.map((h, i) => [h, i]));
@@ -325,8 +328,8 @@ async function computeAdvancedPbpAll(playerId) {
   const totPostTable = postParsed?.tot?.table;
   if (totPostTable?.rows) for (const r of totPostTable.rows) totPostByYear[String(r[IPost.SEASON_ID])] = r;
 
-  const regTidByYear  = extractTeamIdByYear(regData);
-  const postTidByYear = extractTeamIdByYear(postData);
+  const regTidByYear  = extractTeamIdByYear(rawRegSeasons);
+  const postTidByYear = extractTeamIdByYear(rawPostSeasons);
 
   const [regResults, postResults] = await Promise.all([
     Promise.all(regSeasons.map(async season => {

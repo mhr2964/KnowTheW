@@ -21,7 +21,7 @@ const { getProvider } = require('../providers');
 // Source access via the active provider; thin locals keep call sites below unchanged.
 const getTeams       = (...a) => getProvider().getTeams(...a);
 const fetchTeamStats = (...a) => getProvider().getTeamStats(...a);
-const { parseESPNSeasonData, extractTeamIdByYear, buildDetailedStats, ESPN_DETAILED_HEADERS } = require('./statsParser');
+const { buildSeasonTables, extractTeamIdByYear, buildDetailedStats, ESPN_DETAILED_HEADERS } = require('./statsParser');
 const { ADV_HEADERS_SRV, buildAdvancedSplit, computeSeasonPBP, buildPbpSplit } = require('./advancedStats');
 const { getLeagueAverage } = require('../constants/leagueAverages');
 const { getPlayerAccolades } = require('../constants/wnbaAccolades');
@@ -198,14 +198,17 @@ async function buildInputs(playerId, mode) {
   const teams = await getTeams();
   const teamsById = Object.fromEntries(teams.map(t => [String(t.id), t]));
 
-  const [player, { regData, postData }] = await Promise.all([
+  // Aliased (not destructured as `regSeasons`/`postSeasons` directly) because this function
+  // already uses those names below for a different thing: the filtered list of season-id strings
+  // worth computing PBP for, not the raw provider rows.
+  const [player, { regSeasons: rawRegSeasons, postSeasons: rawPostSeasons }] = await Promise.all([
     getProvider().getPlayerBasics(playerId),
     getProvider().getPlayerSeasonStats(playerId),
   ]);
 
   if (!player) return null;
 
-  const detailed = buildDetailedStats(regData, postData, teamsById);
+  const detailed = buildDetailedStats(rawRegSeasons, rawPostSeasons, teamsById);
 
   // Choose the per-game split based on mode
   const isPlayoffs = mode === 'playoffs';
@@ -222,14 +225,14 @@ async function buildInputs(playerId, mode) {
   }
 
   // Build advanced stats — mirror the logic from api.js /players/:id/advanced-pbp-all
-  const regParsed  = parseESPNSeasonData(regData,  teamsById);
-  const postParsed = parseESPNSeasonData(postData, teamsById);
+  const regParsed  = buildSeasonTables(rawRegSeasons,  teamsById);
+  const postParsed = buildSeasonTables(rawPostSeasons, teamsById);
   const pgTable    = regParsed?.pg?.table;
   const pgPostTable = postParsed?.pg?.table;
 
   // Hoist tid-by-year maps so they're accessible for championship computation below.
-  const regTidByYear  = extractTeamIdByYear(regData);
-  const postTidByYear = extractTeamIdByYear(postData);
+  const regTidByYear  = extractTeamIdByYear(rawRegSeasons);
+  const postTidByYear = extractTeamIdByYear(rawPostSeasons);
 
   let advancedRows = [];
 

@@ -9,8 +9,42 @@
 
 const espn = require('./client');
 const { ESPN_WEB } = espn;
-const { parseStatMap } = require('../../lib/statsParser');
 const { latestCompletedSeason } = require('../../lib/seasonWindow');
+
+// ESPN's raw dash-composite stat-name parsing, with the /100 percentage conversion this file's
+// consumers rely on (FG_PCT etc are read directly off the parsed map as 0-1 fractions below). This
+// used to live in server/lib/statsParser.js and was shared with the player-detailed-stats path, but
+// that path moved to a provider-neutral normalized-row contract (PlayerSeasonRow, which stores raw
+// counts only and derives percentages downstream) as part of the BDL season-stats migration design.
+// This module fetches ESPN's byathlete/per-athlete raw JSON directly and is entirely independent of
+// getPlayerSeasonStats -- restored here unchanged rather than forced through that new contract,
+// since the percentile system stays ESPN-forever regardless (see provider-architecture.md).
+function parseStat(name, val) {
+  const n = parseFloat(val);
+  if (isNaN(n)) return null;
+  return (name.endsWith('Pct') || name.endsWith('Percentage')) ? n / 100 : n;
+}
+
+function parseStatMap(names, stats) {
+  const m = {};
+  names.forEach((name, i) => {
+    const val = stats?.[i];
+    if (name.includes('-')) {
+      const [n1, n2] = name.split('-');
+      if (typeof val === 'string' && val.includes('-')) {
+        const dash = val.indexOf('-');
+        m[n1] = parseStat(n1, val.slice(0, dash));
+        m[n2] = parseStat(n2, val.slice(dash + 1));
+      } else {
+        m[n1] = null;
+        m[n2] = null;
+      }
+    } else {
+      m[name] = parseStat(name, val);
+    }
+  });
+  return m;
+}
 
 const ESPN_BYATHLETE = 'https://site.api.espn.com/apis/common/v3/sports/basketball/wnba/statistics/byathlete';
 

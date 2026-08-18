@@ -88,24 +88,41 @@ via a join against ESPN's already-cached `getTeams()` by abbreviation, in
 Live shadow-compare (LV Aces, 2025 regular season, real production data): 0 per-game mismatches
 across all 44 games.
 
-## ESPN-migration Phase 1b: player season stats — designed, not yet built (2026-08-18)
+## ESPN-migration Phase 1b: player season stats + provider contract normalization (shipped 2026-08-18)
 
-`getPlayerSeasonStats` still delegates to ESPN forever. Considered migrating it, but its ESPN
-implementation deliberately returns raw, unvalidated ESPN JSON (`{regData, postData}`, each
-ESPN's own `categories[{name, names, statistics, totals}]` shape) that four separate files parse
-directly (`server/lib/statsParser.js`'s consumers: `advancedStats.js`, `gradedReportInputs.js`,
-`routes/playerAnalysis.js`, `routes/players.js`) — a materially wider surface than a single clean
-boundary. **Decided approach (not yet built): reproduce ESPN's exact raw shape from BDL data**
-(template-substitution — take ESPN's real payload, swap in BDL-derived stats only for years >=
-`BDL_MIN_SEASON`, recompute the career totals row) rather than refactor all four consumers to a
-normalized intermediate. This means zero changes to `statsParser.js` or any of its callers. Two
-more confirmed, permanent BDL gaps found while designing this: no games-started (`GS`) field
-exists on BDL's per-game rows at all (must be `null` for BDL-covered seasons), and building
-BDL-era totals needs `gameLog.js`'s `buildGameMetaMap` to start preserving each game's `postseason`
-flag (currently discarded after use) so regular-season and playoff totals can be split the way
-ESPN's `avgCat`/`totCat` structure requires. Full mechanism spec lives in the plan-file history
-if/when this gets built — deliberately left unbuilt this session since it feeds the AI-graded
-report generator and detailed-stats page without a shadow-compare path as simple as Phase 1a/2 got.
+`getPlayerSeasonStats` now sources from BDL for season >= `BDL_MIN_SEASON`, merged with ESPN's real
+pre-2008 data — one call spans a player's whole career, so this can't be a per-call season switch
+the way other methods are (see `server/providers/balldontlie/seasonStats.js`'s header comment).
+
+An initial design (template-substitution: reproduce ESPN's raw JSON shape from BDL data, leaving
+`statsParser.js` untouched) was superseded by user preference for the architecturally cleaner
+option: **the provider contract itself is now normalized.** `getPlayerSeasonStats` returns
+`PlayerSeasonRow[]` (`server/providers/types.js`) instead of raw ESPN JSON. ESPN's own
+implementation (`espn/playerStats.js`) now owns 100% of the ESPN-raw-shape parsing that used to
+live in `statsParser.js`; `statsParser.js` itself is provider-neutral and has never seen an ESPN
+category object. `schemas.js` validates the new shape (previously exempted as "source-raw JSON by
+design"). Percentages (FG_PCT etc) are now derived from made/attempted uniformly for both providers
+instead of trusting each source's own precomputed value — verified equivalent to the old
+ESPN-trusting behavior via a git-stash old/new diff against a real 9-season career (differences
+all sub-0.05, explained by ESPN's internal rounding vs exact division).
+
+**A consumer missed on the first design pass, caught by grepping the whole codebase before
+declaring this done:** `espn/leagueStats.js` (the percentile system — stays ESPN-forever,
+unaffected by this migration) imported `parseStatMap` directly from `statsParser.js` for its own,
+completely independent raw ESPN fetch. It needed the *original* `/100`-percentage-converting
+behavior, which now genuinely differs from `playerStats.js`'s raw-counts-only version — restored as
+a local copy there rather than shared, since these are two different jobs now, not one.
+
+**Confirmed, permanent BDL gap:** no games-started (`GS`) field exists on any `/player_stats` row,
+for any season — `GS` is `null` for every BDL-derived season row, and the *career* `GS` total is
+also `null` if any contributing season lacks it (rather than silently reporting a partial sum as
+complete).
+
+**Verification:** beyond unit tests, an independent from-scratch script (raw `fetch()` calls, none
+of this session's own code) split a real player's 2025 games by `postseason` and summed them —
+exact match against the shipped output on both the regular-season and playoff splits. The full
+`buildDetailedStats` pipeline was also fed real merged 9-season hybrid data end-to-end: zero `NaN`,
+and career totals exactly equal the sum of the per-season rows.
 
 ## `getSeasonPBPSummary` boundary
 

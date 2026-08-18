@@ -13,9 +13,9 @@
 // so ESPN adding fields never trips the alarm — only a normalized shape we'd actually mishandle does.
 //
 // SCHEMA_BY_METHOD maps a provider method name to the schema for its resolved return value. Methods
-// absent from the map are intentionally unvalidated: the *Raw fetches and getPlayerSeasonStats still
-// return source-raw JSON by design (see HANDOFF), and the numeric league-stat maps have no stable
-// typedef yet. Add a method here when its return shape is normalized and documented in types.js.
+// absent from the map are intentionally unvalidated: the *Raw fetches still return source-raw JSON
+// by design, and the numeric league-stat maps have no stable typedef yet. Add a method here when its
+// return shape is normalized and documented in types.js.
 
 const { z } = require('zod');
 
@@ -111,6 +111,28 @@ const GameLogResponse = z.object({
   games: z.array(GameLogGame),
 });
 
+// One player-season-team's raw counting totals -- the only numbers PlayerSeasonRow carries.
+// Per-game/per-36/percentage figures are all derived downstream (statsParser.js), never stored.
+const PlayerSeasonTotals = z.object({
+  fgm: z.number(), fga: z.number(), fg3m: z.number(), fg3a: z.number(),
+  ftm: z.number(), fta: z.number(), oreb: z.number(), dreb: z.number(), reb: z.number(),
+  ast: z.number(), stl: z.number(), blk: z.number(), tov: z.number(), pf: z.number(), pts: z.number(),
+});
+// gs (games started) is nullable: BDL has no equivalent field for any season, so BDL-covered rows
+// always carry gs: null -- a real, permanent, documented data gap, not drift.
+const PlayerSeasonRow = z.object({
+  year: z.string(),
+  teamId: z.string(),
+  gp: z.number(),
+  gs: z.number().nullable(),
+  totalMinutes: z.number().nullable(),
+  totals: PlayerSeasonTotals,
+});
+const PlayerSeasonStatsResponse = z.object({
+  regSeasons: z.array(PlayerSeasonRow).nullable(),
+  postSeasons: z.array(PlayerSeasonRow).nullable(),
+});
+
 const SCHEMA_BY_METHOD = {
   getTeams: z.array(Team),
   getRoster: z.array(RosterPlayer),
@@ -121,6 +143,7 @@ const SCHEMA_BY_METHOD = {
   getPlayoffSchedule: z.array(ScheduleEvent).nullable(),
   getPlayerBasics: PlayerBasics.nullable(),
   getPlayerGameLog: GameLogResponse.nullable(),
+  getPlayerSeasonStats: PlayerSeasonStatsResponse,
 };
 
 module.exports = {
@@ -129,5 +152,6 @@ module.exports = {
   schemas: {
     Team, RosterPlayer, HistoricalRosterEntry, TeamStats, TeamStatsReturn,
     ScheduleEvent, PlayerBasics, GameLogResponse,
+    PlayerSeasonTotals, PlayerSeasonRow, PlayerSeasonStatsResponse,
   },
 };

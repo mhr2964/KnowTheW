@@ -57,7 +57,7 @@ class SportsDataProvider {
   getPlayerBasics() { return this._notImplemented('getPlayerBasics'); }
   /** getRetiredPlayer(playerId) → full retired-player profile | null (not in the active cache). */
   getRetiredPlayer() { return this._notImplemented('getRetiredPlayer'); }
-  /** getPlayerSeasonStats(playerId) → { regData, postData } season-stats payloads. */
+  /** getPlayerSeasonStats(playerId) → {Promise<import('./types').PlayerSeasonStatsResponse>}. */
   getPlayerSeasonStats() { return this._notImplemented('getPlayerSeasonStats'); }
   /** getPlayerGameLog(playerId, season) → { columns:[{key,label,kind}], games:[...] } | null. */
   getPlayerGameLog() { return this._notImplemented('getPlayerGameLog'); }

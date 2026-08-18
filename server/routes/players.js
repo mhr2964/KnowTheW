@@ -63,15 +63,15 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
       return res.json(buildBulkLegacyDetailedStats(bulk));
     }
 
-    const { regData, postData, teamsById } = await fetchPlayerSeasonData(playerId);
-    const result = buildDetailedStats(regData, postData, teamsById);
+    const { regSeasons, postSeasons, teamsById } = await fetchPlayerSeasonData(playerId);
+    const result = buildDetailedStats(regSeasons, postSeasons, teamsById);
 
     // Players with no WNBA games yet (rookies pre-season, etc.) get an empty payload instead of 404
     // so the page renders the normal stat-tab strip with a friendly empty state inside.
     if (!result.perGame.regular) return res.json({ ...result, empty: true });
 
-    const regTidByYear  = extractTeamIdByYear(regData);
-    const postTidByYear = extractTeamIdByYear(postData);
+    const regTidByYear  = extractTeamIdByYear(regSeasons);
+    const postTidByYear = extractTeamIdByYear(postSeasons);
     const allPairs = new Map([
       ...Object.entries(regTidByYear).map(([y, t])  => [`${t}-${y}`, { t, y }]),
       ...Object.entries(postTidByYear).map(([y, t]) => [`${t}-${y}`, { t, y }]),

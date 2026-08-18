@@ -122,6 +122,36 @@
  */
 
 /**
+ * @typedef {Object} PlayerSeasonTotals  Raw counting totals for one player-season-team. Per-game/
+ *   per-36/percentage figures are all derived from these downstream (statsParser.js), never stored.
+ * @property {number} fgm @property {number} fga
+ * @property {number} fg3m @property {number} fg3a
+ * @property {number} ftm @property {number} fta
+ * @property {number} oreb @property {number} dreb @property {number} reb
+ * @property {number} ast @property {number} stl @property {number} blk
+ * @property {number} tov @property {number} pf @property {number} pts
+ */
+
+/**
+ * @typedef {Object} PlayerSeasonRow  One player's stat line for one team in one season. A player
+ *   traded mid-season across sources this typedef doesn't itself resolve -- callers key by `year`.
+ * @property {string} year
+ * @property {string} teamId    ESPN team id, even for BDL-sourced rows (see idMap.js's
+ *   BDL-abbreviation-to-ESPN-id join) -- every consumer already looks teams up by ESPN id.
+ * @property {number} gp
+ * @property {number|null} gs   Games started. null when the source has no such field (confirmed:
+ *   BDL has no equivalent for any season -- a permanent gap, not a transient miss).
+ * @property {number|null} totalMinutes
+ * @property {PlayerSeasonTotals} totals
+ */
+
+/**
+ * @typedef {Object} PlayerSeasonStatsResponse
+ * @property {PlayerSeasonRow[]|null} regSeasons   null = transient fetch error, not confirmed-empty.
+ * @property {PlayerSeasonRow[]|null} postSeasons
+ */
+
+/**
  * @typedef {Object} SeasonPBPSummary
  * @property {Object} tmOC        Per-game on-court team+opponent averages (fgaPg, oFgaPg, etc.),
  *   used for USG%/AST%/ORB%/PER. Same key shape as OnCourtStats, "Pg"-suffixed.
