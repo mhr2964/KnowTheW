@@ -5,13 +5,16 @@
 // for the full reasoning.
 //
 // Delegates to ESPN forever (out of scope for this swap): teams/rosters/schedule, player-basics,
-// getPlayerSeasonStats/getPlayerGameLog/getGameLogEvents (ESPN's /stats endpoint already gives
-// exact real totals), the percentile/league-index methods, active-player lookups, and
+// getPlayerSeasonStats (raw-ESPN-JSON shape, see docs/design/provider-architecture.md's Phase 1b
+// note)/getGameLogEvents (no external consumers -- getRegularSeasonEventIds below already bypasses
+// it for BDL seasons), the percentile/league-index methods, active-player lookups, and
 // getStandingsRaw specifically (its only consumer, historyAggregator.js, depends on ESPN's exact
 // conference/seed shape -- no accuracy motivation to touch it, only risk).
 //
-// Season-conditional (BDL for season >= BDL_MIN_SEASON, else ESPN delegate): team season stats
-// (Phase 1, below) and the play-by-play family (Phase 2, added once built).
+// Season-conditional (BDL for season >= BDL_MIN_SEASON, else ESPN delegate): team season stats and
+// player game log (Phase 1a, below) and the play-by-play family (Phase 2 of the original PBP build,
+// below -- naming predates the later ESPN-migration phase plan and wasn't renumbered to avoid
+// churn).
 //
 // BDL has no WNBA data before ~2008 (confirmed by spike); this site's own league-average table
 // goes back to 1998 -- hence the cutoff rather than a full replacement.
@@ -19,6 +22,7 @@
 const espn = require('../espn');
 const bdlTeamStats = require('./teamStats');
 const bdlPlays = require('./plays');
+const bdlGameLog = require('./gameLog');
 const idMap = require('./idMap');
 const { BDL_MIN_SEASON } = require('./client');
 const { SportsDataProvider } = require('../SportsDataProvider');
@@ -41,7 +45,6 @@ class BallDontLieProvider extends SportsDataProvider {
   getPlayerBasics(...a) { return espn.getPlayerBasics(...a); }
   getRetiredPlayer(...a) { return espn.getRetiredPlayer(...a); }
   getPlayerSeasonStats(...a) { return espn.getPlayerSeasonStats(...a); }
-  getPlayerGameLog(...a) { return espn.getPlayerGameLog(...a); }
   getGameLogEvents(...a) { return espn.getGameLogEvents(...a); }
   getLeagueStatLines(...a) { return espn.getLeagueStatLines(...a); }
   getLeagueReboundFoulStats(...a) { return espn.getLeagueReboundFoulStats(...a); }
@@ -62,6 +65,14 @@ class BallDontLieProvider extends SportsDataProvider {
   }
   getTeamPointsAllowedRaw(teamId, year) {
     return usesBdl(year) ? bdlTeamStats.fetchTeamPtsAllowedRawBdl(teamId, year) : espn.getTeamPointsAllowedRaw(teamId, year);
+  }
+
+  // --- Phase 1a: player game log, season-conditional ---
+  async getPlayerGameLog(playerId, season) {
+    if (!usesBdl(season)) return espn.getPlayerGameLog(playerId, season);
+    const bdlPlayerId = await idMap.resolveBdlPlayerId(playerId);
+    if (bdlPlayerId == null) return null;
+    return bdlGameLog.fetchPlayerGameLogBdl(bdlPlayerId, season);
   }
 
   // --- Phase 2: play-by-play family, season-conditional ---

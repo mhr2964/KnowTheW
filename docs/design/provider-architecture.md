@@ -51,6 +51,24 @@ Tried three key sources: the project's `.env` key 401s outright on every call (i
 
 ~~No code should be written against BDL for this until a working GOAT key is confirmed and that spike is re-run.~~ Superseded same day: the spike was re-run with a confirmed working GOAT key (see above), and the build described here shipped as `server/providers/balldontlie/`.
 
+## ESPN-migration Phase 1a: player game log (shipped 2026-08-18)
+
+`getPlayerGameLog` now sources from BDL for season >= `BDL_MIN_SEASON` (2008), same
+season-conditional dispatch as team stats. See `server/providers/balldontlie/gameLog.js`. Full
+phased plan (this phase plus the schedule/season-stats/identity phases considered and their
+verdicts) lives in the plan-file history if a deep dive is ever needed.
+
+**Known, permanent, confirmed data-coverage gap vs ESPN:** BDL has no preseason game data at all,
+and its `/player_stats` rows for games a player was rostered for but did not play (DNP) come back
+with `min:"0"` and every counting stat `null` (filtered out via `isDnpRow` — without this, a naive
+join invents phantom zero-stat games). Live-verified against A'ja Wilson's full real 2025 season:
+after the DNP fix, 0 per-game mismatches across every game BDL and ESPN both have (exact
+points/scores/opponents match). The only remaining difference is that BDL's game log omits
+preseason games and the WNBA All-Star exhibition game — both present in ESPN's version, neither
+present in BDL's regardless of season. This is a real, visible product difference (a BDL-sourced
+player's game log for season >= 2008 will show fewer rows than the same player's ESPN-sourced log
+would have), not a bug to fix — there is no BDL data source for either category.
+
 ## `getSeasonPBPSummary` boundary
 
 `getSeasonPBPSummary(playerId, season, seasontype)` (defined in the provider contract, implemented in `providers/espn/index.js`) is the **only** place raw per-game play-by-play data should be looped and summed to reconstruct team on-court stats / Win Shares team-averages — this is ESPN's specific workaround for having no season-level on-court endpoint. If a future Win-Shares or on-court-stat tweak needs raw per-game data again, it belongs inside the provider implementation, not back in `advancedStats.js` (the data-neutral analysis layer) — that boundary was deliberately drawn to keep provider-specific reconstruction logic out of code that's supposed to work with any provider.

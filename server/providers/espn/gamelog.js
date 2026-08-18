@@ -140,4 +140,11 @@ function getGameLogEvents(playerId, season, seasontype) {
   return withTtlCache(currentGameLogEventsCache, key, CURRENT_SEASON_TTL_MS, () => fetchGameLogEventsRaw(playerId, season, seasontype));
 }
 
-module.exports = { getPlayerGameLog, normalizeGameLog, getGameLogEvents, extractGameLogEvents };
+module.exports = {
+  getPlayerGameLog, normalizeGameLog, getGameLogEvents, extractGameLogEvents,
+  // LABELS/PCT_KEYS/columnFor exported so other providers (balldontlie/gameLog.js) can produce
+  // games in the same key/format contract -- gameSplits.js hardcodes these composite key strings
+  // and the "made-attempted" string format directly, so this isn't an ESPN-internal detail, it's a
+  // shared contract every provider's game log must conform to.
+  LABELS, PCT_KEYS, columnFor,
+};
