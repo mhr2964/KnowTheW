@@ -88,6 +88,25 @@ via a join against ESPN's already-cached `getTeams()` by abbreviation, in
 Live shadow-compare (LV Aces, 2025 regular season, real production data): 0 per-game mismatches
 across all 44 games.
 
+## ESPN-migration Phase 1b: player season stats — designed, not yet built (2026-08-18)
+
+`getPlayerSeasonStats` still delegates to ESPN forever. Considered migrating it, but its ESPN
+implementation deliberately returns raw, unvalidated ESPN JSON (`{regData, postData}`, each
+ESPN's own `categories[{name, names, statistics, totals}]` shape) that four separate files parse
+directly (`server/lib/statsParser.js`'s consumers: `advancedStats.js`, `gradedReportInputs.js`,
+`routes/playerAnalysis.js`, `routes/players.js`) — a materially wider surface than a single clean
+boundary. **Decided approach (not yet built): reproduce ESPN's exact raw shape from BDL data**
+(template-substitution — take ESPN's real payload, swap in BDL-derived stats only for years >=
+`BDL_MIN_SEASON`, recompute the career totals row) rather than refactor all four consumers to a
+normalized intermediate. This means zero changes to `statsParser.js` or any of its callers. Two
+more confirmed, permanent BDL gaps found while designing this: no games-started (`GS`) field
+exists on BDL's per-game rows at all (must be `null` for BDL-covered seasons), and building
+BDL-era totals needs `gameLog.js`'s `buildGameMetaMap` to start preserving each game's `postseason`
+flag (currently discarded after use) so regular-season and playoff totals can be split the way
+ESPN's `avgCat`/`totCat` structure requires. Full mechanism spec lives in the plan-file history
+if/when this gets built — deliberately left unbuilt this session since it feeds the AI-graded
+report generator and detailed-stats page without a shadow-compare path as simple as Phase 1a/2 got.
+
 ## `getSeasonPBPSummary` boundary
 
 `getSeasonPBPSummary(playerId, season, seasontype)` (defined in the provider contract, implemented in `providers/espn/index.js`) is the **only** place raw per-game play-by-play data should be looped and summed to reconstruct team on-court stats / Win Shares team-averages — this is ESPN's specific workaround for having no season-level on-court endpoint. If a future Win-Shares or on-court-stat tweak needs raw per-game data again, it belongs inside the provider implementation, not back in `advancedStats.js` (the data-neutral analysis layer) — that boundary was deliberately drawn to keep provider-specific reconstruction logic out of code that's supposed to work with any provider.
