@@ -107,9 +107,24 @@ router.get('/players/:id/gamelog', async (req, res) => {
   }
 });
 
+// Zone-aggregated shooting stats (BDL-only, no ESPN equivalent — see
+// providers/balldontlie/shotChart.js). Not per-shot coordinates; a season below the provider's own
+// shot-chart floor (or a player the provider can't resolve) returns null, same 404 as /gamelog.
+router.get('/players/:id/shotchart', async (req, res) => {
+  try {
+    const chart = await getProvider().getPlayerShotChart(req.params.id, req.query.season);
+    if (!chart) return res.status(404).json({ error: 'no shot chart available' });
+    res.json(chart);
+  } catch (err) {
+    console.error('shotchart:', err.message);
+    res.status(502).json({ error: 'failed to load shot chart' });
+  }
+});
+
 // Home/Away, Monthly, and By-Opponent splits, derived from the same per-game gamelog data as
 // /gamelog. No shot-location/zone data exists in ESPN's free endpoints, so a bref-style
-// shooting-by-zone split isn't feasible here — see server/lib/gameSplits.js.
+// shooting-by-zone split isn't feasible here — see server/lib/gameSplits.js. (A separate,
+// zone-aggregated shot chart IS available via /shotchart above, sourced from BDL.)
 router.get('/players/:id/splits', async (req, res) => {
   try {
     const log = await getProvider().getPlayerGameLog(req.params.id, req.query.season);

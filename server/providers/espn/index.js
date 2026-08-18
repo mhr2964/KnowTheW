@@ -40,6 +40,10 @@ class EspnProvider extends SportsDataProvider {
   getPlayerSeasonStats(playerId) { return playerStats.getPlayerSeasonStats(playerId); }
   getPlayerGameLog(playerId, season) { return gamelog.getPlayerGameLog(playerId, season); }
   getGameLogEvents(playerId, season, seasontype) { return gamelog.getGameLogEvents(playerId, season, seasontype); }
+  // ESPN has no shot-location data source at all -- a permanent gap, not a missing implementation.
+  // Must return null rather than inherit the base class's throwing default: STATS_PROVIDER defaults
+  // to 'espn' (providers/index.js), so local dev and any non-BDL env would otherwise 502 here.
+  getPlayerShotChart() { return null; }
   getGamePbpStats(eventId, playerId) { return gameSummary.getGamePbpStats(eventId, playerId); }
   async getRegularSeasonEventIds(playerId, season, seasontype = 2) {
     const events = await gamelog.getGameLogEvents(playerId, season, seasontype);

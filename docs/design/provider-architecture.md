@@ -124,6 +124,41 @@ exact match against the shipped output on both the regular-season and playoff sp
 `buildDetailedStats` pipeline was also fed real merged 9-season hybrid data end-to-end: zero `NaN`,
 and career totals exactly equal the sum of the per-season rows.
 
+## Shot chart: new BDL-only capability, not a migration (shipped 2026-08-18)
+
+`getPlayerShotChart(playerId, season)` — the site's first zone-based shooting visual, from the
+BDL GOAT-tier backlog. Unlike every entry above, this is **not** an ESPN→BDL migration: ESPN has
+no shot-location data source at all, so `espn/index.js` implements the method as a hard `return
+null` rather than inheriting the base class's throwing default (required, not cosmetic —
+`STATS_PROVIDER` defaults to `'espn'`, so any non-BDL environment would otherwise 502 on this
+route).
+
+**The original backlog framing was wrong, corrected by a live spike before any code was written:**
+BDL's `/player_shot_locations` and `/team_shot_locations` endpoints return **zone-aggregated FG
+stats** (`{fga, fgm, fg_pct}` per named court zone), not per-shot x/y coordinates — a scatter/dot
+shot chart isn't buildable from this data at all. The 7 real (non-overlapping) zones are
+`restricted_area`, `in_the_paint_non_ra`, `mid_range`, `left_corner_3`, `right_corner_3`,
+`above_the_break_3`, `backcourt`. BDL also returns a `corner_3` field that is just
+`left_corner_3 + right_corner_3` summed (confirmed live) — dropped in the normalized shape to
+avoid double-counting.
+
+**Zone tracking has its own, much newer season floor than the rest of this provider's BDL
+coverage:** confirmed empty at seasons 2010/2015/2018/2020/2021, present starting 2022. This is
+`SHOT_CHART_MIN_SEASON` (`balldontlie/client.js`) — do not reuse `BDL_MIN_SEASON` (2008) for this
+feature.
+
+**Client side:** no charting library exists in this codebase (`FingerprintRadar.jsx` established
+the hand-rolled-SVG convention). `ShotChart.jsx` follows the same pattern: a stylized (not
+regulation-exact) half-court SVG with each zone as a fillable region, colored by FG% on a clamped
+sequential scale, drawn widest-zone-first so smaller/more specific shapes visually overwrite the
+broader ones beneath them — avoids any path-boolean subtraction.
+
+**Verification:** since there's no ESPN equivalent, no shadow-compare is possible. Instead, a real
+correctness check specific to this feature: summed each zone's `fgm` for a real player/season
+(A'ja Wilson, 2023) and compared against the already-verified season-stats `totals.fgm` for the
+same season — 335 (zone sum) vs. 337 (season total), a small, expected discrepancy (BDL not
+categorizing every shot into a zone), not a mapping bug.
+
 ## `getSeasonPBPSummary` boundary
 
 `getSeasonPBPSummary(playerId, season, seasontype)` (defined in the provider contract, implemented in `providers/espn/index.js`) is the **only** place raw per-game play-by-play data should be looped and summed to reconstruct team on-court stats / Win Shares team-averages — this is ESPN's specific workaround for having no season-level on-court endpoint. If a future Win-Shares or on-court-stat tweak needs raw per-game data again, it belongs inside the provider implementation, not back in `advancedStats.js` (the data-neutral analysis layer) — that boundary was deliberately drawn to keep provider-specific reconstruction logic out of code that's supposed to work with any provider.

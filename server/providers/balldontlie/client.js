@@ -16,6 +16,12 @@ const BDL = 'https://api.balldontlie.io/wnba/v1';
 // ~2008, confirmed by spike; this site's own league-average table goes back to 1998).
 const BDL_MIN_SEASON = 2008;
 
+// Shot-location zone tracking is a separate, much newer feed than the rest of BDL's WNBA coverage --
+// confirmed empty by live spike at seasons 2010/2015/2018/2020/2021, present starting 2022. Do NOT
+// reuse BDL_MIN_SEASON for this feature; there is no ESPN fallback for shot-location data at all
+// (see balldontlie/shotChart.js), so a season below this floor simply has no shot chart to show.
+const SHOT_CHART_MIN_SEASON = 2022;
+
 function buildQuery(params) {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params ?? {})) {
@@ -144,7 +150,7 @@ const bdlTeamPtsAllowedCache  = {};
 const bdlTeamsCache           = {};
 
 module.exports = {
-  BDL, BDL_MIN_SEASON,
+  BDL, BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON,
   bdlFetch, withCache, withTtlCache,
   bdlTeamSeasonStatsCache, bdlTeamPtsAllowedCache, bdlTeamsCache,
   _setRateLimitForTest, _resetRateLimitForTest,

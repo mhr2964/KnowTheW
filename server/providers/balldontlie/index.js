@@ -21,6 +21,10 @@
 //
 // BDL has no WNBA data before ~2008 (confirmed by spike); this site's own league-average table
 // goes back to 1998 -- hence the cutoff rather than a full replacement.
+//
+// Shot chart: NOT a migration -- ESPN has no shot-location data at all, so this is genuinely new
+// capability (getPlayerShotChart), gated on its own season floor (SHOT_CHART_MIN_SEASON, 2022) since
+// zone tracking is a much newer BDL feed than the rest of this provider's coverage. See shotChart.js.
 
 const espn = require('../espn');
 const bdlTeamStats = require('./teamStats');
@@ -28,8 +32,9 @@ const bdlPlays = require('./plays');
 const bdlGameLog = require('./gameLog');
 const bdlSchedule = require('./schedule');
 const bdlSeasonStats = require('./seasonStats');
+const bdlShotChart = require('./shotChart');
 const idMap = require('./idMap');
-const { BDL_MIN_SEASON } = require('./client');
+const { BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON } = require('./client');
 const { SportsDataProvider } = require('../SportsDataProvider');
 const { withValidation } = require('../validation');
 const { aggregatePBPSummary } = require('../pbpAggregate');
@@ -82,6 +87,16 @@ class BallDontLieProvider extends SportsDataProvider {
     const bdlPlayerId = await idMap.resolveBdlPlayerId(playerId);
     if (bdlPlayerId == null) return null;
     return bdlGameLog.fetchPlayerGameLogBdl(bdlPlayerId, season);
+  }
+
+  // --- Shot chart: new data, not a migration -- no ESPN equivalent exists at all (see
+  // shotChart.js's header comment). Own season floor (2022), not usesBdl/BDL_MIN_SEASON (2008) --
+  // zone tracking is a much newer feed than the rest of this provider's BDL coverage. ---
+  async getPlayerShotChart(playerId, season) {
+    if (Number(season) < SHOT_CHART_MIN_SEASON) return null;
+    const bdlPlayerId = await idMap.resolveBdlPlayerId(playerId);
+    if (bdlPlayerId == null) return null;
+    return bdlShotChart.fetchPlayerShotChartBdl(bdlPlayerId, season);
   }
 
   // --- Phase 2 (ESPN-migration plan): regular-season schedule, season+seasontype-conditional ---

@@ -152,6 +152,22 @@
  */
 
 /**
+ * @typedef {Object} ShotZone  Zone-aggregated FG stats for one court zone (BDL-only, no ESPN
+ *   equivalent -- see providers/balldontlie/shotChart.js). Not per-shot coordinates.
+ * @property {string} key
+ * @property {string} label
+ * @property {number} fga
+ * @property {number} fgm
+ * @property {number} fgPct   BDL's own 0-1 fraction, not the 0-100 scale used elsewhere.
+ */
+
+/**
+ * @typedef {Object} PlayerShotChartResponse
+ * @property {number} season
+ * @property {ShotZone[]} zones
+ */
+
+/**
  * @typedef {Object} SeasonPBPSummary
  * @property {Object} tmOC        Per-game on-court team+opponent averages (fgaPg, oFgaPg, etc.),
  *   used for USG%/AST%/ORB%/PER. Same key shape as OnCourtStats, "Pg"-suffixed.

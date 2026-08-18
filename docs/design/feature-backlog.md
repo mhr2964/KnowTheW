@@ -6,8 +6,6 @@ Durable holding area for ideas that have been discussed but not designed or sche
 
 The user has a paid BallDontLie GOAT tier ($39.99/mo, 600 req/min, WNBA coverage at `wnba.balldontlie.io`). It unlocks data ESPN's undocumented endpoints don't give cleanly: play-by-play, standings, injuries, official advanced stats, shot locations, betting odds, and player props. Player props was explicitly deferred by the user ("skip the props for now") — not listed below.
 
-- **Shot charts.** BDL exposes shot x/y location data (`Player/Team Shot Locations` endpoints, GOAT tier) that ESPN doesn't expose cleanly. Would be the site's first real visual stat page — make/miss dots on a court diagram, filterable by player/season.
-
 - **Injury report.** BDL's `Player Injuries` endpoint (ALL-STAR tier and up) isn't something this codebase currently pulls from any source. Natural fit as a team/player-page widget, and ties into the existing pre-game notification bell (`server/lib/notificationsJob.js`) — e.g. "your repped player is now questionable" alongside the pre-game alert.
 
 - **Odds/spread on schedule pages.** Lighter-weight than a full props tracker: surface the betting line next to each upcoming game on `TeamSchedulePage`. Needs `Betting Odds` (GOAT tier).

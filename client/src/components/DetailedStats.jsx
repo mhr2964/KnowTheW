@@ -6,6 +6,7 @@ import GameLogTab from './GameLogTab';
 import AdvancedTab from './AdvancedTab';
 import PlayByPlayTab from './PlayByPlayTab';
 import SplitsTab from './SplitsTab';
+import ShotChart from './ShotChart';
 
 
 const ALL_TABLE_TYPES = [
@@ -17,13 +18,14 @@ const ALL_TABLE_TYPES = [
   { key: 'gamelog',   label: 'Game Log' },
   { key: 'splits',    label: 'Splits' },
   { key: 'pbp',       label: 'Play-by-Play' },
+  { key: 'shotchart', label: 'Shot Chart' },
 ];
 const COMING_SOON = ['Adj. Shooting'];
 
 const SOURCE_ACTIVE = {
   bdl:  new Set(['perGame', 'totals', 'per36']),
   wnba: new Set(['perGame', 'totals', 'per36', 'per100']),
-  espn: new Set(['perGame', 'totals', 'per36', 'advanced', 'gamelog', 'splits', 'pbp']),
+  espn: new Set(['perGame', 'totals', 'per36', 'advanced', 'gamelog', 'splits', 'pbp', 'shotchart']),
 };
 
 export default function DetailedStats({ playerId, playerName, onSaveDeck, initialTab, onTabChange }) {
@@ -85,11 +87,12 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
   const disabledTypes = ALL_TABLE_TYPES.filter(t => !activeKeys.has(t.key));
   const safeType = activeKeys.has(activeType) ? activeType : 'perGame';
 
-  const isGamelog  = safeType === 'gamelog';
-  const isAdvanced = safeType === 'advanced';
-  const isSplits   = safeType === 'splits';
-  const isPbp      = safeType === 'pbp';
-  const isRawTab   = isGamelog || isAdvanced || isSplits || isPbp;
+  const isGamelog   = safeType === 'gamelog';
+  const isAdvanced  = safeType === 'advanced';
+  const isSplits    = safeType === 'splits';
+  const isPbp       = safeType === 'pbp';
+  const isShotChart = safeType === 'shotchart';
+  const isRawTab    = isGamelog || isAdvanced || isSplits || isPbp || isShotChart;
   const tableData  = isRawTab ? null : data[safeType];
   const hasPlayoffs = isRawTab ? false : !!tableData?.playoffs?.rows?.length;
   const curSeason = (!hasPlayoffs && activeSeason === 'playoffs') ? 'regular' : activeSeason;
@@ -147,6 +150,8 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
           <SplitsTab playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} />
         ) : isPbp ? (
           <PlayByPlayTab playerId={playerId} availableSeasons={availableSeasons} />
+        ) : isShotChart ? (
+          <ShotChart playerId={playerId} availableSeasons={availableSeasons} />
         ) : (
           <>
             <div className="stat-table-header">

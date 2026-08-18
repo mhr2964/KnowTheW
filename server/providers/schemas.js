@@ -133,6 +133,21 @@ const PlayerSeasonStatsResponse = z.object({
   postSeasons: z.array(PlayerSeasonRow).nullable(),
 });
 
+// Zone-aggregated FG stats for one court zone (BDL-only -- no ESPN equivalent, see
+// providers/balldontlie/shotChart.js). fgPct is BDL's own 0-1 fraction, not the 0-100 scale some
+// ESPN-derived fields use elsewhere in this file.
+const ShotZone = z.object({
+  key: z.string(),
+  label: z.string(),
+  fga: z.number(),
+  fgm: z.number(),
+  fgPct: z.number(),
+});
+const PlayerShotChartResponse = z.object({
+  season: z.number(),
+  zones: z.array(ShotZone),
+});
+
 const SCHEMA_BY_METHOD = {
   getTeams: z.array(Team),
   getRoster: z.array(RosterPlayer),
@@ -144,6 +159,7 @@ const SCHEMA_BY_METHOD = {
   getPlayerBasics: PlayerBasics.nullable(),
   getPlayerGameLog: GameLogResponse.nullable(),
   getPlayerSeasonStats: PlayerSeasonStatsResponse,
+  getPlayerShotChart: PlayerShotChartResponse.nullable(),
 };
 
 module.exports = {
@@ -153,5 +169,6 @@ module.exports = {
     Team, RosterPlayer, HistoricalRosterEntry, TeamStats, TeamStatsReturn,
     ScheduleEvent, PlayerBasics, GameLogResponse,
     PlayerSeasonTotals, PlayerSeasonRow, PlayerSeasonStatsResponse,
+    ShotZone, PlayerShotChartResponse,
   },
 };

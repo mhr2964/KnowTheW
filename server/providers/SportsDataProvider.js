@@ -63,6 +63,10 @@ class SportsDataProvider {
   getPlayerGameLog() { return this._notImplemented('getPlayerGameLog'); }
   /** getGameLogEvents(playerId, season, seasontype) → [{eventId,seasonTypeName,eventNote,opponentId}] | null. */
   getGameLogEvents() { return this._notImplemented('getGameLogEvents'); }
+  /** getPlayerShotChart(playerId, season) → {season, zones:[{key,label,fga,fgm,fgPct}]} | null.
+   *  Zone-aggregated FG stats per court zone, not per-shot coordinates. No ESPN equivalent exists --
+   *  a provider without shot-location data should return null, not throw (see espn/index.js). */
+  getPlayerShotChart() { return this._notImplemented('getPlayerShotChart'); }
   /** getGamePbpStats(eventId, playerId) → {fetched, onCourt, boxscore} (raw summary stays in provider). */
   getGamePbpStats() { return this._notImplemented('getGamePbpStats'); }
   /** getRegularSeasonEventIds(playerId, season, seasontype) → filtered event IDs for PBP (excludes All-Stars, non-franchise opponents). */
