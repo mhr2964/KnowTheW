@@ -305,9 +305,11 @@ router.get('/teams/:id/schedule', requireNumericId('id'), async (req, res) => {
     }
 
     // Past season: route through MongoDB teamSeasonSchedule cache.
-    // Cache key includes seasontype to prevent regular/playoff collision — same key shape as
-    // the design doc specifies: '<teamId>-<season>-<seasontype>'.
-    const cacheKey = `${teamId}-${season}-${seasontype}`;
+    // Cache key includes seasontype to prevent regular/playoff collision, and is provider-scoped
+    // (same convention as the team-stats cache above) so toggling STATS_PROVIDER can't read back
+    // a stale ESPN-cached regular-season schedule after the BDL migration -- ESPN and BallDontLie
+    // both cover season 2008+ and their numbers legitimately differ.
+    const cacheKey = `${getProvider().name}-${teamId}-${season}-${seasontype}`;
     const result = await readOrFetch('teamSeasonSchedule', cacheKey, async () => {
       const events = await fetchTeamSchedule(teamId, season, seasontype);
       // null → ESPN error (non-2xx or network failure) — do not cache; mark as transient empty.

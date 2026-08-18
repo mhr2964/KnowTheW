@@ -4,17 +4,18 @@
 // where BDL's data is both available and worth the swap. See docs/design/provider-architecture.md
 // for the full reasoning.
 //
-// Delegates to ESPN forever (out of scope for this swap): teams/rosters/schedule, player-basics,
+// Delegates to ESPN forever (out of scope for this swap): teams/rosters, player-basics,
 // getPlayerSeasonStats (raw-ESPN-JSON shape, see docs/design/provider-architecture.md's Phase 1b
 // note)/getGameLogEvents (no external consumers -- getRegularSeasonEventIds below already bypasses
-// it for BDL seasons), the percentile/league-index methods, active-player lookups, and
-// getStandingsRaw specifically (its only consumer, historyAggregator.js, depends on ESPN's exact
-// conference/seed shape -- no accuracy motivation to touch it, only risk).
+// it for BDL seasons), getPlayoffSchedule (round labels have no BDL equivalent -- see schedule.js),
+// the percentile/league-index methods, active-player lookups, and getStandingsRaw specifically (its
+// only consumer, historyAggregator.js, depends on ESPN's exact conference/seed shape -- no accuracy
+// motivation to touch it, only risk).
 //
-// Season-conditional (BDL for season >= BDL_MIN_SEASON, else ESPN delegate): team season stats and
-// player game log (Phase 1a, below) and the play-by-play family (Phase 2 of the original PBP build,
-// below -- naming predates the later ESPN-migration phase plan and wasn't renumbered to avoid
-// churn).
+// Season-conditional (BDL for season >= BDL_MIN_SEASON, else ESPN delegate): team season stats,
+// player game log, and regular-season team schedule (Phase 1a/2, below) and the play-by-play
+// family (Phase 2 of the original PBP build, below -- naming predates the later ESPN-migration
+// phase plan and wasn't renumbered to avoid churn).
 //
 // BDL has no WNBA data before ~2008 (confirmed by spike); this site's own league-average table
 // goes back to 1998 -- hence the cutoff rather than a full replacement.
@@ -23,6 +24,7 @@ const espn = require('../espn');
 const bdlTeamStats = require('./teamStats');
 const bdlPlays = require('./plays');
 const bdlGameLog = require('./gameLog');
+const bdlSchedule = require('./schedule');
 const idMap = require('./idMap');
 const { BDL_MIN_SEASON } = require('./client');
 const { SportsDataProvider } = require('../SportsDataProvider');
@@ -39,7 +41,6 @@ class BallDontLieProvider extends SportsDataProvider {
   getRoster(...a) { return espn.getRoster(...a); }
   getHistoricalRoster(...a) { return espn.getHistoricalRoster(...a); }
   getSeasonRoster(...a) { return espn.getSeasonRoster(...a); }
-  getTeamSchedule(...a) { return espn.getTeamSchedule(...a); }
   getPlayoffSchedule(...a) { return espn.getPlayoffSchedule(...a); }
   getStandingsRaw(...a) { return espn.getStandingsRaw(...a); }
   getPlayerBasics(...a) { return espn.getPlayerBasics(...a); }
@@ -75,7 +76,16 @@ class BallDontLieProvider extends SportsDataProvider {
     return bdlGameLog.fetchPlayerGameLogBdl(bdlPlayerId, season);
   }
 
-  // --- Phase 2: play-by-play family, season-conditional ---
+  // --- Phase 2 (ESPN-migration plan): regular-season schedule, season+seasontype-conditional ---
+  // Playoffs (seasontype 3) always stay ESPN, regardless of season -- BDL has no round-label
+  // equivalent (see schedule.js's header comment). getPlayoffSchedule above is unaffected -- it's
+  // always seasontype 3 by definition, so it was never a BDL candidate here.
+  getTeamSchedule(teamId, season, seasontype = 2) {
+    if (seasontype === 3 || !usesBdl(season)) return espn.getTeamSchedule(teamId, season, seasontype);
+    return bdlSchedule.fetchTeamScheduleBdl(teamId, season);
+  }
+
+  // --- Phase 2 (original PBP build): play-by-play family, season-conditional ---
   //
   // getGamePbpStats(eventId, playerId) receives no season -- only an opaque eventId -- but must
   // know whether to hit ESPN or BDL. getRegularSeasonEventIds tags BDL-sourced ids as "bdl:<id>";

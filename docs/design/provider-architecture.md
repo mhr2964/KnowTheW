@@ -69,6 +69,25 @@ present in BDL's regardless of season. This is a real, visible product differenc
 player's game log for season >= 2008 will show fewer rows than the same player's ESPN-sourced log
 would have), not a bug to fix — there is no BDL data source for either category.
 
+## ESPN-migration Phase 2: regular-season team schedule (shipped 2026-08-18)
+
+`getTeamSchedule` now sources regular-season games (`seasontype === 2`) from BDL for season >=
+`BDL_MIN_SEASON`. Playoffs (`seasontype === 3`) always stay ESPN, permanently, regardless of
+season — confirmed by live spike that BDL's `/games` has no field equivalent to ESPN's
+`competition.type.text` round label (e.g. "Round of 16") on any real postseason game, and the
+`postseason` query param remains a confirmed no-op (same quirk documented elsewhere in this file).
+This required the BDL dispatch to branch on `seasontype`, not just `season`, since
+`routes/teams.js`'s `/teams/:id/schedule` route uses this one method for both regular-season and
+playoff views. `getPlayoffSchedule` (the separate convenience method `historyAggregator.js` uses)
+was already an ESPN-forever passthrough and needed no change.
+
+BDL's game rows carry no opponent logo (same gap as Phase 3's identity findings below) — enriched
+via a join against ESPN's already-cached `getTeams()` by abbreviation, in
+`server/providers/balldontlie/schedule.js`.
+
+Live shadow-compare (LV Aces, 2025 regular season, real production data): 0 per-game mismatches
+across all 44 games.
+
 ## `getSeasonPBPSummary` boundary
 
 `getSeasonPBPSummary(playerId, season, seasontype)` (defined in the provider contract, implemented in `providers/espn/index.js`) is the **only** place raw per-game play-by-play data should be looped and summed to reconstruct team on-court stats / Win Shares team-averages — this is ESPN's specific workaround for having no season-level on-court endpoint. If a future Win-Shares or on-court-stat tweak needs raw per-game data again, it belongs inside the provider implementation, not back in `advancedStats.js` (the data-neutral analysis layer) — that boundary was deliberately drawn to keep provider-specific reconstruction logic out of code that's supposed to work with any provider.
