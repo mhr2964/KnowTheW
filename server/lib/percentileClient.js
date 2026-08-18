@@ -7,6 +7,7 @@
 const { getDb } = require('../db');
 const { getProvider } = require('../providers');
 const { latestCompletedSeason } = require('./seasonWindow');
+const { mapWithConcurrency } = require('./concurrency');
 
 const DIST_CACHE_COLLECTION = 'distributionCache';
 const DIST_TTL_MS = 24 * 60 * 60 * 1000;
@@ -260,17 +261,6 @@ async function resolvePlayerPos(playerId) {
 // Seed-time concurrency: one ESPN getPlayerSeasonAverages call per player, so cap parallelism to
 // stay friendly to the upstream feed while still finishing a ~700-player build in reasonable time.
 const FINGERPRINT_BUILD_CONCURRENCY = 6;
-
-// Process `items` through async `fn` at most `limit` at a time (chunked). Errors per item are the
-// caller's responsibility (fn should not throw). Keeps the seed build from opening 700 sockets.
-async function mapWithConcurrency(items, limit, fn) {
-  const out = [];
-  for (let i = 0; i < items.length; i += limit) {
-    const chunk = items.slice(i, i + limit);
-    out.push(...await Promise.all(chunk.map(fn)));
-  }
-  return out;
-}
 
 // Precompute every indexed player's career fingerprint into the playerFingerprints collection so
 // Cross-Era Similarity can rank a candidate pool from one Mongo read instead of ~700 live ESPN
