@@ -5,8 +5,11 @@ const fetchTeamStats      = (...a) => getProvider().getTeamStats(...a);
 const fetchTeamPtsAllowed = (...a) => getProvider().getTeamPointsAllowed(...a);
 const { computeBasicRatioStats, computePER, computeWinShares } = require('./statFormulas');
 const { getCached, writeCache } = require('./teamSeasonCache');
-const { ESPN_DETAILED_HEADERS } = require('./statsParser');
+const { ESPN_DETAILED_HEADERS, parseESPNSeasonData, extractTeamIdByYear } = require('./statsParser');
 const { isPastSeason } = require('./seasonWindow');
+const { getDb } = require('../db');
+const { columnsFor } = require('./statColumns');
+const { fetchPlayerSeasonData } = require('./playerSeasonData');
 
 // Per-game/totals tables passed into buildAdvancedSplit/buildAdvancedCareer always use this exact
 // header set (ESPN_DETAILED_HEADERS) — index off the constant directly rather than reading
@@ -265,7 +268,117 @@ function buildPbpSplit(valid, pgRows, rowI) {
   return { rows: valid.map(r => r.row), careerRow };
 }
 
+// Whole-career advanced-stats computation (PBP-exact: USG%/AST%/PER/Win-Shares per season, career
+// totals) for one player, Mongo-cached. Extracted from routes/playerAnalysis.js's
+// /players/:id/advanced-pbp-all handler so scripts/seed-balldontlie-cache.js can populate the exact
+// same cache entries a live request would -- there's no separate "warm path" that could drift from
+// what users actually see; a cache hit here IS what the route returns.
+//
+// Returns the advResult object on success, or null when the player has no stats at all (caller maps
+// this to 404). Throws on genuine upstream failures (caller maps to 502) -- same contract the route
+// had inline before this extraction, no behavior change.
+async function computeAdvancedPbpAll(playerId) {
+  const { regData, postData, teamsById } = await fetchPlayerSeasonData(playerId);
+  const regParsed  = parseESPNSeasonData(regData,  teamsById);
+  const postParsed = parseESPNSeasonData(postData, teamsById);
+  const pgTable = regParsed?.pg?.table;
+  if (!pgTable) return null;
+  const I = Object.fromEntries(pgTable.headers.map((h, i) => [h, i]));
+
+  const pgPostTable = postParsed?.pg?.table;
+  const IPost = pgPostTable
+    ? Object.fromEntries(pgPostTable.headers.map((h, i) => [h, i]))
+    : I;
+
+  // Cache: invalidate when regular or playoff GP changes, or when format is old (no .regular key)
+  const regGP  = pgTable.rows.reduce((s, r) => s + (r[I.GP] ?? 0), 0);
+  const postGP = (pgPostTable?.rows ?? []).reduce((s, r) => s + (r[IPost.GP] ?? 0), 0);
+  const currentGP = regGP + postGP;
+  const db = getDb();
+  // Provider-scoped _id so toggling STATS_PROVIDER can't read back the other source's cached
+  // advanced-stats response for the same player.
+  const advCacheId = `${getProvider().name}-${playerId}`;
+
+  const regSeasons  = [...new Set(pgTable.rows.map(r => String(r[I.SEASON_ID])))].filter(s => WNBA_LG[s]);
+  const postSeasons = pgPostTable
+    ? [...new Set(pgPostTable.rows.map(r => String(r[IPost.SEASON_ID])))].filter(s => WNBA_LG[s])
+    : [];
+  const hadSeasonsToTry = regSeasons.length > 0 || postSeasons.length > 0;
+
+  if (db) {
+    const advCached = await db.collection('advancedStats').findOne({ _id: advCacheId });
+    // A cached doc whose `regular.rows` is empty despite there being real seasons to compute is a
+    // poisoned entry from a past systemic failure (see the write-side guard below for how new ones
+    // are prevented) -- bypass it and recompute instead of serving it forever.
+    const looksPoisoned = hadSeasonsToTry && advCached?.data?.regular?.rows?.length === 0;
+    if (advCached?.gp === currentGP && advCached.v === 26 && advCached.data?.regular != null && !looksPoisoned) {
+      return advCached.data;
+    }
+  }
+
+  // Build totals-by-year maps for both splits
+  const totByYear = {};
+  const totTable = regParsed?.tot?.table;
+  if (totTable?.rows) for (const r of totTable.rows) totByYear[String(r[I.SEASON_ID])] = r;
+
+  const totPostByYear = {};
+  const totPostTable = postParsed?.tot?.table;
+  if (totPostTable?.rows) for (const r of totPostTable.rows) totPostByYear[String(r[IPost.SEASON_ID])] = r;
+
+  const regTidByYear  = extractTeamIdByYear(regData);
+  const postTidByYear = extractTeamIdByYear(postData);
+
+  const [regResults, postResults] = await Promise.all([
+    Promise.all(regSeasons.map(async season => {
+      const playerRow = pgTable.rows.find(r => String(r[I.SEASON_ID]) === season);
+      if (!playerRow) return null;
+      const result = await computeSeasonPBP(playerId, season, playerRow, I, regTidByYear[season] ?? null, totByYear[season] ?? null, 2);
+      return result ? { season, row: result.row, pbpGames: result.pbpGames } : null;
+    })),
+    Promise.all(postSeasons.map(async season => {
+      const playerRow = pgPostTable.rows.find(r => String(r[IPost.SEASON_ID]) === season);
+      if (!playerRow) return null;
+      // WS computation needs regular-season team stats; prefer regTidByYear so the team ID
+      // is always valid even if ESPN omits teamId from playoff stat entries.
+      const wsTeamId = regTidByYear[season] ?? postTidByYear[season] ?? null;
+      const result = await computeSeasonPBP(playerId, season, playerRow, IPost, wsTeamId, totPostByYear[season] ?? null, 3);
+      return result ? { season, row: result.row, pbpGames: result.pbpGames } : null;
+    })),
+  ]);
+
+  const validReg  = regResults.filter(Boolean);
+  const validPost = postResults.filter(Boolean);
+
+  const advResult = {
+    columns:  columnsFor(ADV_HEADERS_SRV),
+    regular:  buildPbpSplit(validReg,  pgTable.rows,      I),
+    playoffs: validPost.length ? buildPbpSplit(validPost, pgPostTable?.rows ?? [], IPost) : null,
+    pbpGamesBySeason: Object.fromEntries([
+      ...validReg.map(r => [r.season, r.pbpGames]),
+      ...validPost.map(r => [`post-${r.season}`, r.pbpGames]),
+    ]),
+  };
+
+  // Don't cache a fully-empty result when there WERE seasons to compute -- that's a systemic
+  // failure (dead API key, provider down, etc.), not "this player genuinely has no data", and
+  // caching it would permanently poison the response until the player's GP changes (confirmed
+  // live, 2026-08-17: a run against a dead BALLDONTLIE_KEY wrote empty results that then served as
+  // valid cache hits indefinitely, masking that the underlying computation never actually worked).
+  // A player who legitimately has zero qualifying seasons (e.g. no games yet this career) still
+  // gets cached correctly, since hadSeasonsToTry would itself be false in that case.
+  const looksLikeSystemicFailure = hadSeasonsToTry && validReg.length === 0 && validPost.length === 0;
+
+  // v bumped 25->26: response shape changed from `headers` (bare strings) to `columns`
+  // ({key,label,kind}) — force a rebuild of any Mongo-cached v25 documents.
+  if (db && !looksLikeSystemicFailure) db.collection('advancedStats')
+    .replaceOne({ _id: advCacheId }, { _id: advCacheId, gp: currentGP, v: 26, data: advResult }, { upsert: true })
+    .catch(err => console.error('mongo write advancedStats:', err.message));
+
+  return advResult;
+}
+
 module.exports = {
   ADV_HEADERS_SRV, ADV_I,
   advancedRow, buildAdvancedSplit, buildAdvancedCareer, computeSeasonPBP, buildPbpSplit,
+  computeAdvancedPbpAll,
 };

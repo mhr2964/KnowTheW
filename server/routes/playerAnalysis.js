@@ -7,11 +7,8 @@
 const express = require('express');
 const router  = express.Router();
 
-const { getDb }                                                          = require('../db');
-const { WNBA_LG }                                                        = require('../constants/leagueAverages');
-const { parseESPNSeasonData, extractTeamIdByYear }                       = require('../lib/statsParser');
-const { ADV_HEADERS_SRV, computeSeasonPBP, buildPbpSplit }               = require('../lib/advancedStats');
-const { columnsFor }                                                     = require('../lib/statColumns');
+const { parseESPNSeasonData }                                            = require('../lib/statsParser');
+const { computeAdvancedPbpAll }                                          = require('../lib/advancedStats');
 const { loadFingerprintIndex }                                           = require('../lib/percentileClient');
 const { getPlayerFingerprint, AXES, buildDimensions }                    = require('../lib/analysis/playerFingerprint');
 const { assignArchetype, buildDescriptor }                               = require('../lib/analysis/archetypes');
@@ -94,85 +91,8 @@ router.get('/players/:id/pbp-table', async (req, res) => {
 
 router.get('/players/:id/advanced-pbp-all', async (req, res) => {
   try {
-
-    const { regData, postData, teamsById } = await fetchPlayerSeasonData(req.params.id);
-    const regParsed  = parseESPNSeasonData(regData,  teamsById);
-    const postParsed = parseESPNSeasonData(postData, teamsById);
-    const pgTable = regParsed?.pg?.table;
-    if (!pgTable) return res.status(404).json({ error: 'no stats for this player' });
-    const I = Object.fromEntries(pgTable.headers.map((h, i) => [h, i]));
-
-    const pgPostTable = postParsed?.pg?.table;
-    const IPost = pgPostTable
-      ? Object.fromEntries(pgPostTable.headers.map((h, i) => [h, i]))
-      : I;
-
-    // Cache: invalidate when regular or playoff GP changes, or when format is old (no .regular key)
-    const regGP  = pgTable.rows.reduce((s, r) => s + (r[I.GP] ?? 0), 0);
-    const postGP = (pgPostTable?.rows ?? []).reduce((s, r) => s + (r[IPost.GP] ?? 0), 0);
-    const currentGP = regGP + postGP;
-    const db = getDb();
-    // Provider-scoped _id so toggling STATS_PROVIDER can't read back the other source's cached
-    // advanced-stats response for the same player.
-    const advCacheId = `${getProvider().name}-${req.params.id}`;
-    if (db) {
-      const advCached = await db.collection('advancedStats').findOne({ _id: advCacheId });
-      if (advCached?.gp === currentGP && advCached.v === 26 && advCached.data?.regular != null) return res.json(advCached.data);
-    }
-
-    // Build totals-by-year maps for both splits
-    const totByYear = {};
-    const totTable = regParsed?.tot?.table;
-    if (totTable?.rows) for (const r of totTable.rows) totByYear[String(r[I.SEASON_ID])] = r;
-
-    const totPostByYear = {};
-    const totPostTable = postParsed?.tot?.table;
-    if (totPostTable?.rows) for (const r of totPostTable.rows) totPostByYear[String(r[IPost.SEASON_ID])] = r;
-
-    const regTidByYear  = extractTeamIdByYear(regData);
-    const postTidByYear = extractTeamIdByYear(postData);
-
-    const regSeasons  = [...new Set(pgTable.rows.map(r => String(r[I.SEASON_ID])))].filter(s => WNBA_LG[s]);
-    const postSeasons = pgPostTable
-      ? [...new Set(pgPostTable.rows.map(r => String(r[IPost.SEASON_ID])))].filter(s => WNBA_LG[s])
-      : [];
-
-    const [regResults, postResults] = await Promise.all([
-      Promise.all(regSeasons.map(async season => {
-        const playerRow = pgTable.rows.find(r => String(r[I.SEASON_ID]) === season);
-        if (!playerRow) return null;
-        const result = await computeSeasonPBP(req.params.id, season, playerRow, I, regTidByYear[season] ?? null, totByYear[season] ?? null, 2);
-        return result ? { season, row: result.row, pbpGames: result.pbpGames } : null;
-      })),
-      Promise.all(postSeasons.map(async season => {
-        const playerRow = pgPostTable.rows.find(r => String(r[IPost.SEASON_ID]) === season);
-        if (!playerRow) return null;
-        // WS computation needs regular-season team stats; prefer regTidByYear so the team ID
-        // is always valid even if ESPN omits teamId from playoff stat entries.
-        const wsTeamId = regTidByYear[season] ?? postTidByYear[season] ?? null;
-        const result = await computeSeasonPBP(req.params.id, season, playerRow, IPost, wsTeamId, totPostByYear[season] ?? null, 3);
-        return result ? { season, row: result.row, pbpGames: result.pbpGames } : null;
-      })),
-    ]);
-
-    const validReg  = regResults.filter(Boolean);
-    const validPost = postResults.filter(Boolean);
-
-    const advResult = {
-      columns:  columnsFor(ADV_HEADERS_SRV),
-      regular:  buildPbpSplit(validReg,  pgTable.rows,      I),
-      playoffs: validPost.length ? buildPbpSplit(validPost, pgPostTable?.rows ?? [], IPost) : null,
-      pbpGamesBySeason: Object.fromEntries([
-        ...validReg.map(r => [r.season, r.pbpGames]),
-        ...validPost.map(r => [`post-${r.season}`, r.pbpGames]),
-      ]),
-    };
-
-    // v bumped 25->26: response shape changed from `headers` (bare strings) to `columns`
-    // ({key,label,kind}) — force a rebuild of any Mongo-cached v25 documents.
-    if (db) db.collection('advancedStats')
-      .replaceOne({ _id: advCacheId }, { _id: advCacheId, gp: currentGP, v: 26, data: advResult }, { upsert: true })
-      .catch(err => console.error('mongo write advancedStats:', err.message));
+    const advResult = await computeAdvancedPbpAll(req.params.id);
+    if (!advResult) return res.status(404).json({ error: 'no stats for this player' });
     res.json(advResult);
   } catch (err) {
     console.error('advanced-pbp-all:', err.message);
