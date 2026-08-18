@@ -56,6 +56,18 @@ test('bdlFetch: a 429 then a 200 retries once and succeeds, without warning', as
   assert.deepStrictEqual(warnLines, []);
 });
 
+test('bdlFetch: a 401 then a 200 retries too (see the file header comment for why 401 isn\'t treated as a hard auth failure)', async () => {
+  let calls = 0;
+  global.fetch = async () => {
+    calls++;
+    return calls === 1 ? statusResponse(401) : jsonResponse({ ok: 3 });
+  };
+  const result = await bdlFetch('/players', { search: 'Wilson' });
+  assert.deepStrictEqual(result, { ok: 3 });
+  assert.strictEqual(calls, 2);
+  assert.deepStrictEqual(warnLines, []);
+});
+
 test('bdlFetch: honors a positive Retry-After header instead of the default backoff', async () => {
   let calls = 0;
   const start = Date.now();
@@ -109,5 +121,48 @@ test('bdlFetch: no API key configured returns null immediately, no fetch attempt
     assert.strictEqual(calls, 0);
   } finally {
     process.env.BALLDONTLIE_KEY = key;
+  }
+});
+
+// Added after live testing (2026-08-17) showed a concurrency-only cap does NOT prevent sustained
+// rate-limit failures: 20 fast-completing concurrent requests can still exceed a 600/min quota on
+// throughput alone. Direct response-body diagnostics on a real multi-player warm run confirmed
+// /player_stats, /plays, and /team_stats all hit genuine 429s that even 3 retries couldn't ride out
+// -- the real constraint is REQUEST RATE, not how many are simultaneously in flight. This locks in
+// that bdlFetch paces requests to the configured per-window limit instead of firing them all at once.
+test('bdlFetch: paces requests to the configured rate limit instead of firing them all at once', async () => {
+  const { _setRateLimitForTest, _resetRateLimitForTest } = require('../server/providers/balldontlie/client');
+  _setRateLimitForTest(5, 200); // 5 requests per 200ms window, for a fast, observable test
+  try {
+    let calls = 0;
+    global.fetch = async () => { calls++; return jsonResponse({ ok: 1 }); };
+
+    const start = Date.now();
+    const results = await Promise.all(
+      Array.from({ length: 12 }, () => bdlFetch('/teams'))
+    );
+    const elapsed = Date.now() - start;
+
+    assert.strictEqual(results.length, 12);
+    assert.ok(results.every(r => r?.ok === 1));
+    assert.strictEqual(calls, 12);
+    // 12 requests at 5/200ms must span at least two extra windows (12 = 5 + 5 + 2) -- roughly 400ms+,
+    // not the near-0ms it'd take with no pacing at all.
+    assert.ok(elapsed >= 350, `expected pacing to add real delay, only took ${elapsed}ms`);
+  } finally {
+    _resetRateLimitForTest();
+  }
+});
+
+test('bdlFetch: does not delay requests that fit within a single rate-limit window', async () => {
+  const { _setRateLimitForTest, _resetRateLimitForTest } = require('../server/providers/balldontlie/client');
+  _setRateLimitForTest(500, 60000); // production defaults -- well above this test's request count
+  try {
+    global.fetch = async () => jsonResponse({ ok: 1 });
+    const start = Date.now();
+    await Promise.all(Array.from({ length: 10 }, () => bdlFetch('/teams')));
+    assert.ok(Date.now() - start < 200, 'requests well within the window should not be paced at all');
+  } finally {
+    _resetRateLimitForTest();
   }
 });
