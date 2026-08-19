@@ -33,14 +33,21 @@ const COL_LABELS = {
   BLKD:              'Blkd',
 };
 
-export default function PlayByPlayTab({ playerId }) {
+export default function PlayByPlayTab({ playerId, availableSeasons }) {
   const exportRef = useRef(null);
-  const { data, loading, error, refetch } = useLazyFetch(
+  const currentSeason = availableSeasons?.[0];
+
+  // Fast path: just the current season, so it's on screen before the full multi-season fetch
+  // (which live-fetches every prior season's games) finishes. Superseded by `full` once it lands.
+  const { data: current } = useLazyFetch(
+    `/api/players/${playerId}/pbp-table/season/${currentSeason}`,
+    !!currentSeason
+  );
+
+  const { data: full, error, refetch } = useLazyFetch(
     `/api/players/${playerId}/pbp-table`,
     true
   );
-
-  if (loading) return <p className="status-msg" style={{ padding: '1rem 0' }}>Loading play-by-play stats… (fetching all seasons)</p>;
 
   if (error) return (
     <p className="status-msg error" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -49,27 +56,43 @@ export default function PlayByPlayTab({ playerId }) {
     </p>
   );
 
-  if (!data) return null;
+  const headers = full?.headers ?? current?.headers;
+  if (!headers) {
+    return <p className="status-msg" style={{ padding: '1rem 0' }}>Loading play-by-play stats…</p>;
+  }
+  const displayHeaders = headers.map(h => COL_LABELS[h] ?? h);
 
-  if (!data.regular?.rows?.length) {
-    return <p className="stats-na">Not enough play-by-play data to build a season table (need 5+ games per season).</p>;
+  // Full career table ready: render it same as before, career row included.
+  if (full) {
+    if (!full.regular?.rows?.length) {
+      return <p className="stats-na">Not enough play-by-play data to build a season table (need 5+ games per season).</p>;
+    }
+    return (
+      <>
+        <div className="bref-toolbar">
+          <button type="button" className="btn-ghost bref-export-btn" onClick={() => exportRef.current?.()}>
+            Export CSV
+          </button>
+        </div>
+        <BrefTable
+          headerGroups={HEADER_GROUPS}
+          regular={{ headers: displayHeaders, rows: full.regular.rows }}
+          career={full.regular.careerRow ? { headers: displayHeaders, rows: [full.regular.careerRow] } : null}
+          exportRef={exportRef}
+        />
+      </>
+    );
   }
 
-  const displayHeaders = data.headers.map(h => COL_LABELS[h] ?? h);
-
+  // Current season only, while the rest of the career loads in behind it.
   return (
     <>
-      <div className="bref-toolbar">
-        <button type="button" className="btn-ghost bref-export-btn" onClick={() => exportRef.current?.()}>
-          Export CSV
-        </button>
-      </div>
       <BrefTable
         headerGroups={HEADER_GROUPS}
-        regular={{ headers: displayHeaders, rows: data.regular.rows }}
-        career={data.regular.careerRow ? { headers: displayHeaders, rows: [data.regular.careerRow] } : null}
-        exportRef={exportRef}
+        regular={{ headers: displayHeaders, rows: [current.row] }}
+        career={null}
       />
+      <p className="status-msg" style={{ padding: '0.75rem 0' }}>Loading rest of career…</p>
     </>
   );
 }

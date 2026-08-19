@@ -47,39 +47,69 @@ router.get('/players/:id/pbp-stats', async (req, res) => {
   }
 });
 
+// Shared by both routes below: one season's PBP table row, live-fetching that season's games
+// from the provider (uncached at the HTTP layer -- see espn/client.js fetchGameSummary). This is
+// the expensive part; isolating it to one season is what makes the /season/:season route fast.
+async function computeSeasonPbpRow(playerId, pgTable, I, season) {
+  const playerRow = pgTable.rows.find(r => String(r[I.SEASON_ID]) === season);
+  if (!playerRow) return null;
+
+  const eventIds = await getProvider().getRegularSeasonEventIds(playerId, season, 2);
+  if (!eventIds?.length) return null;
+
+  const pbpResults = await Promise.all(eventIds.map(id => getProvider().getGamePbpStats(id, playerId)));
+  const gp      = playerRow[I.GP]  ?? 0;
+  const minPg   = playerRow[I.MIN] ?? 0;
+  const minutes = Math.round(minPg * gp);
+  const meta = {
+    season,
+    team:    playerRow[I.TEAM_ABBREVIATION] ?? null,
+    age:     playerRow[I.AGE]  ?? null,
+    gp,
+    minutes,
+  };
+  return computePbpTableRow(pbpResults, meta);
+}
+
+async function loadPgTable(playerId) {
+  const { regSeasons, teamsById } = await fetchPlayerSeasonData(playerId);
+  const regParsed = buildSeasonTables(regSeasons, teamsById);
+  const pgTable = regParsed?.pg?.table;
+  if (!pgTable) return null;
+  const I = Object.fromEntries(pgTable.headers.map((h, i) => [h, i]));
+  return { pgTable, I };
+}
+
+// Single-season PBP row: the fast path the client hits first so the current season can render
+// before the full multi-season table (below) finishes loading every prior season's games.
+router.get('/players/:id/pbp-table/season/:season', async (req, res) => {
+  try {
+    const playerId = String(req.params.id);
+    const season = String(req.params.season);
+    const loaded = await loadPgTable(playerId);
+    if (!loaded) return res.status(404).json({ error: 'no stats for this player' });
+    const row = await computeSeasonPbpRow(playerId, loaded.pgTable, loaded.I, season);
+    if (!row) return res.status(404).json({ error: 'no play-by-play data for this season' });
+    res.json({ headers: PBP_TABLE_HEADERS, row });
+  } catch (err) {
+    console.error('pbp-table/season:', err.message);
+    res.status(502).json({ error: 'failed to compute pbp row' });
+  }
+});
+
 // BBRef-style PBP season table: all regular seasons in one response.
 // Columns: OnCourt/On-Off per 100 poss, TOV subtypes, foul types, PGA, And1, Blkd.
 router.get('/players/:id/pbp-table', async (req, res) => {
   try {
     const playerId = String(req.params.id);
-    const { regSeasons, teamsById } = await fetchPlayerSeasonData(playerId);
-    const regParsed = buildSeasonTables(regSeasons, teamsById);
-    const pgTable = regParsed?.pg?.table;
-    if (!pgTable) return res.status(404).json({ error: 'no stats for this player' });
-    const I = Object.fromEntries(pgTable.headers.map((h, i) => [h, i]));
+    const loaded = await loadPgTable(playerId);
+    if (!loaded) return res.status(404).json({ error: 'no stats for this player' });
+    const { pgTable, I } = loaded;
 
     const seasons = [...new Set(pgTable.rows.map(r => String(r[I.SEASON_ID])))];
-
-    const rows = (await Promise.all(seasons.map(async season => {
-      const playerRow = pgTable.rows.find(r => String(r[I.SEASON_ID]) === season);
-      if (!playerRow) return null;
-
-      const eventIds = await getProvider().getRegularSeasonEventIds(playerId, season, 2);
-      if (!eventIds?.length) return null;
-
-      const pbpResults = await Promise.all(eventIds.map(id => getProvider().getGamePbpStats(id, playerId)));
-      const gp      = playerRow[I.GP]  ?? 0;
-      const minPg   = playerRow[I.MIN] ?? 0;
-      const minutes = Math.round(minPg * gp);
-      const meta = {
-        season,
-        team:    playerRow[I.TEAM_ABBREVIATION] ?? null,
-        age:     playerRow[I.AGE]  ?? null,
-        gp,
-        minutes,
-      };
-      return computePbpTableRow(pbpResults, meta);
-    }))).filter(Boolean);
+    const rows = (await Promise.all(
+      seasons.map(season => computeSeasonPbpRow(playerId, pgTable, I, season))
+    )).filter(Boolean);
 
     const careerRow = computeCareerRow(rows);
     res.json({ headers: PBP_TABLE_HEADERS, regular: { rows, careerRow } });
