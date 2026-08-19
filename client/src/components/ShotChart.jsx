@@ -24,15 +24,29 @@ const CORNER_TOP_Y = 200; // 14ft from baseline -- where the straight corner lin
 const LANE = { x1: 170, x2: 330, y1: 150 }; // 16ft-wide lane, 19ft from baseline to free-throw line
 const RA_R = 40; // 4ft restricted-area radius
 
-// fgPct -> fill color. Clamped to a realistic WNBA zone-FG% band (not the full 0-100 range) so
-// the color scale actually shows contrast between zones instead of clustering near one hue --
-// most zone FG%s fall between ~25% and ~70%. A stylistic normalization, not a league-average
-// comparison (no league-wide zone data is fetched for this).
+// fgPct -> fill color. True 0-100% domain (nothing clamped/clipped -- 0% and 100% are the real
+// endpoints), but WNBA zone FG% almost never touches either extreme (real zones cluster ~35-80%),
+// so a straight linear map would waste most of the ramp's contrast on values that never occur. This
+// sigmoid re-centers the steepest color change on that realistic band (center 0.5) so real zones
+// spread across most of the ramp -- diverging cold-blue/neutral-grey/hot-orange, not a single hue.
+function lerpColor(c0, c1, t) {
+  const a = c0.match(/\w\w/g).map(h => parseInt(h, 16));
+  const b = c1.match(/\w\w/g).map(h => parseInt(h, 16));
+  const c = a.map((v, i) => Math.round(v + (b[i] - v) * t));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+const RAMP_K = 12;
+const RAMP_C = 0.5;
+const sigmoid = t => 1 / (1 + Math.exp(-RAMP_K * (t - RAMP_C)));
+const RAMP_MIN = sigmoid(0);
+const RAMP_MAX = sigmoid(1);
 function zoneColor(fga, fgPct) {
   if (fga === 0) return 'var(--surface-2)';
-  const t = Math.max(0, Math.min(1, (fgPct - 0.25) / (0.70 - 0.25)));
-  const hue = 215 - t * 205; // 215 (cool blue) -> 10 (warm red-orange)
-  return `hsl(${hue.toFixed(0)}, 70%, 45%)`;
+  const raw = Math.max(0, Math.min(1, fgPct));
+  const t = (sigmoid(raw) - RAMP_MIN) / (RAMP_MAX - RAMP_MIN);
+  return t < 0.5
+    ? lerpColor('#1fc8ff', '#5c5c5c', t / 0.5)
+    : lerpColor('#5c5c5c', '#ff5720', (t - 0.5) / 0.5);
 }
 
 function ZonePath({ zone, d, onHover }) {
@@ -79,8 +93,8 @@ function CourtDiagram({ zones, onHover }) {
         <rect x={LANE.x1} y={LANE.y1} width={LANE.x2 - LANE.x1} height={H - LANE.y1} />
         <circle cx={HOOP.x} cy={LANE.y1} r={60} />
         <path d={`M ${CORNER_X[0]},0 L ${CORNER_X[0]},${CORNER_TOP_Y} A ${ARC_R},${ARC_R} 0 0 1 ${CORNER_X[1]},${CORNER_TOP_Y} L ${CORNER_X[1]},0`} />
-        <circle cx={HOOP.x} cy={HOOP.y} r={7.5} />
-        <line x1={HOOP.x - 30} y1={HOOP.y - 4} x2={HOOP.x + 30} y2={HOOP.y - 4} strokeWidth={3} />
+        <circle cx={HOOP.x} cy={HOOP.y} r={7.5} className="shot-chart-emphasis" />
+        <line x1={HOOP.x - 30} y1={HOOP.y - 4} x2={HOOP.x + 30} y2={HOOP.y - 4} className="shot-chart-emphasis" />
       </g>
     </svg>
   );
@@ -167,7 +181,7 @@ export default function ShotChart({ playerId, availableSeasons }) {
             <tbody>
               {chart.zones.map(z => (
                 <tr key={z.key} className={hoverZone?.key === z.key ? 'shot-chart-legend-active' : undefined}>
-                  <td>{z.label}</td>
+                  <td><span className="legend-dot" style={{ background: zoneColor(z.fga, z.fgPct) }} />{z.label}</td>
                   <td>{z.fgm}-{z.fga}</td>
                   <td>{z.fga > 0 ? `${(z.fgPct * 100).toFixed(1)}%` : '—'}</td>
                 </tr>
