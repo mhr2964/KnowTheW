@@ -55,7 +55,7 @@ function ZonePath({ zone, d, onHover }) {
 function CourtDiagram({ zones, onHover }) {
   const byKey = Object.fromEntries(zones.map(z => [z.key, z]));
 
-  const aboveBreakPath = `M 0,${CORNER_TOP_Y} L ${W},${CORNER_TOP_Y} L ${W},${H} L 0,${H} Z`;
+  const aboveBreakPath = `M 0,0 L ${W},0 L ${W},${CORNER_TOP_Y} L 0,${CORNER_TOP_Y} Z`;
   const cornerLeftPath = `M 0,0 L ${CORNER_X[0]},0 L ${CORNER_X[0]},${H} L 0,${H} Z`;
   const cornerRightPath = `M ${CORNER_X[1]},0 L ${W},0 L ${W},${H} L ${CORNER_X[1]},${H} Z`;
   const midRangePath = `M ${CORNER_X[0]},${H} L ${CORNER_X[0]},${CORNER_TOP_Y} A ${ARC_R},${ARC_R} 0 0 1 ${CORNER_X[1]},${CORNER_TOP_Y} L ${CORNER_X[1]},${H} Z`;
