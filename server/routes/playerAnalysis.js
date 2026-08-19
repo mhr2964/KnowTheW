@@ -8,7 +8,7 @@ const express = require('express');
 const router  = express.Router();
 
 const { buildSeasonTables }                                              = require('../lib/statsParser');
-const { computeAdvancedPbpAll }                                          = require('../lib/advancedStats');
+const { computeAdvancedPbpAll, computeSeasonAdvancedRow }                = require('../lib/advancedStats');
 const { loadFingerprintIndex }                                           = require('../lib/percentileClient');
 const { getPlayerFingerprint, AXES, buildDimensions }                    = require('../lib/analysis/playerFingerprint');
 const { assignArchetype, buildDescriptor }                               = require('../lib/analysis/archetypes');
@@ -97,25 +97,30 @@ router.get('/players/:id/pbp-table/season/:season', async (req, res) => {
   }
 });
 
-// BBRef-style PBP season table: all regular seasons in one response.
-// Columns: OnCourt/On-Off per 100 poss, TOV subtypes, foul types, PGA, And1, Blkd.
-router.get('/players/:id/pbp-table', async (req, res) => {
+// Career-row aggregation only -- pure math over rows the client already fetched one season at a
+// time via /pbp-table/season/:season above. No provider calls here, so no rate-limit exposure;
+// this is what replaced the old "all regular seasons in one response" /pbp-table route, which for
+// a long career could need 800+ live BallDontLie requests in a single request -- structurally
+// unable to finish inside Heroku's 30s router timeout (confirmed live, 2026-08-19). Splitting the
+// data-fetch into N small per-season requests (each well under the ~500 req/min BDL ceiling on its
+// own) and doing this last aggregation step in-process is what makes a long career loadable at all.
+router.post('/players/:id/pbp-table/career-row', (req, res) => {
+  const rows = req.body?.rows;
+  if (!Array.isArray(rows)) return res.status(400).json({ error: 'rows must be an array' });
+  res.json({ careerRow: computeCareerRow(rows) });
+});
+
+router.get('/players/:id/advanced-pbp-all/season/:season', async (req, res) => {
   try {
     const playerId = String(req.params.id);
-    const loaded = await loadPgTable(playerId);
-    if (!loaded) return res.status(404).json({ error: 'no stats for this player' });
-    const { pgTable, I } = loaded;
-
-    const seasons = [...new Set(pgTable.rows.map(r => String(r[I.SEASON_ID])))];
-    const rows = (await Promise.all(
-      seasons.map(season => computeSeasonPbpRow(playerId, pgTable, I, season))
-    )).filter(Boolean);
-
-    const careerRow = computeCareerRow(rows);
-    res.json({ headers: PBP_TABLE_HEADERS, regular: { rows, careerRow } });
+    const season = String(req.params.season);
+    const seasontype = req.query.seasontype === '3' ? 3 : 2;
+    const result = await computeSeasonAdvancedRow(playerId, season, seasontype);
+    if (!result) return res.status(404).json({ error: 'no advanced stats for this season' });
+    res.json(result);
   } catch (err) {
-    console.error('pbp-table:', err.message);
-    res.status(502).json({ error: 'failed to compute pbp table' });
+    console.error('advanced-pbp-all/season:', err.message);
+    res.status(502).json({ error: 'failed to compute advanced stats row' });
   }
 });
 

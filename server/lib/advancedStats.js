@@ -268,19 +268,12 @@ function buildPbpSplit(valid, pgRows, rowI) {
   return { rows: valid.map(r => r.row), careerRow };
 }
 
-// Whole-career advanced-stats computation (PBP-exact: USG%/AST%/PER/Win-Shares per season, career
-// totals) for one player, Mongo-cached. Extracted from routes/playerAnalysis.js's
-// /players/:id/advanced-pbp-all handler so scripts/seed-balldontlie-cache.js can populate the exact
-// same cache entries a live request would -- there's no separate "warm path" that could drift from
-// what users actually see; a cache hit here IS what the route returns.
-//
-// Returns the advResult object on success, or null when the player has no stats at all (caller maps
-// this to 404). Throws on genuine upstream failures (caller maps to 502) -- same contract the route
-// had inline before this extraction, no behavior change.
-async function computeAdvancedPbpAll(playerId) {
-  // Aliased (not destructured as `regSeasons`/`postSeasons` directly) because this function
-  // already uses those names below for a different thing: the filtered list of season-id strings
-  // worth computing PBP for, not the raw provider rows.
+// Shared setup: parsed per-game/totals tables (regular + playoffs) plus the team-id and totals
+// lookups computeSeasonPBP needs. Pulled out of computeAdvancedPbpAll so the single-season route
+// (computeSeasonAdvancedRow) can call the SAME provider-facing lookups -- fetchPlayerSeasonData's
+// result is TTL-cached per player, so repeated calls (one per season, from the progressive client
+// fetch) cost one real provider round-trip, not one per season.
+async function loadAdvPgTables(playerId) {
   const { regSeasons: rawRegSeasons, postSeasons: rawPostSeasons, teamsById } = await fetchPlayerSeasonData(playerId);
   const regParsed  = buildSeasonTables(rawRegSeasons,  teamsById);
   const postParsed = buildSeasonTables(rawPostSeasons, teamsById);
@@ -293,6 +286,74 @@ async function computeAdvancedPbpAll(playerId) {
     ? Object.fromEntries(pgPostTable.headers.map((h, i) => [h, i]))
     : I;
 
+  const totByYear = {};
+  const totTable = regParsed?.tot?.table;
+  if (totTable?.rows) for (const r of totTable.rows) totByYear[String(r[I.SEASON_ID])] = r;
+
+  const totPostByYear = {};
+  const totPostTable = postParsed?.tot?.table;
+  if (totPostTable?.rows) for (const r of totPostTable.rows) totPostByYear[String(r[IPost.SEASON_ID])] = r;
+
+  return {
+    rawRegSeasons, rawPostSeasons,
+    pgTable, I, pgPostTable, IPost,
+    totByYear, totPostByYear,
+    regTidByYear:  extractTeamIdByYear(rawRegSeasons),
+    postTidByYear: extractTeamIdByYear(rawPostSeasons),
+  };
+}
+
+// Single-season advanced row -- the fast path a client hits per-season so a career's worth of
+// seasons can load progressively instead of one all-seasons request. Reuses computeSeasonPBP's
+// existing per-season Mongo cache (playerSeasonPbp) unchanged, so calling this once per past season
+// ALSO warms the cache computeAdvancedPbpAll reads from -- by the time every season has been fetched
+// this way, the whole-career call below is nearly all cache hits regardless of career length.
+async function computeSeasonAdvancedRow(playerId, season, seasontype = 2) {
+  // Same eligibility gate computeAdvancedPbpAll applies to regSeasons/postSeasons below -- a
+  // season with no league-average entry yet (e.g. the in-progress season before WNBA_LG is
+  // seeded) is one the whole-career result excludes entirely, not one it includes with null
+  // advanced columns. Without this check, this route would compute (and briefly show) a row the
+  // final authoritative call then makes disappear.
+  if (!getLeagueAverage(season)) return null;
+
+  const loaded = await loadAdvPgTables(playerId);
+  if (!loaded) return null;
+  const { pgTable, I, pgPostTable, IPost, totByYear, totPostByYear, regTidByYear, postTidByYear } = loaded;
+
+  if (seasontype === 3) {
+    if (!pgPostTable) return null;
+    const playerRow = pgPostTable.rows.find(r => String(r[IPost.SEASON_ID]) === season);
+    if (!playerRow) return null;
+    // WS computation needs regular-season team stats; prefer regTidByYear so the team ID is
+    // always valid even if ESPN/BDL omits teamId from playoff stat entries.
+    const wsTeamId = regTidByYear[season] ?? postTidByYear[season] ?? null;
+    const result = await computeSeasonPBP(playerId, season, playerRow, IPost, wsTeamId, totPostByYear[season] ?? null, 3);
+    return result ? { columns: columnsFor(ADV_HEADERS_SRV), row: result.row } : null;
+  }
+
+  const playerRow = pgTable.rows.find(r => String(r[I.SEASON_ID]) === season);
+  if (!playerRow) return null;
+  const result = await computeSeasonPBP(playerId, season, playerRow, I, regTidByYear[season] ?? null, totByYear[season] ?? null, 2);
+  return result ? { columns: columnsFor(ADV_HEADERS_SRV), row: result.row } : null;
+}
+
+// Whole-career advanced-stats computation (PBP-exact: USG%/AST%/PER/Win-Shares per season, career
+// totals) for one player, Mongo-cached. Extracted from routes/playerAnalysis.js's
+// /players/:id/advanced-pbp-all handler so scripts/seed-balldontlie-cache.js can populate the exact
+// same cache entries a live request would -- there's no separate "warm path" that could drift from
+// what users actually see; a cache hit here IS what the route returns.
+//
+// Returns the advResult object on success, or null when the player has no stats at all (caller maps
+// this to 404). Throws on genuine upstream failures (caller maps to 502) -- same contract the route
+// had inline before this extraction, no behavior change.
+async function computeAdvancedPbpAll(playerId) {
+  const loaded = await loadAdvPgTables(playerId);
+  if (!loaded) return null;
+  const {
+    pgTable, I, pgPostTable, IPost,
+    totByYear, totPostByYear, regTidByYear, postTidByYear,
+  } = loaded;
+
   // Cache: invalidate when regular or playoff GP changes, or when format is old (no .regular key)
   const regGP  = pgTable.rows.reduce((s, r) => s + (r[I.GP] ?? 0), 0);
   const postGP = (pgPostTable?.rows ?? []).reduce((s, r) => s + (r[IPost.GP] ?? 0), 0);
@@ -302,6 +363,9 @@ async function computeAdvancedPbpAll(playerId) {
   // advanced-stats response for the same player.
   const advCacheId = `${getProvider().name}-${playerId}`;
 
+  // regSeasons/postSeasons: the filtered list of season-id strings worth computing PBP for,
+  // distinct from rawRegSeasons/rawPostSeasons (the raw provider rows used by extractTeamIdByYear
+  // inside loadAdvPgTables above).
   const regSeasons  = [...new Set(pgTable.rows.map(r => String(r[I.SEASON_ID])))].filter(s => getLeagueAverage(s));
   const postSeasons = pgPostTable
     ? [...new Set(pgPostTable.rows.map(r => String(r[IPost.SEASON_ID])))].filter(s => getLeagueAverage(s))
@@ -318,18 +382,6 @@ async function computeAdvancedPbpAll(playerId) {
       return advCached.data;
     }
   }
-
-  // Build totals-by-year maps for both splits
-  const totByYear = {};
-  const totTable = regParsed?.tot?.table;
-  if (totTable?.rows) for (const r of totTable.rows) totByYear[String(r[I.SEASON_ID])] = r;
-
-  const totPostByYear = {};
-  const totPostTable = postParsed?.tot?.table;
-  if (totPostTable?.rows) for (const r of totPostTable.rows) totPostByYear[String(r[IPost.SEASON_ID])] = r;
-
-  const regTidByYear  = extractTeamIdByYear(rawRegSeasons);
-  const postTidByYear = extractTeamIdByYear(rawPostSeasons);
 
   const [regResults, postResults] = await Promise.all([
     Promise.all(regSeasons.map(async season => {
@@ -386,5 +438,5 @@ async function computeAdvancedPbpAll(playerId) {
 module.exports = {
   ADV_HEADERS_SRV, ADV_I,
   advancedRow, buildAdvancedSplit, buildAdvancedCareer, computeSeasonPBP, buildPbpSplit,
-  computeAdvancedPbpAll,
+  computeAdvancedPbpAll, computeSeasonAdvancedRow, loadAdvPgTables,
 };

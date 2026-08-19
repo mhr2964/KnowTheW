@@ -47,17 +47,23 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
     showPercentiles
   );
 
-  const { data: pbpAllData, loading: pbpAllLoading, error: pbpAllError, refetch: refetchPbp } = useLazyFetch(
-    `/api/players/${playerId}/advanced-pbp-all`,
-    activeType === 'advanced'
-  );
-
   useEffect(() => {
     setShowPercentiles(false);
   }, [playerId]);
 
   const availableSeasons = useMemo(() => {
     const rows = data?.perGame?.regular?.rows ?? [];
+    const seen = new Set();
+    const seasons = [];
+    for (const row of rows) {
+      const s = String(row[0]);
+      if (s && s !== 'undefined' && !seen.has(s)) { seen.add(s); seasons.push(s); }
+    }
+    return seasons.sort((a, b) => b.localeCompare(a));
+  }, [data]);
+
+  const availablePlayoffSeasons = useMemo(() => {
+    const rows = data?.perGame?.playoffs?.rows ?? [];
     const seen = new Set();
     const seasons = [];
     for (const row of rows) {
@@ -139,10 +145,9 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
 
         {isAdvanced ? (
           <AdvancedTab
-            pbpAllData={pbpAllData}
-            pbpAllLoading={pbpAllLoading}
-            pbpAllError={pbpAllError}
-            refetchPbp={refetchPbp}
+            playerId={playerId}
+            availableSeasons={availableSeasons}
+            availablePlayoffSeasons={availablePlayoffSeasons}
           />
         ) : isGamelog ? (
           <GameLogTab playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} />
