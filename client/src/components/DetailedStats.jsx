@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import StudyFlow from './StudyFlow';
 import BrefTable from './BrefTable';
 import useLazyFetch from '../hooks/useLazyFetch';
+import usePlayerBackgroundStats from '../hooks/usePlayerBackgroundStats';
 import GameLogTab from './GameLogTab';
 import AdvancedTab from './AdvancedTab';
 import PlayByPlayTab from './PlayByPlayTab';
@@ -72,6 +73,17 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
     }
     return seasons.sort((a, b) => b.localeCompare(a));
   }, [data]);
+
+  // Starts as soon as availableSeasons is known (not gated behind opening the PBP/Advanced tabs) --
+  // see the hook for why it's fully sequential rather than firing everything at once. Gated to
+  // source === 'espn': that's the only source with the pbp/advanced tabs enabled at all (see
+  // SOURCE_ACTIVE below) -- a bulk-legacy BDL/WNBA player has nowhere to show this data, so there's
+  // no reason to prefetch it.
+  const bgSeasons        = data?.source === 'espn' ? availableSeasons : [];
+  const bgPlayoffSeasons = data?.source === 'espn' ? availablePlayoffSeasons : [];
+  const { pbp: pbpData, adv: advData, retry: retryBackgroundStats } = usePlayerBackgroundStats(
+    playerId, bgSeasons, bgPlayoffSeasons
+  );
 
   function handleTypeClick(key) {
     setActiveType(key);
@@ -144,17 +156,13 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
         </div>
 
         {isAdvanced ? (
-          <AdvancedTab
-            playerId={playerId}
-            availableSeasons={availableSeasons}
-            availablePlayoffSeasons={availablePlayoffSeasons}
-          />
+          <AdvancedTab data={advData} retry={retryBackgroundStats} />
         ) : isGamelog ? (
           <GameLogTab playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} />
         ) : isSplits ? (
           <SplitsTab playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} />
         ) : isPbp ? (
-          <PlayByPlayTab playerId={playerId} availableSeasons={availableSeasons} />
+          <PlayByPlayTab data={pbpData} totalSeasons={availableSeasons.length} retry={retryBackgroundStats} />
         ) : isShotChart ? (
           <ShotChart playerId={playerId} availableSeasons={availableSeasons} />
         ) : (
