@@ -21,8 +21,8 @@ async function runSequential(items, isCancelled, fn) {
 // visitor may never open, so keeping the whole sequence serialized avoids that volume also turning
 // into a concurrent burst on top of it.
 export default function usePlayerBackgroundStats(playerId, availableSeasons, availablePlayoffSeasons) {
-  const [pbp, setPbp] = useState({ headers: null, rows: [], careerRow: null, status: 'loading' });
-  const [adv, setAdv] = useState({ current: null, full: null, status: 'loading' });
+  const [pbp, setPbp] = useState({ headers: null, rows: [], careerRow: null, status: 'loading', timedOutSeasons: [] });
+  const [adv, setAdv] = useState({ current: null, full: null, status: 'loading', timedOutSeasons: [] });
   const [retryCount, setRetryCount] = useState(0);
   const retry = useCallback(() => setRetryCount(c => c + 1), []);
 
@@ -30,8 +30,8 @@ export default function usePlayerBackgroundStats(playerId, availableSeasons, ava
     if (!playerId || !availableSeasons?.length) return undefined;
     let cancelled = false;
     const isCancelled = () => cancelled;
-    setPbp({ headers: null, rows: [], careerRow: null, status: 'loading' });
-    setAdv({ current: null, full: null, status: 'loading' });
+    setPbp({ headers: null, rows: [], careerRow: null, status: 'loading', timedOutSeasons: [] });
+    setAdv({ current: null, full: null, status: 'loading', timedOutSeasons: [] });
 
     (async () => {
       // 1. PBP current season, 2. Advanced current season -- both tabs' fast path ready first,
@@ -58,6 +58,7 @@ export default function usePlayerBackgroundStats(playerId, availableSeasons, ava
 
       // 3. Remaining PBP seasons, one at a time.
       let pbpAnyFailed = false;
+      const pbpTimedOut = [];
       await runSequential(availableSeasons.slice(1), isCancelled, async (season) => {
         try {
           const r = await fetch(`/api/players/${playerId}/pbp-table/season/${season}`);
@@ -65,6 +66,9 @@ export default function usePlayerBackgroundStats(playerId, availableSeasons, ava
             const d = await r.json();
             pbpRows.push(d.row);
             if (!cancelled) setPbp(p => ({ ...p, rows: [...pbpRows] }));
+          } else if (r.status === 504) {
+            pbpAnyFailed = true;
+            pbpTimedOut.push(season);
           } else if (r.status !== 404) pbpAnyFailed = true;
         } catch {
           pbpAnyFailed = true;
@@ -73,7 +77,7 @@ export default function usePlayerBackgroundStats(playerId, availableSeasons, ava
       if (cancelled) return;
 
       if (!pbpRows.length) {
-        setPbp(p => ({ ...p, status: pbpAnyFailed ? 'error' : 'empty' }));
+        setPbp(p => ({ ...p, status: pbpAnyFailed ? 'error' : 'empty', timedOutSeasons: pbpTimedOut }));
       } else {
         try {
           const r = await fetch(`/api/players/${playerId}/pbp-table/career-row`, {
@@ -86,18 +90,26 @@ export default function usePlayerBackgroundStats(playerId, availableSeasons, ava
             setPbp(p => ({ ...p, careerRow }));
           }
         } catch { /* career row is a summary row; the season rows above are already usable */ }
-        if (!cancelled) setPbp(p => ({ ...p, status: pbpAnyFailed ? 'partial' : 'done' }));
+        if (!cancelled) setPbp(p => ({ ...p, status: pbpAnyFailed ? 'partial' : 'done', timedOutSeasons: pbpTimedOut }));
       }
 
       // 4. Remaining Advanced seasons (regular then playoffs), one at a time -- each call warms
       // computeSeasonPBP's per-season Mongo cache, so the final whole-career call below is fast.
+      // A 504 here means that season's own warm-up hit the same H12 budget the PBP loop above
+      // does -- non-fatal to this loop (the final whole-career call recomputes live regardless),
+      // but tracked so the tab can say which seasons the cache never got to warm for.
+      const advTimedOut = [];
       await runSequential(availableSeasons.slice(1), isCancelled, async (season) => {
-        try { await fetch(`/api/players/${playerId}/advanced-pbp-all/season/${season}?seasontype=2`); }
-        catch { /* warm-up only -- the final call recomputes live if this didn't land */ }
+        try {
+          const r = await fetch(`/api/players/${playerId}/advanced-pbp-all/season/${season}?seasontype=2`);
+          if (r.status === 504) advTimedOut.push(season);
+        } catch { /* warm-up only -- the final call recomputes live if this didn't land */ }
       });
       await runSequential(availablePlayoffSeasons ?? [], isCancelled, async (season) => {
-        try { await fetch(`/api/players/${playerId}/advanced-pbp-all/season/${season}?seasontype=3`); }
-        catch { /* same as above */ }
+        try {
+          const r = await fetch(`/api/players/${playerId}/advanced-pbp-all/season/${season}?seasontype=3`);
+          if (r.status === 504) advTimedOut.push(season);
+        } catch { /* same as above */ }
       });
       if (cancelled) return;
 
@@ -105,9 +117,9 @@ export default function usePlayerBackgroundStats(playerId, availableSeasons, ava
         const r = await fetch(`/api/players/${playerId}/advanced-pbp-all`);
         if (!r.ok) throw new Error();
         const full = await r.json();
-        if (!cancelled) setAdv(a => ({ ...a, full, status: 'done' }));
+        if (!cancelled) setAdv(a => ({ ...a, full, status: 'done', timedOutSeasons: advTimedOut }));
       } catch {
-        if (!cancelled) setAdv(a => ({ ...a, status: 'error' }));
+        if (!cancelled) setAdv(a => ({ ...a, status: 'error', timedOutSeasons: advTimedOut }));
       }
     })();
 

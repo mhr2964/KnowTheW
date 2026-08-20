@@ -38,7 +38,7 @@ const COL_LABELS = {
 // tab doesn't re-fetch anything already in flight or done.
 export default function PlayByPlayTab({ data, totalSeasons, retry }) {
   const exportRef = useRef(null);
-  const { headers, rows, careerRow, status } = data;
+  const { headers, rows, careerRow, status, timedOutSeasons } = data;
 
   if (status === 'error') return (
     <p className="status-msg error" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -76,7 +76,9 @@ export default function PlayByPlayTab({ data, totalSeasons, retry }) {
       )}
       {status === 'partial' && (
         <p className="status-msg" style={{ padding: '0.75rem 0' }}>
-          Some seasons could not be loaded.{' '}
+          {timedOutSeasons?.length
+            ? `${timedOutSeasons.join(', ')} timed out and could not be loaded.`
+            : 'Some seasons could not be loaded.'}{' '}
           <button type="button" className="btn-ghost compare-verdict-retry" onClick={retry}>Retry</button>
         </p>
       )}

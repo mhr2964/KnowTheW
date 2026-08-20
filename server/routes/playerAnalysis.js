@@ -32,6 +32,28 @@ router.get('/players/:id/onoff', async (req, res) => {
   }
 });
 
+// Bounds a per-season provider fan-out to well under Heroku's 30s router (H12) timeout. Confirmed
+// live (2026-08-20 measurement session): specific player-seasons can stall the full 30.0-30.1s with
+// zero completed requests (a socket-level failure, not a slow-but-successful response) and get
+// silently dropped by the client's error handling -- the season just vanishes from the tab with no
+// error shown. Racing against this timeout can't make the underlying provider calls finish faster,
+// but it guarantees the client gets a fast, explicit "this season timed out" instead of eating the
+// full 30s dead-air stall and then getting cut off by Heroku's router with no response at all. The
+// in-flight provider calls aren't cancelled (no AbortController threaded through the provider
+// stack) -- they keep running server-side and populate the season cache on completion, so a retry
+// shortly after often hits a warm cache even though this request gave up on waiting.
+const SEASON_TIMEOUT_MS = 20000;
+class SeasonTimeoutError extends Error {}
+function withSeasonTimeout(promise) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new SeasonTimeoutError('season computation timed out')), SEASON_TIMEOUT_MS);
+    promise.then(
+      v => { clearTimeout(timer); resolve(v); },
+      e => { clearTimeout(timer); reject(e); },
+    );
+  });
+}
+
 // Shared by both routes below: one season's PBP table row, live-fetching that season's games
 // from the provider (uncached at the HTTP layer -- see espn/client.js fetchGameSummary). This is
 // the expensive part; isolating it to one season is what makes the /season/:season route fast.
@@ -73,10 +95,14 @@ router.get('/players/:id/pbp-table/season/:season', async (req, res) => {
     const season = String(req.params.season);
     const loaded = await loadPgTable(playerId);
     if (!loaded) return res.status(404).json({ error: 'no stats for this player' });
-    const row = await computeSeasonPbpRow(playerId, loaded.pgTable, loaded.I, season);
+    const row = await withSeasonTimeout(computeSeasonPbpRow(playerId, loaded.pgTable, loaded.I, season));
     if (!row) return res.status(404).json({ error: 'no play-by-play data for this season' });
     res.json({ headers: PBP_TABLE_HEADERS, row });
   } catch (err) {
+    if (err instanceof SeasonTimeoutError) {
+      console.warn(`pbp-table/season: season ${req.params.season} exceeded ${SEASON_TIMEOUT_MS}ms budget`);
+      return res.status(504).json({ error: 'season computation timed out', timeout: true });
+    }
     console.error('pbp-table/season:', err.message);
     res.status(502).json({ error: 'failed to compute pbp row' });
   }
@@ -100,10 +126,14 @@ router.get('/players/:id/advanced-pbp-all/season/:season', async (req, res) => {
     const playerId = String(req.params.id);
     const season = String(req.params.season);
     const seasontype = req.query.seasontype === '3' ? 3 : 2;
-    const result = await computeSeasonAdvancedRow(playerId, season, seasontype);
+    const result = await withSeasonTimeout(computeSeasonAdvancedRow(playerId, season, seasontype));
     if (!result) return res.status(404).json({ error: 'no advanced stats for this season' });
     res.json(result);
   } catch (err) {
+    if (err instanceof SeasonTimeoutError) {
+      console.warn(`advanced-pbp-all/season: season ${req.params.season} exceeded ${SEASON_TIMEOUT_MS}ms budget`);
+      return res.status(504).json({ error: 'season computation timed out', timeout: true });
+    }
     console.error('advanced-pbp-all/season:', err.message);
     res.status(502).json({ error: 'failed to compute advanced stats row' });
   }

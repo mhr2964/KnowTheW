@@ -9,7 +9,7 @@ import BrefTable from './BrefTable';
 export default function AdvancedTab({ data, retry }) {
   const [advSeason, setAdvSeason] = useState('regular');
   const exportRef = useRef(null);
-  const { current, full, status } = data;
+  const { current, full, status, timedOutSeasons } = data;
 
   if (status === 'error') return (
     <p className="status-msg error" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -42,6 +42,11 @@ export default function AdvancedTab({ data, retry }) {
           career={advSplit?.careerRow ? { columns: full.columns, rows: [advSplit.careerRow] } : null}
           exportRef={exportRef}
         />
+        {timedOutSeasons?.length > 0 && (
+          <p className="status-msg" style={{ padding: '0.5rem 0', opacity: 0.7 }}>
+            {timedOutSeasons.join(', ')} took longer than usual to compute -- shown above regardless.
+          </p>
+        )}
       </>
     );
   }
