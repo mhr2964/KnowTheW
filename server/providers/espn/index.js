@@ -15,6 +15,7 @@ const leagueStats = require('./leagueStats');
 const { SportsDataProvider } = require('../SportsDataProvider');
 const { withValidation } = require('../validation');
 const { aggregatePBPSummary } = require('../pbpAggregate');
+const { getCachedGamePbpStats } = require('../gamePbpCache');
 
 class EspnProvider extends SportsDataProvider {
   get name() { return 'espn'; }
@@ -63,10 +64,12 @@ class EspnProvider extends SportsDataProvider {
   // analysis layer only ever sees the resolved per-game averages, never ESPN's PBP mechanics.
   // Aggregation itself is shared with the BallDontLie provider (pure reduction, no ESPN-specific
   // logic once you have per-game {fetched,onCourt,boxscore} results) -- see ../pbpAggregate.js.
+  // Per-game results are cached (past seasons only) via getCachedGamePbpStats -- see
+  // ../gamePbpCache.js -- the same primitive computeSeasonPbpRow (the PBP table route) uses.
   async getSeasonPBPSummary(playerId, season, seasontype = 2) {
     const eventIds = await this.getRegularSeasonEventIds(playerId, season, seasontype);
     if (!eventIds?.length) return null;
-    return aggregatePBPSummary(eventIds, id => this.getGamePbpStats(id, playerId));
+    return aggregatePBPSummary(eventIds, id => getCachedGamePbpStats(this, id, playerId, season));
   }
 
   // --- League-wide stats (percentile system) ---

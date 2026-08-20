@@ -17,6 +17,7 @@ const { computeSeasonOnOff }                                             = requi
 const { computePbpTableRow, computeCareerRow, PBP_TABLE_HEADERS }        = require('../lib/analysis/pbpTable');
 const { getProvider }                                                    = require('../providers');
 const { fetchPlayerSeasonData }                                         = require('../lib/playerSeasonData');
+const { getCachedGamePbpStats }                                         = require('../providers/gamePbpCache');
 
 // On/Off-Court Impact: team net rating (per 100 possessions) while the player is on vs off court.
 // PBP-derived; regular season only. Returns null result when < MIN_ON_GAMES games have usable PBP.
@@ -55,16 +56,18 @@ function withSeasonTimeout(promise) {
 }
 
 // Shared by both routes below: one season's PBP table row, live-fetching that season's games
-// from the provider (uncached at the HTTP layer -- see espn/client.js fetchGameSummary). This is
-// the expensive part; isolating it to one season is what makes the /season/:season route fast.
+// from the provider. Per-game results are cached (past seasons only -- see gamePbpCache.js) via
+// getCachedGamePbpStats, the same primitive getSeasonPBPSummary/Advanced uses -- a season already
+// warmed by anyone opening either tab benefits both.
 async function computeSeasonPbpRow(playerId, pgTable, I, season) {
   const playerRow = pgTable.rows.find(r => String(r[I.SEASON_ID]) === season);
   if (!playerRow) return null;
 
-  const eventIds = await getProvider().getRegularSeasonEventIds(playerId, season, 2);
+  const provider = getProvider();
+  const eventIds = await provider.getRegularSeasonEventIds(playerId, season, 2);
   if (!eventIds?.length) return null;
 
-  const pbpResults = await Promise.all(eventIds.map(id => getProvider().getGamePbpStats(id, playerId)));
+  const pbpResults = await Promise.all(eventIds.map(id => getCachedGamePbpStats(provider, id, playerId, season)));
   const gp      = playerRow[I.GP]  ?? 0;
   const minPg   = playerRow[I.MIN] ?? 0;
   const minutes = Math.round(minPg * gp);

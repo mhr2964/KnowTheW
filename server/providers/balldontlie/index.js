@@ -43,6 +43,7 @@ const { BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON } = require('./client');
 const { SportsDataProvider } = require('../SportsDataProvider');
 const { withValidation } = require('../validation');
 const { aggregatePBPSummary } = require('../pbpAggregate');
+const { getCachedGamePbpStats } = require('../gamePbpCache');
 
 const usesBdl = (year) => Number(year) >= BDL_MIN_SEASON;
 
@@ -153,12 +154,14 @@ class BallDontLieProvider extends SportsDataProvider {
 
   // Aggregation is shared with ESPN (../pbpAggregate.js) -- calls this.getGamePbpStats (not a bare
   // module reference) so the bdl: prefix dispatch above stays transparent from in here too, even
-  // though every id in the BDL branch will already carry the prefix.
+  // though every id in the BDL branch will already carry the prefix. Per-game results are cached
+  // (past seasons only) via getCachedGamePbpStats -- see gamePbpCache.js -- the same primitive
+  // computeSeasonPbpRow (the PBP table route) uses, so a season warmed by either tab benefits both.
   async getSeasonPBPSummary(playerId, season, seasontype = 2) {
     if (!usesBdl(season)) return espn.getSeasonPBPSummary(playerId, season, seasontype);
     const eventIds = await this.getRegularSeasonEventIds(playerId, season, seasontype);
     if (!eventIds?.length) return null;
-    return aggregatePBPSummary(eventIds, id => this.getGamePbpStats(id, playerId));
+    return aggregatePBPSummary(eventIds, id => getCachedGamePbpStats(this, id, playerId, season));
   }
 }
 
