@@ -1,4 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import useSeasonScopedFetch from '../hooks/useSeasonScopedFetch';
+
+// A 404 means "no shot-location tracking for this player-season" -- a legitimate empty result,
+// not an error (see shotChart.js's header comment on SHOT_CHART_MIN_SEASON coverage gaps).
+async function parseShotChart(r) {
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error();
+  return r.json();
+}
 
 // Hand-rolled SVG shot chart (no chart lib in the project, see FingerprintRadar.jsx). BDL's
 // shot-location data is zone-aggregated FG% (7 real zones), NOT per-shot coordinates -- there is
@@ -102,53 +111,14 @@ function CourtDiagram({ zones, onHover }) {
 
 export default function ShotChart({ playerId, availableSeasons }) {
   const [season, setSeason] = useState(null);
-  const [cache, setCache] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
   const [hoverZone, setHoverZone] = useState(null);
-  const abortRef = useRef(null);
-  const fetchedRef = useRef(new Set());
 
   useEffect(() => {
     if (!season && availableSeasons.length > 0) setSeason(availableSeasons[0]);
   }, [season, availableSeasons]);
 
-  useEffect(() => {
-    if (!season) return;
-    if (fetchedRef.current.has(season)) return;
-    fetchedRef.current.add(season);
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setLoading(true);
-    setError(false);
-
-    fetch(`/api/players/${playerId}/shotchart?season=${season}`, { signal: controller.signal })
-      .then(r => {
-        if (r.status === 404) return null;
-        if (!r.ok) throw new Error();
-        return r.json();
-      })
-      .then(d => {
-        setCache(prev => ({ ...prev, [season]: d }));
-        setLoading(false);
-      })
-      .catch(err => {
-        if (err.name !== 'AbortError') {
-          fetchedRef.current.delete(season);
-          setError(true);
-          setLoading(false);
-        }
-      });
-
-    return () => controller.abort();
-  }, [season, playerId, retryCount]);
-
-  useEffect(() => () => { abortRef.current?.abort(); }, []);
-
-  const chart = cache[season] ?? null;
+  const shotChartUrl = season ? `/api/players/${playerId}/shotchart?season=${season}` : null;
+  const { data: chart, loading, error, retry } = useSeasonScopedFetch(shotChartUrl, { parse: parseShotChart });
 
   return (
     <>
@@ -164,7 +134,7 @@ export default function ShotChart({ playerId, availableSeasons }) {
       {error && (
         <p className="status-msg error" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           Could not load shot chart.
-          <button type="button" className="btn-ghost compare-verdict-retry" onClick={() => { setError(false); setRetryCount(c => c + 1); }}>Try again</button>
+          <button type="button" className="btn-ghost compare-verdict-retry" onClick={retry}>Try again</button>
         </p>
       )}
       {!loading && !error && !chart && (

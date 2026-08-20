@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import useLazyFetch from '../hooks/useLazyFetch';
+import useSeasonScopedFetch from '../hooks/useSeasonScopedFetch';
 
 function fmt1(v) {
   if (v == null) return '—';
@@ -30,10 +30,8 @@ export default function OnOffTab({ playerId, availableSeasons }) {
     }
   }, [season, availableSeasons]);
 
-  const { data, loading, error, refetch } = useLazyFetch(
-    `/api/players/${playerId}/onoff?season=${season}`,
-    !!season
-  );
+  const onOffUrl = season ? `/api/players/${playerId}/onoff?season=${season}` : null;
+  const { data, loading, error, retry } = useSeasonScopedFetch(onOffUrl);
 
   if (!availableSeasons.length) {
     return <p className="stats-na">No season data available.</p>;
@@ -60,7 +58,7 @@ export default function OnOffTab({ playerId, availableSeasons }) {
       {error && (
         <p className="status-msg error" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           Could not load on/off stats.
-          <button type="button" className="btn-ghost compare-verdict-retry" onClick={refetch}>Try again</button>
+          <button type="button" className="btn-ghost compare-verdict-retry" onClick={retry}>Try again</button>
         </p>
       )}
 

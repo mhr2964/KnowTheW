@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import BrefTable from './BrefTable';
+import useSeasonScopedFetch from '../hooks/useSeasonScopedFetch';
 
 const SPLIT_TYPES = [
   { key: 'homeaway', label: 'Home/Away' },
@@ -10,51 +11,15 @@ const SPLIT_TYPES = [
 export default function SplitsTab({ playerId, playerName, availableSeasons }) {
   const [season, setSeason] = useState(null);
   const [splitType, setSplitType] = useState('homeaway');
-  const [cache, setCache] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
-  const abortRef = useRef(null);
-  const fetchedRef = useRef(new Set());
   const exportRef = useRef(null);
 
   useEffect(() => {
     if (!season && availableSeasons.length > 0) setSeason(availableSeasons[0]);
   }, [season, availableSeasons]);
 
-  const cacheKey = season ? `${season}:${splitType}` : null;
+  const splitsUrl = season ? `/api/players/${playerId}/splits?season=${season}&type=${splitType}` : null;
+  const { data: current, loading, error, retry } = useSeasonScopedFetch(splitsUrl);
 
-  useEffect(() => {
-    if (!cacheKey) return;
-    if (fetchedRef.current.has(cacheKey)) return;
-    fetchedRef.current.add(cacheKey);
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setLoading(true);
-    setError(false);
-
-    fetch(`/api/players/${playerId}/splits?season=${season}&type=${splitType}`, { signal: controller.signal })
-      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(d => {
-        setCache(prev => ({ ...prev, [cacheKey]: d }));
-        setLoading(false);
-      })
-      .catch(err => {
-        if (err.name !== 'AbortError') {
-          fetchedRef.current.delete(cacheKey);
-          setError(true);
-          setLoading(false);
-        }
-      });
-
-    return () => controller.abort();
-  }, [cacheKey, playerId, season, splitType, retryCount]);
-
-  useEffect(() => () => { abortRef.current?.abort(); }, []);
-
-  const current = cacheKey ? cache[cacheKey] ?? null : null;
   const splitLabel = SPLIT_TYPES.find(t => t.key === splitType)?.label ?? splitType;
 
   return (
@@ -78,7 +43,7 @@ export default function SplitsTab({ playerId, playerName, availableSeasons }) {
       {error && (
         <p className="status-msg error" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           Could not load splits.
-          <button type="button" className="btn-ghost compare-verdict-retry" onClick={() => setRetryCount(c => c + 1)}>Try again</button>
+          <button type="button" className="btn-ghost compare-verdict-retry" onClick={retry}>Try again</button>
         </p>
       )}
       {!loading && !error && (

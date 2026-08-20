@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import BrefTable from './BrefTable';
+import useSeasonScopedFetch from '../hooks/useSeasonScopedFetch';
 
 const GL_PAGE_SIZES = [10, 25, 50];
 
@@ -48,14 +49,8 @@ function GameLogTable({ log, games, filename, exportRef }) {
 
 export default function GameLogTab({ playerId, playerName, availableSeasons }) {
   const [gameLogSeason, setGameLogSeason] = useState(null);
-  const [gameLogCache, setGameLogCache] = useState({});
-  const [gameLogLoading, setGameLogLoading] = useState(false);
-  const [gameLogError, setGameLogError] = useState(false);
-  const [gameLogRetryCount, setGameLogRetryCount] = useState(0);
   const [glPage, setGlPage] = useState(1);
   const [glPageSize, setGlPageSize] = useState(25);
-  const gameLogAbortRef = useRef(null);
-  const gameLogFetchedRef = useRef(new Set());
   const exportRef = useRef(null);
 
   useEffect(() => {
@@ -64,40 +59,12 @@ export default function GameLogTab({ playerId, playerName, availableSeasons }) {
     }
   }, [gameLogSeason, availableSeasons]);
 
-  useEffect(() => {
-    if (!gameLogSeason) return;
-    if (gameLogFetchedRef.current.has(gameLogSeason)) return;
-    gameLogFetchedRef.current.add(gameLogSeason);
-
-    gameLogAbortRef.current?.abort();
-    const controller = new AbortController();
-    gameLogAbortRef.current = controller;
-    setGameLogLoading(true);
-    setGameLogError(false);
-
-    fetch(`/api/players/${playerId}/gamelog?season=${gameLogSeason}`, { signal: controller.signal })
-      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(d => {
-        setGameLogCache(prev => ({ ...prev, [gameLogSeason]: d }));
-        setGameLogLoading(false);
-      })
-      .catch(err => {
-        if (err.name !== 'AbortError') {
-          gameLogFetchedRef.current.delete(gameLogSeason);
-          setGameLogError(true);
-          setGameLogLoading(false);
-        }
-      });
-
-    return () => controller.abort();
-  }, [gameLogSeason, playerId, gameLogRetryCount]);
-
-  useEffect(() => () => { gameLogAbortRef.current?.abort(); }, []);
+  const gameLogUrl = gameLogSeason ? `/api/players/${playerId}/gamelog?season=${gameLogSeason}` : null;
+  const { data: currentLog, loading: gameLogLoading, error: gameLogError, retry: retryGameLog } = useSeasonScopedFetch(gameLogUrl);
 
   function handleSeasonChange(season) {
     setGameLogSeason(season);
     setGlPage(1);
-    setGameLogError(false);
   }
 
   function handlePageSizeChange(size) {
@@ -105,7 +72,6 @@ export default function GameLogTab({ playerId, playerName, availableSeasons }) {
     setGlPage(1);
   }
 
-  const currentLog = gameLogCache[gameLogSeason] ?? null;
   const allGames = currentLog?.games ?? [];
   const totalPages = Math.max(1, Math.ceil(allGames.length / glPageSize));
   const safePage = Math.min(glPage, totalPages);
@@ -147,7 +113,7 @@ export default function GameLogTab({ playerId, playerName, availableSeasons }) {
       {gameLogError && (
         <p className="status-msg error" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           Could not load game log.
-          <button type="button" className="btn-ghost compare-verdict-retry" onClick={() => { setGameLogError(false); setGameLogRetryCount(c => c + 1); }}>Try again</button>
+          <button type="button" className="btn-ghost compare-verdict-retry" onClick={retryGameLog}>Try again</button>
         </p>
       )}
       {!gameLogLoading && !gameLogError && (
