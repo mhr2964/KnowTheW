@@ -11,22 +11,23 @@ import ShotChart from './ShotChart';
 
 
 const ALL_TABLE_TYPES = [
-  { key: 'perGame',   label: 'Per Game' },
-  { key: 'totals',    label: 'Totals' },
-  { key: 'per36',     label: 'Per 36' },
-  { key: 'per100',    label: 'Per 100 Poss' },
-  { key: 'advanced',  label: 'Advanced' },
-  { key: 'gamelog',   label: 'Game Log' },
-  { key: 'splits',    label: 'Splits' },
-  { key: 'pbp',       label: 'Play-by-Play' },
-  { key: 'shotchart', label: 'Shot Chart' },
+  { key: 'perGame',     label: 'Per Game' },
+  { key: 'totals',      label: 'Totals' },
+  { key: 'per36',       label: 'Per 36' },
+  { key: 'per100',      label: 'Per 100 Poss' },
+  { key: 'advanced',    label: 'Advanced' },
+  { key: 'adjShooting', label: 'Adj. Shooting' },
+  { key: 'gamelog',     label: 'Game Log' },
+  { key: 'splits',      label: 'Splits' },
+  { key: 'pbp',         label: 'Play-by-Play' },
+  { key: 'shotchart',   label: 'Shot Chart' },
 ];
-const COMING_SOON = ['Adj. Shooting'];
+const COMING_SOON = [];
 
 const SOURCE_ACTIVE = {
   bdl:  new Set(['perGame', 'totals', 'per36']),
   wnba: new Set(['perGame', 'totals', 'per36', 'per100']),
-  espn: new Set(['perGame', 'totals', 'per36', 'advanced', 'gamelog', 'splits', 'pbp', 'shotchart']),
+  espn: new Set(['perGame', 'totals', 'per36', 'per100', 'advanced', 'adjShooting', 'gamelog', 'splits', 'pbp', 'shotchart']),
 };
 
 export default function DetailedStats({ playerId, playerName, onSaveDeck, initialTab, onTabChange }) {

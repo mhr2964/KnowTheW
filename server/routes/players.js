@@ -9,6 +9,8 @@ const router  = express.Router();
 
 const { extractTeamIdByYear, buildDetailedStats } = require('../lib/statsParser');
 const { buildAdvancedSplit, buildAdvancedCareer } = require('../lib/advancedStats');
+const { buildPer100 }          = require('../lib/per100Stats');
+const { buildAdjShooting }     = require('../lib/adjShootingStats');
 const { toColumnTable }        = require('../lib/statColumns');
 const { getPlayerPercentiles } = require('../lib/percentileClient');
 const { buildSplits }          = require('../lib/gameSplits');
@@ -87,6 +89,26 @@ router.get('/players/:id/detailed-stats', async (req, res) => {
       regularCareer: toColumnTable(buildAdvancedCareer(result.perGame.regularCareer, result.totals.regularCareer)),
       playoffs:      toColumnTable(buildAdvancedSplit(result.perGame.playoffs,      postTidByYear, teamStatsByKey, result.totals.playoffs)),
       playoffCareer: toColumnTable(buildAdvancedCareer(result.perGame.playoffCareer, result.totals.playoffCareer)),
+    };
+
+    // Per 100 Poss / Adj. Shooting: pure computation over data already fetched above
+    // (regSeasons/postSeasons + teamStatsByKey) -- no new provider calls, so no new timeout risk.
+    const per100Reg  = buildPer100({ seasons: regSeasons,  teamsById, teamIdByYear: regTidByYear,  teamStatsByKey });
+    const per100Post = buildPer100({ seasons: postSeasons, teamsById, teamIdByYear: postTidByYear, teamStatsByKey });
+    result.per100 = {
+      regular:       toColumnTable(per100Reg.table),
+      regularCareer: toColumnTable(per100Reg.career),
+      playoffs:      toColumnTable(per100Post.table),
+      playoffCareer: toColumnTable(per100Post.career),
+    };
+
+    const adjReg  = buildAdjShooting({ seasons: regSeasons,  teamsById });
+    const adjPost = buildAdjShooting({ seasons: postSeasons, teamsById });
+    result.adjShooting = {
+      regular:       toColumnTable(adjReg.table),
+      regularCareer: toColumnTable(adjReg.career),
+      playoffs:      toColumnTable(adjPost.table),
+      playoffCareer: toColumnTable(adjPost.career),
     };
 
     res.json(result);

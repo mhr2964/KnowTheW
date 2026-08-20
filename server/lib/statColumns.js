@@ -18,6 +18,8 @@ const LABELS = {
   ORB_PCT: 'ORB%', DRB_PCT: 'DRB%', TRB_PCT: 'TRB%',
   STL_PCT: 'STL%', BLK_PCT: 'BLK%', PER: 'PER',
   OWS: 'OWS', DWS: 'DWS', WS: 'WS', WS_PER48: 'WS/48',
+  // Adj. Shooting: rate stat as % of that season's league average (100 = league average).
+  R_TS_PCT: 'rTS%', R_EFG_PCT: 'reFG%', R_TPAr: 'r3PAr', R_FTr: 'rFTr',
 };
 
 const PCT_KEYS = new Set(['FG_PCT', 'FG3_PCT', 'FT_PCT', 'TS_PCT', 'EFG_PCT', 'TPAr', 'FTr', 'WS_PER48']);
