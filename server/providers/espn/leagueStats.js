@@ -363,4 +363,11 @@ module.exports = {
   extractSeasonAvg,
   extractTotalsStats,
   extractPer36Stats,
+  // exported so balldontlie/leagueStats.js's BDL-sourced distributions use the exact same
+  // qualification gate and position bucketing -- these must never drift between providers, since a
+  // player's own percentile inputs and the league distribution they're compared against have to
+  // agree on who counts as "qualified" and which position group they fall in.
+  PERCENTILE_MIN_GP,
+  PERCENTILE_MIN_MPG,
+  primaryPosition,
 };
