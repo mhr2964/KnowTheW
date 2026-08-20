@@ -9,7 +9,7 @@ import BrefTable from './BrefTable';
 export default function AdvancedTab({ data, retry }) {
   const [advSeason, setAdvSeason] = useState('regular');
   const exportRef = useRef(null);
-  const { current, pbpAllData, status } = data;
+  const { current, full, status } = data;
 
   if (status === 'error') return (
     <p className="status-msg error" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -19,11 +19,11 @@ export default function AdvancedTab({ data, retry }) {
   );
 
   // Final result ready: render exactly the full Regular/Playoffs view.
-  if (pbpAllData) {
-    const advHasPlayoffs = !!pbpAllData.playoffs;
+  if (full) {
+    const advHasPlayoffs = !!full.playoffs;
     const advSplit = (advSeason === 'playoffs' && advHasPlayoffs)
-      ? pbpAllData.playoffs
-      : pbpAllData.regular;
+      ? full.playoffs
+      : full.regular;
     return (
       <>
         <div className="stat-table-header">
@@ -38,8 +38,8 @@ export default function AdvancedTab({ data, retry }) {
           </button>
         </div>
         <BrefTable
-          regular={{ columns: pbpAllData.columns, rows: advSplit?.rows ?? [] }}
-          career={advSplit?.careerRow ? { columns: pbpAllData.columns, rows: [advSplit.careerRow] } : null}
+          regular={{ columns: full.columns, rows: advSplit?.rows ?? [] }}
+          career={advSplit?.careerRow ? { columns: full.columns, rows: [advSplit.careerRow] } : null}
           exportRef={exportRef}
         />
       </>
