@@ -10,14 +10,12 @@
 // regex. This module reuses espn/gamelog.js's LABELS/PCT_KEYS/columnFor rather than duplicating those
 // magic strings, so the two providers can never drift out of sync with what gameSplits.js expects.
 
-const { bdlFetch, withCache, withTtlCache } = require('./client');
+const { bdlFetch } = require('./client');
 const { LABELS, columnFor } = require('../espn/gamelog');
-const { isPastSeason } = require('../../lib/seasonWindow');
+const { makeSeasonCache } = require('../cache');
 const { isRealFranchise } = require('./idMap');
 
-const CURRENT_SEASON_TTL_MS = 15 * 60 * 1000;
-const bdlPastGameLogCache = {};
-const bdlCurrentGameLogCache = {};
+const gameLogCache = makeSeasonCache();
 
 const COLUMN_KEYS = Object.keys(LABELS);
 const COLUMNS = COLUMN_KEYS.map(columnFor);
@@ -132,10 +130,7 @@ async function fetchPlayerGameLogRawBdl(bdlPlayerId, season) {
 
 function fetchPlayerGameLogBdl(bdlPlayerId, season) {
   const key = `${bdlPlayerId}-${season}`;
-  if (isPastSeason(season)) {
-    return withCache(bdlPastGameLogCache, key, () => fetchPlayerGameLogRawBdl(bdlPlayerId, season));
-  }
-  return withTtlCache(bdlCurrentGameLogCache, key, CURRENT_SEASON_TTL_MS, () => fetchPlayerGameLogRawBdl(bdlPlayerId, season));
+  return gameLogCache.get(season, key, () => fetchPlayerGameLogRawBdl(bdlPlayerId, season));
 }
 
 module.exports = {

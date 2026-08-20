@@ -1,6 +1,7 @@
-// Provider factory + contract tests. These lock in the swappability seam: ESPN is the default,
-// the env var selects the implementation, unknown names fail fast, and the not-yet-implemented
-// Sportradar stub throws loudly on first data call (the M8 leak-detector behavior).
+// Provider factory + contract tests. These lock in the swappability seam: BallDontLie is the
+// default (matching production's real Heroku config), the env var selects the implementation,
+// unknown names fail fast, and the not-yet-implemented Sportradar stub throws loudly on first data
+// call (the M8 leak-detector behavior).
 
 process.env.NODE_ENV = 'test';
 
@@ -28,9 +29,9 @@ afterEach(() => {
   _resetProviderCache();
 });
 
-test('getProvider() defaults to the ESPN provider', () => {
+test('getProvider() defaults to the BallDontLie provider', () => {
   _resetProviderCache();
-  assert.strictEqual(getProvider().name, 'espn');
+  assert.strictEqual(getProvider().name, 'balldontlie');
 });
 
 test('STATS_PROVIDER selects the implementation', () => {

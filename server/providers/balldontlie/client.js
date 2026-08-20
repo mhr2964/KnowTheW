@@ -8,7 +8,8 @@
 // BALLDONTLIE_KEY is read lazily (inside bdlFetch), not at module load, so requiring this module
 // never throws even if the env var isn't set yet in a given process.
 
-const { withCache, withTtlCache } = require('../espn/client');
+const { withCache, withTtlCache } = require('../cache');
+const { MAX_RETRIES, RETRY_BASE_MS, sleep } = require('../retryFetch');
 
 const BDL = 'https://api.balldontlie.io/wnba/v1';
 
@@ -35,11 +36,6 @@ function buildQuery(params) {
   const s = qs.toString();
   return s ? `?${s}` : '';
 }
-
-const MAX_RETRIES = 6;
-const RETRY_BASE_MS = 400;
-
-function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 // Global rate limiter (sliding window) on outbound BDL requests, across every caller in this
 // process. Nothing upstream of bdlFetch bounds request RATE -- a single long career's

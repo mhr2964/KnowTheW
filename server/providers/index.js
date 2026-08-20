@@ -14,12 +14,14 @@ let override = null;
 
 /**
  * @returns {import('./SportsDataProvider').SportsDataProvider} the active data-source provider.
- * Defaults to ESPN. Throws if STATS_PROVIDER names an unknown provider (fail fast over silently
- * falling back to a source the operator didn't ask for).
+ * Defaults to BallDontLie, matching production's actual Heroku config — ESPN's endpoints are
+ * undocumented/scraped (ban + ToS risk) and BDL is the long-term target source (see
+ * docs/design/provider-architecture.md). Throws if STATS_PROVIDER names an unknown provider (fail
+ * fast over silently falling back to a source the operator didn't ask for).
  */
 function getProvider() {
   if (override) return override;
-  const key = (process.env.STATS_PROVIDER || 'espn').toLowerCase();
+  const key = (process.env.STATS_PROVIDER || 'balldontlie').toLowerCase();
   if (cached && cachedKey === key) return cached;
   const load = PROVIDERS[key];
   if (!load) {

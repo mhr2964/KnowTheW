@@ -9,17 +9,14 @@
 // captured fixture without a network call (the exact stat order + the 0-100 percent values that the
 // client renders as 3-dp fractions are the regression-prone bits).
 
-const { ESPN_WEB, withCache, withTtlCache } = require('./client');
-const { isPastSeason } = require('../../lib/seasonWindow');
+const { ESPN_WEB } = require('./client');
+const { makeSeasonCache } = require('../cache');
+const { fetchWithRetry: fetch } = require('../retryFetch');
 
 // Past seasons are over and immutable -> cache forever (safe, same reasoning as team schedule/
 // stats). The current season changes after every game, so it gets a short TTL instead of no cache
 // at all -- this route previously hit ESPN fresh on every single request, for every visitor.
-// Kept as two separate cache objects (not one shared object keyed the same way) so a season
-// crossing the past/current boundary between requests can never read the other cache's entry shape.
-const CURRENT_SEASON_TTL_MS = 15 * 60 * 1000;
-const pastGameLogCache = {};
-const currentGameLogCache = {};
+const gameLogCache = makeSeasonCache();
 
 // Presentation metadata for ESPN's gamelog stat keys. `kind` drives client formatting:
 // 'pct' values are 0-100 and render as a 3-dp fraction (e.g. 60.0 -> ".600"); 'num' renders as-is.
@@ -84,10 +81,7 @@ async function fetchPlayerGameLogRaw(playerId, season) {
 /** Fetch + normalize a player's gamelog for a season. Returns null on a non-2xx response. */
 function getPlayerGameLog(playerId, season) {
   const key = `${playerId}-${season ?? 'current'}`;
-  if (isPastSeason(season)) {
-    return withCache(pastGameLogCache, key, () => fetchPlayerGameLogRaw(playerId, season));
-  }
-  return withTtlCache(currentGameLogCache, key, CURRENT_SEASON_TTL_MS, () => fetchPlayerGameLogRaw(playerId, season));
+  return gameLogCache.get(season, key, () => fetchPlayerGameLogRaw(playerId, season));
 }
 
 /**
@@ -116,11 +110,9 @@ function extractGameLogEvents(data) {
 }
 
 // Same ESPN endpoint as getPlayerGameLog above, parsed into an unrelated shape (flat event array
-// vs {columns, games}) — kept on its own pair of cache objects rather than sharing pastGameLogCache/
-// currentGameLogCache, same reasoning as that pair: a shape mismatch on a season-boundary reclass
-// would be a real bug, not just a wasted cache slot.
-const pastGameLogEventsCache = {};
-const currentGameLogEventsCache = {};
+// vs {columns, games}) — kept on its own season cache rather than sharing gameLogCache above: a
+// shape mismatch on a season-boundary reclass would be a real bug, not just a wasted cache slot.
+const gameLogEventsCache = makeSeasonCache();
 
 async function fetchGameLogEventsRaw(playerId, season, seasontype) {
   const url = new URL(`${ESPN_WEB}/athletes/${playerId}/gamelog`);
@@ -134,10 +126,7 @@ async function fetchGameLogEventsRaw(playerId, season, seasontype) {
 /** Fetch the gamelog and return per-event metadata for PBP selection. Null on non-2xx. */
 function getGameLogEvents(playerId, season, seasontype) {
   const key = `${playerId}-${season ?? 'current'}-${seasontype ?? 2}`;
-  if (isPastSeason(season)) {
-    return withCache(pastGameLogEventsCache, key, () => fetchGameLogEventsRaw(playerId, season, seasontype));
-  }
-  return withTtlCache(currentGameLogEventsCache, key, CURRENT_SEASON_TTL_MS, () => fetchGameLogEventsRaw(playerId, season, seasontype));
+  return gameLogEventsCache.get(season, key, () => fetchGameLogEventsRaw(playerId, season, seasontype));
 }
 
 module.exports = {

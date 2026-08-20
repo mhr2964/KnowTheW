@@ -4,6 +4,8 @@
 // inside the ESPN provider, not in the shared lib/.
 
 const { formatSeedLabel } = require('../../lib/ordinal');
+const { withCache, withTtlCache } = require('../cache');
+const { fetchWithRetry: fetch } = require('../retryFetch');
 
 const ESPN      = 'https://site.api.espn.com/apis/site/v2/sports/basketball/wnba';
 const ESPN_WEB  = 'https://site.web.api.espn.com/apis/common/v3/sports/basketball/wnba';
@@ -19,33 +21,6 @@ const rosterData = {};
 const playerById = {};
 const teamSeasonStatsCache = {};
 const teamPtsAllowedCache  = {};
-
-// Generic cache wrapper: returns cached value if present, else calls fn() and caches the result.
-// Caches null on network error so a flaky upstream doesn't keep hammering on retries.
-async function withCache(cache, key, fn) {
-  if (key in cache) return cache[key];
-  try { return (cache[key] = await fn()); }
-  catch { return (cache[key] = null); }
-}
-
-// TTL variant of withCache, for data that changes (current-season stats) rather than immutable
-// past-season data. Serves the stale value on a transient fetch error instead of throwing, so a
-// flaky upstream degrades to "a bit old" rather than a failed request. Entries are {value, at}
-// objects — keep this on its own cache object per call site, never share one with withCache above,
-// or a season-boundary reclassification (current -> past) could read the wrong shape back.
-async function withTtlCache(cache, key, ttlMs, fn) {
-  const entry = cache[key];
-  if (entry && Date.now() - entry.at < ttlMs) return entry.value;
-  try {
-    const value = await fn();
-    cache[key] = { value, at: Date.now() };
-    return value;
-  } catch {
-    if (entry) return entry.value;
-    cache[key] = { value: null, at: Date.now() };
-    return null;
-  }
-}
 
 async function fetchTeams() {
   const [teamsRes, standings] = await Promise.all([

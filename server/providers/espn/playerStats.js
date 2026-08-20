@@ -9,6 +9,7 @@
 // the normalization this file's own header comment previously flagged as deferred.
 
 const { ESPN_WEB, withTtlCache } = require('./client');
+const { fetchWithRetry: fetch } = require('../retryFetch');
 
 // ESPN's raw per-category stat encoding: `names` is a parallel array to `stats`; a composite name
 // like 'fieldGoalsMade-fieldGoalsAttempted' pairs with a "N-M" string value and gets split into two

@@ -11,12 +11,10 @@
 // Zone tracking only goes back to 2022 (SHOT_CHART_MIN_SEASON, ./client.js) -- much newer than
 // BDL_MIN_SEASON's 2008 floor for the rest of this provider's data.
 
-const { bdlFetch, withCache, withTtlCache } = require('./client');
-const { isPastSeason } = require('../../lib/seasonWindow');
+const { bdlFetch } = require('./client');
+const { makeSeasonCache } = require('../cache');
 
-const CURRENT_SEASON_TTL_MS = 15 * 60 * 1000;
-const bdlPastShotChartCache = {};
-const bdlCurrentShotChartCache = {};
+const shotChartCache = makeSeasonCache();
 
 // Fixed display order -- rim outward, then backcourt last (near-always zero, kept for honesty
 // rather than silently dropped).
@@ -58,10 +56,7 @@ async function fetchPlayerShotChartRawBdl(bdlPlayerId, season) {
 
 function fetchPlayerShotChartBdl(bdlPlayerId, season) {
   const key = `${bdlPlayerId}-${season}`;
-  if (isPastSeason(season)) {
-    return withCache(bdlPastShotChartCache, key, () => fetchPlayerShotChartRawBdl(bdlPlayerId, season));
-  }
-  return withTtlCache(bdlCurrentShotChartCache, key, CURRENT_SEASON_TTL_MS, () => fetchPlayerShotChartRawBdl(bdlPlayerId, season));
+  return shotChartCache.get(season, key, () => fetchPlayerShotChartRawBdl(bdlPlayerId, season));
 }
 
 module.exports = {

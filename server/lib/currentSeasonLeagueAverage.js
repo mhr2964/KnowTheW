@@ -8,7 +8,7 @@
 // synchronous accessor that reads this cache without forcing every caller to become async.
 
 const { getProvider } = require('../providers');
-const { withTtlCache } = require('../providers/espn/client');
+const { withTtlCache } = require('../providers/cache');
 const { mapWithConcurrency } = require('./concurrency');
 const { isPastSeason } = require('./seasonWindow');
 
