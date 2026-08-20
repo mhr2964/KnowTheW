@@ -164,7 +164,7 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
         ) : isPbp ? (
           <PlayByPlayTab data={pbpData} totalSeasons={availableSeasons.length} retry={retryBackgroundStats} />
         ) : isShotChart ? (
-          <ShotChart playerId={playerId} availableSeasons={availableSeasons} />
+          <ShotChart playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} />
         ) : (
           <>
             <div className="stat-table-header">

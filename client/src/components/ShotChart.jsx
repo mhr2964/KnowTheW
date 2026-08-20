@@ -9,6 +9,25 @@ async function parseShotChart(r) {
   return r.json();
 }
 
+function toCsvCell(val) {
+  const s = val === null || val === undefined ? '' : String(val);
+  return /["\n,]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function downloadZonesCsv(filename, zones) {
+  const lines = [['Zone', 'FGM', 'FGA', 'FG%'].map(toCsvCell).join(',')];
+  for (const z of zones) {
+    lines.push([z.label, z.fgm, z.fga, z.fga > 0 ? (z.fgPct * 100).toFixed(1) : ''].map(toCsvCell).join(','));
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // Hand-rolled SVG shot chart (no chart lib in the project, see FingerprintRadar.jsx). BDL's
 // shot-location data is zone-aggregated FG% (7 real zones), NOT per-shot coordinates -- there is
 // no x/y to plot, so this is a stylized half-court with each zone as a fillable region, colored by
@@ -109,7 +128,7 @@ function CourtDiagram({ zones, onHover }) {
   );
 }
 
-export default function ShotChart({ playerId, availableSeasons }) {
+export default function ShotChart({ playerId, playerName, availableSeasons }) {
   const [season, setSeason] = useState(null);
   const [hoverZone, setHoverZone] = useState(null);
 
@@ -127,6 +146,15 @@ export default function ShotChart({ playerId, availableSeasons }) {
           <select className="gl-select" value={season ?? ''} onChange={e => setSeason(e.target.value)}>
             {availableSeasons.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
+        )}
+        {chart && (
+          <button
+            type="button"
+            className="btn-ghost bref-export-btn"
+            onClick={() => downloadZonesCsv(`${playerName}-shotchart-${season}.csv`, chart.zones)}
+          >
+            Export CSV
+          </button>
         )}
       </div>
 

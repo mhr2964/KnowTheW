@@ -120,7 +120,14 @@
 
 .bref-table {
   width: 100%;
-  border-collapse: collapse;
+  /* Chromium detaches collapsed borders from position:sticky cells mid-scroll (the collapsed
+     grid is painted by the table's own border-collapse algorithm, not per-cell, so it can lag
+     a frame behind a sticky cell's compositor-driven position) -- this is the gap/seam that
+     briefly reveals scrolling content behind the sticky Season/Team columns. `separate` with
+     zero spacing renders identically at rest but keeps each cell's border tied to its own box,
+     so it moves in lockstep with the sticky compositing layer. */
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 0.78rem;
   white-space: nowrap;
   /* Column 1's sticky-offset partner (below) reads this same value, so the two can't drift out
@@ -209,6 +216,10 @@
 .bref-table td:first-child { font-weight: 500; }
 .bref-table td:last-child { border-right: none; }
 .bref-table tbody tr:last-child:not(.career-row) td { border-bottom: none; }
+/* separate + border-spacing:0 no longer merges a row's border-bottom with the next row's
+   border-top the way collapse did -- without this, the row right before the totals row would
+   show both its own 1px bottom border and career-row's 2px top border stacked (3px total). */
+.bref-table tbody tr:has(+ .career-row) td { border-bottom: none; }
 .bref-table tbody tr:hover:not(.career-row) { background: rgba(255,107,0,0.05); }
 
 .career-row td {
