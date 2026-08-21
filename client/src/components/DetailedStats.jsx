@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import StudyFlow from './StudyFlow';
-import BrefTable from './BrefTable';
+import BrefTable, { fmt } from './BrefTable';
 import TableToolbar from './TableToolbar';
 import { buildStudyDeck } from '../lib/studyData';
 import useLazyFetch from '../hooks/useLazyFetch';
@@ -51,6 +51,7 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
   const [showPercentiles, setShowPercentiles] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const exportRef = useRef(null);
+  const navRef = useRef(null);
 
   const { data, loading, error, refetch: refetchCareer } = useLazyFetch(
     `/api/players/${playerId}/detailed-stats`,
@@ -88,6 +89,22 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
     return seasons.sort((a, b) => b.localeCompare(a));
   }, [data]);
 
+  // Mobile-only "glance" strip (see .quick-stat-strip) -- the current season's PTS/REB/AST/FG%
+  // right under the hero, zero extra taps/fetches (reuses the perGame data this component already
+  // has). Matches on availableSeasons[0] rather than assuming row order, same as every other
+  // "current season" lookup in this file/GameLogTab/etc.
+  const quickStats = useMemo(() => {
+    const cols = data?.perGame?.regular?.columns;
+    const rows = data?.perGame?.regular?.rows;
+    if (!cols?.length || !rows?.length || !availableSeasons.length) return null;
+    const idx = key => cols.findIndex(c => c.key === key);
+    const [ptsIdx, rebIdx, astIdx, fgPctIdx] = [idx('PTS'), idx('REB'), idx('AST'), idx('FG_PCT')];
+    const season = availableSeasons[0];
+    const row = rows.find(r => String(r[0]) === season);
+    if (!row) return null;
+    return { season, pts: row[ptsIdx], reb: row[rebIdx], ast: row[astIdx], fgPct: row[fgPctIdx] };
+  }, [data, availableSeasons]);
+
   // Starts as soon as availableSeasons is known (not gated behind opening the PBP/Advanced tabs) --
   // see the hook for why it's fully sequential rather than firing everything at once. Gated to
   // source === 'espn': that's the only source with the pbp/advanced tabs enabled at all (see
@@ -103,6 +120,14 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
     setActiveType(key);
     onTabChange?.(key);
     setMobileNavOpen(false);
+    // React Router's navigate({replace:true}) (see PlayerRoutePage's onTabChange) doesn't reset
+    // scroll position, and this component doesn't remount on a tab switch (only on player switch,
+    // via PlayerRoutePage's key={id}) -- without this, picking a new tab from deep in a scrolled
+    // table left you at that same scrollY against the NEW tab's (often much shorter) content, with
+    // the sticky header/nav overlapping whatever was left mid-page. block:'start' respects the
+    // sticky toggle's own top offset rather than jumping to the page's absolute top, so this is a
+    // no-op on desktop (tabs live at the top there already, not sticky).
+    navRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
   }
 
   // Shared by every tab (generic BrefTable tabs and all 5 raw-tab components) -- each tab builds
@@ -168,7 +193,16 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
   return (
     <>
       <div className="detailed-stats">
-        <div className="stat-type-nav">
+        {quickStats && (
+          <div className="quick-stat-strip">
+            <span className="quick-stat-season">{quickStats.season}</span>
+            <span className="quick-stat-item"><strong>{fmt('num', quickStats.pts)}</strong> PTS</span>
+            <span className="quick-stat-item"><strong>{fmt('num', quickStats.reb)}</strong> REB</span>
+            <span className="quick-stat-item"><strong>{fmt('num', quickStats.ast)}</strong> AST</span>
+            <span className="quick-stat-item"><strong>{fmt('pct', quickStats.fgPct)}</strong> FG%</span>
+          </div>
+        )}
+        <div className="stat-type-nav" ref={navRef}>
           <button
             type="button"
             className="stat-type-nav-toggle"

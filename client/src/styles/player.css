@@ -40,6 +40,11 @@
 /* ── Detailed Stats ── */
 .detailed-stats { margin-bottom: 2.5rem; }
 
+/* Mobile-only "glance" strip -- current season's PTS/REB/AST/FG% right under the hero, no taps
+   needed. Hidden on desktop (see player-hero comment: the full table is already one glance away
+   with no scroll penalty there, so a second summary would be pure clutter, not a courtside aid). */
+.quick-stat-strip { display: none; }
+
 /* Wraps the tab strip so the mobile dropdown panel (below, at the 600px breakpoint) can anchor
    to it with position:absolute instead of the whole page. Toggle/backdrop are mobile-only --
    hidden here, shown in responsive.css. */
@@ -96,6 +101,14 @@
 }
 
 .toolbar-leading, .toolbar-trailing { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; }
+
+/* Study/Export's mobile "More" menu -- display:contents makes the wrapper invisible to layout at
+   desktop widths, so Study/Export render exactly where they always have; responsive.css turns this
+   into a real toggle+dropdown at the 600px breakpoint. */
+.toolbar-more { display: contents; }
+.toolbar-more-toggle { display: none; }
+.toolbar-more-backdrop { display: none; }
+.toolbar-more-menu { display: contents; }
 
 .stat-season-bar { display: flex; gap: 0.25rem; }
 

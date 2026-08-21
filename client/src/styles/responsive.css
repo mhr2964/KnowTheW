@@ -14,20 +14,55 @@
   .team-header-meta { font-size: 0.78rem; }
   .card-field-value { font-size: 1.2rem; }
   .study-fullscreen { padding: 1rem; }
-  .player-hero { flex-direction: column; align-items: center; text-align: center; gap: 1rem; }
-  .player-bio-grid { justify-content: center; }
+  /* Compact hero: a big 120px glamour photo + loose padding was pushing the stat table (the
+     actual payload) well below the fold on a real phone. Smaller photo, tighter padding/gaps --
+     same info, less scroll to reach it. */
+  .player-hero { flex-direction: column; align-items: center; text-align: center; gap: 0.6rem; padding: 1rem; margin-bottom: 1rem; }
+  .player-hero-img { width: 76px; height: 76px; }
+  .player-hero-img.placeholder { font-size: 1.5rem; }
   .player-hero-meta { justify-content: center; }
   .player-hero-actions { justify-content: center; }
 
+  /* Flex-wrap sized each row by its own items' content width, so Position/Height/Weight/Age (short)
+     made a full row while Experience/College (longer) made a visibly different-width row below it,
+     and Hometown sat alone on a third -- a grid gives every item an equal-width column instead, so
+     rows line up regardless of how many items land in each one. */
+  .player-bio-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+    justify-items: center; width: 100%; max-width: 320px; margin-inline: auto;
+  }
+
+  /* Current season's PTS/REB/AST/FG% right under the hero -- see DetailedStats.jsx's quickStats
+     memo. The one thing a courtside "what's this player doing" glance actually wants, above the
+     tab strip and any tap. */
+  .quick-stat-strip {
+    display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+    gap: 0.4rem 0.9rem; padding: 0.55rem 0.9rem; margin-bottom: 0.6rem;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  }
+  .quick-stat-season {
+    font-size: 0.66rem; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: var(--tracking-label);
+  }
+  .quick-stat-item { font-size: 0.76rem; color: var(--text-muted); }
+  .quick-stat-item strong { font-size: 1rem; font-weight: 800; color: var(--accent); margin-right: 0.2em; }
+
   /* 10 stat-type tabs wrapped into 3 messy rows at this width -- collapse to a single toggle
-     showing the active tab, opening a dropdown list of all of them instead. */
+     showing the active tab, opening a dropdown list of all of them instead. Sticky lives on
+     .stat-type-nav (the wrapper), not the toggle button itself -- a sticky element can only float
+     within its immediate parent's box, and the toggle's own parent is only ever as tall as the
+     toggle (the dropdown list is display:none when closed), leaving zero room to stick. .stat-type-
+     nav's parent is .detailed-stats, which spans the whole tab (nav + table), giving the sticky
+     wrapper real room to hold position while scrolling through a long table. Top offset matches
+     .header's own rendered height at this breakpoint (a single row, ~69px; see the 480px tier below
+     for the 2-row-header offset once search wraps). */
+  .stat-type-nav { position: sticky; top: 72px; z-index: 11; }
   .stat-type-nav-toggle {
     display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
     width: 100%; min-height: var(--touch-target-min);
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     color: var(--text); font-size: 0.85rem; font-weight: 700;
     padding: 0.6rem 0.9rem; cursor: pointer;
-    position: relative; z-index: 11;
   }
   .stat-type-nav-caret { color: var(--text-muted); transition: transform 0.15s; }
   .stat-type-nav-toggle[aria-expanded="true"] .stat-type-nav-caret { transform: rotate(180deg); }
@@ -55,6 +90,29 @@
     display: flex; align-items: center;
   }
   .stat-type-tabs.open .stat-type-tab.active { border-color: var(--border); background: var(--surface-2); }
+
+  /* Study this table / Export CSV tucked behind a "More" toggle -- neither is a courtside action,
+     and they were the two extra controls making the toolbar read as a wall of buttons wrapping to
+     a second row. Percentiles (a fast "is this good" read) stays in the main row. */
+  .toolbar-more { display: block; position: relative; }
+  .toolbar-more-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: var(--touch-target-min); min-height: var(--touch-target-min);
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text-muted); font-size: 1.2rem; line-height: 1; cursor: pointer;
+  }
+  .toolbar-more-toggle:hover { color: var(--text); border-color: var(--text-muted); }
+  .toolbar-more-backdrop { display: block; position: fixed; inset: 0; z-index: 9; background: rgba(0,0,0,0.35); }
+  .toolbar-more-menu { display: none; }
+  .toolbar-more-menu.open {
+    display: flex; flex-direction: column; gap: 0.4rem;
+    position: absolute; top: calc(100% + 0.35rem); right: 0; z-index: 10;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 0.5rem; min-width: 180px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .toolbar-more-menu.open .study-trigger-btn, .toolbar-more-menu.open .bref-export-btn { width: 100%; text-align: left; }
+
   .bref-table { font-size: 0.7rem; }
   .bref-table th, .bref-table td { padding: 0.3rem 0.45rem; }
 
@@ -118,6 +176,19 @@
   /* GS/ORB/DRB/PF on Per Game and Totals only (BrefTable.jsx gates by viewMode) -- TRB/G/MP/
      shooting-pct already cover the same ground more usefully at a glance at this width. */
   .bref-col-low-priority { display: none; }
+
+  /* College/Hometown are trivia, not something a courtside glance needs -- see PlayerPage.jsx's
+     bioItems comment. Position/Height/Weight/Age/Experience stay. */
+  .bio-low-priority { display: none; }
+
+  /* Stat-definition "?" popovers are a research feature, not a courtside one, and they were eating
+     width in the table header row exactly where it's tightest at this breakpoint. Label text stays. */
+  .stat-help-mark { display: none; }
+
+  /* .header wraps to 2 rows below this breakpoint (search drops to its own line) -- the sticky tab
+     nav's top offset has to grow to match, or it would sit under the wrapped search row instead
+     of right below the header. */
+  .stat-type-nav { top: 112px; }
 
   /* Roster table's 4 columns each carry full 1rem horizontal cell padding even though Jersey/Pos
      hold 1-2 characters -- at 320px that padding alone was enough to overflow the table ~8px

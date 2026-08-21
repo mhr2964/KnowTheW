@@ -17,8 +17,11 @@ export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onT
       label: 'Experience',
       value: `${player.experience} yr${player.experience !== 1 ? 's' : ''}`,
     },
-    player.college && { label: 'College', value: player.college },
-    player.birthPlace && { label: 'Hometown', value: player.birthPlace },
+    // College/Hometown are the longest values and the least likely to matter at a quick mobile
+    // glance (a courtside "who is this, what are they averaging" check) -- hidden at the
+    // narrowest tier via .bio-low-priority, same pattern BrefTable already uses for GS/OREB/DREB/PF.
+    player.college && { label: 'College', value: player.college, lowPriority: true },
+    player.birthPlace && { label: 'Hometown', value: player.birthPlace, lowPriority: true },
   ].filter(Boolean);
 
   return (
@@ -40,7 +43,7 @@ export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onT
           {bioItems.length > 0 && (
             <div className="player-bio-grid">
               {bioItems.map(item => (
-                <div key={item.label} className="player-bio-item">
+                <div key={item.label} className={`player-bio-item${item.lowPriority ? ' bio-low-priority' : ''}`}>
                   <span className="player-bio-label">{item.label}</span>
                   <span className="player-bio-value">{item.value}</span>
                 </div>
