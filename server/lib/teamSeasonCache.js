@@ -48,7 +48,17 @@ async function getCached(collectionName, key) {
   try {
     const doc = await db.collection(collectionName).findOne({ _id: key });
     if (!doc) return null;
-    if (doc.payloadGz) return decompress(doc.payloadGz.buffer ?? doc.payloadGz);
+    if (doc.payloadGz) {
+      // The real MongoDB driver round-trips this through BSON and hands back a Binary wrapper
+      // (not a Buffer -- Buffer.isBuffer() is false on it), so the actual bytes live at .buffer.
+      // A plain Buffer (e.g. an in-memory fake db used in tests, which stores the value as-is with
+      // no BSON round-trip) IS already what we want -- reading .buffer off a real Buffer would grab
+      // its underlying ArrayBuffer, which can be larger/offset from the actual content and silently
+      // corrupt the read. Confirmed by CI: test/balldontlie-cache-collision.test.js's fake db hit
+      // exactly this.
+      const buf = Buffer.isBuffer(doc.payloadGz) ? doc.payloadGz : doc.payloadGz.buffer;
+      return decompress(buf);
+    }
     return doc.payload ?? null; // legacy uncompressed shape, written before this change
   } catch (err) {
     console.warn(`[teamSeasonCache] read failed coll=${collectionName} key=${key}:`, err.message);
