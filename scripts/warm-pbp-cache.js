@@ -19,7 +19,7 @@
 // milliseconds and move on, so a re-run only does new work, not a full re-fetch. No checkpoint file
 // needed for that reason.
 
-process.env.BDL_RATE_LIMIT_PER_MIN = process.env.BDL_RATE_LIMIT_PER_MIN || '200';
+process.env.BDL_RATE_LIMIT_PER_MIN = process.env.BDL_RATE_LIMIT_PER_MIN || '100';
 
 require('dotenv').config();
 const { whenConnected } = require('../server/db');
@@ -30,12 +30,14 @@ const { isPastSeason } = require('../server/lib/seasonWindow');
 // handles) would stall the ENTIRE run on one player forever, with no live HTTP request or Heroku
 // router to time it out the way routes/playerAnalysis.js's withSeasonTimeout does. This wraps every
 // provider call in a hard per-call budget so one bad player/season can only ever cost this much
-// time, never the whole run. Calibrated to the throttle above, not copied from the 20s live-route
-// budget: a full season can need ~120 BDL requests (see gamePbpCache.js's header comment), which at
-// this script's own BDL_RATE_LIMIT_PER_MIN takes real time to clear even when nothing's wrong --
-// confirmed live: a 30s budget at an earlier, more conservative 80/min throttle caused every
-// multi-season real player to falsely "time out" well before finishing, not because anything hung.
-const CALL_TIMEOUT_MS = 60000;
+// time, never the whole run. Calibrated generously, not copied from the 20s live-route budget:
+// confirmed live that a genuinely-rate-limited BDL request can carry a real `Retry-After: 60` header
+// (retryFetch.js/client.js honor it literally, not the ~25s pure-exponential-backoff ceiling that
+// applies without one) -- a season hitting that isn't stuck, it's correctly waiting out BDL's own
+// instructed cooldown. 75s leaves real margin above a single 60s Retry-After wait plus request
+// overhead, so this only ever fires on an actual hang, not a season that's about to legitimately
+// succeed.
+const CALL_TIMEOUT_MS = 75000;
 function withTimeout(promise, label) {
   return Promise.race([
     promise,
