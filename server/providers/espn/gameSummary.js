@@ -10,6 +10,7 @@
 // captured summary fixture — that's the regression net for this numerically-sensitive code.
 
 const espn = require('./client');
+const { getCachedRawGameData } = require('../gamePbpCache');
 
 // Find the target player's team ID from the boxscore players array.
 function findTargetTeamId(summary, pid) {
@@ -186,8 +187,11 @@ function extractBoxscoreTeamStats(summary, targetPlayerId) {
  *   fetched=false means the source returned no summary (ESPN failure); distinct from a fetched
  *   summary with no usable PBP (onCourt=null). The raw summary never leaves this function.
  */
-async function getGamePbpStats(eventId, playerId) {
-  const summary = await espn.fetchGameSummary(eventId);
+async function getGamePbpStats(eventId, playerId, season) {
+  // fetchGameSummary(eventId) is already a single, whole-game, non-player-specific call -- cached
+  // per-game (past seasons only) so every player who shares this game reuses the same fetch. See
+  // gamePbpCache.js and balldontlie/plays.js's fetchRawGameDataBdl for the equivalent BDL split.
+  const summary = await getCachedRawGameData('espn', eventId, season, () => espn.fetchGameSummary(eventId));
   if (!summary) return { fetched: false, onCourt: null, boxscore: null };
   return {
     fetched: true,

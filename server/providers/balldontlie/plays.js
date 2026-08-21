@@ -19,6 +19,7 @@
 // against captured fixtures -- same regression-net rationale as the ESPN version.
 
 const { bdlFetch } = require('./client');
+const { getCachedRawGameData } = require('../gamePbpCache');
 
 // --- per-game roster + name matching ---
 
@@ -299,18 +300,36 @@ async function extractBoxscoreTeamStatsBdl(bdlGameId, roster, targetPlayerId) {
 
 // --- public contract methods ---
 
-async function getGamePbpStatsBdl(bdlGameId, bdlPlayerId) {
+// The 3 BDL calls below (/plays, roster via /player_stats, /team_stats) are all per-GAME, not
+// per-player -- nothing here reads bdlPlayerId. Split out so getCachedRawGameData (gamePbpCache.js)
+// can cache this once per game and reuse it across every player who shares that game, instead of
+// re-fetching identically for each player individually.
+async function fetchRawGameDataBdl(bdlGameId) {
   const [plays, roster] = await Promise.all([
     bdlFetch('/plays', { game_id: bdlGameId, per_page: 100 }),
     fetchGameRoster(bdlGameId),
   ]);
-  if (!plays?.data) return { fetched: false, onCourt: null, boxscore: null };
+  if (!plays?.data) return null;
 
+  const teamStatsData = await bdlFetch('/team_stats', { 'game_ids[]': [bdlGameId] });
+  return { plays: plays.data, roster, teamStatsRows: teamStatsData?.data ?? [] };
+}
+
+// Pure, local, no network -- the only part of this that's actually player-specific.
+function computePlayerPbpStatsBdl(raw, bdlPlayerId) {
+  if (!raw) return { fetched: false, onCourt: null, boxscore: null };
+  const pid = String(bdlPlayerId);
+  const target = raw.roster.find(p => p.id === pid);
   return {
     fetched: true,
-    onCourt: computeOnCourtStatsBdl(plays.data, bdlPlayerId, roster),
-    boxscore: await extractBoxscoreTeamStatsBdl(bdlGameId, roster, bdlPlayerId),
+    onCourt: computeOnCourtStatsBdl(raw.plays, bdlPlayerId, raw.roster),
+    boxscore: target ? buildBoxscoreFromRows(raw.teamStatsRows, target.teamId) : null,
   };
+}
+
+async function getGamePbpStatsBdl(bdlGameId, bdlPlayerId, season) {
+  const raw = await getCachedRawGameData('balldontlie', bdlGameId, season, () => fetchRawGameDataBdl(bdlGameId));
+  return computePlayerPbpStatsBdl(raw, bdlPlayerId);
 }
 
 // Resolves the player's BDL team for the season from their own /player_stats response (self-
@@ -338,5 +357,5 @@ module.exports = {
   getGamePbpStatsBdl, getRegularSeasonEventIdsBdl,
   // exported for characterization tests:
   computeOnCourtStatsBdl, extractBoxscoreTeamStatsBdl, buildBoxscoreFromRows,
-  inferStartingFive, fetchGameRoster,
+  inferStartingFive, fetchGameRoster, fetchRawGameDataBdl, computePlayerPbpStatsBdl,
 };

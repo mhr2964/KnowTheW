@@ -17,7 +17,6 @@ const { computeSeasonOnOff }                                             = requi
 const { computePbpTableRow, computeCareerRow, PBP_TABLE_HEADERS }        = require('../lib/analysis/pbpTable');
 const { getProvider }                                                    = require('../providers');
 const { fetchPlayerSeasonData }                                         = require('../lib/playerSeasonData');
-const { getCachedGamePbpStats }                                         = require('../providers/gamePbpCache');
 
 // On/Off-Court Impact: team net rating (per 100 possessions) while the player is on vs off court.
 // PBP-derived; regular season only. Returns null result when < MIN_ON_GAMES games have usable PBP.
@@ -56,9 +55,10 @@ function withSeasonTimeout(promise) {
 }
 
 // Shared by both routes below: one season's PBP table row, live-fetching that season's games
-// from the provider. Per-game results are cached (past seasons only -- see gamePbpCache.js) via
-// getCachedGamePbpStats, the same primitive getSeasonPBPSummary/Advanced uses -- a season already
-// warmed by anyone opening either tab benefits both.
+// from the provider. Per-GAME raw fetches are cached (past seasons only, see gamePbpCache.js)
+// inside getGamePbpStats itself, the same primitive getSeasonPBPSummary/Advanced uses -- a season
+// warmed by anyone opening either tab benefits both, and players sharing a game only pay the real
+// fetch cost once between them.
 async function computeSeasonPbpRow(playerId, pgTable, I, season) {
   const playerRow = pgTable.rows.find(r => String(r[I.SEASON_ID]) === season);
   if (!playerRow) return null;
@@ -67,7 +67,7 @@ async function computeSeasonPbpRow(playerId, pgTable, I, season) {
   const eventIds = await provider.getRegularSeasonEventIds(playerId, season, 2);
   if (!eventIds?.length) return null;
 
-  const pbpResults = await Promise.all(eventIds.map(id => getCachedGamePbpStats(provider, id, playerId, season)));
+  const pbpResults = await Promise.all(eventIds.map(id => provider.getGamePbpStats(id, playerId, season)));
   const gp      = playerRow[I.GP]  ?? 0;
   const minPg   = playerRow[I.MIN] ?? 0;
   const minutes = Math.round(minPg * gp);

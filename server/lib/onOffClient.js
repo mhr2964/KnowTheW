@@ -20,7 +20,7 @@ async function computeSeasonOnOffUncached(playerId, season, seasontype = 2) {
   const eventIds = await getProvider().getRegularSeasonEventIds(playerId, season, seasontype);
   if (!eventIds?.length) return null;
 
-  const pbpResults   = await Promise.all(eventIds.map(id => getProvider().getGamePbpStats(id, playerId)));
+  const pbpResults   = await Promise.all(eventIds.map(id => getProvider().getGamePbpStats(id, playerId, season)));
   const fetchedCount = pbpResults.filter(r => r.fetched).length;
   const onoff        = computeOnOff(pbpResults);
   const complete     = fetchedCount === eventIds.length;

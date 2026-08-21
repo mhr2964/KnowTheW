@@ -15,7 +15,6 @@ const leagueStats = require('./leagueStats');
 const { SportsDataProvider } = require('../SportsDataProvider');
 const { withValidation } = require('../validation');
 const { aggregatePBPSummary } = require('../pbpAggregate');
-const { getCachedGamePbpStats } = require('../gamePbpCache');
 
 class EspnProvider extends SportsDataProvider {
   get name() { return 'espn'; }
@@ -45,7 +44,7 @@ class EspnProvider extends SportsDataProvider {
   // Must return null rather than inherit the base class's throwing default: STATS_PROVIDER defaults
   // to 'espn' (providers/index.js), so local dev and any non-BDL env would otherwise 502 here.
   getPlayerShotChart() { return null; }
-  getGamePbpStats(eventId, playerId) { return gameSummary.getGamePbpStats(eventId, playerId); }
+  getGamePbpStats(eventId, playerId, season) { return gameSummary.getGamePbpStats(eventId, playerId, season); }
   async getRegularSeasonEventIds(playerId, season, seasontype = 2) {
     const events = await gamelog.getGameLogEvents(playerId, season, seasontype);
     if (!events) return null;
@@ -64,12 +63,13 @@ class EspnProvider extends SportsDataProvider {
   // analysis layer only ever sees the resolved per-game averages, never ESPN's PBP mechanics.
   // Aggregation itself is shared with the BallDontLie provider (pure reduction, no ESPN-specific
   // logic once you have per-game {fetched,onCourt,boxscore} results) -- see ../pbpAggregate.js.
-  // Per-game results are cached (past seasons only) via getCachedGamePbpStats -- see
-  // ../gamePbpCache.js -- the same primitive computeSeasonPbpRow (the PBP table route) uses.
+  // Per-game raw fetch is cached (past seasons only) inside getGamePbpStats itself -- see
+  // gameSummary.js and ../gamePbpCache.js -- so a season warmed by either tab benefits both, and
+  // players sharing a game only pay the real fetch cost once between them.
   async getSeasonPBPSummary(playerId, season, seasontype = 2) {
     const eventIds = await this.getRegularSeasonEventIds(playerId, season, seasontype);
     if (!eventIds?.length) return null;
-    return aggregatePBPSummary(eventIds, id => getCachedGamePbpStats(this, id, playerId, season));
+    return aggregatePBPSummary(eventIds, id => this.getGamePbpStats(id, playerId, season));
   }
 
   // --- League-wide stats (percentile system) ---
