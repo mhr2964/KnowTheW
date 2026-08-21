@@ -52,11 +52,15 @@ const CORNER_TOP_Y = 200; // 14ft from baseline -- where the straight corner lin
 const LANE = { x1: 170, x2: 330, y1: 150 }; // 16ft-wide lane, 19ft from baseline to free-throw line
 const RA_R = 40; // 4ft restricted-area radius
 
-// fgPct -> fill color. True 0-100% domain (nothing clamped/clipped -- 0% and 100% are the real
-// endpoints), but WNBA zone FG% almost never touches either extreme (real zones cluster ~35-80%),
-// so a straight linear map would waste most of the ramp's contrast on values that never occur. This
-// sigmoid re-centers the steepest color change on that realistic band (center 0.5) so real zones
-// spread across most of the ramp -- diverging cold-blue/neutral-grey/hot-orange, not a single hue.
+// fgPct -> fill color, anchored to THAT ZONE's own league-average FG% (leagueAvgPct), not a flat
+// 50% -- restricted-area league average runs ~60-65%, mid-range ~35-40%, 3PT ~30-35%, so the same
+// raw FG% means something very different depending on the zone (50% from three is excellent; 50% at
+// the rim is below average). A flat midpoint colored both roughly the same, which is exactly wrong.
+// The sigmoid re-centers the steepest color change on the anchor point so a zone shooting near its
+// own league average reads as neutral grey, with hot/cold extending symmetrically from there --
+// diverging cold-blue/neutral-grey/hot-orange, not a single hue. Falls back to a flat 0.5 center
+// when leagueAvgPct is unavailable (a season the bulk league pull hasn't covered, or a fetch
+// failure) -- degraded but not broken.
 function lerpColor(c0, c1, t) {
   const a = c0.match(/\w\w/g).map(h => parseInt(h, 16));
   const b = c1.match(/\w\w/g).map(h => parseInt(h, 16));
@@ -64,14 +68,14 @@ function lerpColor(c0, c1, t) {
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 const RAMP_K = 12;
-const RAMP_C = 0.5;
-const sigmoid = t => 1 / (1 + Math.exp(-RAMP_K * (t - RAMP_C)));
-const RAMP_MIN = sigmoid(0);
-const RAMP_MAX = sigmoid(1);
-function zoneColor(fga, fgPct) {
+const sigmoidAt = (t, center) => 1 / (1 + Math.exp(-RAMP_K * (t - center)));
+function zoneColor(fga, fgPct, leagueAvgPct) {
   if (fga === 0) return 'var(--surface-2)';
+  const center = leagueAvgPct != null ? Math.max(0.02, Math.min(0.98, leagueAvgPct)) : 0.5;
+  const rampMin = sigmoidAt(0, center);
+  const rampMax = sigmoidAt(1, center);
   const raw = Math.max(0, Math.min(1, fgPct));
-  const t = (sigmoid(raw) - RAMP_MIN) / (RAMP_MAX - RAMP_MIN);
+  const t = (sigmoidAt(raw, center) - rampMin) / (rampMax - rampMin);
   return t < 0.5
     ? lerpColor('#1fc8ff', '#5c5c5c', t / 0.5)
     : lerpColor('#5c5c5c', '#ff5720', (t - 0.5) / 0.5);
@@ -81,7 +85,7 @@ function ZonePath({ zone, d, onHover }) {
   return (
     <path
       d={d}
-      fill={zoneColor(zone.fga, zone.fgPct)}
+      fill={zoneColor(zone.fga, zone.fgPct, zone.leagueAvgPct)}
       className="shot-zone-path"
       onMouseEnter={() => onHover(zone)}
       onMouseLeave={() => onHover(null)}
@@ -179,7 +183,7 @@ export default function ShotChart({ playerId, playerName, availableSeasons }) {
             <tbody>
               {chart.zones.map(z => (
                 <tr key={z.key} className={hoverZone?.key === z.key ? 'shot-chart-legend-active' : undefined}>
-                  <td><span className="legend-dot" style={{ background: zoneColor(z.fga, z.fgPct) }} />{z.label}</td>
+                  <td><span className="legend-dot" style={{ background: zoneColor(z.fga, z.fgPct, z.leagueAvgPct) }} />{z.label}</td>
                   <td>{z.fgm}-{z.fga}</td>
                   <td>{z.fga > 0 ? `${(z.fgPct * 100).toFixed(1)}%` : '—'}</td>
                 </tr>

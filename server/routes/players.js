@@ -132,11 +132,24 @@ router.get('/players/:id/gamelog', async (req, res) => {
 // Zone-aggregated shooting stats (BDL-only, no ESPN equivalent — see
 // providers/balldontlie/shotChart.js). Not per-shot coordinates; a season below the provider's own
 // shot-chart floor (or a player the provider can't resolve) returns null, same 404 as /gamelog.
+//
+// Each zone also carries leagueAvgPct (providers/balldontlie/leagueShotZones.js) so the client can
+// color a zone relative to how THAT zone shoots league-wide, not a flat 50% -- mid-range and 3PT
+// have very different real averages, so the same raw FG% means something different in each. Fetched
+// in parallel with the player's own chart (independent, same season, no ordering dependency); a
+// league-average fetch failure degrades to leagueAvgPct: null per zone rather than failing the whole
+// request -- the chart itself is still useful without the color anchor, same graceful-degradation
+// posture as every other optional-context field in this codebase.
 router.get('/players/:id/shotchart', async (req, res) => {
   try {
-    const chart = await getProvider().getPlayerShotChart(req.params.id, req.query.season);
+    const season = req.query.season;
+    const [chart, leagueAvg] = await Promise.all([
+      getProvider().getPlayerShotChart(req.params.id, season),
+      getProvider().getLeagueShotZones(season).catch(() => null),
+    ]);
     if (!chart) return res.status(404).json({ error: 'no shot chart available' });
-    res.json(chart);
+    const zones = chart.zones.map(z => ({ ...z, leagueAvgPct: leagueAvg?.[z.key] ?? null }));
+    res.json({ ...chart, zones });
   } catch (err) {
     console.error('shotchart:', err.message);
     res.status(502).json({ error: 'failed to load shot chart' });

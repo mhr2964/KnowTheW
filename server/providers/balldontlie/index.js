@@ -37,6 +37,7 @@ const bdlGameLog = require('./gameLog');
 const bdlSchedule = require('./schedule');
 const bdlSeasonStats = require('./seasonStats');
 const bdlShotChart = require('./shotChart');
+const bdlLeagueShotZones = require('./leagueShotZones');
 const bdlLeagueStats = require('./leagueStats');
 const idMap = require('./idMap');
 const { BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON } = require('./client');
@@ -116,6 +117,15 @@ class BallDontLieProvider extends SportsDataProvider {
     const bdlPlayerId = await idMap.resolveBdlPlayerId(playerId);
     if (bdlPlayerId == null) return null;
     return bdlShotChart.fetchPlayerShotChartBdl(bdlPlayerId, season);
+  }
+
+  // League-wide per-zone FG% averages, for Shot Chart's color-scale anchor (each zone's hot/cold
+  // should be relative to how that zone actually shoots league-wide, not a flat 50% -- see
+  // leagueShotZones.js's header comment). Same season floor as getPlayerShotChart -- no averages
+  // exist before zone tracking started.
+  async getLeagueShotZones(season) {
+    if (Number(season) < SHOT_CHART_MIN_SEASON) return null;
+    return bdlLeagueShotZones.fetchLeagueShotZonesBdl(season);
   }
 
   // --- Phase 2 (ESPN-migration plan): regular-season schedule, season+seasontype-conditional ---
