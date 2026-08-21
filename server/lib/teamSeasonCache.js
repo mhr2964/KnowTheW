@@ -33,11 +33,38 @@ async function getCached(collectionName, key) {
   }
 }
 
+// Storage guard: a real incident (2026-08-20) filled the shared cluster's ENTIRE 512MB free-tier
+// quota from one cache collection (an oversized per-game PBP payload -- see
+// providers/gamePbpCache.js) and broke writes site-wide, including security-relevant unique indexes
+// failing to (re)create. That specific payload is fixed now, but this write path is shared by every
+// cache collection in the app -- a per-payload size estimate is exactly the kind of number that's
+// wrong until it isn't, so this checks REAL usage instead of trusting any one caller's math.
+// Cached with a TTL so the hot write path isn't paying for a db.stats() call every time -- only
+// re-checked periodically, which is fine since storage doesn't change fast enough to need per-write
+// precision. Fails OPEN (allows the write) on a stats-check error, same as this file's existing
+// "getDb() null -> bypass cache" degradation -- a guard that can itself take down writes on a
+// transient stats hiccup would be worse than the problem it prevents.
+const STORAGE_LIMIT_MB = 400; // well under the real 512MB free-tier quota
+const STORAGE_CHECK_TTL_MS = 5 * 60 * 1000;
+let storageCheckedAt = 0;
+let storageOverBudget = false;
+async function isOverStorageBudget(db) {
+  if (Date.now() - storageCheckedAt < STORAGE_CHECK_TTL_MS) return storageOverBudget;
+  storageCheckedAt = Date.now();
+  try {
+    const stats = await db.stats();
+    storageOverBudget = (stats.dataSize / 1024 / 1024) > STORAGE_LIMIT_MB;
+    if (storageOverBudget) console.warn(`[teamSeasonCache] storage guard: over ${STORAGE_LIMIT_MB}MB, skipping cache writes until it drops`);
+  } catch { /* fail open -- see header comment */ }
+  return storageOverBudget;
+}
+
 // Writes payload to the named MongoDB collection under key.
 // Fire-and-forget — errors are logged and swallowed; the caller's response is unaffected.
-function writeCache(collectionName, key, payload) {
+async function writeCache(collectionName, key, payload) {
   const db = getDb();
   if (!db) return; // dev path — no MongoDB
+  if (await isOverStorageBudget(db)) return;
   db.collection(collectionName)
     .replaceOne(
       { _id: key },
