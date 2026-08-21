@@ -55,7 +55,13 @@ function buildQuery(params) {
 // Paced to ~500/min (under the 600/min ceiling, leaving margin for other concurrent traffic e.g.
 // live user requests sharing the same key) via a sliding 60s window -- a new request waits until an
 // old one ages out of the window rather than being capped by how many are simultaneously in flight.
-let rateLimitPerWindow = 500;
+// This limiter is IN-PROCESS ONLY -- a separate process (e.g. a standalone backfill script) gets its
+// own independent 500/min budget, which combined with the live web dyno's own pacing can exceed the
+// real account-wide 600/min ceiling. BDL_RATE_LIMIT_PER_MIN lets a script like
+// scripts/warm-pbp-cache.js self-throttle well below 500 so it leaves real headroom for live
+// traffic -- read once at module load, not the request-scoped BALLDONTLIE_KEY lazy-read pattern,
+// since a script sets this before requiring anything and never changes it mid-run.
+let rateLimitPerWindow = Number(process.env.BDL_RATE_LIMIT_PER_MIN) || 500;
 let rateWindowMs = 60000;
 const requestTimestamps = [];
 
