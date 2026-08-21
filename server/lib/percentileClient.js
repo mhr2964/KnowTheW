@@ -8,15 +8,35 @@ const { getDb } = require('../db');
 const { getProvider } = require('../providers');
 const { latestCompletedSeason } = require('./seasonWindow');
 const { mapWithConcurrency } = require('./concurrency');
+const { computeBasicRatioStats } = require('./statFormulas');
 
 const DIST_CACHE_COLLECTION = 'distributionCache';
 const DIST_TTL_MS = 24 * 60 * 60 * 1000;
+// Completed-season distributions are otherwise cached forever (see getOrBuildDistribution's own
+// comment) -- bump this whenever PERCENTILE_STATS/withRatioStats changes what a distribution
+// contains, or every season cached before the change silently keeps missing the new stat instead
+// of erroring (confirmed live: pre-v2-bump docs have no 'TS_PCT' array at all, so Adj. Shooting's
+// percentile toggle showed but colored nothing for any already-cached season). Same pattern as
+// advancedStats.js's own `v` field.
+const DIST_CACHE_VERSION = 2; // v2: added TS_PCT/EFG_PCT/TPAr/FTr for the Adj. Shooting tab
 
 const DISTRIBUTION_MIN    = 30;
 const POSITION_MIN_BUCKET = 20;
 
-const PERCENTILE_STATS = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FG_PCT', 'FG3_PCT', 'FT_PCT', 'TOV', 'PF', 'OREB', 'DREB', 'FGM', 'FGA', 'FG3M', 'FG3A', 'FTM', 'FTA', 'MIN'];
+// TS_PCT/EFG_PCT/TPAr/FTr (the Adj. Shooting tab's stats) are ratios of fields already in this
+// list (FGA/FGM/FG3A/FG3M/FTA/PTS) -- withRatioStats derives them below with zero new provider
+// calls, same FGA/FGM/etc every other percentile stat already required.
+const PERCENTILE_STATS = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FG_PCT', 'FG3_PCT', 'FT_PCT', 'TOV', 'PF', 'OREB', 'DREB', 'FGM', 'FGA', 'FG3M', 'FG3A', 'FTM', 'FTA', 'MIN', 'TS_PCT', 'EFG_PCT', 'TPAr', 'FTr'];
 const INVERTED_STATS = new Set(['TOV', 'PF']);
+
+// Adj. Shooting's rate stats, computed from fields the row already carries -- ratios are scale-
+// invariant (a per-game numerator/denominator pair yields the same ratio a season-totals pair
+// would), so this is correct to apply to a PerGame, Totals, or Per36 row alike.
+function withRatioStats(row) {
+  if (!row) return row;
+  const { ts, efg, tpar, ftr } = computeBasicRatioStats(row.FGA, row.FGM, row.FG3M, row.FG3A, row.FTA, row.PTS, row.TOV);
+  return { ...row, TS_PCT: ts, EFG_PCT: efg, TPAr: tpar, FTr: ftr };
+}
 
 const distributionCache    = {};
 const distributionInFlight = {};
@@ -30,7 +50,7 @@ async function getOrBuildDistribution(season, mode = 'PerGame') {
     const dbRead = getDb();
     if (dbRead) {
       const doc = await dbRead.collection(DIST_CACHE_COLLECTION).findOne({ season, mode });
-      if (doc) {
+      if (doc && doc.v === DIST_CACHE_VERSION) {
         // We only ever build COMPLETED seasons (see seasonWindow.js), whose stats are stable, so a
         // cached distribution is always reusable. The TTL only guards the (now-excluded) in-progress
         // season, so in practice the cache is reused without rebuild churn.
@@ -49,7 +69,7 @@ async function getOrBuildDistribution(season, mode = 'PerGame') {
       if (dbWrite) {
         await dbWrite.collection(DIST_CACHE_COLLECTION).updateOne(
           { season, mode },
-          { $set: { distribution: dist, cachedAt: Date.now() } },
+          { $set: { distribution: dist, cachedAt: Date.now(), v: DIST_CACHE_VERSION } },
           { upsert: true }
         );
       }
@@ -77,7 +97,7 @@ async function buildLeagueDistribution(season, mode = 'PerGame') {
   const qualified = await getProvider().getLeagueStatLines(season, mode);
   if (qualified.length < DISTRIBUTION_MIN) return null;
 
-  const groups = groupByPosition(qualified);
+  const groups = groupByPosition(qualified.map(withRatioStats));
 
   const distribution = {};
   for (const [grp, players] of Object.entries(groups)) {
@@ -166,7 +186,7 @@ async function getPlayerPercentiles(playerId, { pool = 'position' } = {}) {
     const seasonResult = {};
     for (const mode of DIST_MODES) {
       const fullDist = distributionCache[`${season}:${mode}`] ?? null;
-      const computed = computeSeasonPercentiles(statsByModeBySeason[season]?.[mode] ?? null, fullDist, playerPos, pool);
+      const computed = computeSeasonPercentiles(withRatioStats(statsByModeBySeason[season]?.[mode] ?? null), fullDist, playerPos, pool);
       if (computed) seasonResult[MODE_KEY[mode]] = computed;
     }
     if (Object.keys(seasonResult).length) result[season] = seasonResult;

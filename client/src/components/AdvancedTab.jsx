@@ -1,12 +1,14 @@
 import { useRef, useState } from 'react';
 import BrefTable from './BrefTable';
+import TableToolbar from './TableToolbar';
+import { buildStudyDeck } from '../lib/studyData';
 
 // Purely a display component -- the actual season-by-season fetch (current season, then the rest
 // of the career one at a time, then the authoritative whole-career call) runs in
 // usePlayerBackgroundStats (see DetailedStats.jsx), started as soon as the player page loads rather
 // than gated behind this tab being clicked. `data`/`retry` are that hook's shared state, so
 // re-opening this tab doesn't re-fetch anything already in flight or done.
-export default function AdvancedTab({ data, retry }) {
+export default function AdvancedTab({ data, retry, playerName, onOpenStudy }) {
   const [advSeason, setAdvSeason] = useState('regular');
   const exportRef = useRef(null);
   const { current, full, status, timedOutSeasons } = data;
@@ -24,19 +26,32 @@ export default function AdvancedTab({ data, retry }) {
     const advSplit = (advSeason === 'playoffs' && advHasPlayoffs)
       ? full.playoffs
       : full.regular;
+
+    function openStudy() {
+      const deck = buildStudyDeck({
+        columns: full.columns,
+        rows: advSplit?.rows ?? [],
+        careerRows: advSplit?.careerRow ? [advSplit.careerRow] : [],
+      });
+      onOpenStudy?.({ ...deck, deckName: `${playerName} Advanced${advSeason === 'playoffs' ? ' (Playoffs)' : ''}` });
+    }
+
     return (
       <>
-        <div className="stat-table-header">
-          <div className="stat-season-bar">
-            <button type="button" className={`stat-season-tab${advSeason === 'regular' ? ' active' : ''}`} onClick={() => setAdvSeason('regular')}>Regular Season</button>
-            {advHasPlayoffs && (
-              <button type="button" className={`stat-season-tab${advSeason === 'playoffs' ? ' active' : ''}`} onClick={() => setAdvSeason('playoffs')}>Playoffs</button>
-            )}
-          </div>
-          <button type="button" className="btn-ghost bref-export-btn" onClick={() => exportRef.current?.()}>
-            Export CSV
-          </button>
-        </div>
+        <TableToolbar
+          leading={
+            <div className="stat-season-bar">
+              <button type="button" className={`stat-season-tab${advSeason === 'regular' ? ' active' : ''}`} onClick={() => setAdvSeason('regular')}>Regular Season</button>
+              {advHasPlayoffs && (
+                <button type="button" className={`stat-season-tab${advSeason === 'playoffs' ? ' active' : ''}`} onClick={() => setAdvSeason('playoffs')}>Playoffs</button>
+              )}
+            </div>
+          }
+          showStudy
+          onStudy={openStudy}
+          showExport
+          onExport={() => exportRef.current?.()}
+        />
         <BrefTable
           regular={{ columns: full.columns, rows: advSplit?.rows ?? [] }}
           career={advSplit?.careerRow ? { columns: full.columns, rows: [advSplit.careerRow] } : null}

@@ -40,6 +40,13 @@
 /* ── Detailed Stats ── */
 .detailed-stats { margin-bottom: 2.5rem; }
 
+/* Wraps the tab strip so the mobile dropdown panel (below, at the 600px breakpoint) can anchor
+   to it with position:absolute instead of the whole page. Toggle/backdrop are mobile-only --
+   hidden here, shown in responsive.css. */
+.stat-type-nav { position: relative; }
+.stat-type-nav-toggle { display: none; }
+.stat-type-nav-backdrop { display: none; }
+
 .stat-type-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -88,6 +95,8 @@
   padding: 0.55rem 1rem;
 }
 
+.toolbar-leading, .toolbar-trailing { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; }
+
 .stat-season-bar { display: flex; gap: 0.25rem; }
 
 .stat-season-tab {
@@ -104,11 +113,6 @@
 .stat-season-tab:hover { color: var(--text); border-color: var(--text-muted); }
 .stat-season-tab.active { background: var(--bg); border-color: var(--border); color: var(--accent); }
 
-.bref-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 0.5rem;
-}
 .bref-export-btn { padding: 0.35rem 0.8rem; font-size: 0.78rem; }
 
 .bref-wrap {

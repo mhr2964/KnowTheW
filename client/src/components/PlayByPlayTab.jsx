@@ -1,5 +1,7 @@
 import { useRef } from 'react';
 import BrefTable from './BrefTable';
+import TableToolbar from './TableToolbar';
+import { buildStudyDeck } from '../lib/studyData';
 
 // Column groupings matching the BBRef PBP table layout.
 // FoulDrawnOff and Blkd render as — under ESPN (provider returns null); will populate when Sportradar lands.
@@ -36,7 +38,7 @@ const COL_LABELS = {
 // (see DetailedStats.jsx), started as soon as the player page loads rather than gated behind this
 // tab being clicked. `data`/`totalSeasons`/`retry` are that hook's shared state, so re-opening this
 // tab doesn't re-fetch anything already in flight or done.
-export default function PlayByPlayTab({ data, totalSeasons, retry }) {
+export default function PlayByPlayTab({ data, totalSeasons, retry, playerName, onOpenStudy }) {
   const exportRef = useRef(null);
   const { headers, rows, careerRow, status, timedOutSeasons } = data;
 
@@ -56,13 +58,17 @@ export default function PlayByPlayTab({ data, totalSeasons, retry }) {
   const displayHeaders = headers.map(h => COL_LABELS[h] ?? h);
   const isLoadingMore = status === 'loading';
 
+  // displayHeaders (already human-readable) doubles as buildStudyDeck's `headers` input -- same
+  // reuse BrefTable itself does when passed headers instead of a server `columns` array, so the
+  // deck's column labels match the table's exactly without a second LABELS lookup.
+  function openStudy() {
+    const deck = buildStudyDeck({ headers: displayHeaders, rows, careerRows: careerRow ? [careerRow] : [] });
+    onOpenStudy?.({ ...deck, deckName: `${playerName} Play-by-Play` });
+  }
+
   return (
     <>
-      <div className="bref-toolbar">
-        <button type="button" className="btn-ghost bref-export-btn" onClick={() => exportRef.current?.()}>
-          Export CSV
-        </button>
-      </div>
+      <TableToolbar showStudy onStudy={openStudy} showExport onExport={() => exportRef.current?.()} />
       <BrefTable
         headerGroups={HEADER_GROUPS}
         regular={{ headers: displayHeaders, rows }}

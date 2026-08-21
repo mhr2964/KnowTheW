@@ -17,12 +17,44 @@
   .player-hero { flex-direction: column; align-items: center; text-align: center; gap: 1rem; }
   .player-bio-grid { justify-content: center; }
   .player-hero-meta { justify-content: center; }
+  .player-hero-actions { justify-content: center; }
 
-  .stat-type-tabs { padding: 0.5rem 0.5rem 0; gap: 0.15rem; }
-  .stat-type-tab {
-    font-size: 0.7rem; padding: 0.32rem 0.55rem 0.42rem;
-    display: inline-flex; align-items: center; min-height: var(--touch-target-min);
+  /* 10 stat-type tabs wrapped into 3 messy rows at this width -- collapse to a single toggle
+     showing the active tab, opening a dropdown list of all of them instead. */
+  .stat-type-nav-toggle {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+    width: 100%; min-height: var(--touch-target-min);
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text); font-size: 0.85rem; font-weight: 700;
+    padding: 0.6rem 0.9rem; cursor: pointer;
+    position: relative; z-index: 11;
   }
+  .stat-type-nav-caret { color: var(--text-muted); transition: transform 0.15s; }
+  .stat-type-nav-toggle[aria-expanded="true"] .stat-type-nav-caret { transform: rotate(180deg); }
+  .stat-type-nav-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 9; background: rgba(0,0,0,0.35);
+  }
+  .stat-type-tabs {
+    display: none;
+    padding: 0.5rem 0.5rem 0; gap: 0.15rem;
+  }
+  /* Dropdown panel overlays the toolbar/table below (position:absolute inside .stat-type-nav)
+     rather than pushing them down, so opening it doesn't jump the rest of the page. */
+  .stat-type-tabs.open {
+    display: flex; flex-direction: column; flex-wrap: nowrap; gap: 0;
+    position: absolute; top: calc(100% + 0.35rem); left: 0; right: 0; z-index: 10;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 0.4rem; max-height: 60vh; overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .stat-type-tabs.open .stat-type-tab {
+    width: 100%; text-align: left;
+    position: static; bottom: auto;
+    border-radius: var(--radius); border: 1px solid transparent;
+    padding: 0.7rem 0.75rem; min-height: var(--touch-target-min);
+    display: flex; align-items: center;
+  }
+  .stat-type-tabs.open .stat-type-tab.active { border-color: var(--border); background: var(--surface-2); }
   .bref-table { font-size: 0.7rem; }
   .bref-table th, .bref-table td { padding: 0.3rem 0.45rem; }
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import TableToolbar from './TableToolbar';
 import useSeasonScopedFetch from '../hooks/useSeasonScopedFetch';
 
 // A 404 means "no shot-location tracking for this player-season" -- a legitimate empty result,
@@ -132,7 +133,7 @@ function CourtDiagram({ zones, onHover }) {
   );
 }
 
-export default function ShotChart({ playerId, playerName, availableSeasons }) {
+export default function ShotChart({ playerId, playerName, availableSeasons, onOpenStudy }) {
   const [season, setSeason] = useState(null);
   const [hoverZone, setHoverZone] = useState(null);
 
@@ -143,24 +144,36 @@ export default function ShotChart({ playerId, playerName, availableSeasons }) {
   const shotChartUrl = season ? `/api/players/${playerId}/shotchart?season=${season}` : null;
   const { data: chart, loading, error, retry } = useSeasonScopedFetch(shotChartUrl, { parse: parseShotChart });
 
+  // Zones are objects keyed by name (label/fgm/fga/fgPct), not BrefTable's positional-array rows --
+  // studyData.js's buildStudyDeck assumes the latter, so this builds StudyFlow's {data, columns}
+  // shape directly rather than forcing zone data through a column-index mapping it doesn't have.
+  function openStudy() {
+    if (!chart) return;
+    const columns = [
+      { key: 'label', label: 'Zone', type: 'text' },
+      { key: 'fgm', label: 'FGM', type: 'text' },
+      { key: 'fga', label: 'FGA', type: 'text' },
+      { key: 'fgPct', label: 'FG%', type: 'pct' },
+    ];
+    const data = chart.zones.map(z => ({ label: z.label, fgm: z.fgm, fga: z.fga, fgPct: z.fga > 0 ? z.fgPct : null }));
+    onOpenStudy?.({ data, columns, deckName: `${playerName} Shot Chart ${season}` });
+  }
+
   return (
     <>
-      <div className="gl-controls">
-        {availableSeasons.length > 1 && (
-          <select className="gl-select" value={season ?? ''} onChange={e => setSeason(e.target.value)}>
-            {availableSeasons.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        )}
-        {chart && (
-          <button
-            type="button"
-            className="btn-ghost bref-export-btn"
-            onClick={() => downloadZonesCsv(`${playerName}-shotchart-${season}.csv`, chart.zones)}
-          >
-            Export CSV
-          </button>
-        )}
-      </div>
+      <TableToolbar
+        leading={
+          availableSeasons.length > 1 && (
+            <select className="gl-select" value={season ?? ''} onChange={e => setSeason(e.target.value)}>
+              {availableSeasons.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          )
+        }
+        showStudy={!!chart}
+        onStudy={openStudy}
+        showExport={!!chart}
+        onExport={() => downloadZonesCsv(`${playerName}-shotchart-${season}.csv`, chart.zones)}
+      />
 
       {loading && <p className="status-msg" style={{ padding: '1rem 0' }}>Loading shot chart…</p>}
       {error && (

@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import BrefTable from './BrefTable';
+import TableToolbar from './TableToolbar';
+import { buildStudyDeck } from '../lib/studyData';
 import useSeasonScopedFetch from '../hooks/useSeasonScopedFetch';
 
 const SPLIT_TYPES = [
@@ -8,7 +10,7 @@ const SPLIT_TYPES = [
   { key: 'opponent', label: 'By Opponent' },
 ];
 
-export default function SplitsTab({ playerId, playerName, availableSeasons }) {
+export default function SplitsTab({ playerId, playerName, availableSeasons, onOpenStudy }) {
   const [season, setSeason] = useState(null);
   const [splitType, setSplitType] = useState('homeaway');
   const exportRef = useRef(null);
@@ -22,23 +24,32 @@ export default function SplitsTab({ playerId, playerName, availableSeasons }) {
 
   const splitLabel = SPLIT_TYPES.find(t => t.key === splitType)?.label ?? splitType;
 
+  function openStudy() {
+    if (!current) return;
+    const deck = buildStudyDeck({ columns: current.columns, rows: current.rows });
+    onOpenStudy?.({ ...deck, deckName: `${playerName} Splits (${splitLabel}) ${season}` });
+  }
+
   return (
     <>
-      <div className="gl-controls">
-        {availableSeasons.length > 1 && (
-          <select className="gl-select" value={season ?? ''} onChange={e => setSeason(e.target.value)}>
-            {availableSeasons.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        )}
-        <select className="gl-select" value={splitType} onChange={e => setSplitType(e.target.value)}>
-          {SPLIT_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
-        </select>
-        {current && (
-          <button type="button" className="btn-ghost bref-export-btn" onClick={() => exportRef.current?.()}>
-            Export CSV
-          </button>
-        )}
-      </div>
+      <TableToolbar
+        leading={
+          <>
+            {availableSeasons.length > 1 && (
+              <select className="gl-select" value={season ?? ''} onChange={e => setSeason(e.target.value)}>
+                {availableSeasons.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            )}
+            <select className="gl-select" value={splitType} onChange={e => setSplitType(e.target.value)}>
+              {SPLIT_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+            </select>
+          </>
+        }
+        showStudy={!!current}
+        onStudy={openStudy}
+        showExport={!!current}
+        onExport={() => exportRef.current?.()}
+      />
       {loading && <p className="status-msg" style={{ padding: '1rem 0' }}>Loading splits…</p>}
       {error && (
         <p className="status-msg error" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

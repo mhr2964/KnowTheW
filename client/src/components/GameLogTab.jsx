@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import BrefTable from './BrefTable';
+import TableToolbar from './TableToolbar';
+import { buildStudyDeck } from '../lib/studyData';
 import useSeasonScopedFetch from '../hooks/useSeasonScopedFetch';
 
 const GL_PAGE_SIZES = [10, 25, 50];
@@ -47,7 +49,7 @@ function GameLogTable({ log, games, filename, exportRef }) {
   );
 }
 
-export default function GameLogTab({ playerId, playerName, availableSeasons }) {
+export default function GameLogTab({ playerId, playerName, availableSeasons, onOpenStudy }) {
   const [gameLogSeason, setGameLogSeason] = useState(null);
   const [glPage, setGlPage] = useState(1);
   const [glPageSize, setGlPageSize] = useState(25);
@@ -77,38 +79,49 @@ export default function GameLogTab({ playerId, playerName, availableSeasons }) {
   const safePage = Math.min(glPage, totalPages);
   const pagedGames = allGames.slice((safePage - 1) * glPageSize, safePage * glPageSize);
 
+  // Study deck covers the whole season, not just the current page -- toBrefShape is cheap (pure
+  // reshape, no fetch) so re-deriving it here from allGames alongside GameLogTable's own paged
+  // call is fine.
+  function openStudy() {
+    const full = toBrefShape(currentLog, allGames);
+    if (!full) return;
+    const deck = buildStudyDeck({ columns: full.columns, rows: full.rows });
+    onOpenStudy?.({ ...deck, deckName: `${playerName} Game Log ${gameLogSeason}` });
+  }
+
   return (
     <>
-      <div className="gl-controls">
-        {availableSeasons.length > 1 && (
-          <select
-            className="gl-select"
-            value={gameLogSeason ?? ''}
-            onChange={e => handleSeasonChange(e.target.value)}
-          >
-            {availableSeasons.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        )}
-        <select
-          className="gl-select"
-          value={glPageSize}
-          onChange={e => handlePageSizeChange(Number(e.target.value))}
-        >
-          {GL_PAGE_SIZES.map(n => (
-            <option key={n} value={n}>{n} per page</option>
-          ))}
-        </select>
-        {allGames.length > 0 && (
+      <TableToolbar
+        leading={
           <>
-            <span className="gl-game-count">{allGames.length} games</span>
-            <button type="button" className="btn-ghost bref-export-btn" onClick={() => exportRef.current?.()}>
-              Export CSV
-            </button>
+            {availableSeasons.length > 1 && (
+              <select
+                className="gl-select"
+                value={gameLogSeason ?? ''}
+                onChange={e => handleSeasonChange(e.target.value)}
+              >
+                {availableSeasons.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            )}
+            <select
+              className="gl-select"
+              value={glPageSize}
+              onChange={e => handlePageSizeChange(Number(e.target.value))}
+            >
+              {GL_PAGE_SIZES.map(n => (
+                <option key={n} value={n}>{n} per page</option>
+              ))}
+            </select>
+            {allGames.length > 0 && <span className="gl-game-count">{allGames.length} games</span>}
           </>
-        )}
-      </div>
+        }
+        showStudy={allGames.length > 0}
+        onStudy={openStudy}
+        showExport={allGames.length > 0}
+        onExport={() => exportRef.current?.()}
+      />
       {gameLogLoading && <p className="status-msg" style={{ padding: '1rem 0' }}>Loading game log…</p>}
       {gameLogError && (
         <p className="status-msg error" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

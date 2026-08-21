@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import StudyFlow from './StudyFlow';
 import BrefTable from './BrefTable';
+import TableToolbar from './TableToolbar';
+import { buildStudyDeck } from '../lib/studyData';
 import useLazyFetch from '../hooks/useLazyFetch';
 import usePlayerBackgroundStats from '../hooks/usePlayerBackgroundStats';
 import GameLogTab from './GameLogTab';
@@ -9,6 +11,16 @@ import PlayByPlayTab from './PlayByPlayTab';
 import SplitsTab from './SplitsTab';
 import ShotChart from './ShotChart';
 
+// Percentile coverage only exists for these viewModes (see percentileClient.js's PERCENTILE_STATS) --
+// Per 100 Poss would need a league-wide team-pace fetch percentileClient.js doesn't do yet, so its
+// toggle stays hidden rather than shown-but-inert. Adj. Shooting's TS%/eFG%/3PAr/FTr are ratios of
+// fields already in the percentile system, so they ride the existing 'perGame' bucket (ratios are
+// scale-invariant across PerGame/Totals/Per36 -- see percentileClient.js's withRatioStats).
+const PERCENTILE_VIEW_MODE = { perGame: 'perGame', totals: 'totals', per36: 'per36', adjShooting: 'perGame' };
+// Only these tabs get the Percentile toggle at all -- Per 100 Poss (no key here) has no coverage,
+// and showing an inert toggle there was one of the three named table-inconsistency complaints
+// ("percentile toggle doesn't work on some tabs").
+const PERCENTILE_ELIGIBLE = new Set(Object.keys(PERCENTILE_VIEW_MODE));
 
 const ALL_TABLE_TYPES = [
   { key: 'perGame',     label: 'Per Game' },
@@ -37,6 +49,7 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
   const [activeSeason, setActiveSeason] = useState('regular');
   const [studyConfig, setStudyConfig] = useState(null);
   const [showPercentiles, setShowPercentiles] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const exportRef = useRef(null);
 
   const { data, loading, error, refetch: refetchCareer } = useLazyFetch(
@@ -89,6 +102,14 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
   function handleTypeClick(key) {
     setActiveType(key);
     onTabChange?.(key);
+    setMobileNavOpen(false);
+  }
+
+  // Shared by every tab (generic BrefTable tabs and all 5 raw-tab components) -- each tab builds
+  // its own deck via studyData.js's buildStudyDeck and hands the finished {data, columns, deckName}
+  // shape here, so there's exactly one StudyFlow overlay instance instead of one per tab.
+  function openStudy(deck) {
+    setStudyConfig(deck);
   }
 
   if (loading) return <p className="status-msg" style={{ padding: '2rem 0' }}>Loading career stats…</p>;
@@ -105,6 +126,7 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
   const enabledTypes = ALL_TABLE_TYPES.filter(t => activeKeys.has(t.key));
   const disabledTypes = ALL_TABLE_TYPES.filter(t => !activeKeys.has(t.key));
   const safeType = activeKeys.has(activeType) ? activeType : 'perGame';
+  const activeLabel = enabledTypes.find(t => t.key === safeType)?.label ?? safeType;
 
   const isGamelog   = safeType === 'gamelog';
   const isAdvanced  = safeType === 'advanced';
@@ -118,101 +140,111 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
   const regular = isRawTab ? null : (curSeason === 'regular' ? tableData?.regular : tableData?.playoffs);
   const career  = isRawTab ? null : (curSeason === 'regular' ? tableData?.regularCareer : tableData?.playoffCareer);
 
-  function openStudy() {
+  // percData is keyed by season -> viewMode using percentileClient.js's own mode keys (perGame/
+  // totals/per36), which don't include 'adjShooting' -- remap that one view's lookup key so
+  // BrefTable's own `percentiles?.[season]?.[viewMode]` (viewMode === safeType) still resolves,
+  // without touching BrefTable itself or its unrelated hideLowPriority-by-viewMode logic.
+  const percentileViewKey = PERCENTILE_VIEW_MODE[safeType];
+  let percentilesForView = null;
+  if (percData && percentileViewKey) {
+    if (percentileViewKey === safeType) {
+      percentilesForView = percData;
+    } else {
+      percentilesForView = {};
+      for (const [season, byMode] of Object.entries(percData)) {
+        percentilesForView[season] = { ...byMode, [safeType]: byMode[percentileViewKey] };
+      }
+    }
+  }
+
+  function openGenericStudy() {
     if (!regular) return;
-    const { columns, rows } = regular;
-    const careerRows = career?.rows ?? [];
-    const studyData = [...rows, ...careerRows].map(row =>
-      Object.fromEntries(columns.map((c, i) => [c.key, row[i]]))
-    );
-    // StudyFlow only special-cases type:'pct' (0-1 fraction -> "51.2%"); pct100 values fall through
-    // to its plain-number formatting same as 'num' always did here. No HIDDEN filter needed —
-    // server-emitted columns never include PLAYER_ID/LEAGUE_ID/TEAM_ID.
-    const studyCols = columns.map(c => ({ key: c.key, label: c.label, type: c.kind === 'pct' ? 'pct' : 'text' }));
-    const typeLabel = enabledTypes.find(t => t.key === safeType)?.label ?? safeType;
+    const typeLabel = ALL_TABLE_TYPES.find(t => t.key === safeType)?.label ?? safeType;
     const suffix = curSeason === 'playoffs' ? ' (Playoffs)' : '';
-    setStudyConfig({ data: studyData, columns: studyCols, deckName: `${playerName} ${typeLabel}${suffix}` });
+    const deck = buildStudyDeck({ columns: regular.columns, rows: regular.rows, careerRows: career?.rows ?? [] });
+    openStudy({ ...deck, deckName: `${playerName} ${typeLabel}${suffix}` });
   }
 
   return (
     <>
       <div className="detailed-stats">
-        <div className="stat-type-tabs">
-          {enabledTypes.map(t => (
-            <button
-              key={t.key}
-              type="button"
-              className={`stat-type-tab${safeType === t.key ? ' active' : ''}`}
-              onClick={() => handleTypeClick(t.key)}
-            >
-              {t.label}
-            </button>
-          ))}
-          {disabledTypes.map(t => (
-            <button key={t.key} type="button" className="stat-type-tab soon" disabled>{t.label}</button>
-          ))}
-          {COMING_SOON.map(label => (
-            <button key={label} type="button" className="stat-type-tab soon" disabled>{label}</button>
-          ))}
+        <div className="stat-type-nav">
+          <button
+            type="button"
+            className="stat-type-nav-toggle"
+            aria-expanded={mobileNavOpen}
+            onClick={() => setMobileNavOpen(v => !v)}
+          >
+            <span>{activeLabel}</span>
+            <span className="stat-type-nav-caret" aria-hidden="true">▾</span>
+          </button>
+          {mobileNavOpen && <div className="stat-type-nav-backdrop" onClick={() => setMobileNavOpen(false)} />}
+          <div className={`stat-type-tabs${mobileNavOpen ? ' open' : ''}`}>
+            {enabledTypes.map(t => (
+              <button
+                key={t.key}
+                type="button"
+                className={`stat-type-tab${safeType === t.key ? ' active' : ''}`}
+                onClick={() => handleTypeClick(t.key)}
+              >
+                {t.label}
+              </button>
+            ))}
+            {disabledTypes.map(t => (
+              <button key={t.key} type="button" className="stat-type-tab soon" disabled>{t.label}</button>
+            ))}
+            {COMING_SOON.map(label => (
+              <button key={label} type="button" className="stat-type-tab soon" disabled>{label}</button>
+            ))}
+          </div>
         </div>
 
         {isAdvanced ? (
-          <AdvancedTab data={advData} retry={retryBackgroundStats} />
+          <AdvancedTab data={advData} retry={retryBackgroundStats} playerName={playerName} onOpenStudy={openStudy} />
         ) : isGamelog ? (
-          <GameLogTab playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} />
+          <GameLogTab playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} onOpenStudy={openStudy} />
         ) : isSplits ? (
-          <SplitsTab playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} />
+          <SplitsTab playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} onOpenStudy={openStudy} />
         ) : isPbp ? (
-          <PlayByPlayTab data={pbpData} totalSeasons={availableSeasons.length} retry={retryBackgroundStats} />
+          <PlayByPlayTab data={pbpData} totalSeasons={availableSeasons.length} retry={retryBackgroundStats} playerName={playerName} onOpenStudy={openStudy} />
         ) : isShotChart ? (
-          <ShotChart playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} />
+          <ShotChart playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} onOpenStudy={openStudy} />
         ) : (
           <>
-            <div className="stat-table-header">
-              <div className="stat-season-bar">
-                <button
-                  type="button"
-                  className={`stat-season-tab${curSeason === 'regular' ? ' active' : ''}`}
-                  onClick={() => setActiveSeason('regular')}
-                >
-                  Regular Season
-                </button>
-                {hasPlayoffs && (
+            <TableToolbar
+              leading={
+                <div className="stat-season-bar">
                   <button
                     type="button"
-                    className={`stat-season-tab${curSeason === 'playoffs' ? ' active' : ''}`}
-                    onClick={() => setActiveSeason('playoffs')}
+                    className={`stat-season-tab${curSeason === 'regular' ? ' active' : ''}`}
+                    onClick={() => setActiveSeason('regular')}
                   >
-                    Playoffs
+                    Regular Season
                   </button>
-                )}
-              </div>
-              {!isEmpty && (
-                <label className="perc-toggle">
-                  <input
-                    type="checkbox"
-                    checked={showPercentiles}
-                    onChange={() => setShowPercentiles(v => !v)}
-                  />
-                  <span className="perc-toggle-track"><span className="perc-toggle-thumb" /></span>
-                  <span className="perc-toggle-label">{percLoading ? 'Loading…' : 'Percentiles'}</span>
-                </label>
-              )}
-              {regular && (
-                <>
-                  <button type="button" className="study-trigger-btn" onClick={openStudy}>
-                    Study this table
-                  </button>
-                  <button type="button" className="btn-ghost bref-export-btn" onClick={() => exportRef.current?.()}>
-                    Export CSV
-                  </button>
-                </>
-              )}
-            </div>
+                  {hasPlayoffs && (
+                    <button
+                      type="button"
+                      className={`stat-season-tab${curSeason === 'playoffs' ? ' active' : ''}`}
+                      onClick={() => setActiveSeason('playoffs')}
+                    >
+                      Playoffs
+                    </button>
+                  )}
+                </div>
+              }
+              showPercentile={!isEmpty && PERCENTILE_ELIGIBLE.has(safeType)}
+              percentileChecked={showPercentiles}
+              percentileLoading={percLoading}
+              onPercentileToggle={() => setShowPercentiles(v => !v)}
+              showStudy={!!regular}
+              onStudy={openGenericStudy}
+              showExport={!!regular}
+              onExport={() => exportRef.current?.()}
+            />
             <BrefTable
               regular={regular}
               career={career}
-              percentiles={showPercentiles && !percLoading ? percData : null}
+              percentiles={showPercentiles && !percLoading ? percentilesForView : null}
               viewMode={safeType}
               emptyMessage={isEmpty ? "Hasn't played WNBA games yet." : undefined}
               filename={`${playerName}-${safeType}${curSeason === 'playoffs' ? '-playoffs' : ''}.csv`}
