@@ -14,23 +14,33 @@
   .team-header-meta { font-size: 0.78rem; }
   .card-field-value { font-size: 1.2rem; }
   .study-fullscreen { padding: 1rem; }
-  /* Compact hero: a big 120px glamour photo + loose padding was pushing the stat table (the
-     actual payload) well below the fold on a real phone. Smaller photo, tighter padding/gaps --
-     same info, less scroll to reach it. */
-  .player-hero { flex-direction: column; align-items: center; text-align: center; gap: 0.6rem; padding: 1rem; margin-bottom: 1rem; }
-  .player-hero-img { width: 76px; height: 76px; }
-  .player-hero-img.placeholder { font-size: 1.5rem; }
-  .player-hero-meta { justify-content: center; }
-  .player-hero-actions { justify-content: center; }
-
-  /* Flex-wrap sized each row by its own items' content width, so Position/Height/Weight/Age (short)
-     made a full row while Experience/College (longer) made a visibly different-width row below it,
-     and Hometown sat alone on a third -- a grid gives every item an equal-width column instead, so
-     rows line up regardless of how many items land in each one. */
-  .player-bio-grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
-    justify-items: center; width: 100%; max-width: 320px; margin-inline: auto;
+  /* Condensed further per user feedback on the courtside pass: a centered vertical stack (photo,
+     then meta, then name, then bio) reads as several distinct rows even at 76px -- a side-by-side
+     row (small avatar + info column) says the same thing in roughly half the vertical space, which
+     is the actual goal of a "glance" header, not making the photo itself smaller. */
+  .player-hero {
+    flex-direction: row; align-items: center; text-align: left;
+    gap: 0.75rem; padding: 0.75rem 0.9rem; margin-bottom: 0.75rem;
   }
+  .player-hero-img { width: 52px; height: 52px; }
+  .player-hero-img.placeholder { font-size: 1.05rem; }
+  .player-hero-info { gap: 0.2rem; min-width: 0; }
+  .player-hero-name { font-size: 1.15rem; }
+  .player-hero-meta { justify-content: flex-start; }
+  .player-hero-actions { justify-content: flex-start; gap: 0.4rem; }
+  .player-hero-actions .compare-trigger-btn { padding: 0.35rem 0.6rem; font-size: 0.72rem; }
+  .archetype-badge { margin: 0.15rem 0; }
+
+  /* Row layout leaves bio items only the info column's width to work with (not the full hero
+     width), so the equal-column grid from the previous pass is overkill here -- a compact
+     label:value flex-wrap reads fine at this narrower width and takes less height. */
+  .player-bio-grid {
+    display: flex; flex-wrap: wrap; gap: 0.2rem 0.65rem;
+    justify-content: flex-start; width: auto; max-width: none; margin-inline: 0; margin-top: 0.1rem;
+  }
+  .player-bio-item { flex-direction: row; align-items: baseline; gap: 0.25rem; }
+  .player-bio-label { font-size: 0.58rem; }
+  .player-bio-value { font-size: 0.74rem; }
 
   /* Current season's PTS/REB/AST/FG% right under the hero -- see DetailedStats.jsx's quickStats
      memo. The one thing a courtside "what's this player doing" glance actually wants, above the
@@ -57,10 +67,15 @@
      .header's own rendered height at this breakpoint (a single row, ~69px; see the 480px tier below
      for the 2-row-header offset once search wraps). */
   .stat-type-nav { position: sticky; top: 72px; z-index: 11; }
+  /* Radius/border mirror the desktop tab strip's own pattern (see .stat-type-tabs in player.css):
+     rounded top, flat bottom, no bottom border -- so this meshes directly into the sharp-cornered
+     toolbar/table below it instead of reading as a separate floating rounded chip sitting on top
+     of a sharp-cornered card. */
   .stat-type-nav-toggle {
     display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
     width: 100%; min-height: var(--touch-target-min);
-    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); border: 1px solid var(--border); border-bottom: none;
+    border-radius: var(--radius) var(--radius) 0 0;
     color: var(--text); font-size: 0.85rem; font-weight: 700;
     padding: 0.6rem 0.9rem; cursor: pointer;
   }
@@ -90,6 +105,22 @@
     display: flex; align-items: center;
   }
   .stat-type-tabs.open .stat-type-tab.active { border-color: var(--border); background: var(--surface-2); }
+
+  /* Regular Season/Playoffs + Percentiles + the "..." toggle all fighting for one row was the
+     actual crowding complaint -- up to 4 controls competing for ~350px on tabs with playoffs.
+     Give the season switcher its own full-width row and keep Percentiles/"..." on a second row
+     with room to breathe, instead of squeezing everything onto one line. */
+  .stat-table-header { flex-direction: column; align-items: stretch; gap: 0.55rem; }
+  .toolbar-leading { width: 100%; }
+  .toolbar-trailing { width: 100%; justify-content: space-between; }
+  .stat-season-bar { display: flex; width: 100%; gap: 0.4rem; }
+  .stat-season-tab {
+    flex: 1; justify-content: center;
+    display: flex; align-items: center; min-height: var(--touch-target-min);
+  }
+  /* A single season button (no playoffs data) has nothing to share the row with -- don't stretch
+     it to the full width, that reads as empty visual weight for one option. */
+  .stat-season-tab:only-child { flex: 0 0 auto; min-width: 140px; }
 
   /* Study this table / Export CSV tucked behind a "More" toggle -- neither is a courtside action,
      and they were the two extra controls making the toolbar read as a wall of buttons wrapping to

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import FingerprintRadar from './FingerprintRadar';
@@ -41,13 +41,27 @@ export default function ArchetypeBadge({ playerId, name = null, confidence = nul
   // First open arms the deferred fetch.
   useEffect(() => { if (show) setArmed(true); }, [show]);
 
-  // Card is portal-rendered to <body> with position:fixed and JS-computed coordinates (same
-  // approach as HeaderTooltip) so it isn't clipped by an ancestor's overflow, and isn't anchored
-  // left:0 against a pill that the mobile hero centers — clamp within the viewport instead of
-  // assuming the pill sits near the left edge.
+  const dismiss = useCallback(() => { setPinned(false); setHovered(false); }, []);
+  // Hover only means anything with a real mouse. Setting it unconditionally caused a real bug on
+  // mobile: dismissing removes the full-viewport backdrop while the (Playwright/emulated) cursor is
+  // still sitting exactly where the pill is, and the browser re-hit-tests under a stationary cursor
+  // when the DOM changes -- the now-exposed pill gets a synthetic mouseenter and immediately
+  // reopens the card via `hovered`. Gating hover-driven opens to above the mobile breakpoint kills
+  // the loop at its root instead of special-casing the backdrop.
+  const setHoveredIfDesktop = useCallback(v => { if (window.innerWidth > 600) setHovered(v); }, []);
+
+  // Card is portal-rendered to <body>. Above the 600px breakpoint it's position:fixed with
+  // JS-computed coordinates anchored under the pill (same approach as HeaderTooltip), clamped
+  // within the viewport so it isn't clipped by an ancestor's overflow or run off the right edge.
+  // Below it, an anchored popover doesn't work at all -- wherever the pill sits on a phone screen,
+  // an 8px-below-the-pill card can land anywhere from mostly-off-screen to requiring a scroll to
+  // read, which was the actual "doesn't stay on screen" complaint. Render it as a fixed, centered
+  // sheet instead (see .archetype-card--sheet) -- pos.mobile skips the anchored-coordinate math
+  // entirely and lets CSS center it.
   useEffect(() => {
     if (!show) return undefined;
     const reposition = () => {
+      if (window.innerWidth <= 600) { setPos({ mobile: true }); return; }
       const r = wrapRef.current?.getBoundingClientRect();
       if (!r) return;
       const cardWidth = Math.min(CARD_MAX, window.innerWidth * 0.9);
@@ -64,22 +78,27 @@ export default function ArchetypeBadge({ playerId, name = null, confidence = nul
   }, [show]);
 
   // Escape and outside-click dismiss the card entirely (covers the pinned/keyboard cases that
-  // mouseleave doesn't).
+  // mouseleave doesn't). Listens on 'click', not 'mousedown': on the mobile sheet, the backdrop
+  // sits over the pill's own coordinates (its usual dismiss target), so dismissing on mousedown
+  // removed the backdrop mid-gesture and let the tap's mouseup/click resolve against the
+  // newly-exposed pill underneath -- reopening the card via its own onClick in the same gesture
+  // that was supposed to close it. Dismissing on 'click' instead means the whole gesture has
+  // already resolved against the backdrop before anything unmounts, so there's nothing left to
+  // leak through to the pill.
   useEffect(() => {
     if (!show) return undefined;
-    const dismiss = () => { setPinned(false); setHovered(false); };
     const onKey = (e) => { if (e.key === 'Escape') dismiss(); };
-    const onDown = (e) => {
+    const onOutsideClick = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)
         && cardRef.current && !cardRef.current.contains(e.target)) dismiss();
     };
     document.addEventListener('keydown', onKey);
-    document.addEventListener('mousedown', onDown);
+    document.addEventListener('click', onOutsideClick);
     return () => {
       document.removeEventListener('keydown', onKey);
-      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('click', onOutsideClick);
     };
-  }, [show]);
+  }, [show, dismiss]);
 
   // Pill label: the loaded archetype name, else the prop (lists render before the card loads). With
   // no name and no data yet, there's nothing to show — matches the "no badge for thin sample" rule.
@@ -98,10 +117,13 @@ export default function ArchetypeBadge({ playerId, name = null, confidence = nul
     <div
       className="archetype-badge"
       ref={wrapRef}
-      onMouseEnter={() => setHovered(true)}
+      onMouseEnter={() => setHoveredIfDesktop(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
+      // Escape needs to reach the document-level listener below (which closes the card) --
+      // stopping propagation for every key, as before, silently ate it since the native event
+      // never got that far, a pre-existing bug this pass surfaced by testing Escape directly.
+      onKeyDown={(e) => { if (e.key !== 'Escape') e.stopPropagation(); }}
     >
       <button
         type="button"
@@ -109,20 +131,22 @@ export default function ArchetypeBadge({ playerId, name = null, confidence = nul
         aria-expanded={show}
         aria-label={`Archetype: ${pillName}.${confLabel ? ` ${confLabel}.` : ''} Show fingerprint.`}
         onClick={() => setPinned(p => !p)}
-        onFocus={() => setHovered(true)}
+        onFocus={() => setHoveredIfDesktop(true)}
       >
         {conf && <span className={`archetype-conf-dot conf-${conf}`} aria-hidden="true" />}
         {pillName}
       </button>
 
       {show && pos && createPortal(
-        <div
-          ref={cardRef}
-          className="archetype-card"
-          role="dialog"
-          aria-label={`${pillName} fingerprint`}
-          style={{ left: pos.left, top: pos.top }}
-        >
+        <>
+          {pos.mobile && <div className="archetype-card-backdrop" onClick={dismiss} />}
+          <div
+            ref={cardRef}
+            className={`archetype-card${pos.mobile ? ' archetype-card--sheet' : ''}`}
+            role="dialog"
+            aria-label={`${pillName} fingerprint`}
+            style={pos.mobile ? undefined : { left: pos.left, top: pos.top }}
+          >
           {!loaded ? (
             <p className="archetype-descriptor">Loading fingerprint…</p>
           ) : (
@@ -168,7 +192,8 @@ export default function ArchetypeBadge({ playerId, name = null, confidence = nul
               )}
             </>
           )}
-        </div>,
+          </div>
+        </>,
         document.body,
       )}
     </div>

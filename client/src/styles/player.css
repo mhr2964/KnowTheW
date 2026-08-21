@@ -384,6 +384,24 @@
   border-radius: var(--radius);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
+/* Mobile-only variant (ArchetypeBadge.jsx sets pos.mobile below the 600px breakpoint, which skips
+   the inline left/top so this centering isn't fought by an inline style): a fixed, centered sheet
+   with its own dimming backdrop, replacing the anchored-under-the-pill popover that could land
+   partially off-screen depending on where the pill sat on a phone. */
+.archetype-card-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: rgba(0, 0, 0, 0.55);
+}
+.archetype-card--sheet {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(90vw, 340px);
+  max-height: 78vh;
+  overflow-y: auto;
+}
 .archetype-card-head {
   display: flex;
   align-items: baseline;
