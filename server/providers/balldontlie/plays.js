@@ -300,6 +300,35 @@ async function extractBoxscoreTeamStatsBdl(bdlGameId, roster, targetPlayerId) {
 
 // --- public contract methods ---
 
+// Trims one raw /plays row down to exactly the fields computeOnCourtStatsBdl/inferStartingFive/
+// isFreeThrow/isShotAttempt/etc actually read (order, type, text, scoring_play, score_value, and
+// team.id -- narrowed from BDL's full team object, which also carries conference/city/name/
+// full_name/abbreviation on every single play). Caching the untrimmed row is real, avoidable bloat:
+// confirmed live, a single 407-play game serialized to ~133KB (~87KB even after just narrowing
+// `team`; game_id/scores/period/clock alone still added real weight repeated 407 times). At scale
+// this filled the ENTIRE 512MB free-tier Mongo quota after only 59 of 459 players in the first
+// pre-warm backfill run -- see gamePbpCache.js's header comment for the incident and the safety
+// valve added because of it. Keeps the {team: {id}} nesting shape (not a flattened teamId) so
+// computeOnCourtStatsBdl/inferStartingFive and their existing characterization-test fixtures don't
+// need to change at all -- only the surrounding envelope shrinks.
+function trimPlay(p) {
+  return {
+    order: p.order, type: p.type, text: p.text,
+    scoring_play: p.scoring_play, score_value: p.score_value,
+    team: p.team ? { id: p.team.id } : null,
+  };
+}
+
+// Same over-fetching pattern as trimPlay above on /team_stats rows, just a much smaller multiplier
+// (2 rows per game, not ~400) -- trimmed for consistency, not because it's the real driver of bloat.
+function trimTeamStatsRow(r) {
+  return {
+    fgm: r.fgm, fga: r.fga, fg3m: r.fg3m, ftm: r.ftm, fta: r.fta,
+    oreb: r.oreb, dreb: r.dreb, turnovers: r.turnovers, turnover: r.turnover, ast: r.ast,
+    team: r.team ? { id: r.team.id } : null,
+  };
+}
+
 // The 3 BDL calls below (/plays, roster via /player_stats, /team_stats) are all per-GAME, not
 // per-player -- nothing here reads bdlPlayerId. Split out so getCachedRawGameData (gamePbpCache.js)
 // can cache this once per game and reuse it across every player who shares that game, instead of
@@ -312,7 +341,11 @@ async function fetchRawGameDataBdl(bdlGameId) {
   if (!plays?.data) return null;
 
   const teamStatsData = await bdlFetch('/team_stats', { 'game_ids[]': [bdlGameId] });
-  return { plays: plays.data, roster, teamStatsRows: teamStatsData?.data ?? [] };
+  return {
+    plays: plays.data.map(trimPlay),
+    roster,
+    teamStatsRows: (teamStatsData?.data ?? []).map(trimTeamStatsRow),
+  };
 }
 
 // Pure, local, no network -- the only part of this that's actually player-specific.

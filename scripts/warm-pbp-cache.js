@@ -12,12 +12,19 @@
 // Self-throttled well below the live web dyno's own ~500/min BDL pace (see client.js's
 // BDL_RATE_LIMIT_PER_MIN) -- this is a SEPARATE process with its own independent rate-limiter
 // instance, so running it at the same 500/min the web dyno already uses would risk pushing combined
-// traffic past BDL's real account-wide 600/min ceiling. Default here (80/min) leaves real headroom.
+// traffic past BDL's real account-wide 600/min ceiling. Default here (100/min) leaves real headroom.
 // Override via BDL_RATE_LIMIT_PER_MIN=<n> node scripts/warm-pbp-cache.js for a faster/slower run.
 //
 // Safe to interrupt and re-run: already-cached (player, season) pairs re-check the Mongo cache in
 // milliseconds and move on, so a re-run only does new work, not a full re-fetch. No checkpoint file
 // needed for that reason.
+//
+// STORAGE SAFETY VALVE: the first real run of this script filled the ENTIRE 512MB free-tier Mongo
+// quota after only 59 of 459 players and broke live writes site-wide (security-relevant unique
+// indexes failed to (re)create; see the incident writeup in this repo's session history). Fixed the
+// immediate cause (plays.js's trimPlay/trimTeamStatsRow, ~57% smaller per game now) but a per-doc
+// size estimate is exactly the kind of number that's wrong until it isn't -- this checks real usage
+// periodically and stops cleanly well before the quota, rather than trusting the estimate again.
 
 process.env.BDL_RATE_LIMIT_PER_MIN = process.env.BDL_RATE_LIMIT_PER_MIN || '100';
 
@@ -43,6 +50,20 @@ function withTimeout(promise, label) {
     promise,
     new Promise((_, reject) => setTimeout(() => reject(new Error(`timed out after ${CALL_TIMEOUT_MS}ms: ${label}`)), CALL_TIMEOUT_MS)),
   ]);
+}
+
+// Well under whatever the real quota is (512MB on the current free tier) -- this is a hard stop,
+// not a warning, so it protects against the tier changing or another collection growing too.
+const STORAGE_LIMIT_MB = 400;
+async function isOverStorageBudget(db) {
+  const stats = await db.stats().catch(() => null);
+  if (!stats) return false; // can't check -- fail open rather than block on a transient stats error
+  const usedMB = stats.dataSize / 1024 / 1024;
+  if (usedMB > STORAGE_LIMIT_MB) {
+    console.warn(`STORAGE SAFETY VALVE: ${usedMB.toFixed(0)}MB used, over the ${STORAGE_LIMIT_MB}MB budget. Stopping.`);
+    return true;
+  }
+  return false;
 }
 
 async function warmOnePlayer(playerId, name) {
@@ -81,6 +102,8 @@ async function warmOnePlayer(playerId, name) {
   let totalGames = 0, totalSeasons = 0, failures = 0;
 
   for (let i = 0; i < players.length; i++) {
+    if (i % 5 === 0 && await isOverStorageBudget(db)) break;
+
     const p = players[i];
     try {
       const { seasons, gamesWarmed } = await warmOnePlayer(p.id, p.name);
