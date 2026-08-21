@@ -18,6 +18,27 @@
 //     `{ empty: true }` without confirmedEmpty signals a transient ESPN error and is never cached.
 
 const { getDb } = require('../db');
+const zlib = require('zlib');
+
+// Atlas's free-tier quota is enforced against dataSize (the LOGICAL/uncompressed size), not
+// storageSize (WiredTiger's own on-disk compression, which the quota error ignores entirely --
+// confirmed live during the 2026-08-20 incident: the quota error's "514 MB" matched dataSize, not
+// the 107MB storageSize WiredTiger had already compressed it down to). That means compressing
+// BEFORE writing genuinely reduces what counts against the quota, unlike relying on WiredTiger's
+// own compression which doesn't help here at all. Play-by-play JSON compresses very well (heavily
+// repeated team abbreviations, player names, "makes"/"misses"/"assists" phrasing) -- gzip over
+// JSON.stringify, stored as a Buffer under `payloadGz` instead of the raw object under `payload`.
+//
+// Every EXISTING document written before this change has the old `{payload}` shape -- getCached
+// checks for `payloadGz` first and falls back to the legacy `payload` field, so nothing already
+// cached (distributionCache, teamSeasonStats, playerSeasonPbp, etc.) needs to be migrated or
+// re-written; old and new shapes coexist in the same collections indefinitely.
+function compress(payload) {
+  return zlib.gzipSync(Buffer.from(JSON.stringify(payload), 'utf8'));
+}
+function decompress(buf) {
+  return JSON.parse(zlib.gunzipSync(buf).toString('utf8'));
+}
 
 // Reads from the named MongoDB collection using key as _id.
 // Returns cached.payload on hit, null on miss or error.
@@ -26,7 +47,9 @@ async function getCached(collectionName, key) {
   if (!db) return null;
   try {
     const doc = await db.collection(collectionName).findOne({ _id: key });
-    return doc ? doc.payload : null;
+    if (!doc) return null;
+    if (doc.payloadGz) return decompress(doc.payloadGz.buffer ?? doc.payloadGz);
+    return doc.payload ?? null; // legacy uncompressed shape, written before this change
   } catch (err) {
     console.warn(`[teamSeasonCache] read failed coll=${collectionName} key=${key}:`, err.message);
     return null;
@@ -59,7 +82,8 @@ async function isOverStorageBudget(db) {
   return storageOverBudget;
 }
 
-// Writes payload to the named MongoDB collection under key.
+// Writes payload to the named MongoDB collection under key, gzip-compressed (see the compress()
+// header comment for why this actually helps against Atlas's quota, not just cosmetic).
 // Fire-and-forget — errors are logged and swallowed; the caller's response is unaffected.
 async function writeCache(collectionName, key, payload) {
   const db = getDb();
@@ -68,7 +92,7 @@ async function writeCache(collectionName, key, payload) {
   db.collection(collectionName)
     .replaceOne(
       { _id: key },
-      { _id: key, payload, cachedAt: new Date() },
+      { _id: key, payloadGz: compress(payload), cachedAt: new Date() },
       { upsert: true }
     )
     .catch(err =>
