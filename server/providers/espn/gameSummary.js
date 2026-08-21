@@ -181,6 +181,47 @@ function extractBoxscoreTeamStats(summary, targetPlayerId) {
   return { tm, oppPts: opp?.pts ?? null, opp: opp ?? null };
 }
 
+// Trims ESPN's raw game summary down to only the fields computeOnCourtStats/extractBoxscoreTeamStats/
+// findTargetTeamId actually read. ESPN's real summary is a much larger object than just this (full
+// play descriptions, coordinates, win-probability data, broadcast info, etc.) -- caching it verbatim
+// is real, avoidable bloat, same class of bug as BDL's untrimmed /plays row (see
+// balldontlie/plays.js's trimPlay). Confirmed live: an untrimmed ESPN summary cached at 361.6KB for
+// a single game (508 plays), by far the largest documents found during the incident that filled the
+// shared Mongo cluster's entire quota -- see gamePbpCache.js's header comment. Keeps the exact same
+// nested shape (boxscore.players[].statistics[].athletes[], boxscore.teams[].statistics[], plays[])
+// so the three consumer functions above (and their existing characterization-test fixtures) don't
+// need to change at all -- only the surrounding envelope shrinks.
+function trimSummary(summary) {
+  return {
+    boxscore: {
+      players: (summary.boxscore?.players ?? []).map(teamData => ({
+        team: { id: teamData.team?.id },
+        statistics: (teamData.statistics ?? []).map(sg => ({
+          athletes: (sg.athletes ?? []).map(a => ({
+            starter: a.starter,
+            athlete: { id: a.athlete?.id },
+          })),
+        })),
+      })),
+      teams: (summary.boxscore?.teams ?? []).map(t => ({
+        team: { id: t.team?.id },
+        statistics: (t.statistics ?? []).map(s => ({ name: s.name, displayValue: s.displayValue, value: s.value })),
+      })),
+    },
+    plays: (summary.plays ?? []).map(p => ({
+      sequenceNumber: p.sequenceNumber,
+      team: { id: p.team?.id },
+      participants: (p.participants ?? []).map(part => ({ athlete: { id: part.athlete?.id } })),
+      type: { text: p.type?.text },
+      pointsAttempted: p.pointsAttempted,
+      shootingPlay: p.shootingPlay,
+      scoringPlay: p.scoringPlay,
+      scoreValue: p.scoreValue,
+      text: p.text,
+    })),
+  };
+}
+
 /**
  * Fetch one game summary and return the PBP-derived stats for the target player.
  * @returns {Promise<{fetched:boolean, onCourt:object|null, boxscore:object|null}>}
@@ -191,7 +232,10 @@ async function getGamePbpStats(eventId, playerId, season) {
   // fetchGameSummary(eventId) is already a single, whole-game, non-player-specific call -- cached
   // per-game (past seasons only) so every player who shares this game reuses the same fetch. See
   // gamePbpCache.js and balldontlie/plays.js's fetchRawGameDataBdl for the equivalent BDL split.
-  const summary = await getCachedRawGameData('espn', eventId, season, () => espn.fetchGameSummary(eventId));
+  const summary = await getCachedRawGameData('espn', eventId, season, async () => {
+    const full = await espn.fetchGameSummary(eventId);
+    return full ? trimSummary(full) : null;
+  });
   if (!summary) return { fetched: false, onCourt: null, boxscore: null };
   return {
     fetched: true,
@@ -205,5 +249,6 @@ module.exports = {
   // exported for characterization tests:
   computeOnCourtStats,
   extractBoxscoreTeamStats,
+  trimSummary,
   findTargetTeamId,
 };
