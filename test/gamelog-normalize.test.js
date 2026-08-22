@@ -58,6 +58,7 @@ test('normalizeGameLog produces the expected columns + games', () => {
       result: 'L',
       teamScore: 70,   // away
       oppScore: 88,    // home
+      postseason: false,
       stats: {
         minutes: '30', points: '18', 'fieldGoalsMade-fieldGoalsAttempted': '7-16',
         fieldGoalPct: '43.8', threePointPct: '33.3', fouls: '3',
@@ -70,12 +71,22 @@ test('normalizeGameLog produces the expected columns + games', () => {
       result: 'W',
       teamScore: 90,   // home
       oppScore: 80,    // away
+      postseason: false,
       stats: {
         minutes: '32', points: '24', 'fieldGoalsMade-fieldGoalsAttempted': '9-15',
         fieldGoalPct: '60.0', threePointPct: '40.0', fouls: '2',
       },
     },
   ]);
+});
+
+test('normalizeGameLog tags postseason from the seasonType displayName', () => {
+  const out = normalizeGameLog({
+    names: ['points'],
+    events: { 1: { gameDate: '2024-09-01', atVs: 'vs', gameResult: 'W', opponent: { abbreviation: 'NY' }, homeTeamScore: '80', awayTeamScore: '70' } },
+    seasonTypes: [{ displayName: 'Postseason', categories: [{ events: [{ eventId: 1, stats: ['20'] }] }] }],
+  });
+  assert.strictEqual(out.games[0].postseason, true);
 });
 
 test('normalizeGameLog tolerates an empty/missing response', () => {

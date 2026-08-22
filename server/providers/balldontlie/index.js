@@ -112,20 +112,20 @@ class BallDontLieProvider extends SportsDataProvider {
   // --- Shot chart: new data, not a migration -- no ESPN equivalent exists at all (see
   // shotChart.js's header comment). Own season floor (2022), not usesBdl/BDL_MIN_SEASON (2008) --
   // zone tracking is a much newer feed than the rest of this provider's BDL coverage. ---
-  async getPlayerShotChart(playerId, season) {
+  async getPlayerShotChart(playerId, season, postseason) {
     if (Number(season) < SHOT_CHART_MIN_SEASON) return null;
     const bdlPlayerId = await idMap.resolveBdlPlayerId(playerId);
     if (bdlPlayerId == null) return null;
-    return bdlShotChart.fetchPlayerShotChartBdl(bdlPlayerId, season);
+    return bdlShotChart.fetchPlayerShotChartBdl(bdlPlayerId, season, postseason);
   }
 
   // League-wide per-zone FG% averages, for Shot Chart's color-scale anchor (each zone's hot/cold
   // should be relative to how that zone actually shoots league-wide, not a flat 50% -- see
   // leagueShotZones.js's header comment). Same season floor as getPlayerShotChart -- no averages
   // exist before zone tracking started.
-  async getLeagueShotZones(season) {
+  async getLeagueShotZones(season, postseason) {
     if (Number(season) < SHOT_CHART_MIN_SEASON) return null;
-    return bdlLeagueShotZones.fetchLeagueShotZonesBdl(season);
+    return bdlLeagueShotZones.fetchLeagueShotZonesBdl(season, postseason);
   }
 
   // --- Phase 2 (ESPN-migration plan): regular-season schedule, season+seasontype-conditional ---

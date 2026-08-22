@@ -55,16 +55,19 @@ function withSeasonTimeout(promise) {
 }
 
 // Shared by both routes below: one season's PBP table row, live-fetching that season's games
-// from the provider. Per-GAME raw fetches are cached (past seasons only, see gamePbpCache.js)
-// inside getGamePbpStats itself, the same primitive getSeasonPBPSummary/Advanced uses -- a season
-// warmed by anyone opening either tab benefits both, and players sharing a game only pay the real
-// fetch cost once between them.
-async function computeSeasonPbpRow(playerId, pgTable, I, season) {
+// from the provider. `seasontype` (2=regular, 3=playoffs) is threaded straight through to
+// getRegularSeasonEventIds, same dispatch convention advancedStats.js's computeSeasonAdvancedRow
+// already uses -- the method name predates the playoffs use and stays a bare event-id lookup for
+// whichever seasontype is asked for. Per-GAME raw fetches are cached (past seasons only, see
+// gamePbpCache.js) inside getGamePbpStats itself, the same primitive getSeasonPBPSummary/Advanced
+// uses -- a season warmed by anyone opening either tab benefits both, and players sharing a game
+// only pay the real fetch cost once between them.
+async function computeSeasonPbpRow(playerId, pgTable, I, season, seasontype = 2) {
   const playerRow = pgTable.rows.find(r => String(r[I.SEASON_ID]) === season);
   if (!playerRow) return null;
 
   const provider = getProvider();
-  const eventIds = await provider.getRegularSeasonEventIds(playerId, season, 2);
+  const eventIds = await provider.getRegularSeasonEventIds(playerId, season, seasontype);
   if (!eventIds?.length) return null;
 
   const pbpResults = await Promise.all(eventIds.map(id => provider.getGamePbpStats(id, playerId, season)));
@@ -81,13 +84,19 @@ async function computeSeasonPbpRow(playerId, pgTable, I, season) {
   return computePbpTableRow(pbpResults, meta);
 }
 
+// Loads both the regular-season and playoff per-game tables -- mirrors advancedStats.js's
+// loadAdvPgTables (pgPostTable/IPost naming) so the two PBP-family routes below can pick whichever
+// side seasontype asks for the same way computeSeasonAdvancedRow does.
 async function loadPgTable(playerId) {
-  const { regSeasons, teamsById } = await fetchPlayerSeasonData(playerId);
-  const regParsed = buildSeasonTables(regSeasons, teamsById);
+  const { regSeasons, postSeasons, teamsById } = await fetchPlayerSeasonData(playerId);
+  const regParsed  = buildSeasonTables(regSeasons,  teamsById);
+  const postParsed = buildSeasonTables(postSeasons, teamsById);
   const pgTable = regParsed?.pg?.table;
   if (!pgTable) return null;
   const I = Object.fromEntries(pgTable.headers.map((h, i) => [h, i]));
-  return { pgTable, I };
+  const pgPostTable = postParsed?.pg?.table;
+  const IPost = pgPostTable ? Object.fromEntries(pgPostTable.headers.map((h, i) => [h, i])) : I;
+  return { pgTable, I, pgPostTable, IPost };
 }
 
 // Single-season PBP row: the fast path the client hits first so the current season can render
@@ -96,9 +105,13 @@ router.get('/players/:id/pbp-table/season/:season', async (req, res) => {
   try {
     const playerId = String(req.params.id);
     const season = String(req.params.season);
+    const seasontype = req.query.seasontype === '3' ? 3 : 2;
     const loaded = await loadPgTable(playerId);
     if (!loaded) return res.status(404).json({ error: 'no stats for this player' });
-    const row = await withSeasonTimeout(computeSeasonPbpRow(playerId, loaded.pgTable, loaded.I, season));
+    const table = seasontype === 3 ? loaded.pgPostTable : loaded.pgTable;
+    const I     = seasontype === 3 ? loaded.IPost      : loaded.I;
+    if (!table) return res.status(404).json({ error: 'no play-by-play data for this season' });
+    const row = await withSeasonTimeout(computeSeasonPbpRow(playerId, table, I, season, seasontype));
     if (!row) return res.status(404).json({ error: 'no play-by-play data for this season' });
     res.json({ headers: PBP_TABLE_HEADERS, row });
   } catch (err) {

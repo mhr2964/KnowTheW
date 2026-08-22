@@ -15,11 +15,13 @@ const { ZONES } = require('./shotChart');
 
 const leagueShotZonesCache = makeSeasonCache();
 
-async function fetchAllShotZoneRows(season) {
+async function fetchAllShotZoneRows(season, postseason) {
   const rows = [];
   let cursor;
   while (true) {
-    const data = await bdlFetch('/player_shot_locations', { season, per_page: 100, cursor });
+    const params = { season, per_page: 100, cursor };
+    if (postseason) params.postseason = true;
+    const data = await bdlFetch('/player_shot_locations', params);
     if (!data) return null;
     rows.push(...(data.data ?? []));
     if (!data.meta?.next_cursor) break;
@@ -51,14 +53,18 @@ function aggregateLeagueZones(rows) {
   return result;
 }
 
-async function fetchLeagueShotZonesRawBdl(season) {
-  const rows = await fetchAllShotZoneRows(season);
+async function fetchLeagueShotZonesRawBdl(season, postseason) {
+  const rows = await fetchAllShotZoneRows(season, postseason);
   if (!rows) return null;
   return aggregateLeagueZones(rows);
 }
 
-function fetchLeagueShotZonesBdl(season) {
-  return leagueShotZonesCache.get(season, `league-zones-${season}`, () => fetchLeagueShotZonesRawBdl(season));
+// Matches the player's own regular/playoffs toggle (shotChart.js) -- a playoffs zone compared
+// against a league average dominated by regular-season volume would mislabel a normal playoff
+// shooting night as "hot" or "cold" relative to the wrong baseline.
+function fetchLeagueShotZonesBdl(season, postseason) {
+  const key = `league-zones-${season}-${postseason ? 'po' : 'reg'}`;
+  return leagueShotZonesCache.get(season, key, () => fetchLeagueShotZonesRawBdl(season, postseason));
 }
 
 module.exports = {

@@ -43,20 +43,23 @@ function buildShotChartFromRow(row) {
   return { season: Number(row?.season), zones };
 }
 
-async function fetchPlayerShotChartRawBdl(bdlPlayerId, season) {
-  const data = await bdlFetch('/player_shot_locations', {
-    'player_ids[]': [bdlPlayerId],
-    season,
-  });
+// `postseason` is a real, live-confirmed filter on this endpoint (spike 2026-08-21: regular vs
+// playoffs returned genuinely different zone data for the same player-season). The regular-season
+// spike request omitted the param entirely rather than sending `postseason=false`, so that's the
+// form kept here rather than assuming BDL treats an explicit false the same as omission.
+async function fetchPlayerShotChartRawBdl(bdlPlayerId, season, postseason) {
+  const params = { 'player_ids[]': [bdlPlayerId], season };
+  if (postseason) params.postseason = true;
+  const data = await bdlFetch('/player_shot_locations', params);
   if (!data) return null;
   const row = data.data?.[0];
   if (!row) return null; // no tracking data for this player-season -- graceful "no chart", not an error
   return buildShotChartFromRow(row);
 }
 
-function fetchPlayerShotChartBdl(bdlPlayerId, season) {
-  const key = `${bdlPlayerId}-${season}`;
-  return shotChartCache.get(season, key, () => fetchPlayerShotChartRawBdl(bdlPlayerId, season));
+function fetchPlayerShotChartBdl(bdlPlayerId, season, postseason) {
+  const key = `${bdlPlayerId}-${season}-${postseason ? 'po' : 'reg'}`;
+  return shotChartCache.get(season, key, () => fetchPlayerShotChartRawBdl(bdlPlayerId, season, postseason));
 }
 
 module.exports = {

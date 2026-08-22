@@ -60,6 +60,10 @@ function normalizeGameLog(data) {
           result: meta.gameResult || '?',
           teamScore: isHome ? parseInt(meta.homeTeamScore) : parseInt(meta.awayTeamScore),
           oppScore: isHome ? parseInt(meta.awayTeamScore) : parseInt(meta.homeTeamScore),
+          // Matches index.js's own stFilter comparison against this exact field -- keeps ESPN- and
+          // BDL-sourced game logs (balldontlie/gameLog.js already tags this from /games) on the same
+          // per-game postseason contract so the client can filter either source identically.
+          postseason: st.displayName === 'Postseason',
           stats: Object.fromEntries(names.map((n, i) => [n, evt.stats[i]])),
         });
       });

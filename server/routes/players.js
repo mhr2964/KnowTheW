@@ -143,9 +143,10 @@ router.get('/players/:id/gamelog', async (req, res) => {
 router.get('/players/:id/shotchart', async (req, res) => {
   try {
     const season = req.query.season;
+    const postseason = req.query.postseason === 'true';
     const [chart, leagueAvg] = await Promise.all([
-      getProvider().getPlayerShotChart(req.params.id, season),
-      getProvider().getLeagueShotZones(season).catch(() => null),
+      getProvider().getPlayerShotChart(req.params.id, season, postseason),
+      getProvider().getLeagueShotZones(season, postseason).catch(() => null),
     ]);
     if (!chart) return res.status(404).json({ error: 'no shot chart available' });
     const zones = chart.zones.map(z => ({ ...z, leagueAvgPct: leagueAvg?.[z.key] ?? null }));
@@ -165,7 +166,16 @@ router.get('/players/:id/splits', async (req, res) => {
     const log = await getProvider().getPlayerGameLog(req.params.id, req.query.season);
     if (!log) return res.status(404).json({ error: 'no gamelog available' });
     const splitType = VALID_SPLIT_TYPES.has(req.query.type) ? req.query.type : 'homeaway';
-    res.json(buildSplits(log, log.games, splitType) ?? { columns: [], rows: [] });
+    // Every game is already tagged postseason:boolean by both providers (see gamelog.js in each
+    // provider) -- a combined season log intentionally mixes regular + playoff games, so splits
+    // must pick one set before aggregating rather than blending a playoff-only opponent's row
+    // into that same opponent's regular-season row. hasPlayoffs is computed from the FULL log
+    // (before the postseason filter below) so the client can decide whether to show the toggle
+    // at all regardless of which side of it is currently selected.
+    const hasPlayoffs = log.games.some(g => g.postseason);
+    const wantPostseason = req.query.postseason === 'true';
+    const games = log.games.filter(g => !!g.postseason === wantPostseason);
+    res.json({ hasPlayoffs, ...(buildSplits(log, games, splitType) ?? { columns: [], rows: [] }) });
   } catch (err) {
     console.error('splits:', err.message);
     res.status(502).json({ error: 'failed to load splits' });

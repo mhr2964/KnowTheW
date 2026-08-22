@@ -63,14 +63,15 @@ class SportsDataProvider {
   getPlayerGameLog() { return this._notImplemented('getPlayerGameLog'); }
   /** getGameLogEvents(playerId, season, seasontype) → [{eventId,seasonTypeName,eventNote,opponentId}] | null. */
   getGameLogEvents() { return this._notImplemented('getGameLogEvents'); }
-  /** getPlayerShotChart(playerId, season) → {season, zones:[{key,label,fga,fgm,fgPct}]} | null.
-   *  Zone-aggregated FG stats per court zone, not per-shot coordinates. No ESPN equivalent exists --
-   *  a provider without shot-location data should return null, not throw (see espn/index.js). */
+  /** getPlayerShotChart(playerId, season, postseason) → {season, zones:[{key,label,fga,fgm,fgPct}]}
+   *  | null. Zone-aggregated FG stats per court zone, not per-shot coordinates. No ESPN equivalent
+   *  exists -- a provider without shot-location data should return null, not throw (see
+   *  espn/index.js). `postseason` is optional/falsy-default (regular season). */
   getPlayerShotChart() { return this._notImplemented('getPlayerShotChart'); }
-  /** getLeagueShotZones(season) → {zoneKey: leagueAvgFgPct} | null. League-wide volume-weighted FG%
-   *  per court zone, for anchoring Shot Chart's color scale to each zone's own average rather than a
-   *  flat 50% (mid-range and 3PT have very different real averages -- see leagueShotZones.js). No
-   *  ESPN equivalent exists, same as getPlayerShotChart. */
+  /** getLeagueShotZones(season, postseason) → {zoneKey: leagueAvgFgPct} | null. League-wide
+   *  volume-weighted FG% per court zone, for anchoring Shot Chart's color scale to each zone's own
+   *  average rather than a flat 50% (mid-range and 3PT have very different real averages -- see
+   *  leagueShotZones.js). No ESPN equivalent exists, same as getPlayerShotChart. */
   getLeagueShotZones() { return this._notImplemented('getLeagueShotZones'); }
   /** getGamePbpStats(eventId, playerId, season) → {fetched, onCourt, boxscore} (raw summary stays in
    *  provider). `season` is only used for the per-game cache's isPastSeason gate (gamePbpCache.js),
