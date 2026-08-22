@@ -40,8 +40,9 @@ const bdlShotChart = require('./shotChart');
 const bdlLeagueShotZones = require('./leagueShotZones');
 const bdlLeagueStats = require('./leagueStats');
 const bdlStandings = require('./standings');
+const bdlAdvancedRatings = require('./advancedRatings');
 const idMap = require('./idMap');
-const { BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON } = require('./client');
+const { BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON, ADVANCED_RATINGS_MIN_SEASON } = require('./client');
 const { SportsDataProvider } = require('../SportsDataProvider');
 const { withValidation } = require('../validation');
 const { aggregatePBPSummary } = require('../pbpAggregate');
@@ -182,6 +183,16 @@ class BallDontLieProvider extends SportsDataProvider {
     const eventIds = await this.getRegularSeasonEventIds(playerId, season, seasontype);
     if (!eventIds?.length) return null;
     return aggregatePBPSummary(eventIds, id => this.getGamePbpStats(id, playerId, season));
+  }
+
+  // Off/Def/Net Rating + PIE: new capability, not a migration -- ESPN has no season-level advanced-
+  // stats endpoint at all (see espn/index.js). Season-gated like every other BDL method (usesBdl),
+  // since BDL has no WNBA data before 2008.
+  async getPlayerSeasonRatings(playerId, season, seasontype = 2) {
+    if (Number(season) < ADVANCED_RATINGS_MIN_SEASON) return null;
+    const bdlPlayerId = await idMap.resolveBdlPlayerId(playerId);
+    if (bdlPlayerId == null) return null;
+    return bdlAdvancedRatings.fetchPlayerSeasonRatingsBdl(bdlPlayerId, season, seasontype);
   }
 }
 

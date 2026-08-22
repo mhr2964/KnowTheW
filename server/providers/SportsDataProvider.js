@@ -90,6 +90,12 @@ class SportsDataProvider {
    *  games were found. A provider with a real on-court/boxscore endpoint can skip the
    *  per-game reconstruction and return the same shape directly. */
   getSeasonPBPSummary() { return this._notImplemented('getSeasonPBPSummary'); }
+  /** getPlayerSeasonRatings(playerId, season, seasontype) → {Promise<import('./types').PlayerSeasonRatings|null>}
+   *  Off/Def/Net Rating + PIE for one player-season, straight from the source's own season-level
+   *  advanced-stats endpoint (no box-score reconstruction, unlike getSeasonPBPSummary above). BDL-only
+   *  -- no ESPN equivalent exists, so a provider without it returns null rather than throwing, same
+   *  posture as getPlayerShotChart. */
+  getPlayerSeasonRatings() { return this._notImplemented('getPlayerSeasonRatings'); }
 
   // --- League-wide stats (percentile system) ---
   /** getLeagueStatLines(season, mode) → normalized {pos, PTS, ...} entries for qualified players. */

@@ -20,9 +20,14 @@ const LABELS = {
   OWS: 'OWS', DWS: 'DWS', WS: 'WS', WS_PER48: 'WS/48',
   // Adj. Shooting: rate stat as % of that season's league average (100 = league average).
   R_TS_PCT: 'rTS%', R_EFG_PCT: 'reFG%', R_TPAr: 'r3PAr', R_FTr: 'rFTr',
+  // BDL's own season-level advanced-stats endpoint (not box-score-derived, unlike everything
+  // above) -- Off/Def/Net Rating are points-per-100-possessions, already on a "number" scale
+  // (~90-115), not a 0-1 fraction like the PCT/PCT100 stats. PIE is BDL's own 0-1-scaled fraction
+  // (confirmed by live spike, 2026-08-21), same rendering family as TS%/eFG%.
+  OFF_RATING: 'ORtg', DEF_RATING: 'DRtg', NET_RATING: 'Net Rtg', PIE: 'PIE',
 };
 
-const PCT_KEYS = new Set(['FG_PCT', 'FG3_PCT', 'FT_PCT', 'TS_PCT', 'EFG_PCT', 'TPAr', 'FTr', 'WS_PER48']);
+const PCT_KEYS = new Set(['FG_PCT', 'FG3_PCT', 'FT_PCT', 'TS_PCT', 'EFG_PCT', 'TPAr', 'FTr', 'WS_PER48', 'PIE']);
 const PCT100_KEYS = new Set(['TOV_PCT', 'USG_PCT', 'AST_PCT', 'ORB_PCT', 'DRB_PCT', 'TRB_PCT', 'STL_PCT', 'BLK_PCT']);
 
 function columnFor(key) {

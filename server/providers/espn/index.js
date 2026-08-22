@@ -76,6 +76,7 @@ class EspnProvider extends SportsDataProvider {
   // to 'espn' (providers/index.js), so local dev and any non-BDL env would otherwise 502 here.
   getPlayerShotChart() { return null; }
   getLeagueShotZones() { return null; }
+  getPlayerSeasonRatings() { return null; }
   getGamePbpStats(eventId, playerId, season) { return gameSummary.getGamePbpStats(eventId, playerId, season); }
   async getRegularSeasonEventIds(playerId, season, seasontype = 2) {
     const events = await gamelog.getGameLogEvents(playerId, season, seasontype);

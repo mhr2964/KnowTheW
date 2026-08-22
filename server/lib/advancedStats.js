@@ -25,6 +25,7 @@ const ADV_HEADERS_SRV = [
   'STL_PCT', 'BLK_PCT',
   'PER',
   'OWS', 'DWS', 'WS', 'WS_PER48',
+  'OFF_RATING', 'DEF_RATING', 'NET_RATING', 'PIE',
 ];
 
 const ADV_I = Object.fromEntries(ADV_HEADERS_SRV.map((h, idx) => [h, idx]));
@@ -136,6 +137,7 @@ function advancedRow(row, I, tm, lg, totRow, officialTm = null) {
     ts, efg, tpar, ftr, tovPct,
     usgPct, astPct, orbPct, drbPct, trbPct, stlPct, blkPct, per,
     null, null, null, null, // OWS, DWS, WS, WS_PER48 — only populated in advanced-pbp-all
+    null, null, null, null, // OFF_RATING, DEF_RATING, NET_RATING, PIE — same, see computeSeasonPBPUncached
   ];
 }
 
@@ -169,6 +171,7 @@ function buildAdvancedCareer(pgSrc, totSrc) {
     [row[I.SEASON_ID], row[I.TEAM_ABBREVIATION], row[I.GP],
      ts, efg, tpar, ftr, tovPct,
      null, null, null, null, null, null, null, null,
+     null, null, null, null,
      null, null, null, null],
   ]};
 }
@@ -186,9 +189,14 @@ async function computeSeasonPBPUncached(playerId, season, playerRow, I, teamId, 
   // Fetch official team stats before advancedRow — used there for USG%, AST%, PER
   // (PBP undercounts team possessions/pace in older seasons).
   // Also needed for Win Shares (officialPace for DWS, ptsAllowedPg).
-  const [tmOfficial, ptsAllowedPg] = teamId
-    ? await Promise.all([fetchTeamStats(teamId, season), fetchTeamPtsAllowed(teamId, season)])
-    : [null, null];
+  // Ratings (Off/Def/Net/PIE) come straight off the source's own season-level endpoint, unrelated
+  // to the box-score reconstruction above -- fetched alongside rather than sequentially after.
+  const [[tmOfficial, ptsAllowedPg], ratings] = await Promise.all([
+    teamId
+      ? Promise.all([fetchTeamStats(teamId, season), fetchTeamPtsAllowed(teamId, season)])
+      : Promise.resolve([null, null]),
+    getProvider().getPlayerSeasonRatings(playerId, season, seasontype),
+  ]);
 
   const advRow = advancedRow(playerRow, I, tmOC, lg, totRow, tmOfficial);
 
@@ -203,7 +211,10 @@ async function computeSeasonPBPUncached(playerId, season, playerRow, I, teamId, 
     ? computeWinShares(playerRow, I, tmForOWS, lg, ptsAllowedPg, officialPace)
     : [null, null, null, null];
 
-  const row = [...advRow.slice(0, 16), ...wsVals];
+  const ratingVals = ratings
+    ? [ratings.offRating, ratings.defRating, ratings.netRating, ratings.pie]
+    : [null, null, null, null];
+  const row = [...advRow.slice(0, 16), ...wsVals, ...ratingVals];
 
   // complete comes from the provider summary — false means an ESPN fetch failed mid-game-loop.
   // Partial fetches must not be cached — they would bake in understated stats permanently.
@@ -219,8 +230,12 @@ async function computeSeasonPBPUncached(playerId, season, playerRow, I, teamId, 
 async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, seasontype = 2) {
   if (isPastSeason(season)) {
     // Provider-scoped so toggling STATS_PROVIDER can't read back the other source's cached PBP
-    // reconstruction for the same player/season.
-    const cacheKey = `${getProvider().name}-${playerId}-${season}-${seasontype}`;
+    // reconstruction for the same player/season. `-v2` suffix: this collection has no version-field
+    // wrapper like advancedStats.js's own `v` guard on the `advancedStats` collection below -- bumping
+    // the KEY itself is teamSeasonCache.js's own documented invalidation mechanism. Bumped when
+    // OFF_RATING/DEF_RATING/NET_RATING/PIE were added to the row shape (confirmed live, 2026-08-21: an
+    // unbumped key kept serving the old 20-element row for every already-cached past season forever).
+    const cacheKey = `${getProvider().name}-${playerId}-${season}-${seasontype}-v2`;
 
     // Check cache first — one findOne, no ESPN traffic on hit.
     const cached = await getCached('playerSeasonPbp', cacheKey);
@@ -255,6 +270,19 @@ function buildPbpSplit(valid, pgRows, rowI) {
   const careerGP   = valid.reduce((s, r) => s + (r.row[ADV_I.GP]  ?? 0), 0);
   const careerMin  = valid.reduce((s, r) => s + (seasonMins[r.season] ?? 0), 0);
   const careerWS48 = careerMin > 0 ? careerWS / (careerMin / 48) : null;
+  // Ratings are per-100-possession rates, not summable like OWS/DWS -- career value is a
+  // minutes-weighted average across seasons (there's no lower-level possession count available
+  // from the source to recompute an exact career rate from, unlike TS%/eFG% which derive from
+  // summed raw totals in buildAdvancedCareer above).
+  function weightedCareerAvg(field) {
+    let wSum = 0, mSum = 0;
+    for (const r of valid) {
+      const v = r.row[ADV_I[field]];
+      const m = seasonMins[r.season] ?? 0;
+      if (v != null && m > 0) { wSum += v * m; mSum += m; }
+    }
+    return mSum > 0 ? wSum / mSum : null;
+  }
   const careerRow  = ADV_HEADERS_SRV.map(h => {
     if (h === 'SEASON_ID') return 'Career';
     if (h === 'TEAM_ABBREVIATION') return '';
@@ -263,6 +291,9 @@ function buildPbpSplit(valid, pgRows, rowI) {
     if (h === 'DWS')      return careerDWS;
     if (h === 'WS')       return careerWS;
     if (h === 'WS_PER48') return careerWS48;
+    if (h === 'OFF_RATING' || h === 'DEF_RATING' || h === 'NET_RATING' || h === 'PIE') {
+      return weightedCareerAvg(h);
+    }
     return null;
   });
   return { rows: valid.map(r => r.row), careerRow };
@@ -378,7 +409,7 @@ async function computeAdvancedPbpAll(playerId) {
     // poisoned entry from a past systemic failure (see the write-side guard below for how new ones
     // are prevented) -- bypass it and recompute instead of serving it forever.
     const looksPoisoned = hadSeasonsToTry && advCached?.data?.regular?.rows?.length === 0;
-    if (advCached?.gp === currentGP && advCached.v === 27 && advCached.data?.regular != null && !looksPoisoned) {
+    if (advCached?.gp === currentGP && advCached.v === 29 && advCached.data?.regular != null && !looksPoisoned) {
       return advCached.data;
     }
   }
@@ -428,8 +459,15 @@ async function computeAdvancedPbpAll(playerId) {
   // v bumped 26->27: getLeagueAverage() now covers the in-progress season -- force a rebuild of any
   // v26 doc that was cached as legitimately-empty only because the current season had no WNBA_LG
   // entry yet (a 2026-only rookie's advanced stats, for example). Self-heals with no manual cleanup.
+  // v bumped 27->28->29: added OFF_RATING/DEF_RATING/NET_RATING/PIE columns -- without a bump, every
+  // already-cached player keeps serving the old 20-column shape forever. 28 was itself burned during
+  // this same rollout: a dev-server test run wrote a v28 doc for a real player BEFORE the underlying
+  // per-season playerSeasonPbp cache key was ALSO bumped (see computeSeasonPBP below) -- that
+  // still-stale row got baked into the v28 doc and re-served identically on every hit since the
+  // outer v-guard alone can't tell a "genuinely v28-shaped" doc from a "poisoned during rollout" one.
+  // 29 is the first version computed with both fixes live.
   if (db && !looksLikeSystemicFailure) db.collection('advancedStats')
-    .replaceOne({ _id: advCacheId }, { _id: advCacheId, gp: currentGP, v: 27, data: advResult }, { upsert: true })
+    .replaceOne({ _id: advCacheId }, { _id: advCacheId, gp: currentGP, v: 29, data: advResult }, { upsert: true })
     .catch(err => console.error('mongo write advancedStats:', err.message));
 
   return advResult;

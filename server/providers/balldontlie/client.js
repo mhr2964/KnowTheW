@@ -23,6 +23,14 @@ const BDL_MIN_SEASON = 2008;
 // (see balldontlie/shotChart.js), so a season below this floor simply has no shot chart to show.
 const SHOT_CHART_MIN_SEASON = 2022;
 
+// Season-level advanced stats (off/def/net rating, PIE) are the same later tracking-data feed as
+// shot locations, not the general BDL_MIN_SEASON coverage -- confirmed empty by live spike at
+// 2018/2019/2020/2021 for a real player (A'ja Wilson, id 535), present starting 2022. No ESPN
+// fallback exists for these fields, so a season below this floor simply has no ratings to show;
+// gating on it (rather than calling anyway and getting an empty response back) avoids spending BDL
+// rate-limit budget on a call that always returns nothing.
+const ADVANCED_RATINGS_MIN_SEASON = 2022;
+
 function buildQuery(params) {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params ?? {})) {
@@ -111,6 +119,16 @@ function _resetRateLimitForTest() {
 // investigation happened to hardcode the real working key instead of loading it from .env. Fixed by
 // correcting .env; retrying 401 here costs nothing on a real dead-key case (it was already going to
 // fail) and may help on an actual transient blip, so it stays as a cheap defensive measure.
+// Per-attempt hard timeout. Confirmed live, 2026-08-21: bdlFetch had NO timeout at all -- a single
+// stalled connection (TCP connected, upstream never responds) hangs the awaited fetch() forever,
+// with no error, no log line, nothing. In scripts/seed-distributions.js's buildFingerprintIndex
+// (mapWithConcurrency processes ~700 players in sequential chunks of 6), one such stall wedges that
+// whole chunk's Promise.all and every chunk after it -- the entire release-phase script, and thus
+// the Heroku deploy, hangs indefinitely instead of failing loudly. A live web request has a route-
+// level timeout as a backstop (SEASON_TIMEOUT_MS); a background script has none, so this needed to
+// be fixed at the fetch layer itself, not worked around per-caller.
+const FETCH_TIMEOUT_MS = 20000;
+
 async function bdlFetch(path, params) {
   const key = process.env.BALLDONTLIE_KEY;
   if (!key) return null;
@@ -121,6 +139,7 @@ async function bdlFetch(path, params) {
     try {
       res = await fetch(`${BDL}${path}${buildQuery(params)}`, {
         headers: { Authorization: key },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
     } catch (err) {
       console.warn(`[balldontlie] ${path} -> ${err.message}`);
@@ -152,7 +171,7 @@ const bdlTeamPtsAllowedCache  = {};
 const bdlTeamsCache           = {};
 
 module.exports = {
-  BDL, BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON,
+  BDL, BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON, ADVANCED_RATINGS_MIN_SEASON,
   bdlFetch, withCache, withTtlCache,
   bdlTeamSeasonStatsCache, bdlTeamPtsAllowedCache, bdlTeamsCache,
   _setRateLimitForTest, _resetRateLimitForTest,
