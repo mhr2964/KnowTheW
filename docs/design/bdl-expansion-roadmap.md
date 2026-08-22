@@ -40,7 +40,7 @@ context from a compact summary.
 | 8 | Team shot chart | Shipped |
 | 9 | League shot-zone leaderboards | Shipped |
 | 10 | Per-game advanced stats (Game Log) | Shipped |
-| 11 | Injury report | Not started |
+| 11 | Injury report | Shipped |
 | 12 | Odds/spread on schedule | Not started |
 
 Player props stays explicitly deferred (user call, 2026-08-17 brainstorm) — not on this list.
@@ -429,20 +429,60 @@ real per-game Advanced/Four Factors/Usage/Scoring/Misc data; PIE rendered as a f
 matching this site's existing PIE convention rather than a percentage; clicking the same row again
 collapsed the panel; clicking a different row re-fetched and swapped to that game's data.
 
-## 11. Injury report
+## 11. Injury report — shipped, commit `<pending>`
 
-`player_injuries` (documented in the OpenAPI spec, not yet spiked live). From the original
-2026-08-17 backlog framing: natural fit as a team/player-page widget, ties into the existing
-pre-game notification bell (`server/lib/notificationsJob.js`) — e.g. "your repped player is now
-questionable" alongside the existing pre-game alert. Spike the actual endpoint shape first (status
-values, injury description text, timestamps) before building.
+**Spike results (2026-08-22, live against `/wnba/v1/player_injuries`):** 40 rows league-wide as of
+the spike (paginated 25/page via cursor — must page through, `meta.next_cursor` present on a
+partial page). Only two statuses observed (`'Out'`, `'Day-To-Day'`) but treated as an open string,
+not a fixed enum. `return_date` is a free-text estimate like `"Aug 30"` (no year) — passed through
+as-is rather than parsed into a real Date, which would be a lossy guess. `comment` is occasionally
+absent (2 of 40 rows). `player.id` is BDL's own id + plain name, no ESPN identity attached at the
+endpoint — same bridge as Feature 9's league shot-zone leaders (`idMap.js`'s
+`resolveEspnIdByName`).
 
-**Build:** new provider method, likely a widget on player pages and team roster pages, plus a hook
-into the notification job for repped-player status changes.
+**Build:** `server/providers/balldontlie/injuries.js` (new) — `fetchPlayerInjuryBdl` (single
+player) and `fetchTeamInjuriesBdl` (whole team, paginated). Provider methods
+`getPlayerInjuryStatus`/`getTeamInjuries` on the BDL provider (ESPN returns null/[] — no ESPN
+equivalent). Route `/players/:id/injury` (200 with `injury: null` for a healthy player, not 404 —
+"no injury" is the normal case, not a missing-data condition). Team roster injuries are NOT a
+separate route — `/teams/:id/roster`'s existing route attaches `injury` onto each CURRENT-season
+player row server-side (best-effort, same posture as the existing `attachArchetypeNames`), so the
+roster widget needed no second client-side fetch. Client: `InjuryPill.jsx` (pure display,
+{status,returnDate,comment}|null → pill or nothing) shared by `InjuryBadge.jsx` (player hero,
+fetches its own `/injury` — skipped entirely for retired players, which are the majority of
+player-page views by count) and `RosterTable.jsx` (reads the already-attached `player.injury`, no
+fetch). A stretch-column CSS gotcha: the pill's own wrapper span is a flex item of
+`.player-hero-info` (column flex, default stretch) — needed `align-self: flex-start` or it
+visibly stretched to the card's full width (ArchetypeBadge avoids this by keeping its visible pill
+nested one level inside an invisible stretched wrapper div; InjuryBadge/InjuryPill put the visible
+styling directly on the flex item, so needed the explicit override).
 
-**Verify:** lint/build/test, live check against a real currently-injured player if one exists this
-season, notification-path check (may need to simulate a status change since real injury timing is
-unpredictable).
+**Notification hook:** built, but found live that Heroku Scheduler isn't even installed on this
+app (`heroku addons` — none) — the EXISTING pre-game notifications job
+(`lib/notificationsJob.js`) has no production trigger wired up either, pre-dating this feature.
+Built symmetrically: `lib/injuryNotificationsJob.js` (`pollAndCreateInjuryNotifications`) + internal
+route `POST /internal/jobs/notifications/injuries/poll` (same `requireSchedulerAuth` gate, no new
+secret). Shares the `notifications` collection/TTL with the game job but NOT its `{userId,gameId}`
+unique index (injury docs have no gameId, which would falsely collide across different players for
+the same user) — a separate partial unique index on `{userId,playerId,status}` scoped to
+`type:'injury'` gives it its own idempotency key; re-detecting the SAME status is a no-op, a
+genuine status change (different `status` value) inserts fresh — that IS the change-detection
+signal, no separate "last known status" cache needed. `GET /api/notifications` now returns a
+`type` field and sorts by `createdAt` descending instead of `gameDate` ascending (a mixed
+game+injury feed needs one sort key that means something for both — deliberate behavior change to
+the pre-existing route, covered by updated tests). The bell (`NotificationBell.jsx`) branches
+render by `type`. **Not yet actually scheduled in production** — same as the pre-existing game
+job, this needs a Heroku Scheduler dashboard entry (no Scheduler add-on installed at all
+currently); the user would need to add the add-on and both poll routes as scheduled jobs to make
+either one live.
+
+**Verify:** lint/build/test (382 tests, 378 pass — same 4 pre-existing unrelated JWT_SECRET
+failures). Live-verified via curl + Playwright against a real currently-injured player (Brionna
+Jones, Atlanta Dream, real "Out" status/comment/return-date this season): player-page pill renders
+with correct tooltip, roster page shows the pill inline next to her name only (every healthy
+teammate shows nothing). Notification job path verified via unit tests with a fake db/provider
+(not a live simulation — no Scheduler to trigger it in production yet, so there's no real poll
+cycle to observe end-to-end).
 
 ## 12. Odds/spread on schedule
 
