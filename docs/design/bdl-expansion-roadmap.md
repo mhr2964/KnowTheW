@@ -34,7 +34,7 @@ context from a compact summary.
 | 2 | Off/Def/Net Rating + PIE on the existing Advanced tab | Shipped |
 | 3 | Clutch splits | Shipped |
 | 4 | Scoring-distribution dashboard | Shipped |
-| 5 | Usage dashboard | Not started |
+| 5 | Usage dashboard | Shipped |
 | 6 | Defense dashboard (incl. Defensive Win Shares) | Not started |
 | 7 | Team Four Factors (Team Stats page) | Not started |
 | 8 | Team shot chart | Not started |
@@ -213,17 +213,43 @@ the 2025 season (Playoffs toggle present, values matching curl exactly, and — 
 `browser_network_requests` — exactly 2 fetches total across both season selections, confirming no
 extra request fires on the Regular/Playoffs toggle itself).
 
-## 5. Usage dashboard
+## 5. Usage dashboard — Shipped, `7b91627`
 
-`measure_type=usage` (confirmed live) — % of team's rebounds/assists/steals/blocks/turnovers/FGA/
-FGM/FTA/FTM/personal fouls (drawn and committed) while this player is on the floor. Richer than the
-single `USG_PCT` column the site shows today.
+`measure_type=usage` — % of team's rebounds/assists/steals/blocks/turnovers/FGA/FGM/FTA/FTM/
+personal fouls (drawn and committed) while this player is on the floor, plus BDL's own overall
+usage rate.
 
-**Build:** likely folds into the existing Advanced tab as additional columns, or its own tab if it
-ends up crowding Advanced. Decide during build based on how many columns Advanced already has once
-#2 lands.
+**Floor check (per Feature 4's own lesson — don't guess twice):** spiked 2015/2018/2021/2022
+directly rather than assuming either floor. `measure_type=usage` shares the SAME 2022 tracking-data
+floor as `measure_type=scoring`/`advanced` (`ADVANCED_RATINGS_MIN_SEASON`) — no row at all before
+2022, first data at 2022.
 
-**Verify:** lint/build/test, live check against a real player.
+**Build decision (the thing this section originally deferred):** own tab, not folded into
+Advanced. Advanced already carries 24 columns (`ADV_HEADERS_SRV` in `server/lib/advancedStats.js`);
+adding a full ~12-column usage-share family on top would make an already-dense BrefTable worse,
+especially on mobile where it already needs horizontal scroll. Structurally this data IS a flat
+BrefTable row like Clutch (one pre-aggregated row per season/side, all independent percentage
+columns) — unlike Scoring Distribution's grouped/overlapping percentages, it reuses BrefTable +
+`statColumns.js` directly rather than a custom bar presentation. New column keys are `TM_`-prefixed
+(`TM_REB_PCT`, `TM_AST_PCT`, etc., plus `TM_USG_PCT`) rather than reusing this app's existing
+`AST_PCT`/`REB_PCT`/`USG_PCT` keys already on the Advanced tab — those are a different (BRef-style,
+box-score-derived) formula for a similarly-named stat, and could show different numbers for the
+same player-season; reusing the same key/label would misread as the same stat repeated instead of
+BDL's own on-floor team-share numbers.
+
+**Three-wiring-points lesson applied again:** `DetailedStats.jsx` (`ALL_TABLE_TYPES`/
+`SOURCE_ACTIVE`/render branch) AND `PlayerRoutePage.jsx`'s `VALID_TABS` updated in the same commit
+— verified live that navigating straight to `/player/3149391/usage` holds the URL with no
+redirect-back.
+
+**Verify:** `node --test` (348 total, 344 pass, same 4 pre-existing unrelated JWT_SECRET failures;
+new usage-share test file 4/4), lint/build clean, live curl matching the spike exactly (regular G
+40, REB Sh% 37.2, AST Sh% 18.0, STL Sh% 24.8, BLK Sh% 56.1, TOV Sh% 23.4, FGA Sh% 30.5, FGM Sh%
+33.7, FTA Sh% 48.3, FTM Sh% 49.6, PF Sh% 15.6, PFD Sh% 46.5, Usage% 30.7; playoffs G 12 row
+matching too), live Playwright at 390x844 confirming the in-progress 2026 season (no playoffs
+toggle, real BDL-tracked row since 2026 >= 2022) and the 2025 season (Playoffs toggle present,
+values matching curl exactly, exactly 2 fetches total across both season selections via
+`browser_network_requests` — confirming no extra request on the Regular/Playoffs toggle).
 
 ## 6. Defense dashboard (incl. Defensive Win Shares)
 
