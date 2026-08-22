@@ -115,6 +115,13 @@ class SportsDataProvider {
    *  getPlayerSeasonRatings above. */
   getPlayerSeasonUsageShare() { return this._notImplemented('getPlayerSeasonUsageShare'); }
 
+  /** getPlayerSeasonDefense(playerId, season, seasontype) → {Promise<import('./types').PlayerSeasonDefense|null>}
+   *  Raw defensive box (blocks/steals/def rebounds per game), BDL's own DREB%/Defensive Rating/
+   *  Defensive Win Shares, and opponent-points-allowed by category (paint/fastbreak/off-turnovers/
+   *  2nd-chance) while this player was on the floor. BDL-only -- no ESPN equivalent exists, same
+   *  graceful-degradation posture as getPlayerSeasonRatings above. */
+  getPlayerSeasonDefense() { return this._notImplemented('getPlayerSeasonDefense'); }
+
   // --- League-wide stats (percentile system) ---
   /** getLeagueStatLines(season, mode) → normalized {pos, PTS, ...} entries for qualified players. */
   getLeagueStatLines() { return this._notImplemented('getLeagueStatLines'); }

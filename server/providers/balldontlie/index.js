@@ -44,6 +44,7 @@ const bdlAdvancedRatings = require('./advancedRatings');
 const bdlClutchSplits = require('./clutchSplits');
 const bdlScoringDistribution = require('./scoringDistribution');
 const bdlUsageShare = require('./usageShare');
+const bdlDefenseStats = require('./defenseStats');
 const idMap = require('./idMap');
 const { BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON, ADVANCED_RATINGS_MIN_SEASON } = require('./client');
 const { SportsDataProvider } = require('../SportsDataProvider');
@@ -229,6 +230,15 @@ class BallDontLieProvider extends SportsDataProvider {
     const bdlPlayerId = await idMap.resolveBdlPlayerId(playerId);
     if (bdlPlayerId == null) return null;
     return bdlUsageShare.fetchPlayerSeasonUsageBdl(bdlPlayerId, season, seasontype);
+  }
+
+  // Defense: same measure_type family as scoring/usage above, same 2022 tracking-data floor
+  // (confirmed by live spike, 2026-08-22 -- no row for 2015/2018/2021, first data at 2022).
+  async getPlayerSeasonDefense(playerId, season, seasontype = 2) {
+    if (Number(season) < ADVANCED_RATINGS_MIN_SEASON) return null;
+    const bdlPlayerId = await idMap.resolveBdlPlayerId(playerId);
+    if (bdlPlayerId == null) return null;
+    return bdlDefenseStats.fetchPlayerSeasonDefenseBdl(bdlPlayerId, season, seasontype);
   }
 }
 

@@ -5,7 +5,7 @@ import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 import { setStructuredData, clearStructuredData } from '../lib/structuredData';
 
-const VALID_TABS = new Set(['totals', 'per36', 'per100', 'advanced', 'adjShooting', 'gamelog', 'splits', 'clutch', 'scoring', 'usage', 'pbp', 'shotchart']);
+const VALID_TABS = new Set(['totals', 'per36', 'per100', 'advanced', 'adjShooting', 'gamelog', 'splits', 'clutch', 'scoring', 'usage', 'defense', 'pbp', 'shotchart']);
 
 export default function PlayerRoutePage({ onSaveDeck }) {
   const { id, tab } = useParams();

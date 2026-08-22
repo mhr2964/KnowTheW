@@ -16,6 +16,7 @@ const { getPlayerPercentiles } = require('../lib/percentileClient');
 const { buildSplits }          = require('../lib/gameSplits');
 const { buildClutchTable }     = require('../lib/clutchStats');
 const { buildUsageTable }      = require('../lib/usageStats');
+const { buildDefenseTable }    = require('../lib/defenseStats');
 const { isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyId,
         buildBulkLegacyProfile, buildBulkLegacyDetailedStats }           = require('../constants/legacyPlayerBulk');
 const { getProvider }          = require('../providers');
@@ -246,6 +247,27 @@ router.get('/players/:id/usage', async (req, res) => {
   } catch (err) {
     console.error('usage:', err.message);
     res.status(502).json({ error: 'failed to load usage stats' });
+  }
+});
+
+// Defense box score (BDL-only, no ESPN equivalent -- see providers/balldontlie/defenseStats.js).
+// Same shape as /usage above (single pre-aggregated row per season/side), so it reuses BrefTable
+// via buildDefenseTable rather than a custom presentation.
+router.get('/players/:id/defense', async (req, res) => {
+  try {
+    const playerId = req.params.id;
+    const season = req.query.season;
+    const [reg, post] = await Promise.all([
+      getProvider().getPlayerSeasonDefense(playerId, season, 2),
+      getProvider().getPlayerSeasonDefense(playerId, season, 3),
+    ]);
+    const regular = buildDefenseTable(reg);
+    const playoffs = buildDefenseTable(post);
+    if (!regular && !playoffs) return res.status(404).json({ error: 'no defense data available' });
+    res.json({ hasPlayoffs: !!playoffs, regular, playoffs });
+  } catch (err) {
+    console.error('defense:', err.message);
+    res.status(502).json({ error: 'failed to load defense stats' });
   }
 });
 
