@@ -39,7 +39,7 @@ context from a compact summary.
 | 7 | Team Four Factors (Team Stats page) | Shipped |
 | 8 | Team shot chart | Shipped |
 | 9 | League shot-zone leaderboards | Shipped |
-| 10 | Per-game advanced stats (Game Log) | Not started |
+| 10 | Per-game advanced stats (Game Log) | Shipped |
 | 11 | Injury report | Not started |
 | 12 | Odds/spread on schedule | Not started |
 
@@ -395,18 +395,39 @@ Donne/Breanna Stewart/Nneka Ogwumike top the 2022 restricted-area board, all cor
 clicking a row navigates to that player's real page (Jewell Loyd → `/player/2987869`, confirmed
 correct).
 
-## 10. Per-game advanced stats (Game Log)
+## 10. Per-game advanced stats (Game Log) — Shipped `<pending>`
 
-`player_game_advanced_stats` (confirmed live) returns `misc`/`usage`/`scoring`/`advanced`/
-`four_factors` **all in one response** for a single game, plus a `period` field (0 = full game;
-confirmed the schema supports per-quarter, not yet spiked what period=1-4 actually returns). Game
-Log currently shows only the basic per-game box-score line.
+Confirmed by live spike that `/player_game_advanced_stats` bundles `misc`/`usage`/`scoring`/
+`advanced`/`four_factors` all in one response, under LONG field names (`offensive_rating`,
+`effective_field_goal_percentage`...) that do NOT match the SHORT names the season-level
+`player_season_advanced_stats` endpoint uses for the same underlying stats (`off_rating`,
+`efg_pct`...) — the two endpoints don't share a field-naming convention even where the stat is
+identical. `gameAdvancedStats.js`'s mapper extracts the long names but outputs the same camelCase
+keys as the season-level mappers (`offRating`, `efgPct`, etc.) for a consistent client
+presentation. `period` requested as `0` (full game) only — `period` 1-4 (quarter-level) is real and
+documented but wasn't spiked or built, not needed for this feature.
 
-**Build:** likely an expandable row or a secondary view per game in `GameLogTab.jsx`/`BrefTable.jsx`
-rather than cramming every one of these fields into the existing wide table — decide the exact UI
-during build (this table is already dense; adding ~40 more columns per game is probably wrong).
+**Real gap found, not anticipated by this section originally:** the existing `/gamelog` route
+(`gameLog.js`) never exposed a BDL game id on its `games[]` rows — `buildGameMetaMap` keyed its
+internal Map by `g.id` but never put `id` into the stored meta object. Fixed by adding a `gameId`
+field to each row. ESPN-sourced gamelog rows still carry no id (no ESPN equivalent for this
+endpoint) — the client only shows a game as clickable when `gameId` is present.
 
-**Verify:** lint/build/test, live check on a real game.
+**UI decision, made during build:** an expandable row (not a secondary view) — clicking a Game Log
+row toggles a detail panel below the table (`GameAdvancedStatsPanel.jsx`), fetched lazily only on
+first expand, one game at a time, reusing `TeamStatsPage.jsx`'s existing `team-stats-group`/
+`-grid`/`-item` CSS classes rather than inventing new styling. `BrefTable.jsx` gained two small
+optional props (`onRowClick`, `isRowActive`) to support this — unused by every other consumer, so no
+other stat table's behavior changed. The BDL game id itself rides as an extra, undeclared trailing
+value on each row array (never part of `columns`, so it never renders/sorts/exports) rather than a
+parallel id-lookup structure.
+
+**Verify:** lint clean, client build clean, full test suite green (367 tests, 363 pass — same 4
+pre-existing unrelated JWT_SECRET failures every feature this run has seen), 2 new gameId/mapper
+unit tests. Live-verified via Playwright (Nneka Ogwumike, 2025 season): clicked a row, panel loaded
+real per-game Advanced/Four Factors/Usage/Scoring/Misc data; PIE rendered as a fraction (`.154`)
+matching this site's existing PIE convention rather than a percentage; clicking the same row again
+collapsed the panel; clicking a different row re-fetched and swapped to that game's data.
 
 ## 11. Injury report
 
