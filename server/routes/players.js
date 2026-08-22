@@ -15,6 +15,7 @@ const { toColumnTable }        = require('../lib/statColumns');
 const { getPlayerPercentiles } = require('../lib/percentileClient');
 const { buildSplits }          = require('../lib/gameSplits');
 const { buildClutchTable }     = require('../lib/clutchStats');
+const { buildUsageTable }      = require('../lib/usageStats');
 const { isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyId,
         buildBulkLegacyProfile, buildBulkLegacyDetailedStats }           = require('../constants/legacyPlayerBulk');
 const { getProvider }          = require('../providers');
@@ -224,6 +225,27 @@ router.get('/players/:id/scoring-distribution', async (req, res) => {
   } catch (err) {
     console.error('scoring-distribution:', err.message);
     res.status(502).json({ error: 'failed to load scoring distribution' });
+  }
+});
+
+// Usage-share box score (BDL-only, no ESPN equivalent -- see providers/balldontlie/usageShare.js).
+// Same shape as /clutch above (single pre-aggregated row per season/side, not an aggregation over
+// gamelog rows), so it reuses BrefTable via buildUsageTable rather than a custom bar presentation.
+router.get('/players/:id/usage', async (req, res) => {
+  try {
+    const playerId = req.params.id;
+    const season = req.query.season;
+    const [reg, post] = await Promise.all([
+      getProvider().getPlayerSeasonUsageShare(playerId, season, 2),
+      getProvider().getPlayerSeasonUsageShare(playerId, season, 3),
+    ]);
+    const regular = buildUsageTable(reg);
+    const playoffs = buildUsageTable(post);
+    if (!regular && !playoffs) return res.status(404).json({ error: 'no usage data available' });
+    res.json({ hasPlayoffs: !!playoffs, regular, playoffs });
+  } catch (err) {
+    console.error('usage:', err.message);
+    res.status(502).json({ error: 'failed to load usage stats' });
   }
 });
 

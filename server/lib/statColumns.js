@@ -27,10 +27,21 @@ const LABELS = {
   OFF_RATING: 'ORtg', DEF_RATING: 'DRtg', NET_RATING: 'Net Rtg', PIE: 'PIE',
   // Clutch tab only -- BDL's own wnba_fantasy_pts field, per-game like the rest of that row.
   FAN_PTS: 'Fant. Pts',
+  // Usage tab only -- BDL's own on-floor team-share numbers (measure_type=usage). TM_ prefix
+  // deliberately distinct from this file's existing AST_PCT/ORB_PCT/etc keys above, which are a
+  // different (BRef-derived, box-score) formula for a similarly-named stat -- see usageShare.js.
+  TM_REB_PCT: 'REB Sh%', TM_AST_PCT: 'AST Sh%', TM_STL_PCT: 'STL Sh%', TM_BLK_PCT: 'BLK Sh%',
+  TM_TOV_PCT: 'TOV Sh%', TM_FGA_PCT: 'FGA Sh%', TM_FGM_PCT: 'FGM Sh%',
+  TM_FTA_PCT: 'FTA Sh%', TM_FTM_PCT: 'FTM Sh%', TM_PF_PCT: 'PF Sh%', TM_PFD_PCT: 'PFD Sh%',
+  TM_USG_PCT: 'Usage%',
 };
 
 const PCT_KEYS = new Set(['FG_PCT', 'FG3_PCT', 'FT_PCT', 'TS_PCT', 'EFG_PCT', 'TPAr', 'FTr', 'WS_PER48', 'PIE']);
-const PCT100_KEYS = new Set(['TOV_PCT', 'USG_PCT', 'AST_PCT', 'ORB_PCT', 'DRB_PCT', 'TRB_PCT', 'STL_PCT', 'BLK_PCT']);
+const PCT100_KEYS = new Set([
+  'TOV_PCT', 'USG_PCT', 'AST_PCT', 'ORB_PCT', 'DRB_PCT', 'TRB_PCT', 'STL_PCT', 'BLK_PCT',
+  'TM_REB_PCT', 'TM_AST_PCT', 'TM_STL_PCT', 'TM_BLK_PCT', 'TM_TOV_PCT', 'TM_FGA_PCT', 'TM_FGM_PCT',
+  'TM_FTA_PCT', 'TM_FTM_PCT', 'TM_PF_PCT', 'TM_PFD_PCT', 'TM_USG_PCT',
+]);
 
 function columnFor(key) {
   return { key, label: LABELS[key] ?? key, kind: PCT_KEYS.has(key) ? 'pct' : PCT100_KEYS.has(key) ? 'pct100' : 'num' };

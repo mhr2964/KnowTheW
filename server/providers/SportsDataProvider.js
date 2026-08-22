@@ -108,6 +108,13 @@ class SportsDataProvider {
    *  exists, same graceful-degradation posture as getPlayerSeasonRatings above. */
   getPlayerSeasonScoringDistribution() { return this._notImplemented('getPlayerSeasonScoringDistribution'); }
 
+  /** getPlayerSeasonUsageShare(playerId, season, seasontype) → {Promise<import('./types').PlayerSeasonUsageShare|null>}
+   *  Share of the TEAM's rebounds/assists/steals/blocks/turnovers/FGA/FGM/FTA/FTM/fouls (drawn and
+   *  committed) this player accounted for while on the floor, plus BDL's own overall usage rate.
+   *  BDL-only -- no ESPN equivalent exists, same graceful-degradation posture as
+   *  getPlayerSeasonRatings above. */
+  getPlayerSeasonUsageShare() { return this._notImplemented('getPlayerSeasonUsageShare'); }
+
   // --- League-wide stats (percentile system) ---
   /** getLeagueStatLines(season, mode) → normalized {pos, PTS, ...} entries for qualified players. */
   getLeagueStatLines() { return this._notImplemented('getLeagueStatLines'); }
