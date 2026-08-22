@@ -36,7 +36,7 @@ context from a compact summary.
 | 4 | Scoring-distribution dashboard | Shipped |
 | 5 | Usage dashboard | Shipped |
 | 6 | Defense dashboard (incl. Defensive Win Shares) | Shipped |
-| 7 | Team Four Factors (Team Stats page) | Not started |
+| 7 | Team Four Factors (Team Stats page) | Shipped |
 | 8 | Team shot chart | Not started |
 | 9 | League shot-zone leaderboards | Not started |
 | 10 | Per-game advanced stats (Game Log) | Not started |
@@ -291,17 +291,37 @@ applied again — `DetailedStats.jsx` + `PlayerRoutePage.jsx`'s `VALID_TABS`), s
 to Playoffs fired exactly one fetch per season (two total), zero extra fetch from the toggle click,
 consistent with Clutch/Scoring/Usage's established pattern.
 
-## 7. Team Four Factors (Team Stats page)
+## 7. Team Four Factors (Team Stats page) — Shipped, `8d4e297`
 
 `team_season_advanced_stats?measure_type=four_factors` (confirmed live, team-level only — the same
 param returned empty at player level) — eFG%, TOV%, OREB%, FT rate, for the team **and** its
 opponents. Dean Oliver's "Four Factors" framework — a well-established, well-regarded team-analytics
-view with nothing equivalent on `TeamStatsPage.jsx` today.
+view with nothing equivalent on `TeamStatsPage.jsx` today. Re-spiked 2010/2015/2018/2021/2022 live
+(Las Vegas Aces, BDL team id 8) per this run's own standing lesson: shares the SAME 2022
+tracking-data floor as the player-level measure_type family (scoring/usage/defense/advanced), not
+BDL_MIN_SEASON's wider 2008 floor. Confirmed the ratio fields (`efg_pct`/`oreb_pct`/etc) are
+per_mode-invariant, same as the player-side percentage fields.
 
-**Build:** new section on `TeamStatsPage.jsx` (check what that page currently shows before deciding
-whether this is a new tab-within-team-stats or an added section on the existing page).
+**Build:** `TeamStatsPage.jsx` read first — it's a single non-tabbed page (grouped stat cards, not
+BrefTable), with no playoffs toggle anywhere, so Four Factors became two new `StatGroup` sections
+("Four Factors" / "Four Factors (Opponent)") appended below the existing groups, fetched
+independently via their own `/teams/:id/four-factors` route (regular season only, matching the
+page's existing scope) rather than folded into the page's main `/teams/:id/stats` response --
+keeps the BDL-only feature's graceful-degradation posture (pre-2022 seasons or ESPN-provider mode
+just omit the section) fully decoupled from the main stats fetch's error/loading states. `ftRatePct`/
+`oppFtRatePct` are named with a `Pct` suffix even though FT Rate isn't literally a made-shot
+percentage, specifically so they route through this page's own `formatStatValue`'s existing
+percent-style rendering (`efgPct`/`fgPct`/etc all already render as "NN.N%" here) -- a deliberate,
+page-local display choice, distinct from the BRef-style `.XXX` rendering the player Advanced tab uses
+for the same underlying stat family (`FTr`, `EFG_PCT`) elsewhere in the app.
 
-**Verify:** lint/build/test, live check on a real team.
+**Verify:** lint/build/test clean (0 new failures; same 4 pre-existing unrelated
+`auth-jwt-secret-missing` failures as every prior feature). Live-verified on Las Vegas Aces
+(espn team id 17 / bdl team id 8): dev-server curl for season 2025 matched the spike exactly.
+Playwright check on `/team/las-vegas-aces/stats` showed both new sections rendering correctly
+alongside the existing groups for the current season; switching to season 2018 (pre-2022 floor)
+correctly omitted the Four Factors sections entirely with no error surfaced and the rest of the page
+unaffected -- confirms the graceful-degradation posture works end-to-end, not just at the API layer.
 
 ## 8. Team shot chart
 
