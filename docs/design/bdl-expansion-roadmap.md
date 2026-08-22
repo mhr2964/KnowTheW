@@ -395,7 +395,7 @@ Donne/Breanna Stewart/Nneka Ogwumike top the 2022 restricted-area board, all cor
 clicking a row navigates to that player's real page (Jewell Loyd → `/player/2987869`, confirmed
 correct).
 
-## 10. Per-game advanced stats (Game Log) — Shipped `<pending>`
+## 10. Per-game advanced stats (Game Log) — Shipped `6fea134`
 
 Confirmed by live spike that `/player_game_advanced_stats` bundles `misc`/`usage`/`scoring`/
 `advanced`/`four_factors` all in one response, under LONG field names (`offensive_rating`,
