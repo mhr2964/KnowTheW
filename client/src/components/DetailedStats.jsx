@@ -10,6 +10,7 @@ import AdvancedTab from './AdvancedTab';
 import PlayByPlayTab from './PlayByPlayTab';
 import SplitsTab from './SplitsTab';
 import ShotChart from './ShotChart';
+import ClutchTab from './ClutchTab';
 
 // Percentile coverage only exists for these viewModes (see percentileClient.js's PERCENTILE_STATS) --
 // Per 100 Poss would need a league-wide team-pace fetch percentileClient.js doesn't do yet, so its
@@ -31,6 +32,7 @@ const ALL_TABLE_TYPES = [
   { key: 'adjShooting', label: 'Adj. Shooting' },
   { key: 'gamelog',     label: 'Game Log' },
   { key: 'splits',      label: 'Splits' },
+  { key: 'clutch',      label: 'Clutch' },
   { key: 'pbp',         label: 'Play-by-Play' },
   { key: 'shotchart',   label: 'Shot Chart' },
 ];
@@ -43,7 +45,7 @@ const SCROLL_THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20);
 const SOURCE_ACTIVE = {
   bdl:  new Set(['perGame', 'totals', 'per36']),
   wnba: new Set(['perGame', 'totals', 'per36', 'per100']),
-  espn: new Set(['perGame', 'totals', 'per36', 'per100', 'advanced', 'adjShooting', 'gamelog', 'splits', 'pbp', 'shotchart']),
+  espn: new Set(['perGame', 'totals', 'per36', 'per100', 'advanced', 'adjShooting', 'gamelog', 'splits', 'clutch', 'pbp', 'shotchart']),
 };
 
 export default function DetailedStats({ playerId, playerName, onSaveDeck, initialTab, onTabChange }) {
@@ -187,9 +189,10 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
   const isGamelog   = safeType === 'gamelog';
   const isAdvanced  = safeType === 'advanced';
   const isSplits    = safeType === 'splits';
+  const isClutch    = safeType === 'clutch';
   const isPbp       = safeType === 'pbp';
   const isShotChart = safeType === 'shotchart';
-  const isRawTab    = isGamelog || isAdvanced || isSplits || isPbp || isShotChart;
+  const isRawTab    = isGamelog || isAdvanced || isSplits || isClutch || isPbp || isShotChart;
   const tableData  = isRawTab ? null : data[safeType];
   const hasPlayoffs = isRawTab ? false : !!tableData?.playoffs?.rows?.length;
   const curSeason = (!hasPlayoffs && activeSeason === 'playoffs') ? 'regular' : activeSeason;
@@ -281,6 +284,8 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
           <GameLogTab playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} onOpenStudy={openStudy} seasonBarRef={seasonBarRef} onSeasonChange={handleSeasonChange} />
         ) : isSplits ? (
           <SplitsTab playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} onOpenStudy={openStudy} seasonBarRef={seasonBarRef} onSeasonChange={handleSeasonChange} />
+        ) : isClutch ? (
+          <ClutchTab playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} onOpenStudy={openStudy} seasonBarRef={seasonBarRef} onSeasonChange={handleSeasonChange} />
         ) : isPbp ? (
           <PlayByPlayTab data={pbpData} totalSeasons={availableSeasons.length} retry={retryBackgroundStats} playerName={playerName} onOpenStudy={openStudy} seasonBarRef={seasonBarRef} onSeasonChange={handleSeasonChange} />
         ) : isShotChart ? (

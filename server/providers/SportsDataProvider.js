@@ -97,6 +97,11 @@ class SportsDataProvider {
    *  posture as getPlayerShotChart. */
   getPlayerSeasonRatings() { return this._notImplemented('getPlayerSeasonRatings'); }
 
+  /** getPlayerSeasonClutch(playerId, season, seasontype) → {Promise<import('./types').PlayerSeasonClutch|null>}
+   *  Base box score (PTS/REB/AST/etc, per-game) filtered to clutch situations only. BDL-only -- no
+   *  ESPN equivalent exists, same graceful-degradation posture as getPlayerSeasonRatings above. */
+  getPlayerSeasonClutch() { return this._notImplemented('getPlayerSeasonClutch'); }
+
   // --- League-wide stats (percentile system) ---
   /** getLeagueStatLines(season, mode) → normalized {pos, PTS, ...} entries for qualified players. */
   getLeagueStatLines() { return this._notImplemented('getLeagueStatLines'); }

@@ -14,6 +14,7 @@ const { buildAdjShooting }     = require('../lib/adjShootingStats');
 const { toColumnTable }        = require('../lib/statColumns');
 const { getPlayerPercentiles } = require('../lib/percentileClient');
 const { buildSplits }          = require('../lib/gameSplits');
+const { buildClutchTable }     = require('../lib/clutchStats');
 const { isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyId,
         buildBulkLegacyProfile, buildBulkLegacyDetailedStats }           = require('../constants/legacyPlayerBulk');
 const { getProvider }          = require('../providers');
@@ -179,6 +180,30 @@ router.get('/players/:id/splits', async (req, res) => {
   } catch (err) {
     console.error('splits:', err.message);
     res.status(502).json({ error: 'failed to load splits' });
+  }
+});
+
+// Clutch-scope box score (BDL-only, no ESPN equivalent -- see providers/balldontlie/clutchSplits.js).
+// Separate from /splits above: this is a single season-level row straight from BDL's own endpoint,
+// not an aggregation over per-game gamelog data, so it doesn't fit buildSplits' groups-of-games
+// shape. Both season sides are fetched together (2 cheap BDL calls) so the client's Regular/Playoffs
+// toggle is a local swap, not a refetch -- same pattern as the generic (non-raw) tabs in
+// DetailedStats.jsx.
+router.get('/players/:id/clutch', async (req, res) => {
+  try {
+    const playerId = req.params.id;
+    const season = req.query.season;
+    const [reg, post] = await Promise.all([
+      getProvider().getPlayerSeasonClutch(playerId, season, 2),
+      getProvider().getPlayerSeasonClutch(playerId, season, 3),
+    ]);
+    const regular = buildClutchTable(reg);
+    const playoffs = buildClutchTable(post);
+    if (!regular && !playoffs) return res.status(404).json({ error: 'no clutch data available' });
+    res.json({ hasPlayoffs: !!playoffs, regular, playoffs });
+  } catch (err) {
+    console.error('clutch:', err.message);
+    res.status(502).json({ error: 'failed to load clutch stats' });
   }
 });
 

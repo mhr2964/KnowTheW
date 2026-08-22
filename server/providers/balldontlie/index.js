@@ -41,6 +41,7 @@ const bdlLeagueShotZones = require('./leagueShotZones');
 const bdlLeagueStats = require('./leagueStats');
 const bdlStandings = require('./standings');
 const bdlAdvancedRatings = require('./advancedRatings');
+const bdlClutchSplits = require('./clutchSplits');
 const idMap = require('./idMap');
 const { BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON, ADVANCED_RATINGS_MIN_SEASON } = require('./client');
 const { SportsDataProvider } = require('../SportsDataProvider');
@@ -193,6 +194,17 @@ class BallDontLieProvider extends SportsDataProvider {
     const bdlPlayerId = await idMap.resolveBdlPlayerId(playerId);
     if (bdlPlayerId == null) return null;
     return bdlAdvancedRatings.fetchPlayerSeasonRatingsBdl(bdlPlayerId, season, seasontype);
+  }
+
+  // Clutch splits: new capability, not a migration -- ESPN has no clutch-filtered box score at all.
+  // Uses the general BDL floor (usesBdl/BDL_MIN_SEASON), not ADVANCED_RATINGS_MIN_SEASON -- these are
+  // base counting stats (PTS/REB/AST/etc), the same data class as the rest of this provider's
+  // season-conditional coverage, not the newer tracking-data feed Off/Def/Net Rating + PIE need.
+  async getPlayerSeasonClutch(playerId, season, seasontype = 2) {
+    if (!usesBdl(season)) return null;
+    const bdlPlayerId = await idMap.resolveBdlPlayerId(playerId);
+    if (bdlPlayerId == null) return null;
+    return bdlClutchSplits.fetchPlayerSeasonClutchBdl(bdlPlayerId, season, seasontype);
   }
 }
 

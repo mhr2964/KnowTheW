@@ -25,6 +25,8 @@ const LABELS = {
   // (~90-115), not a 0-1 fraction like the PCT/PCT100 stats. PIE is BDL's own 0-1-scaled fraction
   // (confirmed by live spike, 2026-08-21), same rendering family as TS%/eFG%.
   OFF_RATING: 'ORtg', DEF_RATING: 'DRtg', NET_RATING: 'Net Rtg', PIE: 'PIE',
+  // Clutch tab only -- BDL's own wnba_fantasy_pts field, per-game like the rest of that row.
+  FAN_PTS: 'Fant. Pts',
 };
 
 const PCT_KEYS = new Set(['FG_PCT', 'FG3_PCT', 'FT_PCT', 'TS_PCT', 'EFG_PCT', 'TPAr', 'FTr', 'WS_PER48', 'PIE']);
