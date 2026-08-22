@@ -207,6 +207,26 @@ router.get('/players/:id/clutch', async (req, res) => {
   }
 });
 
+// Scoring-distribution breakdown (BDL-only, no ESPN equivalent -- see providers/balldontlie/
+// scoringDistribution.js). Not a BrefTable-shaped result like clutch above -- these are percentage
+// groups (points breakdown / where-it-happens / assisted-vs-unassisted) the client renders as bars,
+// so the provider's mapped object is forwarded as-is rather than run through a column/row builder.
+router.get('/players/:id/scoring-distribution', async (req, res) => {
+  try {
+    const playerId = req.params.id;
+    const season = req.query.season;
+    const [regular, playoffs] = await Promise.all([
+      getProvider().getPlayerSeasonScoringDistribution(playerId, season, 2),
+      getProvider().getPlayerSeasonScoringDistribution(playerId, season, 3),
+    ]);
+    if (!regular && !playoffs) return res.status(404).json({ error: 'no scoring distribution data available' });
+    res.json({ hasPlayoffs: !!playoffs, regular, playoffs });
+  } catch (err) {
+    console.error('scoring-distribution:', err.message);
+    res.status(502).json({ error: 'failed to load scoring distribution' });
+  }
+});
+
 router.get('/players/:id/percentiles', async (req, res) => {
   try {
     const result = await getPlayerPercentiles(req.params.id);

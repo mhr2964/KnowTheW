@@ -102,6 +102,12 @@ class SportsDataProvider {
    *  ESPN equivalent exists, same graceful-degradation posture as getPlayerSeasonRatings above. */
   getPlayerSeasonClutch() { return this._notImplemented('getPlayerSeasonClutch'); }
 
+  /** getPlayerSeasonScoringDistribution(playerId, season, seasontype) → {Promise<import('./types').PlayerSeasonScoringDistribution|null>}
+   *  Percentage-of-points breakdown (2PT/3PT/FT split, paint/mid-range/fastbreak/off-turnovers share,
+   *  assisted-vs-unassisted for 2PM/3PM) for one player-season. BDL-only -- no ESPN equivalent
+   *  exists, same graceful-degradation posture as getPlayerSeasonRatings above. */
+  getPlayerSeasonScoringDistribution() { return this._notImplemented('getPlayerSeasonScoringDistribution'); }
+
   // --- League-wide stats (percentile system) ---
   /** getLeagueStatLines(season, mode) → normalized {pos, PTS, ...} entries for qualified players. */
   getLeagueStatLines() { return this._notImplemented('getLeagueStatLines'); }

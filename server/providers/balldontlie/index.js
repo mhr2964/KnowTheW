@@ -42,6 +42,7 @@ const bdlLeagueStats = require('./leagueStats');
 const bdlStandings = require('./standings');
 const bdlAdvancedRatings = require('./advancedRatings');
 const bdlClutchSplits = require('./clutchSplits');
+const bdlScoringDistribution = require('./scoringDistribution');
 const idMap = require('./idMap');
 const { BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON, ADVANCED_RATINGS_MIN_SEASON } = require('./client');
 const { SportsDataProvider } = require('../SportsDataProvider');
@@ -205,6 +206,19 @@ class BallDontLieProvider extends SportsDataProvider {
     const bdlPlayerId = await idMap.resolveBdlPlayerId(playerId);
     if (bdlPlayerId == null) return null;
     return bdlClutchSplits.fetchPlayerSeasonClutchBdl(bdlPlayerId, season, seasontype);
+  }
+
+  // Scoring distribution: shares player_season_advanced_stats with ratings/clutch above, but
+  // measure_type=scoring sits on the SAME newer tracking-data floor as measure_type=advanced
+  // (ADVANCED_RATINGS_MIN_SEASON=2022), not the wider BDL_MIN_SEASON=2008 -- confirmed by live spike,
+  // 2026-08-22 (2015/2018/2021 all returned no row for this measure_type; 2022 was the first season
+  // with data). The assisted/unassisted and fastbreak/paint/off-turnover splits need shot-tracking
+  // context BDL doesn't have for older seasons, same underlying reason Off/Def/Net Rating is gated.
+  async getPlayerSeasonScoringDistribution(playerId, season, seasontype = 2) {
+    if (Number(season) < ADVANCED_RATINGS_MIN_SEASON) return null;
+    const bdlPlayerId = await idMap.resolveBdlPlayerId(playerId);
+    if (bdlPlayerId == null) return null;
+    return bdlScoringDistribution.fetchPlayerSeasonScoringBdl(bdlPlayerId, season, seasontype);
   }
 }
 
