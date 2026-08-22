@@ -35,7 +35,7 @@ export default function TableToolbar({ leading, showPercentile, percentileChecke
               aria-label="More table actions"
               onClick={() => setMoreOpen(v => !v)}
             >
-              <span aria-hidden="true">⋯</span>
+              More <span aria-hidden="true">⋯</span>
             </button>
             {moreOpen && <div className="toolbar-more-backdrop" onClick={() => setMoreOpen(false)} />}
             <div className={`toolbar-more-menu${moreOpen ? ' open' : ''}`}>

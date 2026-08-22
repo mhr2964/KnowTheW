@@ -10,24 +10,38 @@ const SPLIT_TYPES = [
   { key: 'opponent', label: 'By Opponent' },
 ];
 
-export default function SplitsTab({ playerId, playerName, availableSeasons, onOpenStudy }) {
+export default function SplitsTab({ playerId, playerName, availableSeasons, onOpenStudy, seasonBarRef, onSeasonChange }) {
   const [season, setSeason] = useState(null);
   const [splitType, setSplitType] = useState('homeaway');
+  const [splitSeasonType, setSplitSeasonType] = useState('regular');
   const exportRef = useRef(null);
 
   useEffect(() => {
     if (!season && availableSeasons.length > 0) setSeason(availableSeasons[0]);
   }, [season, availableSeasons]);
 
-  const splitsUrl = season ? `/api/players/${playerId}/splits?season=${season}&type=${splitType}` : null;
+  function handleSeasonChange(s) {
+    setSeason(s);
+    setSplitSeasonType('regular');
+  }
+
+  const splitsUrl = season
+    ? `/api/players/${playerId}/splits?season=${season}&type=${splitType}&postseason=${splitSeasonType === 'playoffs'}`
+    : null;
   const { data: current, loading, error, retry } = useSeasonScopedFetch(splitsUrl);
+
+  // Reports up to DetailedStats' sticky-nav season indicator (see AdvancedTab for the same pattern).
+  useEffect(() => {
+    onSeasonChange?.(current?.hasPlayoffs ? splitSeasonType : null);
+  }, [current, splitSeasonType, onSeasonChange]);
 
   const splitLabel = SPLIT_TYPES.find(t => t.key === splitType)?.label ?? splitType;
 
   function openStudy() {
     if (!current) return;
+    const suffix = splitSeasonType === 'playoffs' ? ' (Playoffs)' : '';
     const deck = buildStudyDeck({ columns: current.columns, rows: current.rows });
-    onOpenStudy?.({ ...deck, deckName: `${playerName} Splits (${splitLabel}) ${season}` });
+    onOpenStudy?.({ ...deck, deckName: `${playerName} Splits (${splitLabel}) ${season}${suffix}` });
   }
 
   return (
@@ -35,8 +49,26 @@ export default function SplitsTab({ playerId, playerName, availableSeasons, onOp
       <TableToolbar
         leading={
           <>
+            {current?.hasPlayoffs && (
+              <div className="stat-season-bar" ref={seasonBarRef}>
+                <button
+                  type="button"
+                  className={`stat-season-tab${splitSeasonType === 'regular' ? ' active' : ''}`}
+                  onClick={() => setSplitSeasonType('regular')}
+                >
+                  Regular Season
+                </button>
+                <button
+                  type="button"
+                  className={`stat-season-tab${splitSeasonType === 'playoffs' ? ' active' : ''}`}
+                  onClick={() => setSplitSeasonType('playoffs')}
+                >
+                  Playoffs
+                </button>
+              </div>
+            )}
             {availableSeasons.length > 1 && (
-              <select className="gl-select" value={season ?? ''} onChange={e => setSeason(e.target.value)}>
+              <select className="gl-select" value={season ?? ''} onChange={e => handleSeasonChange(e.target.value)}>
                 {availableSeasons.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             )}
@@ -61,7 +93,7 @@ export default function SplitsTab({ playerId, playerName, availableSeasons, onOp
         <BrefTable
           regular={current}
           emptyMessage="No split data available."
-          filename={`${playerName}-splits-${splitLabel.toLowerCase().replace(/\W+/g, '-')}-${season}.csv`}
+          filename={`${playerName}-splits-${splitLabel.toLowerCase().replace(/\W+/g, '-')}-${season}${splitSeasonType === 'playoffs' ? '-playoffs' : ''}.csv`}
           exportRef={exportRef}
         />
       )}

@@ -20,10 +20,14 @@
      is the actual goal of a "glance" header, not making the photo itself smaller. */
   .player-hero {
     flex-direction: row; align-items: center; text-align: left;
-    gap: 0.75rem; padding: 0.75rem 0.9rem; margin-bottom: 0.75rem;
+    gap: 0.65rem; padding: 0.6rem 0.85rem; margin-bottom: 0.6rem;
   }
-  .player-hero-img { width: 52px; height: 52px; }
-  .player-hero-img.placeholder { font-size: 1.05rem; }
+  /* 52px read as too small next to a 1.15rem name -- the info column (name + meta + bio, each with
+     their own line-height/gap) is already taller than that, so growing the avatar back up doesn't
+     grow the row; tightened padding/margin above claws back the "condense further" ask at the
+     same time instead of the two working against each other. */
+  .player-hero-img { width: 66px; height: 66px; }
+  .player-hero-img.placeholder { font-size: 1.3rem; }
   .player-hero-info { gap: 0.2rem; min-width: 0; }
   .player-hero-name { font-size: 1.15rem; }
   .player-hero-meta { justify-content: flex-start; }
@@ -74,11 +78,21 @@
   .stat-type-nav-toggle {
     display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
     width: 100%; min-height: var(--touch-target-min);
-    background: var(--surface); border: 1px solid var(--border); border-bottom: none;
+    background: var(--surface); border: 1px solid var(--border);
+    /* A hairline divider from the toolbar/table below -- removing this entirely (prior pass) fixed
+       the corner-radius mismatch but left the toggle unreadable as its OWN section; a single
+       bottom border here doesn't reintroduce that bug (which was about the outer silhouette's
+       corners, not an internal line) since the continuous rounded-card outline (top of toggle,
+       sides of both, bottom of table) is unaffected by one divider drawn inside it. */
+    border-bottom: 1px solid var(--border);
     border-radius: var(--radius) var(--radius) 0 0;
     color: var(--text); font-size: 0.85rem; font-weight: 700;
     padding: 0.6rem 0.9rem; cursor: pointer;
   }
+  /* Suffix only appears once the in-page Regular Season/Playoffs toggle has scrolled out from
+     under this sticky bar (see DetailedStats.jsx's seasonBarRef IntersectionObserver) -- muted and
+     lighter-weight than the tab label itself so it reads as secondary context, not a second label. */
+  .stat-type-nav-season-suffix { color: var(--text-muted); font-weight: 500; }
   .stat-type-nav-caret { color: var(--text-muted); transition: transform 0.15s; }
   .stat-type-nav-toggle[aria-expanded="true"] .stat-type-nav-caret { transform: rotate(180deg); }
   .stat-type-nav-backdrop {
@@ -107,13 +121,38 @@
   .stat-type-tabs.open .stat-type-tab.active { border-color: var(--border); background: var(--surface-2); }
 
   /* Regular Season/Playoffs + Percentiles + the "..." toggle all fighting for one row was the
-     actual crowding complaint -- up to 4 controls competing for ~350px on tabs with playoffs.
-     Give the season switcher its own full-width row and keep Percentiles/"..." on a second row
-     with room to breathe, instead of squeezing everything onto one line. */
-  .stat-table-header { flex-direction: column; align-items: stretch; gap: 0.55rem; }
-  .toolbar-leading { width: 100%; }
-  .toolbar-trailing { width: 100%; justify-content: space-between; }
+     original crowding complaint on playoffs-eligible tabs -- up to 4 controls competing for
+     ~350px. Forcing EVERY tab's leading group onto its own full-width row (the previous fix)
+     solved that but created a new problem on tabs whose leading is just a couple of short
+     selects (Game Log, Splits): "..." ended up alone on a second row with nothing beside it and
+     a wide gap of dead space to its left -- still reading as an orphaned control no matter which
+     side it was aligned to, since the row it occupied had nothing else on it. Only the
+     season-toggle leading actually needs a forced break; letting the rest wrap naturally means
+     leading + trailing usually share one row instead of "..." always getting a lonely one. */
+  .stat-table-header { flex-wrap: wrap; gap: 0.5rem 0.5rem; }
+  /* .stat-season-bar is width:100% below, but a percentage width can't resolve against its
+     parent's auto/shrink-to-fit size -- the wrapper needs its own flex-basis to actually claim
+     the full line itself. Only forced full-width when Percentiles is also present (Per Game,
+     Totals, Per 36, Adj. Shooting): those 4 controls genuinely don't fit one row. On the tabs
+     with a season toggle but no Percentiles (Advanced), "..." fit fine right next to Playoffs --
+     giving the season row a forced line of its own there just left it alone and empty of
+     anything else, exactly the "own line, wasted space" complaint. */
+  .stat-table-header:has(.perc-toggle) .toolbar-leading:has(.stat-season-bar) { flex: 1 1 100%; }
+  /* margin-left: auto (not justify-content) hugs the trailing cluster to the right edge of
+     WHATEVER line it lands on -- sharing leading's line when there's room (Game Log/Splits), or
+     its own line when there isn't (Percentile tabs) -- without the single-child
+     space-between-collapses-to-flex-start bug a container-level justify-content hit before. */
+  .toolbar-trailing { margin-left: auto; }
+  /* Season-bar tabs with no Percentiles: "..." sits directly right of Playoffs instead of
+     flushed to the row's far edge -- there's nothing else on that row to separate it from. */
+  .stat-table-header:has(.stat-season-bar):not(:has(.perc-toggle)) .toolbar-trailing { margin-left: 0.5rem; }
+  /* Visually smaller (tighter padding/font), not a smaller tap target -- min-height stays at
+     --touch-target-min like every other control on this row. */
+  .stat-table-header:has(.stat-season-bar):not(:has(.perc-toggle)) .toolbar-more-toggle {
+    padding: 0 0.55rem; font-size: 0.68rem;
+  }
   .stat-season-bar { display: flex; width: 100%; gap: 0.4rem; }
+  .stat-table-header:not(:has(.perc-toggle)) .stat-season-bar { width: auto; }
   .stat-season-tab {
     flex: 1; justify-content: center;
     display: flex; align-items: center; min-height: var(--touch-target-min);
@@ -126,11 +165,15 @@
      and they were the two extra controls making the toolbar read as a wall of buttons wrapping to
      a second row. Percentiles (a fast "is this good" read) stays in the main row. */
   .toolbar-more { display: block; position: relative; }
+  /* A bare "⋯" glyph in a filled square (min-width == min-height, no label) read as an unlabeled,
+     disconnected icon button -- nothing else on this row is icon-only. A short text label plus a
+     compact (not full touch-target-square) pill matches the sibling Percentiles toggle/season-tab
+     button language instead of standing out as its own control style. */
   .toolbar-more-toggle {
-    display: inline-flex; align-items: center; justify-content: center;
-    min-width: var(--touch-target-min); min-height: var(--touch-target-min);
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    min-height: var(--touch-target-min); padding: 0 0.75rem;
     background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
-    color: var(--text-muted); font-size: 1.2rem; line-height: 1; cursor: pointer;
+    color: var(--text-muted); font-size: 0.73rem; font-weight: 600; line-height: 1; cursor: pointer;
   }
   .toolbar-more-toggle:hover { color: var(--text); border-color: var(--text-muted); }
   .toolbar-more-backdrop { display: block; position: fixed; inset: 0; z-index: 9; background: rgba(0,0,0,0.35); }
@@ -147,13 +190,28 @@
   .bref-table { font-size: 0.7rem; }
   .bref-table th, .bref-table td { padding: 0.3rem 0.45rem; }
 
+  /* Shot Chart never got a mobile pass at all -- the flex-wrap on .shot-chart-wrap already stacked
+     the legend under the court at this width, but with zero density tuning: full desktop padding/
+     font-size on the legend table, and the SVG sized for a wide two-column layout, together read as
+     a full-size desktop widget dropped onto a phone rather than an intentional mobile view. Centering
+     a smaller court and shrinking the legend to match the rest of this breakpoint's table density
+     fixes both without changing the stack itself, which is the only layout that fits here anyway. */
+  .shot-chart-wrap { flex-direction: column; align-items: center; gap: 0.6rem; padding: 0.4rem 0 0.6rem; }
+  .shot-chart-svg { max-width: 280px; }
+  .shot-chart-legend { width: 100%; font-size: 0.74rem; }
+  .shot-chart-legend th { font-size: 0.62rem; padding: 0.3rem 0.4rem; }
+  .shot-chart-legend td { padding: 0.32rem 0.4rem; }
+
   /* Player-page controls never got a mobile tap-target pass -- these all sat well under
      --touch-target-min (some as low as ~24px tall). */
   .stat-season-tab {
     display: inline-flex; align-items: center; justify-content: center;
     min-height: var(--touch-target-min);
   }
-  .gl-select { min-height: var(--touch-target-min); padding: 0.55rem 0.6rem; }
+  .gl-select { min-height: var(--touch-target-min); padding: 0.55rem 0.4rem; font-size: 0.76rem; }
+  /* Trimmed so Game Log's 3-item leading group (season, page-size, count) leaves "..." enough
+     room to share the row instead of wrapping alone onto its own -- see .stat-table-header above. */
+  .gl-game-count { font-size: 0.7rem; }
   .gl-page-btn {
     display: inline-flex; align-items: center; justify-content: center;
     min-height: var(--touch-target-min);

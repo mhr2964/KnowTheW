@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import StudyFlow from './StudyFlow';
 import BrefTable, { fmt } from './BrefTable';
 import TableToolbar from './TableToolbar';
@@ -36,6 +36,10 @@ const ALL_TABLE_TYPES = [
 ];
 const COMING_SOON = [];
 
+// 21 steps rather than a single 0/1 threshold -- fires often enough as the user scrolls to feel
+// continuous, without a scroll-event listener of its own.
+const SCROLL_THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20);
+
 const SOURCE_ACTIVE = {
   bdl:  new Set(['perGame', 'totals', 'per36']),
   wnba: new Set(['perGame', 'totals', 'per36', 'per100']),
@@ -50,8 +54,35 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
   const [studyConfig, setStudyConfig] = useState(null);
   const [showPercentiles, setShowPercentiles] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [seasonIndicator, setSeasonIndicator] = useState(null); // 'regular' | 'playoffs' | null, from raw tabs
+  const [seasonBarHidden, setSeasonBarHidden] = useState(false);
   const exportRef = useRef(null);
   const navRef = useRef(null);
+  const seasonBarObserverRef = useRef(null);
+
+  // Whichever raw tab is mounted reports its own season selection here via onSeasonChange (see
+  // seasonIndicator above) -- this ref attaches to whatever tab's .stat-season-bar is currently in
+  // the DOM (there's at most one at a time) so the sticky nav toggle knows when it's scrolled out
+  // of view. A default-root IntersectionObserver tracks intersection with the VIEWPORT, not with
+  // the sticky nav sitting on top of the bar -- the bar stays 100%-intersecting the viewport the
+  // whole time it's merely covered by the nav, so the observer would never re-fire once scrolled
+  // under it. rootMargin shrinks the effective top edge to the nav's own covered height (its sticky
+  // `top` plus its own rendered height, read live off navRef rather than hardcoded -- the two
+  // responsive.css breakpoints use 72px/112px and this adapts to either without duplicating either
+  // number here) so "intersecting" and "hidden under the nav" become the same thing.
+  const seasonBarRef = useCallback((node) => {
+    seasonBarObserverRef.current?.disconnect();
+    if (!node) { setSeasonBarHidden(false); return; }
+    const navEl = navRef.current;
+    const stickyTop = navEl ? parseFloat(getComputedStyle(navEl).top) || 0 : 0;
+    const navCovered = navEl ? stickyTop + navEl.offsetHeight : 160; // 160 = safe fallback if navRef isn't set yet
+    seasonBarObserverRef.current = new IntersectionObserver(
+      ([entry]) => setSeasonBarHidden(!entry.isIntersecting),
+      { rootMargin: `-${navCovered}px 0px 0px 0px`, threshold: SCROLL_THRESHOLDS }
+    );
+    seasonBarObserverRef.current.observe(node);
+  }, []);
+  const handleSeasonChange = useCallback((val) => setSeasonIndicator(val), []);
 
   const { data, loading, error, refetch: refetchCareer } = useLazyFetch(
     `/api/players/${playerId}/detailed-stats`,
@@ -165,6 +196,14 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
   const regular = isRawTab ? null : (curSeason === 'regular' ? tableData?.regular : tableData?.playoffs);
   const career  = isRawTab ? null : (curSeason === 'regular' ? tableData?.regularCareer : tableData?.playoffCareer);
 
+  // Raw tabs (Advanced/Game Log/Splits/PBP/Shot Chart) report their own season selection via
+  // onSeasonChange/seasonIndicator (each owns its own state); the generic path already has
+  // hasPlayoffs/curSeason in scope right here, so it doesn't need the round trip.
+  const effectiveSeasonIndicator = isRawTab ? seasonIndicator : (hasPlayoffs ? curSeason : null);
+  const seasonSuffix = (seasonBarHidden && effectiveSeasonIndicator)
+    ? (effectiveSeasonIndicator === 'playoffs' ? 'Playoffs' : 'Season')
+    : null;
+
   // percData is keyed by season -> viewMode using percentileClient.js's own mode keys (perGame/
   // totals/per36), which don't include 'adjShooting' -- remap that one view's lookup key so
   // BrefTable's own `percentiles?.[season]?.[viewMode]` (viewMode === safeType) still resolves,
@@ -209,7 +248,10 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
             aria-expanded={mobileNavOpen}
             onClick={() => setMobileNavOpen(v => !v)}
           >
-            <span>{activeLabel}</span>
+            <span>
+              {activeLabel}
+              {seasonSuffix && <span className="stat-type-nav-season-suffix"> ({seasonSuffix})</span>}
+            </span>
             <span className="stat-type-nav-caret" aria-hidden="true">▾</span>
           </button>
           {mobileNavOpen && <div className="stat-type-nav-backdrop" onClick={() => setMobileNavOpen(false)} />}
@@ -234,20 +276,20 @@ export default function DetailedStats({ playerId, playerName, onSaveDeck, initia
         </div>
 
         {isAdvanced ? (
-          <AdvancedTab data={advData} retry={retryBackgroundStats} playerName={playerName} onOpenStudy={openStudy} />
+          <AdvancedTab data={advData} retry={retryBackgroundStats} playerName={playerName} onOpenStudy={openStudy} seasonBarRef={seasonBarRef} onSeasonChange={handleSeasonChange} />
         ) : isGamelog ? (
-          <GameLogTab playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} onOpenStudy={openStudy} />
+          <GameLogTab playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} onOpenStudy={openStudy} seasonBarRef={seasonBarRef} onSeasonChange={handleSeasonChange} />
         ) : isSplits ? (
-          <SplitsTab playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} onOpenStudy={openStudy} />
+          <SplitsTab playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} onOpenStudy={openStudy} seasonBarRef={seasonBarRef} onSeasonChange={handleSeasonChange} />
         ) : isPbp ? (
-          <PlayByPlayTab data={pbpData} totalSeasons={availableSeasons.length} retry={retryBackgroundStats} playerName={playerName} onOpenStudy={openStudy} />
+          <PlayByPlayTab data={pbpData} totalSeasons={availableSeasons.length} retry={retryBackgroundStats} playerName={playerName} onOpenStudy={openStudy} seasonBarRef={seasonBarRef} onSeasonChange={handleSeasonChange} />
         ) : isShotChart ? (
-          <ShotChart playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} onOpenStudy={openStudy} />
+          <ShotChart playerId={playerId} playerName={playerName} availableSeasons={availableSeasons} availablePlayoffSeasons={availablePlayoffSeasons} onOpenStudy={openStudy} seasonBarRef={seasonBarRef} onSeasonChange={handleSeasonChange} />
         ) : (
           <>
             <TableToolbar
               leading={
-                <div className="stat-season-bar">
+                <div className="stat-season-bar" ref={seasonBarRef}>
                   <button
                     type="button"
                     className={`stat-season-tab${curSeason === 'regular' ? ' active' : ''}`}

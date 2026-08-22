@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import BrefTable from './BrefTable';
 import TableToolbar from './TableToolbar';
 import { buildStudyDeck } from '../lib/studyData';
@@ -8,10 +8,17 @@ import { buildStudyDeck } from '../lib/studyData';
 // usePlayerBackgroundStats (see DetailedStats.jsx), started as soon as the player page loads rather
 // than gated behind this tab being clicked. `data`/`retry` are that hook's shared state, so
 // re-opening this tab doesn't re-fetch anything already in flight or done.
-export default function AdvancedTab({ data, retry, playerName, onOpenStudy }) {
+export default function AdvancedTab({ data, retry, playerName, onOpenStudy, seasonBarRef, onSeasonChange }) {
   const [advSeason, setAdvSeason] = useState('regular');
   const exportRef = useRef(null);
   const { current, full, status, timedOutSeasons } = data;
+  const advHasPlayoffs = !!full?.playoffs;
+
+  // Reports up to DetailedStats' sticky-nav season indicator -- must run unconditionally (before
+  // the early returns below) so hook order stays stable across every branch this component takes.
+  useEffect(() => {
+    onSeasonChange?.(advHasPlayoffs ? advSeason : null);
+  }, [advHasPlayoffs, advSeason, onSeasonChange]);
 
   if (status === 'error') return (
     <p className="status-msg error" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -22,7 +29,6 @@ export default function AdvancedTab({ data, retry, playerName, onOpenStudy }) {
 
   // Final result ready: render exactly the full Regular/Playoffs view.
   if (full) {
-    const advHasPlayoffs = !!full.playoffs;
     const advSplit = (advSeason === 'playoffs' && advHasPlayoffs)
       ? full.playoffs
       : full.regular;
@@ -40,7 +46,7 @@ export default function AdvancedTab({ data, retry, playerName, onOpenStudy }) {
       <>
         <TableToolbar
           leading={
-            <div className="stat-season-bar">
+            <div className="stat-season-bar" ref={seasonBarRef}>
               <button type="button" className={`stat-season-tab${advSeason === 'regular' ? ' active' : ''}`} onClick={() => setAdvSeason('regular')}>Regular Season</button>
               {advHasPlayoffs && (
                 <button type="button" className={`stat-season-tab${advSeason === 'playoffs' ? ' active' : ''}`} onClick={() => setAdvSeason('playoffs')}>Playoffs</button>

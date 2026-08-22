@@ -79,8 +79,25 @@ function downloadCsv(filename, cols, rows, careerRow) {
   URL.revokeObjectURL(url);
 }
 
-export default function BrefTable({ regular, career, percentiles, viewMode = 'perGame', emptyMessage, headerGroups, cellClassName, filename, exportRef }) {
+// Default page size differs mobile vs desktop (matches the 600px breakpoint responsive.css already
+// uses everywhere else) -- read once at mount rather than tracked reactively, since it only seeds
+// the initial value; the page-size select below lets the user override it either way.
+function defaultPageSize() {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 600px)').matches ? 10 : 25;
+}
+
+export default function BrefTable({
+  regular, career, percentiles, viewMode = 'perGame', emptyMessage, headerGroups, cellClassName, filename, exportRef,
+  paginate, pageSizeOptions = [10, 25, 50], paginationResetKey,
+}) {
   const [sort, setSort] = useState(null); // {key, dir: 1|-1} | null
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(defaultPageSize);
+
+  // A season change, season-type toggle, etc. should land back on page 1 of the new row set --
+  // paginationResetKey is whatever the caller considers "this is a different row set" (Game Log
+  // passes season+seasonType so switching either resets paging).
+  useEffect(() => { setPage(1); }, [paginationResetKey]);
 
   // Server-emitted `columns` ({key,label,kind}) is the primary path (detailed-stats,
   // advanced-pbp-all). A bare `headers` array is still a fallback for PlayByPlayTab, whose
@@ -108,11 +125,18 @@ export default function BrefTable({ regular, career, percentiles, viewMode = 'pe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, sort]);
 
-  const toggleSort = (key) => setSort(prev => {
-    if (!prev || prev.key !== key) return { key, dir: -1 };
-    if (prev.dir === -1) return { key, dir: 1 };
-    return null;
-  });
+  const toggleSort = (key) => {
+    setSort(prev => {
+      if (!prev || prev.key !== key) return { key, dir: -1 };
+      if (prev.dir === -1) return { key, dir: 1 };
+      return null;
+    });
+    if (paginate) setPage(1);
+  };
+
+  const totalPages = paginate ? Math.max(1, Math.ceil((sortedRows?.length ?? 0) / pageSize)) : 1;
+  const safePage = Math.min(page, totalPages);
+  const pageRows = paginate ? (sortedRows ?? []).slice((safePage - 1) * pageSize, safePage * pageSize) : sortedRows;
 
   // Export lives in whatever control row the caller already renders above this table (Study
   // this table's row, gl-controls, etc.) instead of a second toolbar row of its own -- a stray
@@ -154,7 +178,7 @@ export default function BrefTable({ regular, career, percentiles, viewMode = 'pe
           ))}</tr>
         </thead>
         <tbody>
-          {sortedRows.map((row, ri) => {
+          {pageRows.map((row, ri) => {
             const seasonPerc = percentiles?.[String(row[0])]?.[viewMode];
             return (
               <tr key={ri}>
@@ -199,6 +223,24 @@ export default function BrefTable({ regular, career, percentiles, viewMode = 'pe
           )}
         </tbody>
       </table>
+      {paginate && (
+        <div className="gl-pagination">
+          <select className="gl-select" value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}>
+            {pageSizeOptions.map(n => <option key={n} value={n}>{n} per page</option>)}
+          </select>
+          {totalPages > 1 && (
+            <>
+              <button type="button" className="gl-page-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1}>
+                ‹ Prev
+              </button>
+              <span className="gl-page-info">Page {safePage} of {totalPages}</span>
+              <button type="button" className="gl-page-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}>
+                Next ›
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

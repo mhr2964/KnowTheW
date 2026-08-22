@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import BrefTable from './BrefTable';
 import TableToolbar from './TableToolbar';
 import { buildStudyDeck } from '../lib/studyData';
@@ -38,9 +38,19 @@ const COL_LABELS = {
 // (see DetailedStats.jsx), started as soon as the player page loads rather than gated behind this
 // tab being clicked. `data`/`totalSeasons`/`retry` are that hook's shared state, so re-opening this
 // tab doesn't re-fetch anything already in flight or done.
-export default function PlayByPlayTab({ data, totalSeasons, retry, playerName, onOpenStudy }) {
+export default function PlayByPlayTab({ data, totalSeasons, retry, playerName, onOpenStudy, seasonBarRef, onSeasonChange }) {
+  const [pbpSeason, setPbpSeason] = useState('regular');
   const exportRef = useRef(null);
-  const { headers, rows, careerRow, status, timedOutSeasons } = data;
+  const {
+    headers, rows, careerRow, status, timedOutSeasons,
+    hasPlayoffs, playoffRows, playoffCareerRow, playoffStatus,
+  } = data;
+
+  // Reports up to DetailedStats' sticky-nav season indicator -- must run unconditionally (before
+  // the early returns below) so hook order stays stable across every branch this component takes.
+  useEffect(() => {
+    onSeasonChange?.(hasPlayoffs ? pbpSeason : null);
+  }, [hasPlayoffs, pbpSeason, onSeasonChange]);
 
   if (status === 'error') return (
     <p className="status-msg error" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -56,31 +66,49 @@ export default function PlayByPlayTab({ data, totalSeasons, retry, playerName, o
   if (!headers) return <p className="status-msg" style={{ padding: '1rem 0' }}>Loading play-by-play stats…</p>;
 
   const displayHeaders = headers.map(h => COL_LABELS[h] ?? h);
-  const isLoadingMore = status === 'loading';
+  const showPlayoffs = pbpSeason === 'playoffs' && hasPlayoffs;
+  const displayRows = showPlayoffs ? playoffRows : rows;
+  const displayCareerRow = showPlayoffs ? playoffCareerRow : careerRow;
+  const isLoadingMore = showPlayoffs ? playoffStatus === 'loading' : status === 'loading';
 
   // displayHeaders (already human-readable) doubles as buildStudyDeck's `headers` input -- same
   // reuse BrefTable itself does when passed headers instead of a server `columns` array, so the
   // deck's column labels match the table's exactly without a second LABELS lookup.
   function openStudy() {
-    const deck = buildStudyDeck({ headers: displayHeaders, rows, careerRows: careerRow ? [careerRow] : [] });
-    onOpenStudy?.({ ...deck, deckName: `${playerName} Play-by-Play` });
+    const deck = buildStudyDeck({ headers: displayHeaders, rows: displayRows, careerRows: displayCareerRow ? [displayCareerRow] : [] });
+    onOpenStudy?.({ ...deck, deckName: `${playerName} Play-by-Play${showPlayoffs ? ' (Playoffs)' : ''}` });
   }
 
   return (
     <>
-      <TableToolbar showStudy onStudy={openStudy} showExport onExport={() => exportRef.current?.()} />
+      <TableToolbar
+        leading={hasPlayoffs && (
+          <div className="stat-season-bar" ref={seasonBarRef}>
+            <button type="button" className={`stat-season-tab${pbpSeason === 'regular' ? ' active' : ''}`} onClick={() => setPbpSeason('regular')}>Regular Season</button>
+            <button type="button" className={`stat-season-tab${pbpSeason === 'playoffs' ? ' active' : ''}`} onClick={() => setPbpSeason('playoffs')}>Playoffs</button>
+          </div>
+        )}
+        showStudy
+        onStudy={openStudy}
+        showExport
+        onExport={() => exportRef.current?.()}
+      />
       <BrefTable
         headerGroups={HEADER_GROUPS}
-        regular={{ headers: displayHeaders, rows }}
-        career={careerRow ? { headers: displayHeaders, rows: [careerRow] } : null}
+        regular={{ headers: displayHeaders, rows: displayRows }}
+        career={displayCareerRow ? { headers: displayHeaders, rows: [displayCareerRow] } : null}
+        filename={`${playerName}-pbp${showPlayoffs ? '-playoffs' : ''}.csv`}
         exportRef={exportRef}
       />
-      {isLoadingMore && (
+      {isLoadingMore && !showPlayoffs && (
         <p className="status-msg" style={{ padding: '0.75rem 0' }}>
           Loading rest of career… ({rows.length}/{totalSeasons} seasons)
         </p>
       )}
-      {status === 'partial' && (
+      {isLoadingMore && showPlayoffs && (
+        <p className="status-msg" style={{ padding: '0.75rem 0' }}>Loading playoff seasons…</p>
+      )}
+      {!showPlayoffs && status === 'partial' && (
         <p className="status-msg" style={{ padding: '0.75rem 0' }}>
           {timedOutSeasons?.length
             ? `${timedOutSeasons.join(', ')} timed out and could not be loaded.`

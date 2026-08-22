@@ -133,15 +133,34 @@ function CourtDiagram({ zones, onHover }) {
   );
 }
 
-export default function ShotChart({ playerId, playerName, availableSeasons, onOpenStudy }) {
+export default function ShotChart({ playerId, playerName, availableSeasons, availablePlayoffSeasons, onOpenStudy, seasonBarRef, onSeasonChange }) {
   const [season, setSeason] = useState(null);
+  const [seasonType, setSeasonType] = useState('regular');
   const [hoverZone, setHoverZone] = useState(null);
 
   useEffect(() => {
     if (!season && availableSeasons.length > 0) setSeason(availableSeasons[0]);
   }, [season, availableSeasons]);
 
-  const shotChartUrl = season ? `/api/players/${playerId}/shotchart?season=${season}` : null;
+  function handleSeasonChange(s) {
+    setSeason(s);
+    setSeasonType('regular');
+  }
+
+  // The career boxscore's playoff-season list (same source DetailedStats.jsx already computes) --
+  // an approximation, not shot-chart-specific coverage. A season can appear here yet still return
+  // "no tracking available" below (BDL's own zone-tracking floor is 2022, narrower than career
+  // stats' coverage), same graceful-empty-state the regular-season toggle already handles.
+  const hasPlayoffSeason = !!availablePlayoffSeasons?.includes(season);
+
+  // Reports up to DetailedStats' sticky-nav season indicator (see AdvancedTab for the same pattern).
+  useEffect(() => {
+    onSeasonChange?.(hasPlayoffSeason ? seasonType : null);
+  }, [hasPlayoffSeason, seasonType, onSeasonChange]);
+
+  const shotChartUrl = season
+    ? `/api/players/${playerId}/shotchart?season=${season}&postseason=${seasonType === 'playoffs'}`
+    : null;
   const { data: chart, loading, error, retry } = useSeasonScopedFetch(shotChartUrl, { parse: parseShotChart });
 
   // Zones are objects keyed by name (label/fgm/fga/fgPct), not BrefTable's positional-array rows --
@@ -156,23 +175,44 @@ export default function ShotChart({ playerId, playerName, availableSeasons, onOp
       { key: 'fgPct', label: 'FG%', type: 'pct' },
     ];
     const data = chart.zones.map(z => ({ label: z.label, fgm: z.fgm, fga: z.fga, fgPct: z.fga > 0 ? z.fgPct : null }));
-    onOpenStudy?.({ data, columns, deckName: `${playerName} Shot Chart ${season}` });
+    const suffix = seasonType === 'playoffs' ? ' (Playoffs)' : '';
+    onOpenStudy?.({ data, columns, deckName: `${playerName} Shot Chart ${season}${suffix}` });
   }
 
   return (
     <>
       <TableToolbar
         leading={
-          availableSeasons.length > 1 && (
-            <select className="gl-select" value={season ?? ''} onChange={e => setSeason(e.target.value)}>
-              {availableSeasons.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          )
+          <>
+            {hasPlayoffSeason && (
+              <div className="stat-season-bar" ref={seasonBarRef}>
+                <button
+                  type="button"
+                  className={`stat-season-tab${seasonType === 'regular' ? ' active' : ''}`}
+                  onClick={() => setSeasonType('regular')}
+                >
+                  Regular Season
+                </button>
+                <button
+                  type="button"
+                  className={`stat-season-tab${seasonType === 'playoffs' ? ' active' : ''}`}
+                  onClick={() => setSeasonType('playoffs')}
+                >
+                  Playoffs
+                </button>
+              </div>
+            )}
+            {availableSeasons.length > 1 && (
+              <select className="gl-select" value={season ?? ''} onChange={e => handleSeasonChange(e.target.value)}>
+                {availableSeasons.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            )}
+          </>
         }
         showStudy={!!chart}
         onStudy={openStudy}
         showExport={!!chart}
-        onExport={() => downloadZonesCsv(`${playerName}-shotchart-${season}.csv`, chart.zones)}
+        onExport={() => downloadZonesCsv(`${playerName}-shotchart-${season}${seasonType === 'playoffs' ? '-playoffs' : ''}.csv`, chart.zones)}
       />
 
       {loading && <p className="status-msg" style={{ padding: '1rem 0' }}>Loading shot chart…</p>}
