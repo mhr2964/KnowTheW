@@ -17,6 +17,18 @@ function formatTime(iso) {
   return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
 }
 
+// odds is already oriented to THIS team's side (server-side perspective flip -- see
+// routes/teams.js's /teams/:id/schedule and lib/gameOdds.js's orientOddsForTeam), so this is a
+// straight display job: no home/away logic here. One representative sportsbook's line (see
+// providers/balldontlie/odds.js -- books genuinely disagree, this isn't a consensus line), vendor
+// named in the tooltip so the line reads as "according to DraftKings", not as gospel.
+function formatOdds(odds) {
+  if (!odds) return null;
+  const spread = odds.spread != null ? (Number(odds.spread) > 0 ? `+${odds.spread}` : odds.spread) : null;
+  const total = odds.total != null ? `O/U ${odds.total}` : null;
+  return [spread, total].filter(Boolean).join(' · ');
+}
+
 export default function ScheduleTable({ events, todayIso, dividerRef }) {
   if (!events || events.length === 0) return null;
 
@@ -95,7 +107,14 @@ export default function ScheduleTable({ events, todayIso, dividerRef }) {
                   </td>
                   <td className="team-history-cell team-schedule-cell">
                     {isFuture ? (
-                      <span className="team-schedule-gametime">{formatTime(event.date)}</span>
+                      <span className="team-schedule-gametime-wrap">
+                        <span className="team-schedule-gametime">{formatTime(event.date)}</span>
+                        {event.odds && (
+                          <span className="team-schedule-odds" title={`Odds via ${event.odds.vendor}`}>
+                            {formatOdds(event.odds)}
+                          </span>
+                        )}
+                      </span>
                     ) : (
                       <span className="team-schedule-result-wrap">
                         {event.result && (

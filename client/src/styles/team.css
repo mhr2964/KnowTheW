@@ -541,10 +541,22 @@
   font-weight: 600;
 }
 
+.team-schedule-gametime-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
 .team-schedule-gametime {
   font-size: 0.84rem;
   color: var(--text);
   font-weight: 600;
+}
+
+.team-schedule-odds {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* First upcoming game — visually anchors the "Next up" divider above it. */

@@ -20,6 +20,7 @@ const { findTeam }                  = require('../lib/teamLookup');
 const { parseSeasonQuery }          = require('../lib/seasonQuery');
 const { buildLegacyRosterResponse } = require('../lib/legacyRoster');
 const { attachArchetypeNames }      = require('../lib/analysis/archetypeAttach');
+const { orientOddsForTeam }          = require('../lib/gameOdds');
 
 // Data-source access goes through the active provider (see server/providers). These thin locals
 // keep the call sites below unchanged while removing the direct espnClient import; each resolves
@@ -34,6 +35,7 @@ const fetchTeamSchedule       = (...a) => getProvider().getTeamSchedule(...a);
 const fetchTeamFourFactors    = (...a) => getProvider().getTeamFourFactors(...a);
 const fetchTeamShotChart      = (...a) => getProvider().getTeamShotChart(...a);
 const fetchTeamInjuries       = (...a) => getProvider().getTeamInjuries(...a);
+const fetchGameOdds           = (...a) => getProvider().getGameOdds(...a);
 
 router.get('/teams', async (req, res) => {
   try {
@@ -364,6 +366,26 @@ router.get('/teams/:id/schedule', requireNumericId('id'), async (req, res) => {
       // fetchTeamSchedule returns null on ESPN error, [] on confirmed-empty, or an events array.
       const events = await fetchTeamSchedule(teamId, season, seasontype);
       if (!events || events.length === 0) return res.json({ empty: true, teamId, season, seasontype, events: [] });
+
+      // Odds: only regular season (event.id is a BDL-native game id only for BDL-sourced events --
+      // playoffs always stay ESPN, see schedule.js's header comment, so seasontype 3 events have no
+      // matching id space at all) and only future games (a past game's line is stale trivia, not
+      // worth a fetch). Best-effort, same posture as attachArchetypeNames/the roster injury attach
+      // above: a fetch hiccup leaves the schedule untouched rather than failing the whole request.
+      if (seasontype === 2) {
+        const now = Date.now();
+        const upcoming = events.filter(e => new Date(e.date).getTime() > now);
+        if (upcoming.length > 0) {
+          try {
+            const oddsById = await fetchGameOdds(upcoming.map(e => Number(e.id)));
+            // atVs already encodes home/away for this exact event (see mapGameToScheduleEvent).
+            events.forEach(e => { e.odds = orientOddsForTeam(oddsById[e.id], e.atVs === 'vs'); });
+          } catch (err) {
+            console.warn(`schedule odds attach failed for team ${teamId}:`, err.message);
+          }
+        }
+      }
+
       return res.json({ teamId, season, seasontype, events });
     }
 

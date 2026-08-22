@@ -110,6 +110,13 @@ class SportsDataProvider {
    *  same identity-bridge posture as getLeagueShotZoneLeaders); [] when the team has no current
    *  injuries or has no source-side mapping. No ESPN equivalent exists. */
   getTeamInjuries() { return this._notImplemented('getTeamInjuries'); }
+  /** getGameOdds(bdlGameIds) → {[gameId]: {vendor, spread:{home,away}, moneyline:{home,away},
+   *  total:{value,over,under}, updatedAt}}. One representative sportsbook's line per game (see
+   *  odds.js -- multiple books genuinely disagree, this isn't a consensus line). `bdlGameIds` are
+   *  already this site's own schedule event ids once BDL-sourced (no ESPN-id resolution step,
+   *  unlike other BDL methods). A game with no odds posted yet is simply absent from the result,
+   *  not present with a null value. No ESPN equivalent exists. */
+  getGameOdds() { return this._notImplemented('getGameOdds'); }
   /** getGamePbpStats(eventId, playerId, season) → {fetched, onCourt, boxscore} (raw summary stays in
    *  provider). `season` is only used for the per-game cache's isPastSeason gate (gamePbpCache.js),
    *  not sent upstream -- safe to omit for a not-yet-cacheable (current-season) call. */

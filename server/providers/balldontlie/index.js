@@ -50,6 +50,7 @@ const bdlDefenseStats = require('./defenseStats');
 const bdlTeamFourFactors = require('./teamFourFactors');
 const bdlTeamShotChart = require('./teamShotChart');
 const bdlInjuries = require('./injuries');
+const bdlOdds = require('./odds');
 const idMap = require('./idMap');
 const { BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON, ADVANCED_RATINGS_MIN_SEASON } = require('./client');
 const { SportsDataProvider } = require('../SportsDataProvider');
@@ -191,6 +192,15 @@ class BallDontLieProvider extends SportsDataProvider {
       playerName,
       playerId: await idMap.resolveEspnIdByName(playerName) ?? null,
     })));
+  }
+
+  // --- Betting odds: new data, no ESPN equivalent -- see odds.js's header comment. bdlGameIds are
+  // already-BDL-native (this site's own schedule events ARE BDL games once BDL-sourced -- see
+  // schedule.js's mapGameToScheduleEvent, `id: String(game.id)`), so there's no ESPN-id resolution
+  // step here at all, unlike every other BDL provider method that takes this site's id. ---
+  async getGameOdds(bdlGameIds) {
+    const map = await bdlOdds.fetchOddsForGamesBdl(bdlGameIds);
+    return Object.fromEntries(map);
   }
 
   // --- Standings: new data, not a migration -- distinct from getStandingsRaw above, which stays
