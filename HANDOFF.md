@@ -4,7 +4,7 @@ Forward-looking handoff for the active work-stream. **Overwrite** each session; 
 
 ```yaml
 last-model: claude-sonnet-5
-last-session: 2026-08-21 — BDL expansion roadmap (docs/design/bdl-expansion-roadmap.md), executing autonomously feature-by-feature with a >>ping compact between each. Feature 1 (site nav rework, Teams/Standings pages) shipped as 7a13739, deploy verified live. Feature 2 (Off/Def/Net Rating + PIE on Advanced tab) shipped as 0d247e1 -- also fixed two real cache-versioning bugs (advancedStats `v` guard + playerSeasonPbp's own unversioned per-season cache) and added a missing timeout to bdlFetch (see roadmap doc's "## 2." section for the full story).
+last-session: 2026-08-22 — BDL expansion roadmap (docs/design/bdl-expansion-roadmap.md), executing autonomously feature-by-feature with a >>ping compact between each. Feature 1 (site nav rework, Teams/Standings pages) shipped as 7a13739, deploy verified live. Feature 2 (Off/Def/Net Rating + PIE on Advanced tab) shipped as 0d247e1. Feature 3 (Clutch splits, new tab) shipped as 655b17f -- also fixed a real client-side routing bug (PlayerRoutePage.jsx's VALID_TABS allowlist didn't know about the new tab, so it redirected right back to the bare URL) -- see roadmap doc's "## 3." section for the full story.
 state: green. Actively building through the BDL expansion roadmap -- see that doc's own Status table for exactly which feature is in progress. No open blockers as of the last shipped feature.
 ```
 
@@ -23,6 +23,12 @@ state: green. Actively building through the BDL expansion roadmap -- see that do
   bumping the cache KEY itself instead). Changing the row shape again needs both bumped, or a stale
   per-season row silently survives an outer cache-version bump (confirmed live, 2026-08-21, commit
   `0d247e1`).
+- **Adding a new player stat-type tab touches THREE places, not two**: `DetailedStats.jsx`'s
+  `ALL_TABLE_TYPES`/`SOURCE_ACTIVE`/render branch (obvious), AND `PlayerRoutePage.jsx`'s own
+  `VALID_TABS` allowlist for URL-tab sync (easy to miss -- it's a separate file, no shared
+  constant). Missing the third makes the tab clickable but self-reverting: the route-sync guard
+  redirects back to the bare player URL the instant the tab's URL param lands (confirmed live,
+  2026-08-22, commit `655b17f` -- the Clutch tab).
 - **`docs/design/provider-architecture.md` is stale** — it still says `STATS_PROVIDER` defaults to `'espn'` and BDL is "not yet flipped on," but dev has defaulted to `balldontlie` since `3328b26` and BDL has been the live production source for months. Don't trust that file's rollout-status claims without checking current code; worth a cleanup pass whenever someone's next in that file.
 
 ## Do not touch

@@ -32,7 +32,7 @@ context from a compact summary.
 | --- | --- | --- |
 | 1 | Site IA rework: Teams page, Standings page, real homepage, nav | Shipped `7a13739`, deploy verified live |
 | 2 | Off/Def/Net Rating + PIE on the existing Advanced tab | Shipped |
-| 3 | Clutch splits | Not started |
+| 3 | Clutch splits | Shipped |
 | 4 | Scoring-distribution dashboard | Not started |
 | 5 | Usage dashboard | Not started |
 | 6 | Defense dashboard (incl. Defensive Win Shares) | Not started |
@@ -133,20 +133,45 @@ change), live Playwright on A'ja Wilson's Advanced tab at mobile width confirmin
 render with plausible values for both a past season and the live current season, and the Net Rating
 sanity check (110.6 off - 98.8 def = 11.8 ≈ 11.7 actual, rounding only).
 
-## 3. Clutch splits
+## 3. Clutch splits — Shipped, `655b17f`
 
-`player_season_advanced_stats?scope=clutch` (confirmed live, 2026-08-21) returns a full box-score
-line (pts/reb/ast/fg%/etc, all the base counting stats) filtered to clutch situations, plus fantasy
-points fields. No measure_type combination needed beyond the scope param — same season-level shape
-already rendered elsewhere.
+Re-spiked live, 2026-08-22, before building (never trusted the 2026-08-21 brainstorm's summary of
+the shape): `player_season_advanced_stats?scope=clutch` with no `measure_type` returns ALL FIVE
+measure_type buckets (base/advanced/misc/scoring/usage) for that scope, not just base — needed to
+pass `measure_type=base` explicitly to get just the box-score line the roadmap wanted. Also
+confirmed the default `per_mode` is `totals` (summed across every clutch appearance that season —
+e.g. "40 PTS" for a whole season of ~3min/game clutch minutes), not `per_game`; passed
+`per_mode=per_game` explicitly so it reads like every other rate-stat tab on the site.
 
-**Build:** likely a new toggle/tab alongside the existing season view (similar pattern to the
-Playoffs toggle just shipped this session) rather than a wholly new page — "Clutch" reads as a
-lens on existing stats, not a separate stat category. Confirm exact UI placement before building
-(new tab under the stat-type nav vs. a toggle on the existing Advanced tab).
+**Where it landed:** a new "Clutch" tab in the stat-type nav, own component (`ClutchTab.jsx`) —
+NOT folded into the existing Splits tab (Home/Away/Monthly/By-Opponent), even though the UI shape
+looks similar. Splits' `buildSplits` (`server/lib/gameSplits.js`) aggregates ESPN gamelog data into
+groups-of-games; clutch is a single already-aggregated row per season/side straight from BDL, a
+fundamentally different data source and shape (one row, not N grouped rows) — mirrored SplitsTab's
+season-scoped fetch pattern instead (own season dropdown, Regular Season/Playoffs toggle), but kept
+it a separate tab/component rather than stretching `buildSplits` to cover a case it doesn't fit.
+Both season sides come back in one `/api/players/:id/clutch?season=Y` response so the Regular/
+Playoffs toggle is a local swap, not a refetch.
 
-**Verify:** lint/build/test, live check that clutch numbers are plausibly different from (and
-smaller-sample than) the season-long numbers for a real player.
+**Bug found and fixed along the way:** `PlayerRoutePage.jsx` has its own `VALID_TABS` allowlist
+for syncing the stat-type tab to the URL (`/player/:id/:tab`) — separate from, and not derived
+from, `DetailedStats.jsx`'s `ALL_TABLE_TYPES`/`SOURCE_ACTIVE`. Adding a new tab there is easy to
+forget to also add here: clicking "Clutch" DID switch the tab and fire its fetch, but the very next
+render saw the URL's `:tab` param become `'clutch'`, which isn't in `VALID_TABS`, so the route-sync
+guard immediately redirected back to the bare player URL — reverting to Per Game. Only visible live
+(a Playwright network-tab check showed the `/clutch` fetch fire then abort); the server-side test
+suite had no way to catch a client-side routing allowlist gap. Fixed by adding `'clutch'` to
+`VALID_TABS`. **Lesson: a new stat-type tab needs THREE places updated, not two** —
+`DetailedStats.jsx`'s `ALL_TABLE_TYPES`/`SOURCE_ACTIVE`/render branch, AND `PlayerRoutePage.jsx`'s
+`VALID_TABS` — easy to miss the third since it's in a different file with no shared constant.
+
+**Verify:** unit tests for `mapClutchStatsRow` (field mapping/null handling), full suite 334/338
+(4 pre-existing unrelated JWT_SECRET failures, unchanged), lint/build clean. Live curl against
+`/api/players/3149391/clutch?season=2025` matched the direct BDL spike exactly (regular: GP 15/MIN
+3.1/PTS 2.7; playoffs: GP 6/MIN 4.9/PTS 2.3 — plausibly smaller/different than the season-long
+per-game averages, as expected for a low-minutes clutch-only split). Live Playwright at 390x844
+confirmed the same values render in the actual table for both season sides, with the toggle
+switching without a refetch.
 
 ## 4. Scoring-distribution dashboard
 
