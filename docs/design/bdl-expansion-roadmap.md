@@ -30,8 +30,8 @@ context from a compact summary.
 
 | # | Feature | Status |
 | --- | --- | --- |
-| 1 | Site IA rework: Teams page, Standings page, real homepage, nav | Shipped `7a13739`, deploy verification pending |
-| 2 | Off/Def/Net Rating + PIE on the existing Advanced tab | Not started |
+| 1 | Site IA rework: Teams page, Standings page, real homepage, nav | Shipped `7a13739`, deploy verified live |
+| 2 | Off/Def/Net Rating + PIE on the existing Advanced tab | Shipped |
 | 3 | Clutch splits | Not started |
 | 4 | Scoring-distribution dashboard | Not started |
 | 5 | Usage dashboard | Not started |
@@ -90,22 +90,48 @@ modes), and the new homepage layout.
 
 ## 2. Off/Def/Net Rating + PIE on the existing Advanced tab
 
-Sitting unused on the endpoint the Advanced tab already calls. `player_season_advanced_stats`'s
-default (`measure_type=advanced`, `scope=general`) response includes `off_rating`, `def_rating`,
-`net_rating`, `pie`, and their `_e` ("estimated") variants and `_rank` counterparts — none of which
-`advancedStats.js`'s homegrown formulas compute (that path does TS%/eFG%/USG%/AST%/ORB%/DRB%/TRB%/
-STL%/BLK%/PER/Win Shares). Zero new endpoint — just reading more fields off a response already
-being fetched, or adding this as columns from a second field-set. Confirm during build whether
-these fields are already present in whatever BDL response the codebase currently stores/discards,
-or need a new fetch call with the right `measure_type`.
+**Shipped.** Correction to this section's original premise: these fields are NOT sitting unused on
+an endpoint the Advanced tab already calls — the Advanced tab's numbers are 100% homegrown from
+play-by-play box-score reconstruction (`advancedStats.js`'s `computeSeasonPBP`/`aggregatePBPSummary`);
+the codebase never called BDL's `player_season_advanced_stats` endpoint anywhere. This needed a
+genuinely new fetch, not just reading more fields off an existing response.
 
-**Build:** extend `AdvancedTab.jsx` (and whatever server-side shaping feeds it) with the new
-columns. Likely the smallest feature on this list — good second slot to build momentum before the
-heavier dashboard features below.
+Build: new `server/providers/balldontlie/advancedRatings.js` (`fetchPlayerSeasonRatingsBdl`, split
+into a testable pure `mapAdvancedStatsRow`), a new `SportsDataProvider.getPlayerSeasonRatings`
+method (BDL-only, ESPN returns null — same posture as `getPlayerShotChart`), fetched alongside the
+existing team-stats calls in `computeSeasonPBPUncached` and appended as 4 new `ADV_HEADERS_SRV`
+columns (`OFF_RATING`/`DEF_RATING`/`NET_RATING`/`PIE`). Career row uses a minutes-weighted average
+(no lower-level possession counts available to recompute an exact career rate, unlike TS%/eFG%).
 
-**Verify:** lint/build/test, live Playwright on a real player's Advanced tab confirming the new
-columns render with plausible values (cross-check one player's Net Rating against Off - Def
-manually as a sanity check).
+Confirmed live (A'ja Wilson, id 535/3149391, 2026-08-21): field names (`off_rating`, `def_rating`,
+`net_rating`, `pie`) and scale (PIE is a 0-1 fraction like TS%; ratings are already ~90-115 numbers)
+match the original assumption exactly. Also confirmed a real data floor — these fields are empty
+before 2022 (same later tracking-data feed as `SHOT_CHART_MIN_SEASON`, not `BDL_MIN_SEASON`) — added
+`ADVANCED_RATINGS_MIN_SEASON = 2022` in `client.js` to skip the wasted call for older seasons.
+
+**Two real cache bugs found and fixed during this build, worth remembering for the NEXT column-shape
+change to either of these tables:** (1) `computeAdvancedPbpAll`'s `advancedStats` Mongo cache is
+version-gated (`v` field) — forgot to bump it first, so a local test hit served the stale 20-column
+shape from cache instead of the newly-computed 24-column one. Bumped 27→28. (2) `computeSeasonPBP`'s
+OWN per-season `playerSeasonPbp` cache has no version field at all (unlike `advancedStats`) — bumping
+the outer `v` alone wasn't enough, because per-season rows came back from THIS cache still in the old
+20-element shape. Fixed by suffixing the cache key itself (`-v2`) per `teamSeasonCache.js`'s own
+documented "bump the key" invalidation convention. Bumping (1) before fixing (2) meant the very first
+"fixed" test run baked the still-stale row into a v28 doc for a real player, in the shared production
+Mongo — had to bump again (28→29) to get a clean recompute. **Lesson: when a season-level box-score
+row shape changes, check BOTH the outer whole-career cache AND computeSeasonPBP's own per-season
+cache — they're two independent caches, not one.**
+
+Also fixed in passing (found while investigating why the v253/v254 deploy's release phase took ~15
+minutes instead of the usual well-under-a-minute): `bdlFetch` had no per-request timeout at all — a
+single stalled connection could hang a background script (no route-level timeout backstop, unlike a
+live web request) forever with zero error output. Added `AbortSignal.timeout(20000)`.
+
+**Verify:** lint/build/test (332 tests, 328 pass — 4 pre-existing unrelated failures in
+`auth-jwt-secret-missing.test.js`, a local-env JWT_SECRET leak from `.env`, not caused by this
+change), live Playwright on A'ja Wilson's Advanced tab at mobile width confirming the new columns
+render with plausible values for both a past season and the live current season, and the Net Rating
+sanity check (110.6 off - 98.8 def = 11.8 ≈ 11.7 actual, rounding only).
 
 ## 3. Clutch splits
 
