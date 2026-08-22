@@ -46,6 +46,7 @@ const bdlScoringDistribution = require('./scoringDistribution');
 const bdlUsageShare = require('./usageShare');
 const bdlDefenseStats = require('./defenseStats');
 const bdlTeamFourFactors = require('./teamFourFactors');
+const bdlTeamShotChart = require('./teamShotChart');
 const idMap = require('./idMap');
 const { BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON, ADVANCED_RATINGS_MIN_SEASON } = require('./client');
 const { SportsDataProvider } = require('../SportsDataProvider');
@@ -250,6 +251,15 @@ class BallDontLieProvider extends SportsDataProvider {
     const bdlTeamId = await idMap.resolveBdlTeamId(teamId);
     if (bdlTeamId == null) return null;
     return bdlTeamFourFactors.fetchTeamFourFactorsBdl(bdlTeamId, season, seasontype);
+  }
+
+  // Team shot chart: same SHOT_CHART_MIN_SEASON floor (2022) as the player-level version -- own
+  // season floor, not usesBdl/BDL_MIN_SEASON (2008), since zone tracking is a much newer feed.
+  async getTeamShotChart(teamId, season) {
+    if (Number(season) < SHOT_CHART_MIN_SEASON) return null;
+    const bdlTeamId = await idMap.resolveBdlTeamId(teamId);
+    if (bdlTeamId == null) return null;
+    return bdlTeamShotChart.fetchTeamShotChartBdl(bdlTeamId, season);
   }
 }
 

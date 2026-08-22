@@ -49,6 +49,11 @@ class SportsDataProvider {
    *  Dean Oliver's Four Factors (eFG%/TOV%/OREB%/FT Rate) for the team and its opponents. BDL-only --
    *  no ESPN equivalent exists, same graceful-degradation posture as getPlayerSeasonRatings. */
   getTeamFourFactors() { return this._notImplemented('getTeamFourFactors'); }
+  /** getTeamShotChart(teamId, season) → {Promise<{season, own:{zones}|null, opponent:{zones}|null}|null>}
+   *  Zone-aggregated FG% for the team's own shots AND opponent shots faced while playing this team
+   *  (the more novel defensive-tendency framing), same zone shape as getPlayerShotChart. BDL-only --
+   *  no ESPN equivalent exists, same graceful-degradation posture as getPlayerSeasonRatings. */
+  getTeamShotChart() { return this._notImplemented('getTeamShotChart'); }
   /** getTeamSchedule(teamId, season, seasontype) → {Promise<ScheduleEvent[]|null>}; 2=reg, 3=playoffs. */
   getTeamSchedule() { return this._notImplemented('getTeamSchedule'); }
   /** getPlayoffSchedule(teamId, season) → playoff schedule (seasontype=3). */

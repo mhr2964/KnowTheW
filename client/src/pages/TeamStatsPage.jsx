@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { formatStatValue } from '../lib/statFormatters';
+import TeamShotChart from '../components/TeamShotChart';
 
 const STAT_LABELS = {
   ptsPg:    'PPG',
@@ -170,6 +171,7 @@ export default function TeamStatsPage() {
             .map(k => ({ key: k, val: fourFactorsData.stats[k] }))}
         />
       ))}
+      <TeamShotChart teamId={team.id} season={season} />
     </div>
   );
 }

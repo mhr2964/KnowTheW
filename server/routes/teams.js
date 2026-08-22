@@ -32,6 +32,7 @@ const fetchTeamPtsAllowed     = (...a) => getProvider().getTeamPointsAllowed(...
 const fetchTeamPtsAllowedRaw  = (...a) => getProvider().getTeamPointsAllowedRaw(...a);
 const fetchTeamSchedule       = (...a) => getProvider().getTeamSchedule(...a);
 const fetchTeamFourFactors    = (...a) => getProvider().getTeamFourFactors(...a);
+const fetchTeamShotChart      = (...a) => getProvider().getTeamShotChart(...a);
 
 router.get('/teams', async (req, res) => {
   try {
@@ -253,6 +254,32 @@ router.get('/teams/:id/four-factors', requireNumericId('id'), async (req, res) =
   } catch (err) {
     console.error(`teams/${teamId}/four-factors season=${season}:`, err.message);
     res.status(502).json({ error: 'failed to load four factors' });
+  }
+});
+
+// Team shot chart: own zone FG% AND opponent zone FG% while facing this team (the more novel
+// defensive-tendency framing -- see providers/balldontlie/teamShotChart.js). Regular season only,
+// same scope as /four-factors above (TeamStatsPage has no playoffs toggle). Each zone in both `own`
+// and `opponent` carries the same leagueAvgPct anchor as the player shot chart (same league-wide
+// zone baseline either way), for the client's color-scale reuse.
+router.get('/teams/:id/shotchart', requireNumericId('id'), async (req, res) => {
+  const teamId = req.params.id;
+
+  const sp = parseSeasonQuery(req);
+  if (sp.error) return res.status(400).json({ error: sp.error });
+  const { season } = sp;
+
+  try {
+    const [chart, leagueAvg] = await Promise.all([
+      fetchTeamShotChart(teamId, season),
+      getProvider().getLeagueShotZones(season, false).catch(() => null),
+    ]);
+    if (!chart) return res.status(404).json({ error: 'no shot chart available' });
+    const withLeagueAvg = side => side && { ...side, zones: side.zones.map(z => ({ ...z, leagueAvgPct: leagueAvg?.[z.key] ?? null })) };
+    res.json({ season: chart.season, teamId, own: withLeagueAvg(chart.own), opponent: withLeagueAvg(chart.opponent) });
+  } catch (err) {
+    console.error(`teams/${teamId}/shotchart season=${season}:`, err.message);
+    res.status(502).json({ error: 'failed to load shot chart' });
   }
 });
 
