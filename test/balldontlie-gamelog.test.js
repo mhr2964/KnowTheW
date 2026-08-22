@@ -67,6 +67,12 @@ const REAL_FRANCHISE_HOME = { id: 1, conference: 'Eastern Conference', abbreviat
 const REAL_FRANCHISE_AWAY = { id: 8, conference: 'Western Conference', abbreviation: 'LV' };
 const EXHIBITION_TEAM = { id: 18, conference: null, abbreviation: 'WNBASTARS' };
 
+test('buildGameMetaMap: carries the BDL game id through as gameId, for per-game advanced-stats lookups', () => {
+  const rows = [{ id: 3861, date: '2025-05-17T17:00:00.000Z', status_state: 'final', home_team: REAL_FRANCHISE_HOME, visitor_team: REAL_FRANCHISE_AWAY, home_score: 92, away_score: 78 }];
+  const map = buildGameMetaMap(rows, 1);
+  assert.strictEqual(map.get(3861).gameId, 3861);
+});
+
 test('buildGameMetaMap: home game -> atVs vs, opponent is the visitor', () => {
   const rows = [{ id: 3861, date: '2025-05-17T17:00:00.000Z', status_state: 'final', home_team: REAL_FRANCHISE_HOME, visitor_team: REAL_FRANCHISE_AWAY, home_score: 92, away_score: 78 }];
   const map = buildGameMetaMap(rows, 1);

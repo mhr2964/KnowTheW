@@ -132,6 +132,21 @@ router.get('/players/:id/gamelog', async (req, res) => {
   }
 });
 
+// Per-game advanced box score (BDL-only, no ESPN equivalent -- see
+// providers/balldontlie/gameAdvancedStats.js). :gameId is the id already exposed on each
+// BDL-sourced /gamelog row (game.gameId) -- an ESPN-sourced gamelog row carries no such id, so the
+// client only ever calls this route for a game it already knows has one.
+router.get('/players/:id/gamelog/:gameId/advanced', async (req, res) => {
+  try {
+    const result = await getProvider().getPlayerGameAdvancedStats(req.params.id, req.params.gameId);
+    if (!result) return res.status(404).json({ error: 'no advanced stats available for this game' });
+    res.json(result);
+  } catch (err) {
+    console.error('gamelog-advanced:', err.message);
+    res.status(502).json({ error: 'failed to load game advanced stats' });
+  }
+});
+
 // Zone-aggregated shooting stats (BDL-only, no ESPN equivalent — see
 // providers/balldontlie/shotChart.js). Not per-shot coordinates; a season below the provider's own
 // shot-chart floor (or a player the provider can't resolve) returns null, same 404 as /gamelog.

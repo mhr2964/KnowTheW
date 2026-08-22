@@ -34,6 +34,7 @@ const espn = require('../espn');
 const bdlTeamStats = require('./teamStats');
 const bdlPlays = require('./plays');
 const bdlGameLog = require('./gameLog');
+const bdlGameAdvancedStats = require('./gameAdvancedStats');
 const bdlSchedule = require('./schedule');
 const bdlSeasonStats = require('./seasonStats');
 const bdlShotChart = require('./shotChart');
@@ -116,6 +117,15 @@ class BallDontLieProvider extends SportsDataProvider {
     const bdlPlayerId = await idMap.resolveBdlPlayerId(playerId);
     if (bdlPlayerId == null) return null;
     return bdlGameLog.fetchPlayerGameLogBdl(bdlPlayerId, season);
+  }
+
+  // Per-game advanced box score: no season param -- gameId is already a BDL id (only ever present
+  // on a BDL-sourced gamelog row in the first place, see gameLog.js's buildGameMetaMap), so there's
+  // no usesBdl(season) gate to apply here the way getPlayerGameLog needs one.
+  async getPlayerGameAdvancedStats(playerId, gameId) {
+    const bdlPlayerId = await idMap.resolveBdlPlayerId(playerId);
+    if (bdlPlayerId == null) return null;
+    return bdlGameAdvancedStats.fetchPlayerGameAdvancedStatsBdl(bdlPlayerId, gameId);
   }
 
   // --- Shot chart: new data, not a migration -- no ESPN equivalent exists at all (see

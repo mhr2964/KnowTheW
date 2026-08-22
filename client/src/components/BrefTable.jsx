@@ -88,7 +88,7 @@ function defaultPageSize() {
 
 export default function BrefTable({
   regular, career, percentiles, viewMode = 'perGame', emptyMessage, headerGroups, cellClassName, filename, exportRef,
-  paginate, pageSizeOptions = [10, 25, 50], paginationResetKey,
+  paginate, pageSizeOptions = [10, 25, 50], paginationResetKey, onRowClick, isRowActive,
 }) {
   const [sort, setSort] = useState(null); // {key, dir: 1|-1} | null
   const [page, setPage] = useState(1);
@@ -181,7 +181,11 @@ export default function BrefTable({
           {pageRows.map((row, ri) => {
             const seasonPerc = percentiles?.[String(row[0])]?.[viewMode];
             return (
-              <tr key={ri}>
+              <tr
+                key={ri}
+                className={[onRowClick ? 'bref-row-clickable' : '', isRowActive?.(row) ? 'bref-row-active' : ''].filter(Boolean).join(' ') || undefined}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+              >
                 {cols.map(c => {
                   const raw  = row[c.idx];
                   const perc = seasonPerc?.[c.key];

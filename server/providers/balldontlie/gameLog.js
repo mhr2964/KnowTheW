@@ -69,6 +69,7 @@ function buildGameMetaMap(gamesRows, teamId) {
     const oppScore = isHome ? g.away_score : g.home_score;
     const hasScores = typeof teamScore === 'number' && typeof oppScore === 'number' && g.status_state === 'final';
     map.set(g.id, {
+      gameId: g.id,
       date: g.date,
       opponent: opponent?.abbreviation ?? '?',
       atVs: isHome ? 'vs' : '@',

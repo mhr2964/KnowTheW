@@ -238,6 +238,8 @@
    show both its own 1px bottom border and career-row's 2px top border stacked (3px total). */
 .bref-table tbody tr:has(+ .career-row) td { border-bottom: none; }
 .bref-table tbody tr:hover:not(.career-row) { background: rgba(255,107,0,0.05); }
+.bref-row-clickable { cursor: pointer; }
+.bref-row-active:not(.career-row) { background: rgba(255,107,0,0.1); }
 
 .career-row td {
   background: var(--surface-2);

@@ -77,6 +77,12 @@ class SportsDataProvider {
   getPlayerGameLog() { return this._notImplemented('getPlayerGameLog'); }
   /** getGameLogEvents(playerId, season, seasontype) → [{eventId,seasonTypeName,eventNote,opponentId}] | null. */
   getGameLogEvents() { return this._notImplemented('getGameLogEvents'); }
+  /** getPlayerGameAdvancedStats(playerId, gameId) → {misc, usage, scoring, advanced, fourFactors}
+   *  (each a flat {key: number|null} bag) | null. gameId is the provider's own per-game id, as
+   *  already exposed on each row returned by getPlayerGameLog (BDL-sourced rows only -- see
+   *  gameLog.js). BDL-only, no ESPN equivalent -- a game log built from ESPN has no gameId on its
+   *  rows, so this always returns null there. */
+  getPlayerGameAdvancedStats() { return this._notImplemented('getPlayerGameAdvancedStats'); }
   /** getPlayerShotChart(playerId, season, postseason) → {season, zones:[{key,label,fga,fgm,fgPct}]}
    *  | null. Zone-aggregated FG stats per court zone, not per-shot coordinates. No ESPN equivalent
    *  exists -- a provider without shot-location data should return null, not throw (see

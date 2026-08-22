@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import BrefTable from './BrefTable';
 import TableToolbar from './TableToolbar';
+import GameAdvancedStatsPanel from './GameAdvancedStatsPanel';
 import { buildStudyDeck } from '../lib/studyData';
 import useSeasonScopedFetch from '../hooks/useSeasonScopedFetch';
 
@@ -30,28 +31,43 @@ function toBrefShape(log, games) {
       const n = Number(raw);
       return Number.isNaN(n) ? raw : n;
     }),
+    // Trailing, deliberately NOT part of `columns` -- BrefTable/buildStudyDeck/downloadCsv all
+    // iterate `cols` (built from `columns`), so this never renders as a table column, sorts, or
+    // exports. It's only read back out via row[row.length - 1] by GameLogTable's onRowClick, to
+    // key the advanced-stats-panel fetch without threading a parallel lookup structure through.
+    g.gameId ?? null,
   ]);
   return { columns, rows };
 }
 
-function GameLogTable({ log, games, filename, exportRef, paginationResetKey }) {
+function GameLogTable({ log, games, filename, exportRef, paginationResetKey, playerId, expandedGameId, onToggleGame }) {
   const regular = toBrefShape(log, games);
+  const getGameId = (row) => row[row.length - 1];
+  // ESPN-sourced games carry no gameId (see toBrefShape) -- don't make rows look clickable at all
+  // when nothing would happen on click, rather than a click handler that silently no-ops.
+  const hasAdvancedStats = games.some(g => g.gameId != null);
   return (
-    <BrefTable
-      regular={regular}
-      emptyMessage="No games logged yet."
-      cellClassName={(row, col) => col.key === 'result' ? (row[col.idx]?.startsWith('W') ? 'gl-win' : 'gl-loss') : undefined}
-      filename={filename}
-      exportRef={exportRef}
-      paginate
-      paginationResetKey={paginationResetKey}
-    />
+    <>
+      <BrefTable
+        regular={regular}
+        emptyMessage="No games logged yet."
+        cellClassName={(row, col) => col.key === 'result' ? (row[col.idx]?.startsWith('W') ? 'gl-win' : 'gl-loss') : undefined}
+        filename={filename}
+        exportRef={exportRef}
+        paginate
+        paginationResetKey={paginationResetKey}
+        onRowClick={hasAdvancedStats ? row => getGameId(row) != null && onToggleGame(getGameId(row)) : undefined}
+        isRowActive={hasAdvancedStats ? row => getGameId(row) === expandedGameId : undefined}
+      />
+      <GameAdvancedStatsPanel playerId={playerId} gameId={expandedGameId} />
+    </>
   );
 }
 
 export default function GameLogTab({ playerId, playerName, availableSeasons, onOpenStudy, seasonBarRef, onSeasonChange }) {
   const [gameLogSeason, setGameLogSeason] = useState(null);
   const [glSeasonType, setGlSeasonType] = useState('regular');
+  const [expandedGameId, setExpandedGameId] = useState(null);
   const exportRef = useRef(null);
 
   useEffect(() => {
@@ -66,10 +82,17 @@ export default function GameLogTab({ playerId, playerName, availableSeasons, onO
   function handleSeasonChange(season) {
     setGameLogSeason(season);
     setGlSeasonType('regular');
+    setExpandedGameId(null);
   }
 
   function handleSeasonTypeChange(type) {
     setGlSeasonType(type);
+    setExpandedGameId(null);
+  }
+
+  // Toggle: clicking the already-expanded game's row collapses it instead of re-fetching.
+  function toggleGame(gameId) {
+    setExpandedGameId(prev => (prev === gameId ? null : gameId));
   }
 
   // Both providers tag every game postseason:boolean (BDL from /games, ESPN from the seasonType's
@@ -154,6 +177,9 @@ export default function GameLogTab({ playerId, playerName, availableSeasons, onO
           filename={`${playerName}-gamelog-${gameLogSeason}${glSeasonType === 'playoffs' ? '-playoffs' : ''}.csv`}
           exportRef={exportRef}
           paginationResetKey={`${gameLogSeason}-${glSeasonType}`}
+          playerId={playerId}
+          expandedGameId={expandedGameId}
+          onToggleGame={toggleGame}
         />
       )}
     </>
