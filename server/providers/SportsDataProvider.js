@@ -87,6 +87,13 @@ class SportsDataProvider {
    *  average rather than a flat 50% (mid-range and 3PT have very different real averages -- see
    *  leagueShotZones.js). No ESPN equivalent exists, same as getPlayerShotChart. */
   getLeagueShotZones() { return this._notImplemented('getLeagueShotZones'); }
+  /** getLeagueShotZoneLeaders(season, postseason) → {season, zones: [{key, label, leaders:
+   *  [{bdlPlayerId, name, teamAbbr, fga, fgm, fgPct, playerId}]}]} | null. Per-zone top-N by FG%
+   *  among players clearing a minimum-attempts floor in that zone (see leagueShotZoneLeaders.js).
+   *  playerId is this site's ESPN id, resolved from the BDL name server-side (null if the name
+   *  couldn't be linked -- see idMap.js's resolveEspnIdByName) -- routes/client never see a BDL id.
+   *  No ESPN equivalent exists, same as getPlayerShotChart/getLeagueShotZones. */
+  getLeagueShotZoneLeaders() { return this._notImplemented('getLeagueShotZoneLeaders'); }
   /** getGamePbpStats(eventId, playerId, season) → {fetched, onCourt, boxscore} (raw summary stays in
    *  provider). `season` is only used for the per-game cache's isPastSeason gate (gamePbpCache.js),
    *  not sent upstream -- safe to omit for a not-yet-cacheable (current-season) call. */

@@ -38,6 +38,7 @@ const bdlSchedule = require('./schedule');
 const bdlSeasonStats = require('./seasonStats');
 const bdlShotChart = require('./shotChart');
 const bdlLeagueShotZones = require('./leagueShotZones');
+const bdlLeagueShotZoneLeaders = require('./leagueShotZoneLeaders');
 const bdlLeagueStats = require('./leagueStats');
 const bdlStandings = require('./standings');
 const bdlAdvancedRatings = require('./advancedRatings');
@@ -134,6 +135,30 @@ class BallDontLieProvider extends SportsDataProvider {
   async getLeagueShotZones(season, postseason) {
     if (Number(season) < SHOT_CHART_MIN_SEASON) return null;
     return bdlLeagueShotZones.fetchLeagueShotZonesBdl(season, postseason);
+  }
+
+  // League shot-zone leaderboards: the bulk pull returns BDL ids/plain names with no ESPN identity
+  // attached at the endpoint -- resolve each unique name to this site's ESPN id here (once per
+  // unique name across all 7 zones, not once per leaderboard row -- the same player can lead
+  // multiple zones) so the route layer never needs to know this is a BDL-specific identity bridge.
+  // A name that fails to resolve (rare -- see idMap.js's resolveEspnIdByName) still shows on the
+  // board with playerId: null rather than being dropped, same graceful-degradation posture as an
+  // unresolvable player elsewhere in this provider.
+  async getLeagueShotZoneLeaders(season, postseason) {
+    if (Number(season) < SHOT_CHART_MIN_SEASON) return null;
+    const raw = await bdlLeagueShotZoneLeaders.fetchLeagueShotZoneLeadersBdl(season, postseason);
+    if (!raw) return null;
+
+    const uniqueNames = new Set(raw.zones.flatMap(z => z.leaders.map(r => r.name)));
+    const idByName = new Map(await Promise.all(
+      [...uniqueNames].map(async name => [name, await idMap.resolveEspnIdByName(name)])
+    ));
+
+    const zones = raw.zones.map(z => ({
+      ...z,
+      leaders: z.leaders.map(r => ({ ...r, playerId: idByName.get(r.name) ?? null })),
+    }));
+    return { season: raw.season, zones };
   }
 
   // --- Standings: new data, not a migration -- distinct from getStandingsRaw above, which stays

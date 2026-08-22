@@ -45,6 +45,24 @@ router.get('/search', async (req, res) => {
   }
 });
 
+// League shot-zone leaderboards -- cross-cutting (not team- or player-scoped), same reasoning as
+// /search living here rather than in teams.js/players.js. BDL-only, same 2022 tracking floor as the
+// player/team shot charts (getLeagueShotZoneLeaders returns null before that floor).
+router.get('/league/shot-zone-leaders', async (req, res) => {
+  const season = parseInt(req.query.season, 10);
+  if (!Number.isFinite(season)) return res.status(400).json({ error: 'season is required' });
+  const postseason = req.query.postseason === 'true';
+
+  try {
+    const result = await getProvider().getLeagueShotZoneLeaders(season, postseason);
+    if (!result) return res.status(404).json({ error: 'no shot-zone leaderboard available' });
+    res.json(result);
+  } catch (err) {
+    console.error(`league/shot-zone-leaders season=${season}:`, err.message);
+    res.status(502).json({ error: 'failed to load shot-zone leaders' });
+  }
+});
+
 router.get('/status', (req, res) => {
   const activePlayers = getProvider().getActivePlayers();
   res.json({

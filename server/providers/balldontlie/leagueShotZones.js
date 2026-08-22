@@ -69,6 +69,7 @@ function fetchLeagueShotZonesBdl(season, postseason) {
 
 module.exports = {
   fetchLeagueShotZonesBdl, fetchLeagueShotZonesRawBdl,
-  // exported for unit tests:
-  aggregateLeagueZones,
+  // exported for unit tests, and for leagueShotZoneLeaders.js to reuse the same bulk pull instead
+  // of duplicating cursor pagination against the same endpoint:
+  aggregateLeagueZones, fetchAllShotZoneRows,
 };
