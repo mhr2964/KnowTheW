@@ -35,7 +35,7 @@ context from a compact summary.
 | 3 | Clutch splits | Shipped |
 | 4 | Scoring-distribution dashboard | Shipped |
 | 5 | Usage dashboard | Shipped |
-| 6 | Defense dashboard (incl. Defensive Win Shares) | Not started |
+| 6 | Defense dashboard (incl. Defensive Win Shares) | Shipped |
 | 7 | Team Four Factors (Team Stats page) | Not started |
 | 8 | Team shot chart | Not started |
 | 9 | League shot-zone leaderboards | Not started |
@@ -251,22 +251,45 @@ toggle, real BDL-tracked row since 2026 >= 2022) and the 2025 season (Playoffs t
 values matching curl exactly, exactly 2 fetches total across both season selections via
 `browser_network_requests` — confirming no extra request on the Regular/Playoffs toggle).
 
-## 6. Defense dashboard (incl. Defensive Win Shares)
+## 6. Defense dashboard (incl. Defensive Win Shares) — Shipped, `4e95747`
 
-`measure_type=defense` (confirmed live) — blocks, steals, DREB%, Defensive Rating, and a literal
-`def_ws` (Defensive Win Shares) field BDL computes server-side, plus opponent-points-allowed by
-category (fastbreak/paint/2nd-chance/off-turnovers). The site currently has no defensive-specific
-view at all beyond raw STL/BLK counts and the homegrown Win Shares total (offense+defense combined,
-not split).
+`measure_type=defense` (confirmed live, same endpoint as Clutch/Scoring/Usage) — blocks, steals,
+def rebounds, and BDL's own DREB%/Defensive Rating/Defensive Win Shares, plus opponent-points-allowed
+by category (paint/fastbreak/off-turnovers/2nd-chance). Shares the SAME 2022 tracking-data floor as
+measure_type=scoring/usage/advanced (re-spiked 2015/2018/2021/2022 per this run's own standing
+lesson — no row before 2022).
 
-**Build:** new tab, or extends Advanced. Def Win Shares specifically is worth cross-checking against
-whatever the homegrown `computeWinShares` produces today, if that function separates offensive/
-defensive shares internally — could be a genuine accuracy upgrade opportunity, not just a new column
-(verify before assuming — don't silently replace the homegrown number without confirming BDL's is
-actually more correct for this league).
+**Win-Shares cross-check (the flagged decision point) — RESOLVED, does not block this ship:**
+Compared BDL's `def_ws` against this app's homegrown DWS (`statFormulas.js`'s `computeWinShares`,
+full BRef/Oliver methodology, already splits OWS/DWS/WS internally) for A'ja Wilson, 2025 regular
+season. Defensive Rating agrees almost exactly (BDL `def_rating` 98.8 vs homegrown `DEF_RATING` 98.8
+from `/advanced-pbp-all`) — the two sources use compatible pace-adjusted rating math. But Defensive
+Win Shares diverge materially: BDL `def_ws` (season total) 6.01 vs homegrown DWS 1.71, roughly 3.5x
+apart — not a rounding difference, a genuinely different formula producing a genuinely different
+number. Per this feature's own explicit caution, did NOT silently replace the homegrown DWS on the
+Advanced tab. Instead shipped BDL's number as its own distinctly-labeled column, `BDL_DEF_WS` ("BDL
+Def WS"), on the new Defense tab, alongside the existing Advanced tab's unchanged DWS — same
+naming-collision-avoidance pattern as Usage's `TM_` prefix (`server/lib/statColumns.js`). **Flagging
+for the user:** which Defensive Win Shares number is "more correct" for this league is a real product
+call this run did not resolve on its own — both are visible now, unreconciled, until you weigh in.
 
-**Verify:** lint/build/test, live check, and the Win-Shares cross-check above if it turns out
-relevant.
+**Build:** own tab (`DefenseTab.jsx`), not folded into Advanced — same reasoning as Usage (Advanced
+is already dense; this is a fifth flat-column BDL-sourced stat family). Data shape is flat/independent
+columns (not grouped like Scoring Distribution), so it reuses BrefTable directly, near-identical to
+`UsageTab.jsx`/`ClutchTab.jsx`. `BLK`/`STL`/`DREB`/`DEF_RATING` reuse this app's existing column keys
+(same literal stat, no formula divergence); `BDL_DREB_PCT` and `BDL_DEF_WS` are new, deliberately
+distinct keys since BDL's own DREB% formula also diverged from the existing box-score-derived
+`DRB_PCT` in the same spike (0.249 vs homegrown 0.193). The raw response's `pct_blk`/`pct_stl` fields
+duplicate Usage's `TM_BLK_PCT`/`TM_STL_PCT` exactly (confirmed identical in the spike) — not
+re-surfaced here, already covered by the Usage tab.
+
+**Verify:** lint/build/test clean (0 new failures; same 4 pre-existing unrelated
+`auth-jwt-secret-missing` failures as every prior feature). Live-verified on A'ja Wilson (id
+3149391): dev-server curl for both 2025 regular and playoffs matched the spike exactly; Playwright
+check on `/player/3149391/defense` held the URL with no redirect-back (three-wiring-points lesson
+applied again — `DetailedStats.jsx` + `PlayerRoutePage.jsx`'s `VALID_TABS`), season-select + toggling
+to Playoffs fired exactly one fetch per season (two total), zero extra fetch from the toggle click,
+consistent with Clutch/Scoring/Usage's established pattern.
 
 ## 7. Team Four Factors (Team Stats page)
 
