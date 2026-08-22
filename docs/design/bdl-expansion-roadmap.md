@@ -38,7 +38,7 @@ context from a compact summary.
 | 6 | Defense dashboard (incl. Defensive Win Shares) | Shipped |
 | 7 | Team Four Factors (Team Stats page) | Shipped |
 | 8 | Team shot chart | Shipped |
-| 9 | League shot-zone leaderboards | Not started |
+| 9 | League shot-zone leaderboards | Shipped |
 | 10 | Per-game advanced stats (Game Log) | Not started |
 | 11 | Injury report | Not started |
 | 12 | Odds/spread on schedule | Not started |
@@ -354,21 +354,46 @@ swaps to genuinely different zone numbers with zero extra network fetch (confirm
 `browser_network_requests` -- one `/shotchart` call total); 2018 (pre-floor season) correctly omits
 the section with no error.
 
-## 9. League shot-zone leaderboards
+## 9. League shot-zone leaderboards — Shipped `0339d5e`
 
-`leagueShotZones.js` already aggregates all-player zone data server-side today — but only to anchor
-the player Shot Chart's color scale, never surfaced as its own leaderboard. "Best corner-3 shooters
-in the league," "most efficient rim scorers," etc. — mostly a new UI layer on data already being
-computed, not a new data source.
+Confirmed reusable exactly as flagged: `leagueShotZones.js`'s `fetchAllShotZoneRows` bulk-pulls every
+player's `/player_shot_locations` row for a season (cursor-paginated), but `aggregateLeagueZones`
+immediately collapsed those rows into one league-wide average per zone and threw the per-player rows
+away. Exported `fetchAllShotZoneRows` and reused it as-is in a new `leagueShotZoneLeaders.js` — no
+new BDL endpoint or fetch path needed, exactly the "reshape, don't re-fetch" framing this section
+originally called out.
 
-**Build:** new page or a section on an existing stats-index page. Needs a real route exposing
-per-player zone data league-wide (today's `getLeagueShotZones` returns *league averages*, not
-per-player rows — check whether the underlying `/player_shot_locations` bulk pull this function
-already does can be reshaped into per-player leaderboard rows, or whether a new aggregation path is
-needed).
+**Identity gap found mid-build, not flagged in the original plan:** a `/player_shot_locations` row
+carries a BDL player id + plain name (`{id, first_name, last_name, team}`), not this site's ESPN
+player id, which every player-linking UI on the site routes by. The existing `idMap.js` only resolves
+the other direction (ESPN name → BDL id, one player at a time, for per-player fetches). Added a
+reverse `resolveEspnIdByName` to `idMap.js`: builds one in-process name→id index from
+`getActivePlayers()` (in-memory) + the `playerIndex` Mongo collection (same source
+`percentileClient.js`'s `loadPosMap` already reads for ~every historical player), memoized for the
+process lifetime. Exact full-name match only; an ambiguous or zero match resolves to `null` rather
+than guessing — a leaderboard row with an unresolvable name still shows (name, team, stats) with no
+player-page link, rather than being dropped.
 
-**Verify:** lint/build/test, live check that leaderboard ordering is sane (spot-check the known top
-shooters in a real zone).
+**Qualification floor:** `/player_shot_locations` carries no games-played/minutes field to gate on
+(unlike `/player_season_stats`), so a fixed `MIN_ZONE_FGA = 20` (attempts in that specific zone, that
+season) keeps a 1-of-1 flukey shooter off the board — a round, conservative number, not derived from
+any league-wide qualification stat, and easy to tune later.
+
+**Build:** new top-level page (`/leaders`, nav link added) rather than folding into an existing page —
+no existing stats-index page was a natural fit. One `/api/league/shot-zone-leaders?season&postseason`
+route returns all 7 zones' top-15 in a single response (`{season, zones: [{key, label, leaders:
+[...]}]}`), same "fetch once, client-side zone tabs" pattern as Team Shot Chart's own/opponent toggle
+— confirmed via `browser_network_requests` that switching zones triggers zero additional fetch, only
+season/postseason changes refetch.
+
+**Verify:** lint/build/357→362 tests (353→358 pass, same 4 pre-existing unrelated JWT_SECRET
+failures), 5 new unit tests for `buildZoneLeaderboards` (ranking, tie-break, min-FGA floor, topN cap,
+missing-player-id guard). Live-verified via Playwright at both the in-progress 2026 season and the
+2022 floor season: zone tabs swap data with no extra fetch, season change refetches, every leader
+name in both seasons resolved to a real ESPN id (spot-checked against known players — Elena Delle
+Donne/Breanna Stewart/Nneka Ogwumike top the 2022 restricted-area board, all correctly linked),
+clicking a row navigates to that player's real page (Jewell Loyd → `/player/2987869`, confirmed
+correct).
 
 ## 10. Per-game advanced stats (Game Log)
 
