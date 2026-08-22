@@ -37,7 +37,7 @@ context from a compact summary.
 | 5 | Usage dashboard | Shipped |
 | 6 | Defense dashboard (incl. Defensive Win Shares) | Shipped |
 | 7 | Team Four Factors (Team Stats page) | Shipped |
-| 8 | Team shot chart | Not started |
+| 8 | Team shot chart | Shipped |
 | 9 | League shot-zone leaderboards | Not started |
 | 10 | Per-game advanced stats (Game Log) | Not started |
 | 11 | Injury report | Not started |
@@ -323,23 +323,36 @@ alongside the existing groups for the current season; switching to season 2018 (
 correctly omitted the Four Factors sections entirely with no error surfaced and the rest of the page
 unaffected -- confirms the graceful-degradation posture works end-to-end, not just at the API layer.
 
-## 8. Team shot chart
+## 8. Team shot chart — Shipped, `521de41`
 
-`team_shot_locations` (documented in the OpenAPI spec, not yet spiked live) — same zone-aggregated
-FG% shape as the existing player Shot Chart (`player_shot_locations`, shipped 2026-08-18), at the
-team level. Two framings worth deciding between during build: "where this team shoots from" (team's
-own shot zones) and "where this team allows shots" (opponent zone FG% while facing this team) — the
-opponent framing is the more novel one, since no other feature on the site surfaces defensive
-shot-location tendency. Confirm which (or both) before building, and spike the actual endpoint
-response shape first (not yet done — everything else in this doc's spike section has been verified
-live except this one).
+`team_shot_locations` confirmed live, 2026-08-22 (Las Vegas Aces, BDL team id 8): identical
+`shot_zones` shape to the player-level `player_shot_locations` (same 7 real zones, same redundant
+`corner_3` = left+right sum, same 2022 tracking floor -- confirmed empty at 2018/2021, first data at
+2022). Built **both** framings rather than picking one, since the spike showed they're the same
+endpoint with a single extra param: `measure_type` omitted (or `base`) returns the team's own shot
+zones (`fga`/`fgm`/`fg_pct`); `measure_type=opponent` returns opponent zone FG% while facing this team
+(`opp_fga`/`opp_fgm`/`opp_fg_pct`) -- the defensive-tendency framing, confirmed genuinely different
+numbers from the team's own shooting in the live spike. A toggle switches between them client-side;
+both come back from one `/api/teams/:id/shotchart` fetch (two parallel BDL calls server-side), so the
+toggle is a local swap, not a refetch.
 
-**Build:** likely lives on `TeamStatsPage.jsx` or a new tab, reusing `ShotChart.jsx`'s existing
-hand-rolled SVG court component (parameterize it to accept team-level zone data instead of only
-player-level).
+Extracted `ShotChart.jsx`'s hand-rolled SVG court component into `client/src/components/
+CourtDiagram.jsx` (zones/coloring only -- `ZonePath`, `zoneColor`, the sigmoid color-anchor logic, and
+the court-geometry paths) so `TeamShotChart.jsx` reuses the exact same rendering instead of
+duplicating ~90 lines of SVG. `ShotChart.jsx` now imports from there; behavior unchanged.
 
-**Verify:** lint/build/test, live check, same zone-sum-vs-total sanity check the player version used
-at ship time (`docs/design/provider-architecture.md`'s Shot Chart section).
+Regular season only (`/teams/:id/four-factors`'s precedent) -- `TeamStatsPage.jsx` has no playoffs
+toggle today. New section appended after Four Factors, own independent fetch, same
+fetch-fails-gracefully posture as every other BDL-only section on that page.
+
+**Verify:** lint/build/test all clean (357 tests, 353 pass, same 4 pre-existing unrelated
+JWT_SECRET failures as every prior feature this run). Zone-sum-vs-total sanity check passed: live
+spike summed to 2975 FGA / 1305 FGM across all 7 zones vs. the team's actual 67.6 FGA-pg / 29.7
+FGM-pg over 44 games (2974.4 / 1306.8 expected -- matches within per-game-average rounding). Live
+Playwright verify on `/team/las-vegas-aces/stats`: chart renders with real data; opponent toggle
+swaps to genuinely different zone numbers with zero extra network fetch (confirmed via
+`browser_network_requests` -- one `/shotchart` call total); 2018 (pre-floor season) correctly omits
+the section with no error.
 
 ## 9. League shot-zone leaderboards
 
