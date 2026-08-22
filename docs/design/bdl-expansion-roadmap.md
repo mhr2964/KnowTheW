@@ -33,7 +33,7 @@ context from a compact summary.
 | 1 | Site IA rework: Teams page, Standings page, real homepage, nav | Shipped `7a13739`, deploy verified live |
 | 2 | Off/Def/Net Rating + PIE on the existing Advanced tab | Shipped |
 | 3 | Clutch splits | Shipped |
-| 4 | Scoring-distribution dashboard | Not started |
+| 4 | Scoring-distribution dashboard | Shipped |
 | 5 | Usage dashboard | Not started |
 | 6 | Defense dashboard (incl. Defensive Win Shares) | Not started |
 | 7 | Team Four Factors (Team Stats page) | Not started |
@@ -173,18 +173,45 @@ per-game averages, as expected for a low-minutes clutch-only split). Live Playwr
 confirmed the same values render in the actual table for both season sides, with the toggle
 switching without a refetch.
 
-## 4. Scoring-distribution dashboard
+## 4. Scoring-distribution dashboard — Shipped, `aba847b`
 
-`measure_type=scoring` (confirmed live) — % of points from fastbreak, free throws, in the paint,
-mid-range, 2PT, 3PT, off turnovers, plus assisted-vs-unassisted splits for both 2PM and 3PM. A "how
-does this player score" view with nothing equivalent on the site today.
+`measure_type=scoring` — % of points from fastbreak, free throws, in the paint, mid-range, 2PT,
+3PT, off turnovers, plus assisted-vs-unassisted splits for both 2PM and 3PM (and overall FGM). A
+"how does this player score" view with nothing equivalent on the site before this.
 
-**Build:** new tab or new section within the Advanced tab. Needs its own visual treatment (this is
-percentage-of-total data, not raw counts — probably a stacked-bar or simple percentage-table
-presentation, not the standard BrefTable numeric-column format).
+**Re-spike correction:** the roadmap's own field list was right, but the *floor* wasn't checked
+before this feature: a live spike across seasons (2015/2018/2021/2022) showed measure_type=scoring
+returns no row at all before 2022 — it sits on the SAME newer tracking-data floor as
+`ADVANCED_RATINGS_MIN_SEASON` (Off/Def/Net Rating + PIE), not the wider `BDL_MIN_SEASON` (2008)
+floor Clutch splits use. Gated `getPlayerSeasonScoringDistribution` to `season >=
+ADVANCED_RATINGS_MIN_SEASON` accordingly. The percentage math itself checked out exactly as
+expected: `pct_pts_2_pt + pct_pts_3_pt + pct_pts_ft` sums to 1.0 (every point is a 2, a 3, or a
+free throw); the paint/mid-range/fastbreak/off-turnovers fields are *overlapping* subsets of those
+same points (a fastbreak make is still a 2 or a 3), not a fourth mutually-exclusive bucket — kept
+in their own "Where It Happens" group rather than forced into one stacked total that would double-
+count.
 
-**Verify:** lint/build/test, live check that the percentages for a real player sum to something
-sane (all `pct_pts_*` categories should roughly cover 100% of total points).
+**Build:** own tab (`ScoringDistributionTab.jsx`), not folded into Advanced — same reasoning as
+Clutch: percentage-of-total data doesn't fit BrefTable's numeric-column convention, so it gets a
+hand-rolled bar presentation instead (three groups: a stacked bar for the 2PT/3PT/FT split, plain
+horizontal bars for the overlapping "where it happens" categories, and paired stacked bars for
+assisted-vs-unassisted). No new chart library — same "no chart lib in the project" posture as
+ShotChart.jsx's hand-rolled SVG. Both season sides fetched together (one route, two provider
+calls), Regular/Playoffs toggle is a local swap like Clutch and the generic tabs.
+
+**Three-wiring-points lesson applied, not rediscovered:** `DetailedStats.jsx`'s
+`ALL_TABLE_TYPES`/`SOURCE_ACTIVE`/render branch AND `PlayerRoutePage.jsx`'s `VALID_TABS` were all
+updated in the same commit this time (see HANDOFF.md Traps, added after Feature 3's Clutch tab hit
+exactly this bug) — verified live that navigating straight to `/player/3149391/scoring` holds the
+URL with no redirect-back.
+
+**Verify:** `node --test` (344 total, 340 pass, same 4 pre-existing unrelated JWT_SECRET failures;
+new scoring-distribution test file 5/5 including a dedicated "sums to 1" assertion), lint/build
+clean, live curl matching the original spike exactly (regular 65.5/8/26.5%, playoffs 69.6/5.6/
+24.8%), live Playwright at 390x844 confirming the in-progress 2026 season (no playoffs toggle) and
+the 2025 season (Playoffs toggle present, values matching curl exactly, and — checked via
+`browser_network_requests` — exactly 2 fetches total across both season selections, confirming no
+extra request fires on the Regular/Playoffs toggle itself).
 
 ## 5. Usage dashboard
 
