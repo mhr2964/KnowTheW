@@ -1,0 +1,61 @@
+/* ── Standings ── */
+/* Reuses .stat-season-bar/.stat-season-tab (player.css) rather than inventing a second toggle
+   look for the same "two-button switch" interaction already established there -- including that
+   pattern's own mobile full-width behavior (responsive.css), left untouched here. */
+.standings-view-toggle { margin-bottom: var(--space-6); }
+
+.standings-group { margin-bottom: var(--space-8); }
+
+.standings-table-wrap { overflow-x: auto; }
+
+.standings-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.standings-table th {
+  background: var(--surface-2);
+  border-bottom: 2px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.6rem 0.75rem;
+  text-align: right;
+}
+.standings-table th.standings-col-team { text-align: left; }
+
+.standings-table td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+}
+.standings-table tr:last-child td { border-bottom: none; }
+
+.standings-row { cursor: pointer; transition: background 0.1s; }
+.standings-row:hover { background: var(--surface-2); }
+
+.standings-col-team {
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+.standings-team-logo { width: 22px; height: 22px; object-fit: contain; }
+.standings-col-seed { color: var(--text-muted); font-weight: 700; }
+
+@media (max-width: 600px) {
+  /* Home/Away/Conference splits are secondary detail at a courtside glance -- W/L/PCT/GB/seed
+     already answer "how good is this team," matching the same low-priority-column pattern used
+     elsewhere on the site (e.g. BrefTable's .bref-col-low-priority). */
+  .standings-col-split { display: none; }
+}

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate, NavLink, useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
 import { useRecentDecks } from './hooks/useRecentDecks';
 import { useAuth } from './hooks/useAuth';
 import StudyFlow from './components/StudyFlow';
 import AdSlot from './components/AdSlot';
 import HomePage from './pages/HomePage';
+import TeamsPage from './pages/TeamsPage';
+import StandingsPage from './pages/StandingsPage';
 import TeamPage from './pages/TeamPage';
 import TeamDashboard from './pages/TeamDashboard';
 import TeamRosterPage from './pages/TeamRosterPage';
@@ -33,6 +35,7 @@ import './styles/team.css';
 import './styles/legal.css';
 import './styles/auth.css';
 import './styles/notifications.css';
+import './styles/standings.css';
 import './styles/responsive.css';
 
 function RedirectToPlayer() {
@@ -133,6 +136,12 @@ export default function App() {
           : <button type="button" className="auth-header-link" onClick={() => navigate('/login')}>Log in</button>}
       </header>
 
+      <nav className="site-nav">
+        <NavLink to="/" end className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>Home</NavLink>
+        <NavLink to="/teams" className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>Teams</NavLink>
+        <NavLink to="/standings" className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>Standings</NavLink>
+      </nav>
+
       <AdSlot slotId={import.meta.env.VITE_AD_SLOT_TOP} className="ad-slot--top" />
       <AdSlot slotId={import.meta.env.VITE_AD_SLOT_SIDEBAR} className="ad-slot--sidebar" />
 
@@ -142,14 +151,16 @@ export default function App() {
             path="/"
             element={
               <HomePage
-                teams={teams}
-                loading={teamsLoading}
-                error={teamsError}
                 decks={decks}
                 onRestudy={handleRestudy}
               />
             }
           />
+          <Route
+            path="/teams"
+            element={<TeamsPage teams={teams} loading={teamsLoading} error={teamsError} />}
+          />
+          <Route path="/standings" element={<StandingsPage />} />
           <Route
             path="/team/:slug"
             element={

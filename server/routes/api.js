@@ -6,6 +6,7 @@ const express = require('express');
 const router  = express.Router();
 
 router.use(require('./teams'));
+router.use(require('./standings'));
 router.use(require('./players'));
 router.use(require('./playerAnalysis'));
 router.use(require('./reports'));

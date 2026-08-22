@@ -179,6 +179,28 @@
  */
 
 /**
+ * @typedef {Object} StandingRow  One team's current-season standing. BDL's `/standings` is the
+ *   primary source (gamesBehind/homeRecord/awayRecord/conferenceRecord have no ESPN equivalent --
+ *   see providers/balldontlie/standings.js); the ESPN path returns those four as null rather than
+ *   throwing, so a non-BDL environment degrades gracefully instead of 502ing the page.
+ * @property {string} teamId       App's canonical (ESPN) team id, for routing to /team/:slug.
+ * @property {string|null} slug
+ * @property {string|null} name
+ * @property {string|null} abbreviation
+ * @property {string|null} logo
+ * @property {string|null} color
+ * @property {string|null} conference
+ * @property {number|null} wins
+ * @property {number|null} losses
+ * @property {number|null} winPct
+ * @property {number|null} gamesBehind
+ * @property {string|null} homeRecord         "W-L", e.g. "16-6". BDL-only.
+ * @property {string|null} awayRecord         BDL-only.
+ * @property {string|null} conferenceRecord   BDL-only.
+ * @property {number|null} playoffSeed
+ */
+
+/**
  * The key set of an OnCourtStats object (team stats + opponent `o*` stats). Part of the contract so
  * consumers (advancedStats) can iterate it without importing a source-specific module.
  */

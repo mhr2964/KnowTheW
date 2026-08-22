@@ -364,6 +364,6 @@ module.exports = {
   fetchTeamStats, fetchTeamStatsRaw, fetchTeamPtsAllowed, fetchTeamPtsAllowedRaw,
   fetchGameSummary,
   fetchTeamSchedule, fetchPlayoffSchedule,
-  fetchStandingsRaw,
+  fetchStandingsRaw, fetchStandings,
   rosterData, playerById, teamSeasonStatsCache,
 };

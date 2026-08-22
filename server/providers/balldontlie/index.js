@@ -39,6 +39,7 @@ const bdlSeasonStats = require('./seasonStats');
 const bdlShotChart = require('./shotChart');
 const bdlLeagueShotZones = require('./leagueShotZones');
 const bdlLeagueStats = require('./leagueStats');
+const bdlStandings = require('./standings');
 const idMap = require('./idMap');
 const { BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON } = require('./client');
 const { SportsDataProvider } = require('../SportsDataProvider');
@@ -126,6 +127,14 @@ class BallDontLieProvider extends SportsDataProvider {
   async getLeagueShotZones(season, postseason) {
     if (Number(season) < SHOT_CHART_MIN_SEASON) return null;
     return bdlLeagueShotZones.fetchLeagueShotZonesBdl(season, postseason);
+  }
+
+  // --- Standings: new data, not a migration -- distinct from getStandingsRaw above, which stays
+  // ESPN-only. `season` here is REQUIRED at the fetchStandingsBdl layer (BDL has no current-season
+  // default -- see standings.js's header comment), so it's computed here, once, in the one place
+  // that's allowed to guess "now."
+  getStandings(season) {
+    return bdlStandings.fetchStandingsBdl(season ?? new Date().getFullYear());
   }
 
   // --- Phase 2 (ESPN-migration plan): regular-season schedule, season+seasontype-conditional ---

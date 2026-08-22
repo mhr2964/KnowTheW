@@ -19,6 +19,20 @@
 .logo-text { font-size: 1.5rem; font-weight: 800; color: var(--accent); letter-spacing: -0.02em; line-height: 1; }
 .logo-sub { font-size: 0.6rem; font-weight: 700; color: var(--text-muted); letter-spacing: 0.15em; text-transform: uppercase; }
 
+/* ── Site nav ── */
+.site-nav {
+  display: flex; gap: 1.5rem;
+  padding: 0 2rem; background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.site-nav-link {
+  display: inline-flex; align-items: center; min-height: var(--touch-target-min);
+  color: var(--text-muted); font-size: 0.82rem; font-weight: 700;
+  text-decoration: none; border-bottom: 2px solid transparent;
+  transition: color 0.12s, border-color 0.12s;
+}
+.site-nav-link:hover { color: var(--text); }
+.site-nav-link.active { color: var(--accent); border-bottom-color: var(--accent); }
+
 /* ── Search ── */
 .search-form { display: flex; flex: 1; min-width: 0; max-width: 480px; }
 .search-input {
@@ -63,6 +77,34 @@
 }
 .status-msg { color: var(--text-muted); padding: 3rem 0; text-align: center; }
 .status-msg.error { color: var(--error); }
+
+/* ── Homepage league snapshot ── */
+.league-snapshot { margin-top: var(--space-8); }
+.league-snapshot-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2);
+}
+.league-snapshot-header .section-title { margin-bottom: 0; }
+.snapshot-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-6); }
+.snapshot-conference-title { font-size: 0.9rem; font-weight: 700; color: var(--text); margin-bottom: var(--space-2); }
+.snapshot-list { list-style: none; margin: 0; padding: 0; }
+.snapshot-row {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.5rem 0.25rem; border-bottom: 1px solid var(--border); cursor: pointer;
+}
+.snapshot-row:last-child { border-bottom: none; }
+.snapshot-row:hover { background: var(--surface-2); }
+.snapshot-seed { color: var(--text-muted); font-weight: 700; font-size: 0.8rem; width: 1.2em; text-align: center; }
+.snapshot-logo { width: 20px; height: 20px; object-fit: contain; }
+.snapshot-name { flex: 1; font-weight: 600; font-size: 0.85rem; }
+.snapshot-record { color: var(--text-muted); font-size: 0.8rem; }
+
+.home-browse-cta { margin-top: var(--space-8); text-align: center; }
+.home-browse-btn {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text); font-size: 0.9rem; font-weight: 700; cursor: pointer;
+  min-height: var(--touch-target-min); padding: 0.6rem 1.5rem;
+}
+.home-browse-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 /* Modifier for an error message paired with an inline retry button (PlayerRoutePage,
    SimilarPlayersPage) — was a duplicated inline style object on both pages. */

@@ -34,6 +34,37 @@ class EspnProvider extends SportsDataProvider {
   getPlayoffSchedule(teamId, season) { return espn.fetchPlayoffSchedule(teamId, season); }
   getStandingsRaw(year) { return espn.fetchStandingsRaw(year); }
 
+  // Degraded (not throwing) fallback for a non-BDL environment -- gamesBehind/homeRecord/
+  // awayRecord/conferenceRecord have no ESPN source, so those come back null rather than the
+  // richer BDL shape. `season` is accepted for contract-signature parity but ignored: ESPN's
+  // fetchStandings() (unlike fetchStandingsRaw) only supports "current season" today.
+  async getStandings() {
+    const [standingsByTeamId, teams] = await Promise.all([espn.fetchStandings(), espn.getTeams()]);
+    if (!standingsByTeamId) return null;
+    return teams
+      .filter(t => standingsByTeamId[String(t.id)])
+      .map(t => {
+        const std = standingsByTeamId[String(t.id)];
+        return {
+          teamId: String(t.id),
+          slug: t.slug ?? null,
+          name: t.name ?? null,
+          abbreviation: t.abbreviation ?? null,
+          logo: t.logo ?? null,
+          color: t.color ?? null,
+          conference: std.conference ?? null,
+          wins: std.wins,
+          losses: std.losses,
+          winPct: null,
+          gamesBehind: null,
+          homeRecord: null,
+          awayRecord: null,
+          conferenceRecord: null,
+          playoffSeed: std.seed,
+        };
+      });
+  }
+
   // --- Player ---
   getPlayerBasics(playerId) { return playerStats.getPlayerBasics(playerId); }
   getRetiredPlayer(playerId) { return playerStats.getRetiredPlayer(playerId); }

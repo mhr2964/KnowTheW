@@ -51,6 +51,11 @@ class SportsDataProvider {
   getPlayoffSchedule() { return this._notImplemented('getPlayoffSchedule'); }
   /** getStandingsRaw(year) → raw standings `children` array (null year = current season). */
   getStandingsRaw() { return this._notImplemented('getStandingsRaw'); }
+  /** getStandings(season) → {Promise<import('./types').StandingRow[]|null>}, current season if
+   *  season is omitted. A live, sortable standings table -- distinct from getStandingsRaw above,
+   *  which is ESPN-only raw JSON for historyAggregator.js's playoff-seed reconstruction, not a
+   *  rendered table. */
+  getStandings() { return this._notImplemented('getStandings'); }
 
   // --- Player ---
   /** getPlayerBasics(playerId) → minimal { id, name, position } | null. */

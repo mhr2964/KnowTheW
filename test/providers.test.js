@@ -17,7 +17,7 @@ const { SportsDataProvider, NotImplementedError } = require('../server/providers
 const CONTRACT_METHODS = [
   'getTeams', 'getRoster', 'getHistoricalRoster', 'getSeasonRoster',
   'getTeamStats', 'getTeamStatsRaw', 'getTeamPointsAllowed', 'getTeamPointsAllowedRaw',
-  'getTeamSchedule', 'getPlayoffSchedule', 'getStandingsRaw',
+  'getTeamSchedule', 'getPlayoffSchedule', 'getStandingsRaw', 'getStandings',
   'getPlayerBasics', 'getRetiredPlayer', 'getPlayerSeasonStats', 'getPlayerGameLog',
   'getGameLogEvents', 'getGamePbpStats', 'getSeasonPBPSummary', 'getRegularSeasonEventIds',
   'getActivePlayers', 'findActivePlayer',
