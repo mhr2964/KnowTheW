@@ -19,6 +19,21 @@ const STAT_LABELS = {
   tovPg:    'TOV',
 };
 
+// Dean Oliver's Four Factors -- BDL-only, own fetch/section (not part of the GROUPS/STAT_LABELS
+// blob above, which comes from the existing /teams/:id/stats endpoint). ftRatePct/oppFtRatePct are
+// FTA/FGA rates, not literally shooting percentages, but are named with the Pct suffix anyway so
+// they route through formatStatValue's existing percent-style rendering -- this page already shows
+// every *Pct stat as "NN.N%" (fgPct, fg3Pct, ftPct above), so a bare ".273" would read as
+// inconsistent here, unlike the BRef-style player Advanced tab elsewhere in the app.
+const FOUR_FACTORS_LABELS = {
+  efgPct: 'eFG%', tovPct: 'TOV%', orbPct: 'OREB%', ftRatePct: 'FT Rate',
+  oppEfgPct: 'Opp eFG%', oppTovPct: 'Opp TOV%', oppOrbPct: 'Opp OREB%', oppFtRatePct: 'Opp FT Rate',
+};
+const FOUR_FACTORS_GROUPS = [
+  { label: 'Four Factors', keys: ['efgPct', 'tovPct', 'orbPct', 'ftRatePct'] },
+  { label: 'Four Factors (Opponent)', keys: ['oppEfgPct', 'oppTovPct', 'oppOrbPct', 'oppFtRatePct'] },
+];
+
 const GROUPS = [
   {
     label: 'Scoring',
@@ -35,7 +50,7 @@ const GROUPS = [
 ];
 
 
-function StatGroup({ label, stats }) {
+function StatGroup({ label, stats, labels = STAT_LABELS }) {
   if (stats.length === 0) return null;
   return (
     <div className="team-stats-group">
@@ -43,7 +58,7 @@ function StatGroup({ label, stats }) {
       <div className="team-stats-grid">
         {stats.map(({ key, val }) => (
           <div key={key} className="team-stat-item">
-            <span className="team-stat-label">{STAT_LABELS[key] ?? key}</span>
+            <span className="team-stat-label">{labels[key] ?? key}</span>
             <span className="team-stat-value">{formatStatValue(key, val)}</span>
           </div>
         ))}
@@ -59,6 +74,7 @@ export default function TeamStatsPage() {
   const [statsData, setStatsData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [fourFactorsData, setFourFactorsData] = useState(null);
 
   useEffect(() => {
     if (!team?.id || isDefunct) return;
@@ -75,6 +91,20 @@ export default function TeamStatsPage() {
           setLoading(false);
         }
       });
+    return () => controller.abort();
+  }, [team?.id, season, isDefunct]);
+
+  // Separate, independent fetch -- BDL-only and legitimately empty for pre-2022 seasons or when
+  // running under the ESPN provider, so it fails gracefully rather than blocking the main stats
+  // above (same posture as the player-side Clutch/Scoring/Usage/Defense tabs' 404-as-empty handling).
+  useEffect(() => {
+    if (!team?.id || isDefunct) return;
+    const controller = new AbortController();
+    setFourFactorsData(null);
+    fetch(`/api/teams/${team.id}/four-factors?season=${season}`, { signal: controller.signal })
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(data => setFourFactorsData(data))
+      .catch(() => {});
     return () => controller.abort();
   }, [team?.id, season, isDefunct]);
 
@@ -129,6 +159,16 @@ export default function TeamStatsPage() {
       </div>
       {grouped.map(group => (
         <StatGroup key={group.label} label={group.label} stats={group.stats} />
+      ))}
+      {fourFactorsData?.stats && FOUR_FACTORS_GROUPS.map(group => (
+        <StatGroup
+          key={group.label}
+          label={group.label}
+          labels={FOUR_FACTORS_LABELS}
+          stats={group.keys
+            .filter(k => fourFactorsData.stats[k] !== undefined && fourFactorsData.stats[k] !== null)
+            .map(k => ({ key: k, val: fourFactorsData.stats[k] }))}
+        />
       ))}
     </div>
   );

@@ -31,6 +31,7 @@ const fetchTeamStatsRaw       = (...a) => getProvider().getTeamStatsRaw(...a);
 const fetchTeamPtsAllowed     = (...a) => getProvider().getTeamPointsAllowed(...a);
 const fetchTeamPtsAllowedRaw  = (...a) => getProvider().getTeamPointsAllowedRaw(...a);
 const fetchTeamSchedule       = (...a) => getProvider().getTeamSchedule(...a);
+const fetchTeamFourFactors    = (...a) => getProvider().getTeamFourFactors(...a);
 
 router.get('/teams', async (req, res) => {
   try {
@@ -232,6 +233,26 @@ router.get('/teams/:id/stats', requireNumericId('id'), async (req, res) => {
   } catch (err) {
     console.error(`teams/${teamId}/stats season=${season}:`, err.message);
     res.status(502).json({ error: 'upstream error fetching team stats' });
+  }
+});
+
+// Dean Oliver's Four Factors (eFG%/TOV%/OREB%/FT Rate) for the team and its opponents (BDL-only, no
+// ESPN equivalent -- see providers/balldontlie/teamFourFactors.js). Regular season only, matching
+// TeamStatsPage.jsx's existing scope (no playoffs toggle exists on that page today).
+router.get('/teams/:id/four-factors', requireNumericId('id'), async (req, res) => {
+  const teamId = req.params.id;
+
+  const sp = parseSeasonQuery(req);
+  if (sp.error) return res.status(400).json({ error: sp.error });
+  const { season } = sp;
+
+  try {
+    const stats = await fetchTeamFourFactors(teamId, season, 2);
+    if (!stats) return res.json({ empty: true, season, teamId });
+    res.json({ season, teamId, stats });
+  } catch (err) {
+    console.error(`teams/${teamId}/four-factors season=${season}:`, err.message);
+    res.status(502).json({ error: 'failed to load four factors' });
   }
 });
 

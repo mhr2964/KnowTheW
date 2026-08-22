@@ -45,6 +45,10 @@ class SportsDataProvider {
   getTeamPointsAllowed() { return this._notImplemented('getTeamPointsAllowed'); }
   /** getTeamPointsAllowedRaw(teamId, year) → uncached avg opponent PPG. */
   getTeamPointsAllowedRaw() { return this._notImplemented('getTeamPointsAllowedRaw'); }
+  /** getTeamFourFactors(teamId, season, seasontype) → {Promise<import('./types').TeamFourFactors|null>}
+   *  Dean Oliver's Four Factors (eFG%/TOV%/OREB%/FT Rate) for the team and its opponents. BDL-only --
+   *  no ESPN equivalent exists, same graceful-degradation posture as getPlayerSeasonRatings. */
+  getTeamFourFactors() { return this._notImplemented('getTeamFourFactors'); }
   /** getTeamSchedule(teamId, season, seasontype) → {Promise<ScheduleEvent[]|null>}; 2=reg, 3=playoffs. */
   getTeamSchedule() { return this._notImplemented('getTeamSchedule'); }
   /** getPlayoffSchedule(teamId, season) → playoff schedule (seasontype=3). */

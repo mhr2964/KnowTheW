@@ -81,6 +81,7 @@ class EspnProvider extends SportsDataProvider {
   getPlayerSeasonScoringDistribution() { return null; }
   getPlayerSeasonUsageShare() { return null; }
   getPlayerSeasonDefense() { return null; }
+  getTeamFourFactors() { return null; }
   getGamePbpStats(eventId, playerId, season) { return gameSummary.getGamePbpStats(eventId, playerId, season); }
   async getRegularSeasonEventIds(playerId, season, seasontype = 2) {
     const events = await gamelog.getGameLogEvents(playerId, season, seasontype);
