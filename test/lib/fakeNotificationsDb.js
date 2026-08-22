@@ -14,9 +14,18 @@
 const { ObjectId } = require('mongodb');
 const { matchesFilter } = require('./fakeMongoFilter');
 
+// Mirrors the two real indexes on this collection (db.js): the plain unique {userId, gameId} index
+// for game docs, and the partial-unique {userId, playerId, status} index scoped to type:'injury'
+// (injury docs have no gameId, so they'd falsely collide with each other under the game-doc key).
+function dedupeKey(doc) {
+  return doc.type === 'injury'
+    ? `injury:${String(doc.userId)}:${doc.playerId}:${doc.status}`
+    : `game:${String(doc.userId)}:${doc.gameId}`;
+}
+
 function createFakeNotificationsCollection() {
   const byId = new Map(); // key: _id hex -> stored doc
-  const uniqueKeys = new Set(); // `${userId hex}:${gameId}` — mirrors the real unique compound index
+  const uniqueKeys = new Set(); // see dedupeKey() above
   let insertManyCallCount = 0;
   let simulateTotalFailure = false;
 
@@ -40,7 +49,7 @@ function createFakeNotificationsCollection() {
       const insertedIds = {};
 
       docs.forEach((doc, index) => {
-        const key = `${String(doc.userId)}:${doc.gameId}`;
+        const key = dedupeKey(doc);
         if (uniqueKeys.has(key)) {
           writeErrors.push({
             code: 11000,
@@ -105,8 +114,8 @@ function createFakeNotificationsCollection() {
       const _id = doc._id || new ObjectId();
       const stored = { ...doc, _id };
       byId.set(_id.toHexString(), stored);
-      if (doc.userId !== undefined && doc.gameId !== undefined) {
-        uniqueKeys.add(`${String(doc.userId)}:${doc.gameId}`);
+      if (doc.userId !== undefined && (doc.gameId !== undefined || doc.type === 'injury')) {
+        uniqueKeys.add(dedupeKey(doc));
       }
       return _id;
     },

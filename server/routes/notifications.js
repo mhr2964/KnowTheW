@@ -31,17 +31,21 @@ router.get('/notifications', requireAuth, async (req, res) => {
         teamRepId: req.user.teamRepId,
         expiresAt: { $gt: new Date() },
       })
-      .sort({ gameDate: 1 })
+      // createdAt, not gameDate: injury docs (type: 'injury' -- see lib/injuryNotificationsJob.js)
+      // have no gameDate, and a single feed needs one sort key that means something for both types.
+      // Newest-first reads naturally for a mixed alert feed either way.
+      .sort({ createdAt: -1 })
       .toArray();
 
     const notifications = docs.map(doc => ({
       id: String(doc._id),
+      type: doc.type ?? 'game',
       teamRepId: doc.teamRepId,
-      gameId: doc.gameId,
-      opponent: doc.opponent,
-      atVs: doc.atVs,
-      gameDate: doc.gameDate,
+      createdAt: doc.createdAt,
       expiresAt: doc.expiresAt,
+      ...(doc.type === 'injury'
+        ? { playerId: doc.playerId, playerName: doc.playerName, status: doc.status, returnDate: doc.returnDate, comment: doc.comment }
+        : { gameId: doc.gameId, opponent: doc.opponent, atVs: doc.atVs, gameDate: doc.gameDate }),
     }));
 
     res.status(200).json({ notifications });

@@ -147,6 +147,19 @@ router.get('/players/:id/gamelog/:gameId/advanced', async (req, res) => {
   }
 });
 
+// Current injury status (BDL-only, no ESPN equivalent — see providers/balldontlie/injuries.js).
+// null means healthy/no current entry -- a 200 with injury: null, not a 404, since "no injury" is
+// the normal, expected state for the vast majority of players, not an error/missing-data condition.
+router.get('/players/:id/injury', async (req, res) => {
+  try {
+    const injury = await getProvider().getPlayerInjuryStatus(req.params.id);
+    res.json({ injury });
+  } catch (err) {
+    console.error('player-injury:', err.message);
+    res.status(502).json({ error: 'failed to load injury status' });
+  }
+});
+
 // Zone-aggregated shooting stats (BDL-only, no ESPN equivalent — see
 // providers/balldontlie/shotChart.js). Not per-shot coordinates; a season below the provider's own
 // shot-chart floor (or a player the provider can't resolve) returns null, same 404 as /gamelog.

@@ -56,12 +56,14 @@ export default function NotificationBell({ teamRepId }) {
           <div className="notif-backdrop" onClick={() => setOpen(false)} />
           <div className="notif-dropdown">
             {notifications.length === 0 ? (
-              <p className="notif-empty">No games starting soon</p>
+              <p className="notif-empty">Nothing new right now</p>
             ) : (
               <ul className="notif-list">
                 {notifications.map(n => (
                   <li key={n.id} className="notif-item">
-                    {n.atVs} {n.opponent?.abbreviation ?? '?'} — {formatGameDate(n.gameDate)} ({gameStatus(n.gameDate)})
+                    {n.type === 'injury'
+                      ? <>{n.playerName} is now <strong>{n.status}</strong>{n.returnDate ? ` (est. return ${n.returnDate})` : ''}</>
+                      : <>{n.atVs} {n.opponent?.abbreviation ?? '?'} — {formatGameDate(n.gameDate)} ({gameStatus(n.gameDate)})</>}
                   </li>
                 ))}
               </ul>

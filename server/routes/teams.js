@@ -33,6 +33,7 @@ const fetchTeamPtsAllowedRaw  = (...a) => getProvider().getTeamPointsAllowedRaw(
 const fetchTeamSchedule       = (...a) => getProvider().getTeamSchedule(...a);
 const fetchTeamFourFactors    = (...a) => getProvider().getTeamFourFactors(...a);
 const fetchTeamShotChart      = (...a) => getProvider().getTeamShotChart(...a);
+const fetchTeamInjuries       = (...a) => getProvider().getTeamInjuries(...a);
 
 router.get('/teams', async (req, res) => {
   try {
@@ -119,6 +120,20 @@ router.get('/teams/:id/roster', async (req, res) => {
     if (season === currentYear) {
       // Current season: use the in-memory cached live roster.
       players = await getRoster(team.id, team.name);
+      // Injury status is always "right now" (see providers/balldontlie/injuries.js) -- only
+      // meaningful to attach to the CURRENT roster, never a historical season's. Best-effort, same
+      // posture as attachArchetypeNames below: a fetch hiccup leaves the roster untouched rather
+      // than failing the whole request.
+      try {
+        const injuries = await fetchTeamInjuries(team.id);
+        const byPlayerId = new Map(injuries.filter(i => i.playerId != null).map(i => [String(i.playerId), i]));
+        players = players.map(p => {
+          const injury = byPlayerId.get(String(p.id));
+          return { ...p, injury: injury ? { status: injury.status, returnDate: injury.returnDate, comment: injury.comment } : null };
+        });
+      } catch (err) {
+        console.warn(`roster injury attach failed for team ${team.id}:`, err.message);
+      }
     } else {
       // Historical season: fetch from ESPN Web API (site.api returns empty athletes for past seasons).
       // fetchSeasonRoster is non-fatal — returns [] if ESPN is unreachable or the season is sparse.

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import DetailedStats from './DetailedStats';
 import ComparePickerModal from './ComparePickerModal';
 import ArchetypeBadge from './ArchetypeBadge';
+import InjuryBadge from './InjuryBadge';
 import { initialsOf } from '../lib/initials';
 
 export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onTabChange }) {
@@ -40,6 +41,7 @@ export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onT
           </div>
           <h1 className="player-hero-name">{player.name}</h1>
           <ArchetypeBadge playerId={player.id} />
+          <InjuryBadge playerId={player.id} retired={!!player.retired} />
           {bioItems.length > 0 && (
             <div className="player-bio-grid">
               {bioItems.map(item => (

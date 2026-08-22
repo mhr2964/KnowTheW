@@ -100,6 +100,16 @@ class SportsDataProvider {
    *  couldn't be linked -- see idMap.js's resolveEspnIdByName) -- routes/client never see a BDL id.
    *  No ESPN equivalent exists, same as getPlayerShotChart/getLeagueShotZones. */
   getLeagueShotZoneLeaders() { return this._notImplemented('getLeagueShotZoneLeaders'); }
+  /** getPlayerInjuryStatus(playerId) → {status, returnDate, comment} | null. status/comment are
+   *  observed strings, not a fixed enum ('Out'/'Day-To-Day' seen so far); returnDate is a raw
+   *  free-text estimate from the source (e.g. "Aug 30", no year) -- not a parseable Date. null
+   *  means the player has no current injury entry. No ESPN equivalent exists. */
+  getPlayerInjuryStatus() { return this._notImplemented('getPlayerInjuryStatus'); }
+  /** getTeamInjuries(teamId) → [{playerId, playerName, status, returnDate, comment}]. playerId is
+   *  this site's ESPN id, resolved from the source's plain name server-side (null if unresolved --
+   *  same identity-bridge posture as getLeagueShotZoneLeaders); [] when the team has no current
+   *  injuries or has no source-side mapping. No ESPN equivalent exists. */
+  getTeamInjuries() { return this._notImplemented('getTeamInjuries'); }
   /** getGamePbpStats(eventId, playerId, season) → {fetched, onCourt, boxscore} (raw summary stays in
    *  provider). `season` is only used for the per-game cache's isPastSeason gate (gamePbpCache.js),
    *  not sent upstream -- safe to omit for a not-yet-cacheable (current-season) call. */

@@ -367,6 +367,26 @@
   border-radius: 50%;
   background: var(--text-muted);
 }
+
+/* ── Injury badge (player hero) — same pill shape as the archetype badge, red-tinted since it's
+   always a negative-status indicator, not just an info pill. ── */
+.injury-badge {
+  display: inline-flex;
+  align-items: center;
+  /* player-hero-info is a column flex container with the default stretch cross-axis alignment --
+     without this, this pill (unlike archetype-badge, which stretches an invisible wrapper div
+     around its own content-sized inner button) would visibly stretch to the full card width since
+     its own background/border sit directly on the flex item. */
+  align-self: flex-start;
+  margin: 0.4rem 0 0.15rem 0.4rem;
+  padding: 0.28rem 0.75rem;
+  background: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: 999px;
+  color: #dc2626;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
 .archetype-conf-dot.conf-high   { background: var(--win); }
 .archetype-conf-dot.conf-medium { background: var(--champion-text); }
 .archetype-conf-dot.conf-low    { background: var(--text-muted); }

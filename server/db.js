@@ -46,6 +46,22 @@ if (process.env.MONGODB_URI && process.env.NODE_ENV !== 'test') {
       } catch (err) {
         console.error('users.teamRepId index failed to create — the notifications job will full-scan users:', err);
       }
+      // Injury-status notifications share this same collection/TTL (type: 'injury' docs -- see
+      // lib/injuryNotificationsJob.js) but have no gameId, so the existing userId_gameId unique
+      // index above can't dedupe them (every injury doc would collide on the same undefined gameId
+      // for a given user, rejecting the SECOND player's notification as a false duplicate). A
+      // separate partial unique index, scoped to type:'injury' only, gives injury docs their own
+      // idempotency key (re-notifying the same player at the same status is a no-op; a genuine
+      // status change has a different `status` value and inserts fresh) without touching the
+      // game-notification index or its existing behavior at all.
+      try {
+        await db.collection('notifications').createIndex(
+          { userId: 1, playerId: 1, status: 1 },
+          { unique: true, partialFilterExpression: { type: 'injury' } }
+        );
+      } catch (err) {
+        console.error('SECURITY: notifications.userId_playerId_status partial unique index failed to create — duplicate injury notifications are NOT prevented:', err);
+      }
       _resolveConnected(db);
     })
     .catch(err => {

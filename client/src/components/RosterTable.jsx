@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import StudyFlow from './StudyFlow';
 import ArchetypeBadge from './ArchetypeBadge';
+import InjuryPill from './InjuryPill';
 import { initialsOf } from '../lib/initials';
 
 const ROSTER_COLUMNS = [
@@ -59,6 +60,7 @@ export default function RosterTable({ players, teamName, onSaveDeck, onPlayerCli
                       {player.name}
                     </button>
                     {player.archetypeName && <ArchetypeBadge playerId={player.id} name={player.archetypeName} confidence={player.archetypeConfidence} />}
+                    <InjuryPill injury={player.injury} />
                   </span>
                 </td>
                 <td className="roster-cell muted">{player.jersey || '—'}</td>

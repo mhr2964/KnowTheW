@@ -11,6 +11,7 @@ const { getDb } = require('../db');
 const { getProvider } = require('../providers');
 const { requireSchedulerAuth } = require('../lib/schedulerAuth');
 const { pollAndCreateNotifications } = require('../lib/notificationsJob');
+const { pollAndCreateInjuryNotifications } = require('../lib/injuryNotificationsJob');
 
 router.post('/notifications/poll', requireSchedulerAuth, async (req, res) => {
   const db = getDb();
@@ -25,6 +26,22 @@ router.post('/notifications/poll', requireSchedulerAuth, async (req, res) => {
     res.status(summary.errors > 0 ? 500 : 200).json(summary);
   } catch (err) {
     console.error('internal/jobs/notifications/poll:', err.message);
+    res.status(500).json({ error: 'poll failed' });
+  }
+});
+
+// Same shared-secret gate and pattern as /notifications/poll above -- separate route (not folded
+// into the same poll) so either job can be scheduled on its own cadence and one's failure/run
+// history doesn't get conflated with the other's in Heroku Scheduler's UI.
+router.post('/notifications/injuries/poll', requireSchedulerAuth, async (req, res) => {
+  const db = getDb();
+  if (!db) return res.status(503).json({ error: 'service unavailable' });
+
+  try {
+    const summary = await pollAndCreateInjuryNotifications({ db, provider: getProvider() });
+    res.status(summary.errors > 0 ? 500 : 200).json(summary);
+  } catch (err) {
+    console.error('internal/jobs/notifications/injuries/poll:', err.message);
     res.status(500).json({ error: 'poll failed' });
   }
 });

@@ -49,6 +49,7 @@ const bdlUsageShare = require('./usageShare');
 const bdlDefenseStats = require('./defenseStats');
 const bdlTeamFourFactors = require('./teamFourFactors');
 const bdlTeamShotChart = require('./teamShotChart');
+const bdlInjuries = require('./injuries');
 const idMap = require('./idMap');
 const { BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON, ADVANCED_RATINGS_MIN_SEASON } = require('./client');
 const { SportsDataProvider } = require('../SportsDataProvider');
@@ -169,6 +170,27 @@ class BallDontLieProvider extends SportsDataProvider {
       leaders: z.leaders.map(r => ({ ...r, playerId: idByName.get(r.name) ?? null })),
     }));
     return { season: raw.season, zones };
+  }
+
+  // --- Injury report: new data, no ESPN equivalent -- see injuries.js's header comment. ---
+  async getPlayerInjuryStatus(playerId) {
+    const bdlPlayerId = await idMap.resolveBdlPlayerId(playerId);
+    if (bdlPlayerId == null) return null;
+    return bdlInjuries.fetchPlayerInjuryBdl(bdlPlayerId);
+  }
+
+  // Same BDL-id/plain-name identity bridge as getLeagueShotZoneLeaders above -- resolve each row's
+  // internal playerId by name, once per row (a team roster is small, unlike the league-wide
+  // leaderboard case that resolves once per unique name across all zones).
+  async getTeamInjuries(teamId) {
+    const bdlTeamId = await idMap.resolveBdlTeamId(teamId);
+    if (bdlTeamId == null) return [];
+    const rows = await bdlInjuries.fetchTeamInjuriesBdl(bdlTeamId);
+    return Promise.all(rows.map(async ({ playerName, ...rest }) => ({
+      ...rest,
+      playerName,
+      playerId: await idMap.resolveEspnIdByName(playerName) ?? null,
+    })));
   }
 
   // --- Standings: new data, not a migration -- distinct from getStandingsRaw above, which stays

@@ -17,7 +17,8 @@ const { createFakeNotificationsDb, combineFakeDbs } = require('./lib/fakeNotific
 const { COOKIE_NAME, signToken } = require('../server/lib/auth');
 const app = require('../server/index');
 
-const EXPECTED_KEYS = ['id', 'teamRepId', 'gameId', 'opponent', 'atVs', 'gameDate', 'expiresAt'].sort();
+const EXPECTED_GAME_KEYS = ['id', 'type', 'teamRepId', 'createdAt', 'expiresAt', 'gameId', 'opponent', 'atVs', 'gameDate'].sort();
+const EXPECTED_INJURY_KEYS = ['id', 'type', 'teamRepId', 'createdAt', 'expiresAt', 'playerId', 'playerName', 'status', 'returnDate', 'comment'].sort();
 
 let server;
 let baseUrl;
@@ -63,7 +64,7 @@ function getNotifications(cookie) {
   });
 }
 
-function seedNotification({ userId, teamRepId, gameId, gameDate, expiresAt, opponent = { id: '5', abbreviation: 'OPP', logo: null }, atVs = 'vs' }) {
+function seedNotification({ userId, teamRepId, gameId, gameDate, expiresAt, opponent = { id: '5', abbreviation: 'OPP', logo: null }, atVs = 'vs', createdAt = new Date() }) {
   return notificationsDb.collection('notifications')._seed({
     userId,
     teamRepId,
@@ -72,7 +73,22 @@ function seedNotification({ userId, teamRepId, gameId, gameDate, expiresAt, oppo
     atVs,
     gameDate,
     expiresAt,
-    createdAt: new Date(),
+    createdAt,
+  });
+}
+
+function seedInjuryNotification({ userId, teamRepId, playerId, playerName, status, returnDate = null, comment = null, expiresAt, createdAt = new Date() }) {
+  return notificationsDb.collection('notifications')._seed({
+    type: 'injury',
+    userId,
+    teamRepId,
+    playerId,
+    playerName,
+    status,
+    returnDate,
+    comment,
+    expiresAt,
+    createdAt,
   });
 }
 
@@ -89,35 +105,62 @@ test('GET /api/notifications: 200 with an empty array when the user has no notif
   assert.deepStrictEqual(body, { notifications: [] });
 });
 
-test('GET /api/notifications: 200 with the user\'s notifications, sorted by gameDate ascending, in the documented shape', async () => {
+test('GET /api/notifications: 200 with the user\'s notifications, sorted by createdAt descending (newest first), in the documented shape', async () => {
   const userId = await seedUser('1');
   const now = Date.now();
-  const later = seedNotification({
-    userId, teamRepId: '1', gameId: 'evt-later',
+  // createdAt controls order here, deliberately decoupled from gameDate (a game created earlier
+  // but kicking off sooner still sorts by when the ALERT was created, not by kickoff time -- see
+  // routes/notifications.js's own comment on why createdAt is the shared sort key across both
+  // notification types).
+  const older = seedNotification({
+    userId, teamRepId: '1', gameId: 'evt-older',
     gameDate: new Date(now + 2 * 60 * 60 * 1000),
     expiresAt: new Date(now + 6 * 60 * 60 * 1000),
+    createdAt: new Date(now - 60000),
   });
-  const sooner = seedNotification({
-    userId, teamRepId: '1', gameId: 'evt-sooner',
+  const newer = seedNotification({
+    userId, teamRepId: '1', gameId: 'evt-newer',
     gameDate: new Date(now + 30 * 60 * 1000),
     expiresAt: new Date(now + 4.5 * 60 * 60 * 1000),
+    createdAt: new Date(now),
   });
-  void later;
-  void sooner;
+  void older;
+  void newer;
 
   const res = await getNotifications(cookieFor(userId));
   assert.strictEqual(res.status, 200);
   const body = await res.json();
   assert.strictEqual(body.notifications.length, 2);
-  assert.deepStrictEqual(body.notifications.map(n => n.gameId), ['evt-sooner', 'evt-later']);
+  assert.deepStrictEqual(body.notifications.map(n => n.gameId), ['evt-newer', 'evt-older']);
 
   for (const notification of body.notifications) {
-    assert.deepStrictEqual(Object.keys(notification).sort(), EXPECTED_KEYS);
+    assert.deepStrictEqual(Object.keys(notification).sort(), EXPECTED_GAME_KEYS);
+    assert.strictEqual(notification.type, 'game');
   }
   const first = body.notifications[0];
   assert.strictEqual(first.teamRepId, '1');
   assert.strictEqual(first.atVs, 'vs');
   assert.deepStrictEqual(first.opponent, { id: '5', abbreviation: 'OPP', logo: null });
+});
+
+test('GET /api/notifications: an injury-type notification carries player fields, not game fields', async () => {
+  const userId = await seedUser('1');
+  const now = Date.now();
+  seedInjuryNotification({
+    userId, teamRepId: '1', playerId: 'p-42', playerName: 'Test Player', status: 'Out',
+    returnDate: 'Aug 30', comment: 'left knee',
+    expiresAt: new Date(now + 48 * 60 * 60 * 1000),
+  });
+
+  const res = await getNotifications(cookieFor(userId));
+  assert.strictEqual(res.status, 200);
+  const body = await res.json();
+  assert.strictEqual(body.notifications.length, 1);
+  const [n] = body.notifications;
+  assert.deepStrictEqual(Object.keys(n).sort(), EXPECTED_INJURY_KEYS);
+  assert.strictEqual(n.type, 'injury');
+  assert.strictEqual(n.playerName, 'Test Player');
+  assert.strictEqual(n.status, 'Out');
 });
 
 test('GET /api/notifications: excludes a notification whose expiresAt is already in the past', async () => {
