@@ -429,7 +429,7 @@ real per-game Advanced/Four Factors/Usage/Scoring/Misc data; PIE rendered as a f
 matching this site's existing PIE convention rather than a percentage; clicking the same row again
 collapsed the panel; clicking a different row re-fetched and swapped to that game's data.
 
-## 11. Injury report — shipped, commit `<pending>`
+## 11. Injury report — shipped, commit `ceda90e`
 
 **Spike results (2026-08-22, live against `/wnba/v1/player_injuries`):** 40 rows league-wide as of
 the spike (paginated 25/page via cursor — must page through, `meta.next_cursor` present on a
