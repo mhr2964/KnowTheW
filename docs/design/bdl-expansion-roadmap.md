@@ -41,7 +41,7 @@ context from a compact summary.
 | 9 | League shot-zone leaderboards | Shipped |
 | 10 | Per-game advanced stats (Game Log) | Shipped |
 | 11 | Injury report | Shipped |
-| 12 | Odds/spread on schedule | Not started |
+| 12 | Odds/spread on schedule | Shipped |
 
 Player props stays explicitly deferred (user call, 2026-08-17 brainstorm) — not on this list.
 
@@ -484,18 +484,50 @@ teammate shows nothing). Notification job path verified via unit tests with a fa
 (not a live simulation — no Scheduler to trigger it in production yet, so there's no real poll
 cycle to observe end-to-end).
 
-## 12. Odds/spread on schedule
+## 12. Odds/spread on schedule — shipped, commit `a752025`
 
-`odds` / `odds/opening` (documented in the OpenAPI spec, not yet spiked live). From the original
-2026-08-17 backlog framing: lighter-weight than a full props tracker — surface the betting line next
-to each upcoming game on `TeamSchedulePage.jsx`. Spike the actual endpoint shape first (spread vs.
-moneyline vs. total, which sportsbook(s), opening-vs-current semantics) before building.
+**Spike results (2026-08-22, live against `/wnba/v1/odds`):** 5 upcoming games in the next 5 days
+had odds posted; MULTIPLE sportsbooks post a line per game (fanduel, fanatics, draftkings,
+caesars, betrivers, betmgm all seen, 1-6 rows per game depending on how far out it is) and they
+genuinely disagree with each other by a point or more on spread/total -- not one consensus line
+with vendor noise. `game_id` on each row is already this site's own BDL-native schedule-event id
+(`event.id` on a BDL-sourced schedule event, per `schedule.js`'s `mapGameToScheduleEvent`) -- no
+new identity bridge needed, unlike Features 9/11. `odds/opening` (GOAT-tier, historical opening
+lines) was NOT built -- out of scope, this feature is about the current line on upcoming games,
+not opening-line history.
 
-**Build:** new provider method, new column/section on `TeamSchedulePage.jsx`'s upcoming-games view.
+**Build:** `server/providers/balldontlie/odds.js` (new) — `fetchOddsForGamesBdl` (paginated bulk
+fetch by `game_ids[]`) picks ONE representative vendor per game via a preferred-vendor order
+(the two biggest US retail books first, then whichever else is posted) rather than building a
+full odds-comparison table — a much bigger feature than "surface the line next to the game."
+Provider method `getGameOdds(bdlGameIds)` on the BDL provider (ESPN returns `{}` — no ESPN
+equivalent); takes already-BDL-native ids directly, no ESPN-id resolution step at all (a first for
+a BDL provider method). `/teams/:id/schedule` attaches `odds` onto each upcoming (future,
+regular-season, current-season) event server-side — same best-effort attach-in-route pattern as
+Feature 11's roster injuries — via a new pure helper `server/lib/gameOdds.js`'s
+`orientOddsForTeam`, which flips BDL's generic home/away shape to THIS team's own side (`atVs`
+already encodes which side that is). Client: `ScheduleTable.jsx` shows the line (`spread · O/U
+total`) under the game time for upcoming games only, vendor named in a tooltip so it reads as
+attributed, not gospel.
 
-**Verify:** lint/build/test, live check against a real upcoming game's odds.
+**Verify:** lint/build/test (390 tests, 386 pass — same 4 pre-existing unrelated JWT_SECRET
+failures). Client build clean. Live-verified via curl + Playwright against the Atlanta Dream's
+real upcoming schedule: the next game (@ PHX) showed a real DraftKings line (`-7.5 · O/U 177.5`,
+tooltip "Odds via draftkings"); games further out with no line posted yet correctly show nothing;
+confirmed via curl that playoff-schedule and past-season requests never attempt an odds fetch at
+all (no `odds` field present).
 
 ---
+
+**Roadmap complete — all 12 features shipped.** See individual commits (referenced in each
+section above) for full detail; this doc can be trimmed to a one-paragraph summary per the note
+below whenever someone's next in this file. Two open items surfaced during this run, not resolved
+by it: (1) Feature 6's Defensive-Win-Shares discrepancy (BDL vs. homegrown formula) — needs a user
+decision on which number is authoritative; both are currently shown side-by-side, unreconciled.
+(2) Heroku Scheduler add-on is not installed on this app at all (confirmed live, Feature 11) — the
+pre-game and injury-status-change notification jobs are both built, tested, and internally routed,
+but neither has ever actually run in production; needs a one-time dashboard step (add the
+Scheduler add-on, add two scheduled jobs) whenever the user wants either one live.
 
 When every feature above ships, delete this doc's per-feature detail (keep a one-paragraph "shipped
 2026-0X-XX, see git log" summary, matching this folder's convention for closed-out docs) and update
