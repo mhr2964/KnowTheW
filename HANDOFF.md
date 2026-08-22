@@ -4,13 +4,13 @@ Forward-looking handoff for the active work-stream. **Overwrite** each session; 
 
 ```yaml
 last-model: claude-sonnet-5
-last-session: 2026-08-21 — Pass 4 of the mobile player-page polish effort shipped (v250, commits 9269c2f + 897e63f): playoffs toggle added to Splits/Shot Chart/Play-by-Play (Game Log already had it), generic pagination moved into BrefTable, and a sticky-nav "(Season)"/"(Playoffs)" indicator that appears once the in-page season toggle scrolls out of view. Passes 1-3 (mobile hamburger nav, courtside quick-glance redesign, corner/crowding/hero polish) shipped earlier the same day as v246/v247/v248-retry(v249).
-state: green. Player-page mobile UI is consistent across all 10 stat-type tabs, with playoffs support now on every tab that has one. No open blockers.
+last-session: 2026-08-21 — mobile player-page polish (Passes 1-4, v246-v250) closed out stable; started a new work-stream same day, the BDL expansion roadmap (docs/design/bdl-expansion-roadmap.md), executing autonomously feature-by-feature with a >>ping compact between each. Feature 1 (site nav rework, Teams/Standings pages) shipped as 7a13739.
+state: green. Actively building through the BDL expansion roadmap -- see that doc's own Status table for exactly which feature is in progress. No open blockers as of the last shipped feature.
 ```
 
 ## Next action
 
-**Nothing queued.** This is an open-ended polish effort per the user — treat a future feedback round as "Pass 5," not a new work-stream. If one comes in, start by reading this file's `state` line and the last 2 commits (`git log -3 --oneline`) rather than re-deriving context.
+**Check `docs/design/bdl-expansion-roadmap.md`'s Status table first** — that doc, not this file, is the live source of truth for which of its 12 features is done/in-progress/next during this autonomous run. If every row says shipped, there's nothing queued and a future ask is a new work-stream, not a continuation.
 
 ## Traps
 
@@ -28,9 +28,9 @@ state: green. Player-page mobile UI is consistent across all 10 stat-type tabs, 
 
 ## Recent context
 
-- Full pass-by-pass history (mobile nav, courtside redesign, corner/hero polish, playoffs+pagination+sticky-indicator) lives in git log, not here — see commits `cd7ece0` (v246) through `897e63f` (v250, current).
+- Full pass-by-pass history (mobile nav, courtside redesign, corner/hero polish, playoffs+pagination+sticky-indicator) lives in git log, not here — see commits `cd7ece0` (v246) through `897e63f` (v250).
 - Prior ESPN→BallDontLie migration history, the Mongo quota incident, and the PBP/Advanced reliability rebuild are all in git log `687a18c..728cff0` (25 commits) — see individual commit EXPECTED/VERIFIED-BY blocks for detail, not reproduced here.
-- See `docs/design/feature-backlog.md` for unscheduled ideas (injury report, odds/spread on schedule).
+- BDL expansion roadmap (current work-stream): `docs/design/bdl-expansion-roadmap.md`. Started from a full audit of BDL's WNBA OpenAPI spec (mirrored at `docs/design/bdl-openapi-wnba.yml`) — see `Brain/Memory/reference_knowthew_bdl_openapi.md` if working from a different session. `feature-backlog.md`'s injury-report/odds ideas moved into this roadmap once scheduled.
 
 ## Known cosmetic follow-ups (non-blocking, not re-verified recently)
 

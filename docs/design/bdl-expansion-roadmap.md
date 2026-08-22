@@ -30,7 +30,7 @@ context from a compact summary.
 
 | # | Feature | Status |
 | --- | --- | --- |
-| 1 | Site IA rework: Teams page, Standings page, real homepage, nav | Not started |
+| 1 | Site IA rework: Teams page, Standings page, real homepage, nav | Shipped `7a13739`, deploy verification pending |
 | 2 | Off/Def/Net Rating + PIE on the existing Advanced tab | Not started |
 | 3 | Clutch splits | Not started |
 | 4 | Scoring-distribution dashboard | Not started |
@@ -78,9 +78,15 @@ full response shape before finalizing the table's column set.
   is himself worth a quick confirm with the user before finalizing, since it's the actual front door
   of the site.
 
+**Shipped as `7a13739`.** League-snapshot widget mix landed as top-4-seeds-per-conference + a
+"Browse all teams" CTA (percentile/leaderboard teaser deferred, not needed yet). Standings also
+picked up a By Conference / Combined view toggle (user request mid-build, not in the original
+scope above) — Combined re-ranks all teams by win% (seed is conference-scoped, so a straight seed
+sort would show two different teams both labeled "1").
+
 **Verify:** lint/build/test, live Playwright at mobile + desktop for the new nav, Teams page (parity
-with today's home grid), Standings page (real data, correct conference grouping/sort), and the new
-homepage layout.
+with today's home grid), Standings page (real data, correct conference grouping/sort, both view
+modes), and the new homepage layout.
 
 ## 2. Off/Def/Net Rating + PIE on the existing Advanced tab
 
