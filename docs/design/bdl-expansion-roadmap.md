@@ -25,15 +25,27 @@ Player props stayed explicitly deferred (user call, 2026-08-17 brainstorm) — n
 11. **Injury report** (player + roster widgets, notification-job hook) — `ceda90e`
 12. **Odds/spread on schedule** — `a752025`
 
-## Open items surfaced during the run (not resolved by it)
+## Open items surfaced during the run
 
-- **Feature 6's Defensive-Win-Shares discrepancy**: BDL's `def_ws` and this site's homegrown `DWS`
-  formula diverge materially on the same player-season (BDL 6.01 vs. homegrown 1.71, A'ja Wilson
-  2025). Both are shown side-by-side, unreconciled (Defense tab's "BDL Def WS" vs. Advanced tab's
-  "DWS") — needs a user decision on which is authoritative, not something to guess at.
-- **Heroku Scheduler add-on is not installed on this app at all** (confirmed live, Feature 11 —
-  `heroku addons` returns none). Both the pre-game notifications job (pre-existing) and the
-  injury-status-change job (Feature 11) are built, tested, and internally routed
-  (`/internal/jobs/notifications/poll`, `/internal/jobs/notifications/injuries/poll`), but neither
-  has ever actually run in production. Needs a one-time dashboard step (add the Scheduler add-on +
-  two scheduled jobs pointing at those routes) whenever the user wants either one live.
+- ~~Feature 6's Defensive-Win-Shares discrepancy~~ — **resolved 2026-08-22**: user decided BDL's
+  `def_ws` is authoritative. Also caught and fixed a real bug while wiring this in: the Defense
+  tab's own BDL fetch used `per_mode='per_game'`, which silently returned def_ws divided by games
+  played (0.15) instead of the season total (6.01) actually documented/compared — Win Shares is
+  always a season total, never per-game. Fixed to `per_mode='totals'` (deriving the genuinely
+  per-game fields — blk/stl/dreb/opp_pts_* — back down by dividing by gp, confirmed identical to
+  what per_mode='per_game' itself returned for those). The Advanced tab's DWS/WS/WS_PER48 now
+  source from this same BDL number when available (2022+, `overrideDwsWithBdl` in
+  `advancedStats.js`), falling back to the homegrown formula for earlier seasons BDL doesn't
+  cover. Defense tab's column label dropped "BDL" (now "Def WS", not a side-by-side alternative).
+  See commit referenced in git log for this fix.
+- ~~Heroku Scheduler add-on is not installed on this app~~ — **partially resolved 2026-08-22**: the
+  add-on itself is now installed (`heroku addons:create scheduler:standard`) — confirmed via
+  `heroku addons`, state `created`. Both the pre-game notifications job (pre-existing) and the
+  injury-status-change job (Feature 11) remain built, tested, and internally routed
+  (`/internal/jobs/notifications/poll`, `/internal/jobs/notifications/injuries/poll`), but adding
+  the actual scheduled-job entries (command + interval) is dashboard-only — no CLI/API for it
+  exists (confirmed: `heroku scheduler` isn't a command, no scheduler-specific plugin). Still needs
+  a one-time manual step from the user: `heroku addons:open scheduler`, then add two jobs running
+  `curl -s -X POST -H "x-scheduler-token: $SCHEDULER_TOKEN" https://knowthew.net/internal/jobs/notifications/poll`
+  (every 10 minutes) and the same with `/injuries/poll` appended in place of `/poll` (hourly is
+  plenty — injury status changes far less often than game kickoffs).
