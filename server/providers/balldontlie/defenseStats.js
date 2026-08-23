@@ -8,33 +8,48 @@
 // team-share figures, confirmed identical by live spike) -- not remapped here, already covered by
 // the Usage tab.
 //
-// BDL's def_ws diverges materially from this app's own homegrown DWS (advancedStats.js/
-// statFormulas.js's computeWinShares, BRef/Oliver methodology) -- live spike, A'ja Wilson 2025
-// regular season, season totals: BDL def_ws 6.01 vs homegrown DWS 1.71. Def_rating, by contrast,
-// matches the homegrown DEF_RATING almost exactly (98.8 both) -- the two sources agree on
-// pace-adjusted defensive rating but use very different Win Shares formulas. Surfaced here as
-// BDL_DEF_WS, a distinctly-named column, NOT a replacement for the existing Advanced tab's DWS --
-// this is a real accuracy question flagged for the user, not resolved by this feature.
+// Fetched with per_mode='totals', NOT 'per_game': def_ws is a counting stat under the hood (BDL
+// divides it by gp under per_mode='per_game' exactly like blk/stl/dreb), but Win Shares is always
+// a season TOTAL in basketball analytics (same convention as this site's own homegrown OWS/DWS/WS
+// on the Advanced tab) -- a per-game WS number is meaningless. Confirmed by live spike, 2026-08-22
+// (A'ja Wilson, 2025 season): per_mode='per_game' returned def_ws 0.15 (season total 6.01 ÷ 40
+// games) -- silently wrong, this is what a prior version of this file actually shipped with. blk/
+// stl/dreb/opp_pts_* are legitimately per-game on this site's Defense tab (matching every other
+// per-game box-score column elsewhere), so they're derived back down by dividing the totals-mode
+// response by gp here -- confirmed identical to what per_mode='per_game' itself would have
+// returned for those fields (BDL's own per-game rounding matches raw-total/gp exactly).
+//
+// def_ws (now a real season total) is this site's AUTHORITATIVE Win Shares number as of
+// 2026-08-22 (user decision, resolving the discrepancy this file used to flag as unresolved: BDL
+// def_ws 6.01 vs. the homegrown formula's 1.71 for the same player-season) -- see
+// advancedStats.js's computeSeasonPBPUncached, which overrides the homegrown DWS/WS/WS_PER48 with
+// this value whenever it's available. def_rating is unaffected by per_mode either way (a rate
+// stat, not a counting stat) and matches the homegrown DEF_RATING almost exactly (98.8 both).
 //
 // Field names confirmed by live spike, 2026-08-22: shares the SAME 2022 tracking-data floor as
 // measure_type=scoring/advanced/usage (ADVANCED_RATINGS_MIN_SEASON), not the wider 2008
 // BDL_MIN_SEASON floor Clutch splits use -- no row at all for 2015/2018/2021, first data at 2022.
 const { bdlFetch } = require('./client');
 
+function perGame(total, gp) {
+  return (total != null && gp > 0) ? total / gp : null;
+}
+
 function mapDefenseStatsRow(stats) {
   if (!stats || !stats.gp) return null;
+  const gp = stats.gp;
   return {
-    gp: stats.gp,
-    blk: stats.blk ?? null,
-    stl: stats.stl ?? null,
-    dreb: stats.dreb ?? null,
+    gp,
+    blk: perGame(stats.blk, gp),
+    stl: perGame(stats.stl, gp),
+    dreb: perGame(stats.dreb, gp),
     bdlDrebPct: stats.dreb_pct ?? null,
     defRating: stats.def_rating ?? null,
     bdlDefWs: stats.def_ws ?? null,
-    oppPtsPaint: stats.opp_pts_paint ?? null,
-    oppPtsFastbreak: stats.opp_pts_fb ?? null,
-    oppPtsOffTov: stats.opp_pts_off_tov ?? null,
-    oppPts2ndChance: stats.opp_pts_2_nd_chance ?? null,
+    oppPtsPaint: perGame(stats.opp_pts_paint, gp),
+    oppPtsFastbreak: perGame(stats.opp_pts_fb, gp),
+    oppPtsOffTov: perGame(stats.opp_pts_off_tov, gp),
+    oppPts2ndChance: perGame(stats.opp_pts_2_nd_chance, gp),
   };
 }
 
@@ -44,7 +59,7 @@ async function fetchPlayerSeasonDefenseBdl(bdlPlayerId, season, seasontype = 2) 
     season,
     season_type: seasontype === 3 ? 'playoffs' : 'regular',
     measure_type: 'defense',
-    per_mode: 'per_game',
+    per_mode: 'totals',
   });
   return mapDefenseStatsRow(data?.data?.[0]?.stats);
 }

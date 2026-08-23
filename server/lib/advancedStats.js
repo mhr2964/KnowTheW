@@ -176,6 +176,27 @@ function buildAdvancedCareer(pgSrc, totSrc) {
   ]};
 }
 
+// Pure: swaps BDL's def_ws in for the homegrown-computed DWS (wsVals[1]) and recomputes WS/
+// WS_PER48 from it, so they stay internally consistent (WS = OWS + DWS) rather than mixing an old
+// WS with a new DWS. User decision, 2026-08-22, resolving the discrepancy this override used to
+// flag as unresolved: BDL's def_ws (season total -- see defenseStats.js's header comment on the
+// per_mode fix that makes it one) vs. this formula's own DWS diverged materially for the same
+// player-season (6.01 vs. 1.71, A'ja Wilson 2025).
+//
+// Only overrides when OWS itself computed successfully (wsVals[0] != null) -- a bare DWS with no
+// OWS would make WS misleading (just DWS, not a real "wins from offense + defense" total).
+// Pre-2022 seasons (BDL has no measure_type=defense data that far back) and ESPN-provider
+// environments both pass bdlDefense === null here and simply keep the homegrown DWS/WS/WS_PER48
+// unchanged -- same graceful-degradation posture as every other BDL-only field in this codebase.
+function overrideDwsWithBdl(wsVals, bdlDefense, totalMin) {
+  if (bdlDefense?.bdlDefWs == null || wsVals[0] == null) return wsVals;
+  const [ows] = wsVals;
+  const dws = bdlDefense.bdlDefWs;
+  const ws = ows + dws;
+  const wsPer48 = totalMin > 0 ? ws / (totalMin / 48) : null;
+  return [ows, dws, ws, wsPer48];
+}
+
 // Inner implementation — no caching. Returns { row, pbpGames, complete } where complete is true
 // only when every eventId returned a non-null summary (no ESPN failures mid-fetch). Partial
 // results are still returned to the caller for display but must not be persisted to the cache.
@@ -191,11 +212,13 @@ async function computeSeasonPBPUncached(playerId, season, playerRow, I, teamId, 
   // Also needed for Win Shares (officialPace for DWS, ptsAllowedPg).
   // Ratings (Off/Def/Net/PIE) come straight off the source's own season-level endpoint, unrelated
   // to the box-score reconstruction above -- fetched alongside rather than sequentially after.
-  const [[tmOfficial, ptsAllowedPg], ratings] = await Promise.all([
+  // bdlDefense is fetched the same way, purely for its def_ws -- see the DWS override below.
+  const [[tmOfficial, ptsAllowedPg], ratings, bdlDefense] = await Promise.all([
     teamId
       ? Promise.all([fetchTeamStats(teamId, season), fetchTeamPtsAllowed(teamId, season)])
       : Promise.resolve([null, null]),
     getProvider().getPlayerSeasonRatings(playerId, season, seasontype),
+    getProvider().getPlayerSeasonDefense(playerId, season, seasontype),
   ]);
 
   const advRow = advancedRow(playerRow, I, tmOC, lg, totRow, tmOfficial);
@@ -207,9 +230,15 @@ async function computeSeasonPBPUncached(playerId, season, playerRow, I, teamId, 
   // Boxscore approach is conceptually correct (player-game restriction) but doesn't improve
   // accuracy because the root issue is ESPN vs BRef source data divergence, not sampling.
   const tmForOWS = tmOfficial ?? tmForWS;
-  const wsVals = (tmForOWS && lg && ptsAllowedPg != null)
+  let wsVals = (tmForOWS && lg && ptsAllowedPg != null)
     ? computeWinShares(playerRow, I, tmForOWS, lg, ptsAllowedPg, officialPace)
     : [null, null, null, null];
+
+  // BDL's def_ws is this site's AUTHORITATIVE Win Shares number as of 2026-08-22 (user decision,
+  // resolving the discrepancy this override used to flag as unresolved) -- see
+  // overrideDwsWithBdl's own comment for the full reasoning.
+  const totalMin = (playerRow[I.MIN] ?? 0) * (playerRow[I.GP] ?? 0);
+  wsVals = overrideDwsWithBdl(wsVals, bdlDefense, totalMin);
 
   const ratingVals = ratings
     ? [ratings.offRating, ratings.defRating, ratings.netRating, ratings.pie]
@@ -230,12 +259,15 @@ async function computeSeasonPBPUncached(playerId, season, playerRow, I, teamId, 
 async function computeSeasonPBP(playerId, season, playerRow, I, teamId, totRow, seasontype = 2) {
   if (isPastSeason(season)) {
     // Provider-scoped so toggling STATS_PROVIDER can't read back the other source's cached PBP
-    // reconstruction for the same player/season. `-v2` suffix: this collection has no version-field
+    // reconstruction for the same player/season. `-v3` suffix: this collection has no version-field
     // wrapper like advancedStats.js's own `v` guard on the `advancedStats` collection below -- bumping
-    // the KEY itself is teamSeasonCache.js's own documented invalidation mechanism. Bumped when
+    // the KEY itself is teamSeasonCache.js's own documented invalidation mechanism. Bumped v1->v2 when
     // OFF_RATING/DEF_RATING/NET_RATING/PIE were added to the row shape (confirmed live, 2026-08-21: an
     // unbumped key kept serving the old 20-element row for every already-cached past season forever).
-    const cacheKey = `${getProvider().name}-${playerId}-${season}-${seasontype}-v2`;
+    // Bumped v2->v3, 2026-08-22: DWS/WS/WS_PER48 now source from BDL's def_ws when available (see
+    // computeSeasonPBPUncached above) -- same shape, different VALUES, so a v2-cached row would
+    // silently keep serving the old homegrown-only DWS forever without this bump.
+    const cacheKey = `${getProvider().name}-${playerId}-${season}-${seasontype}-v3`;
 
     // Check cache first — one findOne, no ESPN traffic on hit.
     const cached = await getCached('playerSeasonPbp', cacheKey);
@@ -409,7 +441,7 @@ async function computeAdvancedPbpAll(playerId) {
     // poisoned entry from a past systemic failure (see the write-side guard below for how new ones
     // are prevented) -- bypass it and recompute instead of serving it forever.
     const looksPoisoned = hadSeasonsToTry && advCached?.data?.regular?.rows?.length === 0;
-    if (advCached?.gp === currentGP && advCached.v === 29 && advCached.data?.regular != null && !looksPoisoned) {
+    if (advCached?.gp === currentGP && advCached.v === 30 && advCached.data?.regular != null && !looksPoisoned) {
       return advCached.data;
     }
   }
@@ -465,9 +497,11 @@ async function computeAdvancedPbpAll(playerId) {
   // per-season playerSeasonPbp cache key was ALSO bumped (see computeSeasonPBP below) -- that
   // still-stale row got baked into the v28 doc and re-served identically on every hit since the
   // outer v-guard alone can't tell a "genuinely v28-shaped" doc from a "poisoned during rollout" one.
-  // 29 is the first version computed with both fixes live.
+  // v bumped 29->30, 2026-08-22: DWS/WS/WS_PER48 now source from BDL's def_ws when available (same
+  // shape, different values) -- the underlying playerSeasonPbp cache key was ALSO bumped this same
+  // pass (v2->v3, see computeSeasonPBP below), applying the exact lesson v28's own poisoning taught.
   if (db && !looksLikeSystemicFailure) db.collection('advancedStats')
-    .replaceOne({ _id: advCacheId }, { _id: advCacheId, gp: currentGP, v: 29, data: advResult }, { upsert: true })
+    .replaceOne({ _id: advCacheId }, { _id: advCacheId, gp: currentGP, v: 30, data: advResult }, { upsert: true })
     .catch(err => console.error('mongo write advancedStats:', err.message));
 
   return advResult;
@@ -476,5 +510,5 @@ async function computeAdvancedPbpAll(playerId) {
 module.exports = {
   ADV_HEADERS_SRV, ADV_I,
   advancedRow, buildAdvancedSplit, buildAdvancedCareer, computeSeasonPBP, buildPbpSplit,
-  computeAdvancedPbpAll, computeSeasonAdvancedRow, loadAdvPgTables,
+  computeAdvancedPbpAll, computeSeasonAdvancedRow, loadAdvPgTables, overrideDwsWithBdl,
 };

@@ -36,12 +36,16 @@ const LABELS = {
   TM_USG_PCT: 'Usage%',
   // Defense tab only -- BDL's own measure_type=defense fields. BLK/STL/DREB reuse this file's
   // existing box-score keys directly (same literal per-game count, no formula divergence).
-  // BDL_DREB_PCT and BDL_DEF_WS are deliberately distinct from this file's existing DRB_PCT/DWS --
-  // BDL's dreb_pct and def_ws use different formulas from the homegrown BRef/Oliver ones and produced
-  // materially different values in a live spike (see defenseStats.js) -- not a replacement, a
-  // separate BDL-sourced number shown alongside. DEF_RATING is reused as-is since the two sources'
-  // numbers matched almost exactly in that same spike.
-  BDL_DREB_PCT: 'DREB%', BDL_DEF_WS: 'BDL Def WS',
+  // BDL_DREB_PCT stays distinct from this file's existing DRB_PCT -- BDL's dreb_pct uses a
+  // different formula from the homegrown BRef one and produced a materially different value in a
+  // live spike (see defenseStats.js). BDL_DEF_WS's key stays as-is (renaming would touch export/
+  // career-row plumbing for no real benefit) but its label drops the "BDL" qualifier: as of
+  // 2026-08-22 it's this site's AUTHORITATIVE Win Shares number (user decision, resolving the
+  // discrepancy this comment used to flag as unresolved), not a side-by-side alternative to the
+  // Advanced tab's DWS -- that column is now sourced from the same BDL number when available (see
+  // advancedStats.js's computeSeasonPBPUncached). DEF_RATING is reused as-is since the two
+  // sources' numbers matched almost exactly in that same spike.
+  BDL_DREB_PCT: 'DREB%', BDL_DEF_WS: 'Def WS',
   OPP_PTS_PAINT: 'Opp Pts (Paint)', OPP_PTS_FASTBREAK: 'Opp Pts (FB)',
   OPP_PTS_OFF_TOV: 'Opp Pts (TOV)', OPP_PTS_2ND_CHANCE: 'Opp Pts (2nd Chance)',
 };
