@@ -108,6 +108,7 @@ class EspnProvider extends SportsDataProvider {
     }));
     return { categories: buildCareerLeaderboards(accumulateCareerTotals(seasonEntries)) };
   }
+
   getGamePbpStats(eventId, playerId, season) { return gameSummary.getGamePbpStats(eventId, playerId, season); }
   async getRegularSeasonEventIds(playerId, season, seasontype = 2) {
     const events = await gamelog.getGameLogEvents(playerId, season, seasontype);

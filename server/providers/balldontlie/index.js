@@ -150,13 +150,15 @@ class BallDontLieProvider extends SportsDataProvider {
     return { season: Number(season), mode, categories: buildLeaderboards(withIds) };
   }
 
-  // All-time / career leaders: loops this.getLeagueStatLines per season from the 2002 ESPN
-  // byathlete floor through the latest completed season (this facade's own dispatch already picks
-  // BDL or ESPN per year, same as every other season-conditional method here) and sums Totals
-  // mode across every season -- see lib/careerLeaders.js. Unique BDL names are resolved to this
-  // site's ESPN id ONCE across every season combined (not once per season), same batching
-  // discipline as getLeagueStatLeaders, since a career leader appears across many years.
-  async getCareerLeaders() {
+  // Shared by getCareerLeaders and getFranchiseLeaders below: loops this.getLeagueStatLines per
+  // season from the 2002 ESPN byathlete floor through the latest completed season (this facade's
+  // own dispatch already picks BDL or ESPN per year, same as every other season-conditional
+  // method here) and returns flat {canonicalId, name, teamAbbr, PTS, REB, AST, STL, BLK} entries,
+  // one per player per season -- accumulation/ranking (lib/careerLeaders.js) and any team filter
+  // are the caller's job. Unique BDL names are resolved to this site's ESPN id ONCE across every
+  // season combined (not once per season), same batching discipline as getLeagueStatLeaders,
+  // since a career leader appears across many years.
+  async _getCareerSeasonEntries() {
     const years = [];
     for (let y = CAREER_LEADERS_MIN_SEASON; y <= latestCompletedSeason(); y++) years.push(y);
 
@@ -168,14 +170,29 @@ class BallDontLieProvider extends SportsDataProvider {
       [...bdlNames].map(async name => [name, await resolveEspnIdByName(name)])
     ));
 
-    const seasonEntries = flat.map(e => ({
+    return flat.map(e => ({
       canonicalId: e.espnId ?? idByName.get(e.name) ?? null,
       name: e.name, teamAbbr: e.teamAbbr ?? null,
       PTS: e.PTS, REB: e.REB, AST: e.AST, STL: e.STL, BLK: e.BLK,
     }));
+  }
 
+  async getCareerLeaders() {
+    const seasonEntries = await this._getCareerSeasonEntries();
     return { categories: buildCareerLeaderboards(accumulateCareerTotals(seasonEntries)) };
   }
+
+  // NOTE: a Franchise Leaders method (filtering _getCareerSeasonEntries by team) was built and
+  // then deliberately NOT shipped -- see docs/design/reference-site-features-roadmap.md's item 10
+  // for why: BDL's /player_season_stats (this method's own per-season source, via
+  // getLeagueStatLines) returns a player's CURRENT team for every historical season queried, not
+  // their team at the time (confirmed live: Jewell Loyd's 2018 season row reports "Las Vegas
+  // Aces," her 2025+ team, not "Seattle Storm," her real 2018 team -- verified against the
+  // per-game /player_stats endpoint, which correctly shows SEA for that season). A team filter
+  // built on this field would silently misattribute a traded player's entire career to their
+  // current team. This same bug affects this method's teamAbbr field wherever it's surfaced for a
+  // PAST season (League Leaders' team column for a traded player, e.g.) -- not just the withdrawn
+  // franchise-leaders feature.
 
   // --- Phase 1a: player game log, season-conditional ---
   async getPlayerGameLog(playerId, season) {

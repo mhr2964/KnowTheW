@@ -164,7 +164,31 @@ verify + push/deploy per feature, this doc updated after each ships.
    a strong independent correctness check the math is right, not just internally consistent.
    Confirmed via claude-in-chrome that the page renders correctly and a leader's row correctly
    navigates to their real player page.
-10. **Franchise all-time leaders** — same aggregation as #9, scoped to one `team_id`.
+10. **Franchise all-time leaders** — **descoped 2026-09-05, not shipped.** Built (same
+    accumulation as #9, filtered by team), then withdrawn before commit after live verification
+    surfaced a real BDL data-integrity bug this feature would have shipped on top of: `/player_
+    season_stats` -- the per-season endpoint `getLeagueStatLines` (and therefore Feature 2's
+    League Leaders and Feature 9's All-Time Leaders) is built on -- returns a player's **current**
+    team for every historical season queried, not their team at the time. Confirmed live: Jewell
+    Loyd's real 2018 season (`/player_season_stats?season=2018`) reports team `"Las Vegas Aces"`
+    (her 2025+ team) instead of `"Seattle Storm"` (her actual 2018 team, confirmed correct via the
+    per-game `/player_stats` endpoint for the same season -- that endpoint IS historically
+    accurate, since it's tied to a specific past game record, not a mutable current-roster
+    pointer). A franchise filter built on the buggy field would have silently attributed a large
+    share of a traded player's whole career to whichever team they happen to be on now --
+    confirmed concretely: querying the built-but-unshipped code for the Las Vegas Aces showed
+    Jewell Loyd with "11 seasons" on LV, when she only actually joined the team in 2025.
+    **This is a real bug in already-shipped code, not just a blocker for this one feature** --
+    League Leaders' team column can show a wrong team for any traded player when viewing a past
+    season (the stat VALUES themselves are unaffected, only the team label). All-Time Leaders
+    (#9) is less affected in practice: its team display already shows "most recent team" by
+    design, which happens to coincide with what the buggy field returns anyway, so it isn't
+    visibly wrong even though it's accidentally-not-wrong rather than correctly-designed.
+    A real fix needs to derive team-per-season from per-game data instead (the pattern
+    `seasonStats.js`'s `aggregateToSeasonRow` already uses for the single-player path, which is
+    NOT affected by this bug for exactly that reason) -- either a per-league-season bulk `/plays`-
+    style scan (expensive, Notable Games' cost profile) or some cheaper derivation not yet found.
+    Out of scope to fix within this roadmap; flagged in `HANDOFF.md`'s Traps for a dedicated pass.
 11. **Team-vs-team head-to-head record** — feasibility gated on a live check first: BDL's
     `/wnba/v1/games` `team_ids[]` param semantics (AND both teams in the same game, vs. OR either
     team) aren't documented in the schema. Test live before designing; build only if AND-filtering
