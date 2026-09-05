@@ -35,12 +35,10 @@ verify + push/deploy per feature, this doc updated after each ships.
    once per unique name. Categories: PTS/REB/AST/STL/BLK/FG%/3P%/FT%, top 10, PerGame or Totals.
    Works back to 2002 (ESPN's byathlete floor); pre-2008 (true ESPN path, before `BDL_MIN_SEASON`)
    has no team abbreviation since ESPN's byathlete feed carries no team field -- renders "—",
-   same convention as any other missing team elsewhere on the site. Verified live via curl against
-   both the BDL-backed 2015/2025 seasons and the pre-2008 ESPN-only 2005 season (real, correctly
-   ranked historical leaders in each) -- Playwright/browser tooling was unavailable this session
-   (disconnected after an unrelated stray-process cleanup and didn't reconnect), so the client
-   rendering itself rode on a clean lint+build plus reusing Shot Zone Leaders' exact proven
-   structure/CSS classes, not a live screenshot; worth a quick visual pass next session.
+   same convention as any other missing team elsewhere on the site. Verified live via curl (BDL
+   2015/2025 seasons and the true pre-2008 ESPN-only path, 2005) and then via claude-in-chrome
+   against the running dev client -- Per Game/Totals toggle, a percentage category (FG%), and
+   row-click-to-player-page all confirmed working with real data.
 3. **Awards History hub** — `server/constants/wnbaAccolades.js` already has a full year-by-year
    MVP/DPOY/ROY/Finals MVP/Sixth Player/All-WNBA dataset, currently consumed only by Compare page
    verdict chips. New standalone page surfacing it by year/category.
