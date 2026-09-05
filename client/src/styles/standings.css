@@ -72,12 +72,35 @@
    would render a full sentence as one unreadably wide, scroll-only row. Selector scoped to match
    .standings-table td's own specificity (a bare .injury-report-comment class loses that fight). */
 .standings-table td.injury-report-comment { text-align: left; white-space: normal; max-width: 28rem; }
+@media (max-width: 480px) {
+  /* Same fix as Awards History's awards-col-team-list at this breakpoint, same root cause: a
+     wrapped, off-screen-on-a-phone column inflates the WHOLE row's shared height, making every
+     other short cell (Player, Team's logo+abbr, Status) look vertically misplaced within a row
+     far taller than their own content -- confirmed live, the Team cell's logo appeared to float
+     above "Brionna Jones" with a large gap, not because of a flex-wrap bug (there wasn't one) but
+     because both were just sitting inside the same 165px-tall row at different vertical
+     positions. Un-wrapping keeps rows a normal height; the notes column needs a swipe to read
+     in full, same tradeoff every other column already has on a phone. */
+  .standings-table td.injury-report-comment { white-space: nowrap; max-width: none; }
+}
 
 /* Awards History's All-WNBA First Team column -- 5 comma-separated names under .standings-table
    td's default nowrap forced one unreadably wide row (the whole table overflowed the viewport
    with no visible scroll cue). Wrapping keeps the column to a fixed, reasonable width instead. */
 .standings-table th.awards-col-team-list,
 .standings-table td.awards-col-team-list { text-align: left; white-space: normal; max-width: 16rem; }
+@media (max-width: 480px) {
+  /* 7 columns don't fit a phone width regardless -- this table needs a horizontal swipe there no
+     matter what, same as it did before the wrap fix below existed. Tried shrinking max-width
+     first: that made it WORSE, not better -- forcing "Napheesa Collier"-length names into a
+     narrower box means MORE wrapped lines, not fewer, and since a table row's height is shared
+     across every cell, the short, already-scrolled-past YEAR/MVP/FINALS MVP columns inherited
+     that inflated height too (confirmed live: a real row measured 165px tall showing only 3 short
+     values). Un-wrapping for this one breakpoint keeps every row a normal height -- the column
+     itself is simply wider and needs a swipe to read, same tradeoff the other 6 columns already
+     have on a phone. */
+  .standings-table td.awards-col-team-list { white-space: nowrap; max-width: none; }
+}
 
 .standings-col-team {
   text-align: left;
@@ -85,8 +108,13 @@
   align-items: center;
   gap: 0.5rem;
   font-weight: 600;
+  /* Without this, a table with an off-screen wide column (e.g. Injury Report's Notes, needing a
+     horizontal swipe on a phone) can squeeze this cell's own width during column negotiation
+     below what the logo+abbreviation need -- a flex container wraps by default, so the logo
+     stacked above the text instead of staying beside it (confirmed live at 390px). */
+  flex-wrap: nowrap;
 }
-.standings-team-logo { width: 22px; height: 22px; object-fit: contain; }
+.standings-team-logo { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
 .standings-col-seed { color: var(--text-muted); font-weight: 700; }
 
 @media (max-width: 600px) {

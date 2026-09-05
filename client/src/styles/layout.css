@@ -20,15 +20,25 @@
 .logo-sub { font-size: 0.6rem; font-weight: 700; color: var(--text-muted); letter-spacing: 0.15em; text-transform: uppercase; }
 
 /* ── Site nav ── */
+/* 10 top-level links (grew from 4 as reference-site features shipped) stopped fitting one row well
+   before the 600px mobile breakpoint -- confirmed live at 768px, "League Leaders"/"Shot Zone
+   Leaders"/etc each wrapped internally onto 2-3 ragged-height lines. flex-wrap's default was never
+   going to look right with this many items at ANY width the nav doesn't fully fit, so the
+   horizontal-scroll treatment is unconditional here, not gated behind a media query -- if the nav
+   fits, overflow-x:auto renders no scrollbar at all; if it doesn't, at any viewport, it scrolls
+   instead of wrapping. */
 .site-nav {
-  display: flex; gap: 1.5rem;
+  display: flex; flex-wrap: nowrap; gap: 1.5rem;
   padding: 0 2rem; background: var(--surface); border-bottom: 1px solid var(--border);
+  overflow-x: auto; scrollbar-width: none;
 }
+.site-nav::-webkit-scrollbar { display: none; }
 .site-nav-link {
   display: inline-flex; align-items: center; min-height: var(--touch-target-min);
   color: var(--text-muted); font-size: 0.82rem; font-weight: 700;
   text-decoration: none; border-bottom: 2px solid transparent;
   transition: color 0.12s, border-color 0.12s;
+  flex-shrink: 0; white-space: nowrap;
 }
 .site-nav-link:hover { color: var(--text); }
 .site-nav-link.active { color: var(--accent); border-bottom-color: var(--accent); }
