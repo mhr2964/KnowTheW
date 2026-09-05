@@ -140,9 +140,30 @@ verify + push/deploy per feature, this doc updated after each ships.
    Verified fully live once the cold fetch completed: curl confirmed real, correct top performances
    for two different seasons, then claude-in-chrome confirmed the rendered page and a row's
    click-through to its exact box score.
-9. **All-time / career league leaders** — no existing helper sums a stat across a player's whole
-   career league-wide (existing career-total helpers in `advancedStats.js`/`per100Stats.js` sum one
-   player's own seasons only). Needs a new aggregation job pulling full season history per player.
+9. **All-time / career league leaders** — shipped 2026-09-05. New `/all-time-leaders` page (nav
+   link "All-Time Leaders"), career totals (PTS/REB/AST/STL/BLK) 2002-through-latest-completed-
+   season. Turned out much cheaper than expected: rather than a per-player full-history fetch (one
+   call per player, thousands of players -- too slow) or a per-game bulk scan like Feature 8's
+   (thousands of rows per season), this loops `getLeagueStatLines(year, 'Totals')` -- the same
+   lightweight, already-existing per-*season* bulk endpoint League Leaders already uses -- across
+   every year 2002-latestCompletedSeason() and sums. New `lib/careerLeaders.js` holds the
+   accumulation; a player whose career spans both the ESPN era and the BDL era merges under one
+   identity by resolving every BDL-era name to this site's ESPN id once, across all years combined
+   (not once per year). Deliberately caps at `latestCompletedSeason()`, not the in-progress season
+   -- same reproducibility reasoning that constant's own doc gives for percentile
+   distributions/fingerprints (a career total that jitters with every live game is worse than one
+   frozen to completed seasons). 1997-2001 isn't included -- that era lives only in the separate
+   hand-curated legacy-bulk dataset, with no live per-season stat-line API to loop over.
+   Caught and fixed a real display bug live: Totals mode is already an approximation (per-game
+   average × games played, not a true sum -- same method both providers' `mapLeagueStatLine`
+   functions already use), so summing it across 15+ seasons compounds into visible float noise
+   (e.g. `7894.590000000001`) -- fixed by rounding for display, since showing fake sub-point
+   precision on a career total would be worse than rounding an already-approximate number.
+   Verified live: the real result topped by Diana Taurasi at 9,850 career points across 16
+   seasons matches her actual real-world standing as the WNBA's all-time leading scorer --
+   a strong independent correctness check the math is right, not just internally consistent.
+   Confirmed via claude-in-chrome that the page renders correctly and a leader's row correctly
+   navigates to their real player page.
 10. **Franchise all-time leaders** — same aggregation as #9, scoped to one `team_id`.
 11. **Team-vs-team head-to-head record** — feasibility gated on a live check first: BDL's
     `/wnba/v1/games` `team_ids[]` param semantics (AND both teams in the same game, vs. OR either

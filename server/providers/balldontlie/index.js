@@ -61,6 +61,8 @@ const { withValidation } = require('../validation');
 const { aggregatePBPSummary } = require('../pbpAggregate');
 const { buildLeaderboards } = require('../../lib/leagueLeaders');
 const { resolveEspnIdByName } = require('../../lib/playerNameIndex');
+const { accumulateCareerTotals, buildCareerLeaderboards, CAREER_LEADERS_MIN_SEASON } = require('../../lib/careerLeaders');
+const { latestCompletedSeason } = require('../../lib/seasonWindow');
 
 const usesBdl = (year) => Number(year) >= BDL_MIN_SEASON;
 
@@ -146,6 +148,33 @@ class BallDontLieProvider extends SportsDataProvider {
     }
 
     return { season: Number(season), mode, categories: buildLeaderboards(withIds) };
+  }
+
+  // All-time / career leaders: loops this.getLeagueStatLines per season from the 2002 ESPN
+  // byathlete floor through the latest completed season (this facade's own dispatch already picks
+  // BDL or ESPN per year, same as every other season-conditional method here) and sums Totals
+  // mode across every season -- see lib/careerLeaders.js. Unique BDL names are resolved to this
+  // site's ESPN id ONCE across every season combined (not once per season), same batching
+  // discipline as getLeagueStatLeaders, since a career leader appears across many years.
+  async getCareerLeaders() {
+    const years = [];
+    for (let y = CAREER_LEADERS_MIN_SEASON; y <= latestCompletedSeason(); y++) years.push(y);
+
+    const perYear = await Promise.all(years.map(y => this.getLeagueStatLines(y, 'Totals')));
+    const flat = perYear.flat();
+
+    const bdlNames = new Set(flat.filter(e => e.bdlPlayerId != null).map(e => e.name));
+    const idByName = new Map(await Promise.all(
+      [...bdlNames].map(async name => [name, await resolveEspnIdByName(name)])
+    ));
+
+    const seasonEntries = flat.map(e => ({
+      canonicalId: e.espnId ?? idByName.get(e.name) ?? null,
+      name: e.name, teamAbbr: e.teamAbbr ?? null,
+      PTS: e.PTS, REB: e.REB, AST: e.AST, STL: e.STL, BLK: e.BLK,
+    }));
+
+    return { categories: buildCareerLeaderboards(accumulateCareerTotals(seasonEntries)) };
   }
 
   // --- Phase 1a: player game log, season-conditional ---

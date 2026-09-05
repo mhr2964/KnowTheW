@@ -16,6 +16,8 @@ const { SportsDataProvider } = require('../SportsDataProvider');
 const { withValidation } = require('../validation');
 const { aggregatePBPSummary } = require('../pbpAggregate');
 const { buildLeaderboards } = require('../../lib/leagueLeaders');
+const { accumulateCareerTotals, buildCareerLeaderboards, CAREER_LEADERS_MIN_SEASON } = require('../../lib/careerLeaders');
+const { latestCompletedSeason } = require('../../lib/seasonWindow');
 
 class EspnProvider extends SportsDataProvider {
   get name() { return 'espn'; }
@@ -93,6 +95,19 @@ class EspnProvider extends SportsDataProvider {
   getLeagueOdds() { return []; }
   getGameBoxScore() { return null; }
   getNotableGames(season) { return { season: Number(season), categories: [] }; }
+
+  // All-time / career leaders: same loop-and-sum approach as the BDL facade's version, but every
+  // entry already carries this site's canonical id (espnId) -- no name bridge needed.
+  async getCareerLeaders() {
+    const years = [];
+    for (let y = CAREER_LEADERS_MIN_SEASON; y <= latestCompletedSeason(); y++) years.push(y);
+    const perYear = await Promise.all(years.map(y => this.getLeagueStatLines(y, 'Totals')));
+    const seasonEntries = perYear.flat().map(e => ({
+      canonicalId: e.espnId ?? null, name: e.name, teamAbbr: null,
+      PTS: e.PTS, REB: e.REB, AST: e.AST, STL: e.STL, BLK: e.BLK,
+    }));
+    return { categories: buildCareerLeaderboards(accumulateCareerTotals(seasonEntries)) };
+  }
   getGamePbpStats(eventId, playerId, season) { return gameSummary.getGamePbpStats(eventId, playerId, season); }
   async getRegularSeasonEventIds(playerId, season, seasontype = 2) {
     const events = await gamelog.getGameLogEvents(playerId, season, seasontype);

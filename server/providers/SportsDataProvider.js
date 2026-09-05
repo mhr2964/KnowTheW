@@ -141,6 +141,15 @@ class SportsDataProvider {
    *  AST/STL/BLK), regular season only. BDL-only -- no ESPN equivalent exists (see
    *  notableGames.js). Empty categories for a pre-BDL season, not an error. */
   getNotableGames() { return this._notImplemented('getNotableGames'); }
+  /** getCareerLeaders() → {categories: [{key, label, leaders: [{playerId, name, teamAbbr, seasons,
+   *  value}]}]}. Career totals (PTS/REB/AST/STL/BLK) summed from Totals-mode getLeagueStatLines
+   *  across every season from 2002 (the ESPN byathlete floor) through latestCompletedSeason() --
+   *  the in-progress season is deliberately excluded, same reproducibility reasoning
+   *  latestCompletedSeason's own doc gives for percentile distributions/fingerprints (a career
+   *  total that jitters with every live game would be worse than one frozen to completed data).
+   *  1997-2001 (the separate legacy-bulk dataset) is not included -- no live per-season stat-line
+   *  API exists for that era. */
+  getCareerLeaders() { return this._notImplemented('getCareerLeaders'); }
   /** getGamePbpStats(eventId, playerId, season) → {fetched, onCourt, boxscore} (raw summary stays in
    *  provider). `season` is only used for the per-game cache's isPastSeason gate (gamePbpCache.js),
    *  not sent upstream -- safe to omit for a not-yet-cacheable (current-season) call. */

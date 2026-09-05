@@ -132,6 +132,18 @@ router.get('/league/notable-games', async (req, res) => {
   }
 });
 
+// All-time / career league leaders -- cross-cutting like the other /league/* routes. No season
+// param: always the full 2002-through-latest-completed-season sum (see getCareerLeaders's doc).
+router.get('/league/career-leaders', async (req, res) => {
+  try {
+    const result = await getProvider().getCareerLeaders();
+    res.json(result);
+  } catch (err) {
+    console.error('league/career-leaders:', err.message);
+    res.status(502).json({ error: 'failed to load career leaders' });
+  }
+});
+
 router.get('/status', (req, res) => {
   const activePlayers = getProvider().getActivePlayers();
   res.json({
