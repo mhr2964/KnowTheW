@@ -106,6 +106,18 @@ router.get('/league/injuries', async (req, res) => {
   }
 });
 
+// League-wide odds hub -- cross-cutting like the other /league/* routes above. BDL-only, no ESPN
+// equivalent. Upcoming window only (see leagueOdds.js) -- a past game's line is stale trivia.
+router.get('/league/odds', async (req, res) => {
+  try {
+    const result = await getProvider().getLeagueOdds();
+    res.json(result);
+  } catch (err) {
+    console.error('league/odds:', err.message);
+    res.status(502).json({ error: 'failed to load league odds' });
+  }
+});
+
 router.get('/status', (req, res) => {
   const activePlayers = getProvider().getActivePlayers();
   res.json({

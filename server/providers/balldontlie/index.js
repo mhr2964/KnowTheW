@@ -51,6 +51,7 @@ const bdlTeamFourFactors = require('./teamFourFactors');
 const bdlTeamShotChart = require('./teamShotChart');
 const bdlInjuries = require('./injuries');
 const bdlOdds = require('./odds');
+const bdlLeagueOdds = require('./leagueOdds');
 const idMap = require('./idMap');
 const { BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON, ADVANCED_RATINGS_MIN_SEASON } = require('./client');
 const { SportsDataProvider } = require('../SportsDataProvider');
@@ -243,6 +244,13 @@ class BallDontLieProvider extends SportsDataProvider {
   async getGameOdds(bdlGameIds) {
     const map = await bdlOdds.fetchOddsForGamesBdl(bdlGameIds);
     return Object.fromEntries(map);
+  }
+
+  // League-wide odds hub: the upcoming slate ITSELF is new here (TeamSchedulePage.jsx's existing
+  // odds attach only ever pulls one team's own schedule) -- see leagueOdds.js. No ESPN-id
+  // resolution needed, same reasoning as getGameOdds above.
+  getLeagueOdds() {
+    return bdlLeagueOdds.getLeagueOddsBdl();
   }
 
   // --- Standings: new data, not a migration -- distinct from getStandingsRaw above, which stays

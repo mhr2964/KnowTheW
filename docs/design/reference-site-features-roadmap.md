@@ -65,9 +65,21 @@ verify + push/deploy per feature, this doc updated after each ships.
    live (not a design decision, an observed BDL data quality issue): BDL's own player bio fields
    are unreliable on this endpoint (`weight: "Maryland"` on a real row -- clearly a college value
    in the wrong field), reinforcing why this site sources bio data from ESPN rather than BDL.
-5. **Odds/Betting hub** — `server/providers/balldontlie/odds.js` already calls `/odds` against an
-   explicit `game_ids[]` list (currently one team's schedule). New page hands it the full upcoming
-   slate instead.
+5. **Odds/Betting hub** — shipped 2026-09-05. New `/odds` page (nav link "Odds") over a new
+   `leagueOdds.js`: pulls the full league-wide upcoming slate (`/games`, 7-day window, no
+   `team_ids[]` filter -- genuinely new, `odds.js`'s existing fetch only ever took an
+   already-known game-id list from one team's own schedule) and hands those ids to `odds.js`'s
+   existing `fetchOddsForGamesBdl` unchanged. No player-id bridge needed here (odds are
+   game-scoped, not player-scoped). Caught two real issues live: (1) at ship time the league is
+   mid-schedule-gap (nearest game 2026-09-17, ~12 days out -- confirmed via a wider 30-day probe,
+   not a bug, likely a FIBA World Cup break per injury comments elsewhere) — the hub's empty state
+   ("No upcoming games in the next week") is what's actually correct right now, not a broken
+   feature; (2) the upcoming-slate fetch had no cache at all, unlike every other BDL fetch in this
+   provider — a fresh `/games` + `/odds` round trip on every single visitor, ~15-20s cold,
+   confirmed live via claude-in-chrome (page stuck on "Loading odds..." far longer than any other
+   page shipped this roadmap). Fixed with the same short `CURRENT_SEASON_TTL_MS` in-memory cache
+   the rest of this provider's live/current-season data already uses — confirmed the fix live
+   (cold request ~4s, cached repeat ~44ms).
 6. **Game Box Score page** — the structural gap: no `/game/:id` route exists at all, so Schedule
    and Game Log rows are dead ends. Assembles `games/{id}` (final score) + `player_stats` (both
    box lines) + `team_stats`, all already fetched elsewhere for other features. Bundles in the

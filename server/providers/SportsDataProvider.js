@@ -123,6 +123,11 @@ class SportsDataProvider {
    *  unlike other BDL methods). A game with no odds posted yet is simply absent from the result,
    *  not present with a null value. No ESPN equivalent exists. */
   getGameOdds() { return this._notImplemented('getGameOdds'); }
+  /** getLeagueOdds() → [{gameId, date, home:{id,abbreviation}, away:{id,abbreviation}, odds}] for
+   *  every real-franchise regular-season game in the upcoming window (see leagueOdds.js). `odds` is
+   *  null for a game with no line posted yet (unlike getGameOdds, which just omits it -- a hub
+   *  page needs to show every upcoming game, not only priced ones). No ESPN equivalent exists. */
+  getLeagueOdds() { return this._notImplemented('getLeagueOdds'); }
   /** getGamePbpStats(eventId, playerId, season) → {fetched, onCourt, boxscore} (raw summary stays in
    *  provider). `season` is only used for the per-game cache's isPastSeason gate (gamePbpCache.js),
    *  not sent upstream -- safe to omit for a not-yet-cacheable (current-season) call. */
