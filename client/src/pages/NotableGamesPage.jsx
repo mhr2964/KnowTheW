@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 import { getCurrentSeason } from '../lib/currentSeason';
-import { buildTeamLogoMap } from '../lib/teamLookup';
+import { buildTeamLogoMap, buildTeamNameMap } from '../lib/teamLookup';
 import TeamBadge from '../components/TeamBadge';
+import RankBadge from '../components/RankBadge';
 
 // Notable Games is BDL-only (see server/providers/balldontlie/notableGames.js -- ESPN's
 // percentile-system fetch has no per-game rows to scan pre-2008).
@@ -27,6 +28,7 @@ export default function NotableGamesPage({ teams }) {
   const [season, setSeason] = useState(getCurrentSeason());
   const [categoryKey, setCategoryKey] = useState('pts');
   const logoByAbbr = useMemo(() => buildTeamLogoMap(teams), [teams]);
+  const nameByAbbr = useMemo(() => buildTeamNameMap(teams), [teams]);
 
   useEffect(() => {
     setPageMeta('Notable Games — KnowTheW', 'The best single-game performances of the season in points, rebounds, assists, steals, and blocks.');
@@ -93,9 +95,9 @@ export default function NotableGamesPage({ teams }) {
                   className="standings-row"
                   onClick={() => navigate(`/game/${row.gameId}`)}
                 >
-                  <td>{i + 1}</td>
+                  <td><RankBadge rank={i + 1} /></td>
                   <td>{row.name}</td>
-                  <td className="standings-col-team"><TeamBadge abbr={row.teamAbbr} logoByAbbr={logoByAbbr} /></td>
+                  <td className="standings-col-team"><TeamBadge abbr={row.teamAbbr} logoByAbbr={logoByAbbr} nameByAbbr={nameByAbbr} /></td>
                   <td>{row.value}</td>
                   <td>{formatDate(row.date)}</td>
                 </tr>

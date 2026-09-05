@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 import { fmt } from '../components/BrefTable';
-import { buildTeamLogoMap } from '../lib/teamLookup';
+import { buildTeamLogoMap, buildTeamNameMap } from '../lib/teamLookup';
 import TeamBadge from '../components/TeamBadge';
 
 function formatDateTime(iso) {
@@ -127,6 +127,7 @@ export default function GameBoxScorePage({ teams }) {
   const navigate = useNavigate();
   const [view, setView] = useState('box');
   const logoByAbbr = useMemo(() => buildTeamLogoMap(teams), [teams]);
+  const nameByAbbr = useMemo(() => buildTeamNameMap(teams), [teams]);
 
   useEffect(() => {
     setPageMeta('Box Score — KnowTheW', 'Full WNBA game box score: final score, quarter-by-quarter breakdown, and both teams’ player stat lines.');
@@ -205,8 +206,8 @@ export default function GameBoxScorePage({ teams }) {
 
           {view === 'box' ? (
             <>
-              <TeamBox label={data.game.away.abbreviation} logo={logoByAbbr.get(data.game.away.abbreviation)} rows={data.boxScores.away} teamTotals={data.teamTotals.away} navigate={navigate} />
-              <TeamBox label={data.game.home.abbreviation} logo={logoByAbbr.get(data.game.home.abbreviation)} rows={data.boxScores.home} teamTotals={data.teamTotals.home} navigate={navigate} />
+              <TeamBox label={nameByAbbr.get(data.game.away.abbreviation) ?? data.game.away.abbreviation} logo={logoByAbbr.get(data.game.away.abbreviation)} rows={data.boxScores.away} teamTotals={data.teamTotals.away} navigate={navigate} />
+              <TeamBox label={nameByAbbr.get(data.game.home.abbreviation) ?? data.game.home.abbreviation} logo={logoByAbbr.get(data.game.home.abbreviation)} rows={data.boxScores.home} teamTotals={data.teamTotals.home} navigate={navigate} />
             </>
           ) : (
             <PlayByPlayFeed plays={data.plays} home={data.game.home.abbreviation} away={data.game.away.abbreviation} />

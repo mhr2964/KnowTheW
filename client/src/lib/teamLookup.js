@@ -8,3 +8,15 @@ export function buildTeamLogoMap(teams) {
   }
   return map;
 }
+
+// Abbreviation -> full team name ("Las Vegas Aces"), same source as buildTeamLogoMap. Used where
+// there's room for it (single-team leaderboard rows) -- StandingsPage's own team column already
+// shows the full name, not just the abbreviation, so this matches that established convention
+// rather than leaving every new page one notch less finished than the page it sits next to in nav.
+export function buildTeamNameMap(teams) {
+  const map = new Map();
+  for (const t of teams ?? []) {
+    if (t.abbreviation) map.set(t.abbreviation.toUpperCase(), t.name ?? null);
+  }
+  return map;
+}

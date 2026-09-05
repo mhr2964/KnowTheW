@@ -48,6 +48,22 @@
 .awards-player-link { cursor: pointer; color: var(--accent); }
 .awards-player-link:hover { text-decoration: underline; }
 
+/* Top-3 rank styling for leaderboard pages (League Leaders, Notable Games, All-Time Leaders) --
+   a small colored badge in place of a bare number, standard leaderboard convention this site's
+   tables were otherwise missing entirely. */
+.leaderboard-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  font-weight: 700;
+}
+.leaderboard-rank--1 { background: rgba(255, 215, 0, 0.18); color: #ffd700; }
+.leaderboard-rank--2 { background: rgba(192, 192, 192, 0.18); color: #c8c8c8; }
+.leaderboard-rank--3 { background: rgba(205, 127, 50, 0.18); color: #cd7f32; }
+
 /* Odds hub's two-team matchup cell (Odds Hub Page) -- .standings-col-team's flex layout already
    handles one team's logo+abbr; this just adds a muted "@" between the away and home pairs. */
 .odds-matchup-at { color: var(--text-muted); margin: 0 0.35rem; }

@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 import { getCurrentSeason } from '../lib/currentSeason';
-import { buildTeamLogoMap } from '../lib/teamLookup';
+import { buildTeamLogoMap, buildTeamNameMap } from '../lib/teamLookup';
 import TeamBadge from '../components/TeamBadge';
+import RankBadge from '../components/RankBadge';
 
 // ESPN's byathlete league-stats feed (this page's data source for seasons before BDL takes over)
 // only goes back to 2002 -- see docs/design/design.md's data-sources note (1997-2001 is a separate
@@ -30,6 +31,7 @@ export default function LeagueLeadersPage({ teams }) {
   const [mode, setMode] = useState('PerGame');
   const [categoryKey, setCategoryKey] = useState('PTS');
   const logoByAbbr = useMemo(() => buildTeamLogoMap(teams), [teams]);
+  const nameByAbbr = useMemo(() => buildTeamNameMap(teams), [teams]);
 
   useEffect(() => {
     setPageMeta('League Leaders — KnowTheW', 'League leaders in points, rebounds, assists, steals, blocks, and shooting percentages, by season.');
@@ -109,9 +111,9 @@ export default function LeagueLeadersPage({ teams }) {
                   className="standings-row"
                   onClick={() => row.playerId != null && navigate(`/player/${row.playerId}`)}
                 >
-                  <td>{i + 1}</td>
+                  <td><RankBadge rank={i + 1} /></td>
                   <td>{row.name}</td>
-                  <td className="standings-col-team"><TeamBadge abbr={row.teamAbbr} logoByAbbr={logoByAbbr} /></td>
+                  <td className="standings-col-team"><TeamBadge abbr={row.teamAbbr} logoByAbbr={logoByAbbr} nameByAbbr={nameByAbbr} /></td>
                   <td>{formatValue(category.key, row.value)}</td>
                 </tr>
               ))}
