@@ -7,7 +7,8 @@ export const LEFT_COLS = new Set(['SEASON_ID', 'TEAM_ABBREVIATION', 'date', 'opp
 
 // kind: 'num' (plain) | 'pct' (0-1 fraction, renders .XXX) | 'pct100' (0-1 internally, renders XX.X)
 // | 'date' (ISO date string, renders "Aug 12" — sorts correctly as a string since ISO order is
-// chronological order, so no separate sort-key/display-value split is needed).
+// chronological order, so no separate sort-key/display-value split is needed) | 'signed' (plain
+// integer, renders with a leading "+" for positive values, e.g. plus/minus).
 export function fmt(kind, val) {
   if (val === null || val === undefined || val === '') return '—';
   if (kind === 'pct') {
@@ -21,6 +22,10 @@ export function fmt(kind, val) {
   if (kind === 'date') {
     const d = new Date(val);
     return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  if (kind === 'signed') {
+    if (typeof val !== 'number') return '—';
+    return val > 0 ? `+${val}` : String(val);
   }
   if (typeof val === 'number' && !Number.isInteger(val)) return val.toFixed(1);
   return String(val);

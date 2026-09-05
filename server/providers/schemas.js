@@ -92,7 +92,7 @@ const PlayerBasics = z.object({
 const GameLogColumn = z.object({
   key: z.string(),
   label: z.string(),
-  kind: z.enum(['pct', 'num']),
+  kind: z.enum(['pct', 'num', 'signed']),
 });
 // Gamelog scores come from parseInt(), which yields NaN when a score field is absent — that's not
 // drift worth alarming on, so these tolerate NaN (unlike ScheduleEvent's real numeric score.value).

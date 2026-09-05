@@ -46,6 +46,7 @@ function buildStatsBag(row) {
     'freeThrowsMade-freeThrowsAttempted': `${ftm}-${fta}`,
     freeThrowPct: pct(ftm, fta),
     fouls: row.pf ?? 0,
+    plusMinus: row.plus_minus ?? 0,
   };
 }
 

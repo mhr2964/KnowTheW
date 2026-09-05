@@ -30,11 +30,14 @@ const LABELS = {
   'freeThrowsMade-freeThrowsAttempted': 'FT',
   freeThrowPct: 'FT%',
   fouls: 'PF',
+  plusMinus: '+/-',
 };
 const PCT_KEYS = new Set(['fieldGoalPct', 'threePointPct', 'freeThrowPct']);
+const SIGNED_KEYS = new Set(['plusMinus']);
 
 function columnFor(name) {
-  return { key: name, label: LABELS[name] ?? name, kind: PCT_KEYS.has(name) ? 'pct' : 'num' };
+  const kind = PCT_KEYS.has(name) ? 'pct' : SIGNED_KEYS.has(name) ? 'signed' : 'num';
+  return { key: name, label: LABELS[name] ?? name, kind };
 }
 
 /**

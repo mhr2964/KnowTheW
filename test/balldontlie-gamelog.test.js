@@ -46,6 +46,7 @@ test('buildStatsBag: maps BDL fields into the exact key set gameSplits.js expect
   assert.strictEqual(bag.blocks, 1);
   assert.strictEqual(bag.turnovers, 4);
   assert.strictEqual(bag.fouls, 2);
+  assert.strictEqual(bag.plusMinus, -7);
   assert.strictEqual(bag['fieldGoalsMade-fieldGoalsAttempted'], '11-22');
   assert.strictEqual(bag.fieldGoalPct, 50);
   assert.strictEqual(bag['threePointFieldGoalsMade-threePointFieldGoalsAttempted'], '1-3');
