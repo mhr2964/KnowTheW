@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 import { getCurrentSeason } from '../lib/currentSeason';
+import { buildTeamLogoMap } from '../lib/teamLookup';
+import TeamBadge from '../components/TeamBadge';
 
 // Notable Games is BDL-only (see server/providers/balldontlie/notableGames.js -- ESPN's
 // percentile-system fetch has no per-game rows to scan pre-2008).
@@ -20,10 +22,11 @@ function formatDate(iso) {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export default function NotableGamesPage() {
+export default function NotableGamesPage({ teams }) {
   const navigate = useNavigate();
   const [season, setSeason] = useState(getCurrentSeason());
   const [categoryKey, setCategoryKey] = useState('pts');
+  const logoByAbbr = useMemo(() => buildTeamLogoMap(teams), [teams]);
 
   useEffect(() => {
     setPageMeta('Notable Games — KnowTheW', 'The best single-game performances of the season in points, rebounds, assists, steals, and blocks.');
@@ -38,6 +41,7 @@ export default function NotableGamesPage() {
   return (
     <>
       <h1>Notable Games</h1>
+      <p className="status-msg">The top 10 single-game performances of the season. Click a row for that game&apos;s box score.</p>
 
       <div className="stat-season-bar" style={{ marginBottom: '0.75rem' }}>
         <select className="gl-select" value={season} onChange={e => setSeason(parseInt(e.target.value, 10))}>
@@ -77,7 +81,7 @@ export default function NotableGamesPage() {
               <tr>
                 <th>#</th>
                 <th>Player</th>
-                <th>Team</th>
+                <th className="standings-col-team">Team</th>
                 <th>{category.label}</th>
                 <th>Date</th>
               </tr>
@@ -91,7 +95,7 @@ export default function NotableGamesPage() {
                 >
                   <td>{i + 1}</td>
                   <td>{row.name}</td>
-                  <td>{row.teamAbbr ?? '—'}</td>
+                  <td className="standings-col-team"><TeamBadge abbr={row.teamAbbr} logoByAbbr={logoByAbbr} /></td>
                   <td>{row.value}</td>
                   <td>{formatDate(row.date)}</td>
                 </tr>

@@ -1,11 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
+import { buildTeamLogoMap } from '../lib/teamLookup';
+import TeamBadge from '../components/TeamBadge';
 
-export default function CareerLeadersPage() {
+export default function CareerLeadersPage({ teams }) {
   const navigate = useNavigate();
   const [categoryKey, setCategoryKey] = useState('PTS');
+  const logoByAbbr = useMemo(() => buildTeamLogoMap(teams), [teams]);
 
   useEffect(() => {
     setPageMeta('All-Time Leaders — KnowTheW', 'Career leaders in points, rebounds, assists, steals, and blocks, 2002-present.');
@@ -50,7 +53,7 @@ export default function CareerLeadersPage() {
               <tr>
                 <th>#</th>
                 <th>Player</th>
-                <th>Team</th>
+                <th className="standings-col-team">Team</th>
                 <th>Seasons</th>
                 <th>{category.label}</th>
               </tr>
@@ -64,7 +67,7 @@ export default function CareerLeadersPage() {
                 >
                   <td>{i + 1}</td>
                   <td>{row.name}</td>
-                  <td>{row.teamAbbr ?? '—'}</td>
+                  <td className="standings-col-team"><TeamBadge abbr={row.teamAbbr} logoByAbbr={logoByAbbr} /></td>
                   <td>{row.seasons}</td>
                   <td>{row.value.toLocaleString()}</td>
                 </tr>

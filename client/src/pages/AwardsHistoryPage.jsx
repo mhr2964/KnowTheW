@@ -28,6 +28,7 @@ export default function AwardsHistoryPage() {
   return (
     <>
       <h1>Awards History</h1>
+      <p className="status-msg">MVP, Finals MVP, Defensive POY, Rookie of the Year, Sixth Player, and All-WNBA First Team, by year. Click a name for that player&apos;s page.</p>
 
       {loading && <p className="status-msg">Loading awards history...</p>}
       {error && (
@@ -44,10 +45,10 @@ export default function AwardsHistoryPage() {
                 <th>Year</th>
                 <th>MVP</th>
                 <th>Finals MVP</th>
-                <th>Defensive POY</th>
-                <th>Rookie of the Year</th>
-                <th>Sixth Player</th>
-                <th>All-WNBA First Team</th>
+                <th>DPOY</th>
+                <th>ROY</th>
+                <th>6th Player</th>
+                <th className="awards-col-team-list">All-WNBA 1st Team</th>
               </tr>
             </thead>
             <tbody>
@@ -59,7 +60,7 @@ export default function AwardsHistoryPage() {
                   <PlayerCell entry={row.dpoy} navigate={navigate} />
                   <PlayerCell entry={row.roy} navigate={navigate} />
                   <PlayerCell entry={row.sixth} navigate={navigate} />
-                  <td>
+                  <td className="awards-col-team-list">
                     {row.allWnbaFirst.length === 0
                       ? '—'
                       : row.allWnbaFirst.map((entry, i) => (

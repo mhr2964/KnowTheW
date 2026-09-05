@@ -177,13 +177,13 @@ export default function App() {
           />
           <Route path="/standings" element={<StandingsPage />} />
           <Route path="/leaders" element={<ShotZoneLeadersPage />} />
-          <Route path="/league-leaders" element={<LeagueLeadersPage />} />
+          <Route path="/league-leaders" element={<LeagueLeadersPage teams={teams} />} />
           <Route path="/awards" element={<AwardsHistoryPage />} />
-          <Route path="/injuries" element={<InjuryReportPage />} />
-          <Route path="/odds" element={<OddsHubPage />} />
-          <Route path="/game/:id" element={<GameBoxScorePage />} />
-          <Route path="/notable-games" element={<NotableGamesPage />} />
-          <Route path="/all-time-leaders" element={<CareerLeadersPage />} />
+          <Route path="/injuries" element={<InjuryReportPage teams={teams} />} />
+          <Route path="/odds" element={<OddsHubPage teams={teams} />} />
+          <Route path="/game/:id" element={<GameBoxScorePage teams={teams} />} />
+          <Route path="/notable-games" element={<NotableGamesPage teams={teams} />} />
+          <Route path="/all-time-leaders" element={<CareerLeadersPage teams={teams} />} />
           <Route
             path="/team/:slug"
             element={

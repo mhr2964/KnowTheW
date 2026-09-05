@@ -1,11 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 import InjuryPill from '../components/InjuryPill';
+import { buildTeamLogoMap } from '../lib/teamLookup';
+import TeamBadge from '../components/TeamBadge';
 
-export default function InjuryReportPage() {
+export default function InjuryReportPage({ teams }) {
   const navigate = useNavigate();
+  const logoByAbbr = useMemo(() => buildTeamLogoMap(teams), [teams]);
 
   useEffect(() => {
     setPageMeta('Injury Report — KnowTheW', 'Current WNBA player injuries league-wide, with status and estimated return.');
@@ -17,6 +20,9 @@ export default function InjuryReportPage() {
   return (
     <>
       <h1>Injury Report</h1>
+      {!loading && !error && data?.length > 0 && (
+        <p className="status-msg">{data.length} player{data.length === 1 ? '' : 's'} currently listed league-wide.</p>
+      )}
 
       {loading && <p className="status-msg">Loading injury report...</p>}
       {error && (
@@ -34,7 +40,7 @@ export default function InjuryReportPage() {
             <thead>
               <tr>
                 <th>Player</th>
-                <th>Team</th>
+                <th className="standings-col-team">Team</th>
                 <th>Status</th>
                 <th>Est. Return</th>
                 <th>Notes</th>
@@ -48,7 +54,7 @@ export default function InjuryReportPage() {
                   onClick={() => row.playerId != null && navigate(`/player/${row.playerId}`)}
                 >
                   <td>{row.playerName}</td>
-                  <td>{row.teamAbbr ?? '—'}</td>
+                  <td className="standings-col-team"><TeamBadge abbr={row.teamAbbr} logoByAbbr={logoByAbbr} /></td>
                   <td><InjuryPill injury={row} /></td>
                   <td>{row.returnDate ?? '—'}</td>
                   <td className="injury-report-comment">{row.comment ?? '—'}</td>

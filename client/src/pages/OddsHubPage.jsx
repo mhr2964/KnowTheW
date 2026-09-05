@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
+import { buildTeamLogoMap } from '../lib/teamLookup';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -22,17 +23,19 @@ function formatSpread(spread) {
   return Number(spread.home) > 0 ? `+${spread.home}` : String(spread.home);
 }
 
-export default function OddsHubPage() {
+export default function OddsHubPage({ teams }) {
   useEffect(() => {
     setPageMeta('Odds — KnowTheW', 'Upcoming WNBA game lines: spread and over/under, one representative sportsbook per game.');
     return resetPageMeta;
   }, []);
 
   const { data, loading, error, refetch } = useLazyFetch('/api/league/odds', true);
+  const logoByAbbr = useMemo(() => buildTeamLogoMap(teams), [teams]);
 
   return (
     <>
       <h1>Odds</h1>
+      <p className="status-msg">Upcoming games in the next 7 days, with the line from one representative sportsbook.</p>
 
       {loading && <p className="status-msg">Loading odds...</p>}
       {error && (
@@ -50,8 +53,8 @@ export default function OddsHubPage() {
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Matchup</th>
-                <th>Line</th>
+                <th className="standings-col-team">Matchup</th>
+                <th>Line (Home)</th>
                 <th>O/U</th>
               </tr>
             </thead>
@@ -59,7 +62,13 @@ export default function OddsHubPage() {
               {data.map(game => (
                 <tr key={game.gameId}>
                   <td>{formatDate(game.date)} {formatTime(game.date)}</td>
-                  <td>{game.away.abbreviation} @ {game.home.abbreviation}</td>
+                  <td className="standings-col-team odds-matchup">
+                    {logoByAbbr.get(game.away.abbreviation) && <img src={logoByAbbr.get(game.away.abbreviation)} alt="" className="standings-team-logo" />}
+                    <span>{game.away.abbreviation}</span>
+                    <span className="odds-matchup-at">@</span>
+                    {logoByAbbr.get(game.home.abbreviation) && <img src={logoByAbbr.get(game.home.abbreviation)} alt="" className="standings-team-logo" />}
+                    <span>{game.home.abbreviation}</span>
+                  </td>
                   <td title={game.odds ? `Odds via ${game.odds.vendor}` : undefined}>
                     {game.odds ? formatSpread(game.odds.spread) : '—'}
                   </td>

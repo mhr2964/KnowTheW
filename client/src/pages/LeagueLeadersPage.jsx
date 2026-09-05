@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 import { getCurrentSeason } from '../lib/currentSeason';
+import { buildTeamLogoMap } from '../lib/teamLookup';
+import TeamBadge from '../components/TeamBadge';
 
 // ESPN's byathlete league-stats feed (this page's data source for seasons before BDL takes over)
 // only goes back to 2002 -- see docs/design/design.md's data-sources note (1997-2001 is a separate
@@ -22,11 +24,12 @@ function formatValue(key, value) {
   return PCT_KEYS.has(key) ? `${(value * 100).toFixed(1)}%` : value.toFixed(1);
 }
 
-export default function LeagueLeadersPage() {
+export default function LeagueLeadersPage({ teams }) {
   const navigate = useNavigate();
   const [season, setSeason] = useState(getCurrentSeason());
   const [mode, setMode] = useState('PerGame');
   const [categoryKey, setCategoryKey] = useState('PTS');
+  const logoByAbbr = useMemo(() => buildTeamLogoMap(teams), [teams]);
 
   useEffect(() => {
     setPageMeta('League Leaders — KnowTheW', 'League leaders in points, rebounds, assists, steals, blocks, and shooting percentages, by season.');
@@ -41,6 +44,7 @@ export default function LeagueLeadersPage() {
   return (
     <>
       <h1>League Leaders</h1>
+      <p className="status-msg">Top 10 in each category, by season.</p>
 
       <div className="stat-season-bar" style={{ marginBottom: '0.75rem' }}>
         <select className="gl-select" value={season} onChange={e => setSeason(parseInt(e.target.value, 10))}>
@@ -94,7 +98,7 @@ export default function LeagueLeadersPage() {
               <tr>
                 <th>#</th>
                 <th>Player</th>
-                <th>Team</th>
+                <th className="standings-col-team">Team</th>
                 <th>{category.label}</th>
               </tr>
             </thead>
@@ -107,7 +111,7 @@ export default function LeagueLeadersPage() {
                 >
                   <td>{i + 1}</td>
                   <td>{row.name}</td>
-                  <td>{row.teamAbbr ?? '—'}</td>
+                  <td className="standings-col-team"><TeamBadge abbr={row.teamAbbr} logoByAbbr={logoByAbbr} /></td>
                   <td>{formatValue(category.key, row.value)}</td>
                 </tr>
               ))}

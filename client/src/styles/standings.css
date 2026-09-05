@@ -48,10 +48,20 @@
 .awards-player-link { cursor: pointer; color: var(--accent); }
 .awards-player-link:hover { text-decoration: underline; }
 
+/* Odds hub's two-team matchup cell (Odds Hub Page) -- .standings-col-team's flex layout already
+   handles one team's logo+abbr; this just adds a muted "@" between the away and home pairs. */
+.odds-matchup-at { color: var(--text-muted); margin: 0 0.35rem; }
+
 /* Injury Report's free-text comment column -- .standings-table td's default nowrap/right-align
    would render a full sentence as one unreadably wide, scroll-only row. Selector scoped to match
    .standings-table td's own specificity (a bare .injury-report-comment class loses that fight). */
 .standings-table td.injury-report-comment { text-align: left; white-space: normal; max-width: 28rem; }
+
+/* Awards History's All-WNBA First Team column -- 5 comma-separated names under .standings-table
+   td's default nowrap forced one unreadably wide row (the whole table overflowed the viewport
+   with no visible scroll cue). Wrapping keeps the column to a fixed, reasonable width instead. */
+.standings-table th.awards-col-team-list,
+.standings-table td.awards-col-team-list { text-align: left; white-space: normal; max-width: 16rem; }
 
 .standings-col-team {
   text-align: left;
@@ -69,6 +79,16 @@
      elsewhere on the site (e.g. BrefTable's .bref-col-low-priority). */
   .standings-col-split { display: none; }
 }
+
+/* Game Box Score's team-identity chrome (GameBoxScorePage.jsx) -- larger logo than the inline
+   table badges (.standings-team-logo), since these sit next to page/section headings. */
+.box-score-matchup-header, .box-score-team-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.box-score-header-logo { width: 32px; height: 32px; object-fit: contain; }
+.box-score-team-header .standings-team-logo { width: 26px; height: 26px; }
 
 /* Game Box Score's Play-by-Play tab (GameBoxScorePage.jsx). */
 .pbp-period { margin-bottom: var(--space-6); }

@@ -1,18 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 import { fmt } from '../components/BrefTable';
+import { buildTeamLogoMap } from '../lib/teamLookup';
+import TeamBadge from '../components/TeamBadge';
 
 function formatDateTime(iso) {
   const d = new Date(iso);
   return d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-function TeamBox({ label, rows, teamTotals, navigate }) {
+function TeamBox({ label, logo, rows, teamTotals, navigate }) {
   return (
     <div className="standings-group">
-      <h3>{label}</h3>
+      <h3 className="box-score-team-header">
+        {logo && <img src={logo} alt="" className="standings-team-logo" />}
+        {label}
+      </h3>
       <div className="standings-table-wrap">
         <table className="standings-table">
           <thead>
@@ -117,10 +122,11 @@ function PlayByPlayFeed({ plays, home, away }) {
   );
 }
 
-export default function GameBoxScorePage() {
+export default function GameBoxScorePage({ teams }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [view, setView] = useState('box');
+  const logoByAbbr = useMemo(() => buildTeamLogoMap(teams), [teams]);
 
   useEffect(() => {
     setPageMeta('Box Score — KnowTheW', 'Full WNBA game box score: final score, quarter-by-quarter breakdown, and both teams’ player stat lines.');
@@ -147,26 +153,32 @@ export default function GameBoxScorePage() {
       )}
       {!loading && !error && data && (
         <>
-          <h1>{data.game.away.abbreviation} @ {data.game.home.abbreviation}</h1>
+          <h1 className="box-score-matchup-header">
+            {logoByAbbr.get(data.game.away.abbreviation) && <img src={logoByAbbr.get(data.game.away.abbreviation)} alt="" className="box-score-header-logo" />}
+            {data.game.away.abbreviation}
+            <span className="odds-matchup-at">@</span>
+            {logoByAbbr.get(data.game.home.abbreviation) && <img src={logoByAbbr.get(data.game.home.abbreviation)} alt="" className="box-score-header-logo" />}
+            {data.game.home.abbreviation}
+          </h1>
           <p className="status-msg">{formatDateTime(data.game.date)}</p>
 
           <div className="standings-table-wrap" style={{ marginBottom: '1.5rem' }}>
             <table className="standings-table">
               <thead>
                 <tr>
-                  <th>Team</th>
+                  <th className="standings-col-team">Team</th>
                   {data.quarterScores.map(q => <th key={q.period}>{q.period <= 4 ? `Q${q.period}` : `OT${q.period - 4}`}</th>)}
                   <th>Final</th>
                 </tr>
               </thead>
               <tbody>
                 <tr className="standings-row" style={{ cursor: 'default' }}>
-                  <td>{data.game.away.abbreviation}</td>
+                  <td className="standings-col-team"><TeamBadge abbr={data.game.away.abbreviation} logoByAbbr={logoByAbbr} /></td>
                   {data.quarterScores.map(q => <td key={q.period}>{q.away}</td>)}
                   <td style={{ fontWeight: 700 }}>{data.game.away.score}</td>
                 </tr>
                 <tr className="standings-row" style={{ cursor: 'default' }}>
-                  <td>{data.game.home.abbreviation}</td>
+                  <td className="standings-col-team"><TeamBadge abbr={data.game.home.abbreviation} logoByAbbr={logoByAbbr} /></td>
                   {data.quarterScores.map(q => <td key={q.period}>{q.home}</td>)}
                   <td style={{ fontWeight: 700 }}>{data.game.home.score}</td>
                 </tr>
@@ -193,8 +205,8 @@ export default function GameBoxScorePage() {
 
           {view === 'box' ? (
             <>
-              <TeamBox label={data.game.away.abbreviation} rows={data.boxScores.away} teamTotals={data.teamTotals.away} navigate={navigate} />
-              <TeamBox label={data.game.home.abbreviation} rows={data.boxScores.home} teamTotals={data.teamTotals.home} navigate={navigate} />
+              <TeamBox label={data.game.away.abbreviation} logo={logoByAbbr.get(data.game.away.abbreviation)} rows={data.boxScores.away} teamTotals={data.teamTotals.away} navigate={navigate} />
+              <TeamBox label={data.game.home.abbreviation} logo={logoByAbbr.get(data.game.home.abbreviation)} rows={data.boxScores.home} teamTotals={data.teamTotals.home} navigate={navigate} />
             </>
           ) : (
             <PlayByPlayFeed plays={data.plays} home={data.game.home.abbreviation} away={data.game.away.abbreviation} />
