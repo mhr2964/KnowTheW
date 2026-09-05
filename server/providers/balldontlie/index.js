@@ -56,6 +56,7 @@ const { BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON, ADVANCED_RATINGS_MIN_SEASON } = r
 const { SportsDataProvider } = require('../SportsDataProvider');
 const { withValidation } = require('../validation');
 const { aggregatePBPSummary } = require('../pbpAggregate');
+const { buildLeaderboards } = require('../../lib/leagueLeaders');
 
 const usesBdl = (year) => Number(year) >= BDL_MIN_SEASON;
 
@@ -111,6 +112,29 @@ class BallDontLieProvider extends SportsDataProvider {
   }
   getPlayerSeasonAverages(playerId) {
     return bdlLeagueStats.getPlayerSeasonAveragesBdl(playerId);
+  }
+
+  // League Leaders: ranks the same qualified entries getLeagueStatLines already produces (see
+  // leagueLeaders.js) rather than a new bulk fetch. BDL rows carry no ESPN id at the endpoint --
+  // bridged by name via idMap.js's resolveEspnIdByName, same once-per-unique-name batching
+  // getLeagueShotZoneLeaders uses (a stat leader can lead multiple categories). ESPN rows already
+  // carry this site's canonical id (espnId), no bridge needed.
+  async getLeagueStatLeaders(season, mode) {
+    const entries = await this.getLeagueStatLines(season, mode);
+    if (!entries.length) return { season: Number(season), mode, categories: [] };
+
+    let withIds;
+    if (usesBdl(season)) {
+      const uniqueNames = new Set(entries.map(e => e.name).filter(Boolean));
+      const idByName = new Map(await Promise.all(
+        [...uniqueNames].map(async name => [name, await idMap.resolveEspnIdByName(name)])
+      ));
+      withIds = entries.map(e => ({ ...e, playerId: idByName.get(e.name) ?? null }));
+    } else {
+      withIds = entries.map(e => ({ ...e, playerId: e.espnId ?? null }));
+    }
+
+    return { season: Number(season), mode, categories: buildLeaderboards(withIds) };
   }
 
   // --- Phase 1a: player game log, season-conditional ---

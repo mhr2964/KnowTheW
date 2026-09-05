@@ -15,6 +15,7 @@ const leagueStats = require('./leagueStats');
 const { SportsDataProvider } = require('../SportsDataProvider');
 const { withValidation } = require('../validation');
 const { aggregatePBPSummary } = require('../pbpAggregate');
+const { buildLeaderboards } = require('../../lib/leagueLeaders');
 
 class EspnProvider extends SportsDataProvider {
   get name() { return 'espn'; }
@@ -121,6 +122,15 @@ class EspnProvider extends SportsDataProvider {
   getLeagueReboundFoulStats(season) { return leagueStats.getLeagueReboundFoulStats(season); }
   getPlayerSeasonAverages(playerId) { return leagueStats.getPlayerSeasonAverages(playerId); }
   getLeaguePlayerIndex(seasons) { return leagueStats.getLeaguePlayerIndex(seasons); }
+
+  // League Leaders: ESPN rows already carry this site's canonical id (espnId, see
+  // mapLeagueStatLine) -- no BDL name-bridge needed here, unlike balldontlie/index.js's version.
+  async getLeagueStatLeaders(season, mode) {
+    const entries = await this.getLeagueStatLines(season, mode);
+    if (!entries.length) return { season: Number(season), mode, categories: [] };
+    const withIds = entries.map(e => ({ ...e, playerId: e.espnId ?? null }));
+    return { season: Number(season), mode, categories: buildLeaderboards(withIds) };
+  }
 
   // --- Active players (source-neutral list/lookup of the current player pool) ---
   // ESPN serves these from its startup-prefetch caches; that's an implementation detail.

@@ -25,7 +25,7 @@ const ATHLETE = {
 
 test('mapLeagueStatLine — PerGame', () => {
   assert.deepStrictEqual(mapLeagueStatLine(ATHLETE, 'PerGame'), {
-    pos: 'G', PTS: 20, REB: 8, AST: 6, STL: 2, BLK: 1,
+    pos: 'G', espnId: null, name: null, PTS: 20, REB: 8, AST: 6, STL: 2, BLK: 1,
     FG_PCT: 0.5, FG3_PCT: 0.4, FT_PCT: 0.8, TOV: 3,
     PF: null, OREB: null, DREB: null,
     FGM: 7, FGA: 15, FG3M: 2, FG3A: 5, FTM: 4, FTA: 5, MIN: 32,
@@ -34,7 +34,7 @@ test('mapLeagueStatLine — PerGame', () => {
 
 test('mapLeagueStatLine — Totals (per-game x GP, PTS from off[0])', () => {
   assert.deepStrictEqual(mapLeagueStatLine(ATHLETE, 'Totals'), {
-    pos: 'G', PTS: 600, REB: 240, AST: 180, STL: 60, BLK: 30,
+    pos: 'G', espnId: null, name: null, PTS: 600, REB: 240, AST: 180, STL: 60, BLK: 30,
     FG_PCT: 0.5, FG3_PCT: 0.4, FT_PCT: 0.8, TOV: 90,
     PF: null, OREB: null, DREB: null,
     FGM: 210, FGA: 450, FG3M: 60, FG3A: 150, FTM: 120, FTA: 150, MIN: 960,
@@ -43,7 +43,7 @@ test('mapLeagueStatLine — Totals (per-game x GP, PTS from off[0])', () => {
 
 test('mapLeagueStatLine — Per36 (per-game x 36/MPG)', () => {
   assert.deepStrictEqual(mapLeagueStatLine(ATHLETE, 'Per36'), {
-    pos: 'G', PTS: 22.5, REB: 9, AST: 6.75, STL: 2.25, BLK: 1.125,
+    pos: 'G', espnId: null, name: null, PTS: 22.5, REB: 9, AST: 6.75, STL: 2.25, BLK: 1.125,
     FG_PCT: 0.5, FG3_PCT: 0.4, FT_PCT: 0.8, TOV: 3.375,
     PF: null, OREB: null, DREB: null,
     FGM: 7.875, FGA: 16.875, FG3M: 2.25, FG3A: 5.625, FTM: 4.5, FTA: 5.625, MIN: 960,

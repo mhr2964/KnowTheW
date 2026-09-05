@@ -63,6 +63,23 @@ router.get('/league/shot-zone-leaders', async (req, res) => {
   }
 });
 
+// League stat leaders (PTS/REB/AST/etc top-10, standard box-score categories) -- cross-cutting like
+// /search and /league/shot-zone-leaders above. Works back to 2002 (ESPN's byathlete floor, see
+// docs/design/design.md's data-sources note) unlike the shot-zone board's 2022 BDL-only floor.
+router.get('/league/leaders', async (req, res) => {
+  const season = parseInt(req.query.season, 10);
+  if (!Number.isFinite(season)) return res.status(400).json({ error: 'season is required' });
+  const mode = req.query.mode === 'Totals' ? 'Totals' : 'PerGame';
+
+  try {
+    const result = await getProvider().getLeagueStatLeaders(season, mode);
+    res.json(result);
+  } catch (err) {
+    console.error(`league/leaders season=${season}:`, err.message);
+    res.status(502).json({ error: 'failed to load league leaders' });
+  }
+});
+
 router.get('/status', (req, res) => {
   const activePlayers = getProvider().getActivePlayers();
   res.json({

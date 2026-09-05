@@ -23,9 +23,24 @@ verify + push/deploy per feature, this doc updated after each ships.
    shape-drift validator caught the new kind as an unexpected value on the very first live request,
    confirming that guard actually works. Verified live against A'ja Wilson's 2025 game log
    (real values: -22 on a loss, +19/+33 on wins).
-2. **League Leaders page** — new page sorting the player pool `percentileClient.js`'s
-   `getLeagueStatLines(season, mode)` already pulls per season, descending per stat (PTS/REB/AST/
-   STL/BLK/etc). No new fetches.
+2. **League Leaders page** — shipped 2026-09-05. New `/league-leaders` page (nav link "League
+   Leaders", alongside the existing "Shot Zone Leaders") ranking the same qualified entries
+   `getLeagueStatLines(season, mode)` already produces for the percentile system -- no new bulk
+   fetch. Both providers' `mapLeagueStatLine`/`mapBdlLeagueStatLine` now carry identity
+   (name/teamAbbr/bdlPlayerId for BDL, name/espnId for ESPN) alongside the stat values, since the
+   existing function was percentile-math-only and stripped it; the extra fields are inert for that
+   consumer (it only ever plucks named `PERCENTILE_STATS` keys). New shared `lib/leagueLeaders.js`
+   does the ranking; BDL rows get bridged to this site's ESPN id by name via `idMap.js`'s
+   `resolveEspnIdByName` (same pattern `getLeagueShotZoneLeaders` already established), batched
+   once per unique name. Categories: PTS/REB/AST/STL/BLK/FG%/3P%/FT%, top 10, PerGame or Totals.
+   Works back to 2002 (ESPN's byathlete floor); pre-2008 (true ESPN path, before `BDL_MIN_SEASON`)
+   has no team abbreviation since ESPN's byathlete feed carries no team field -- renders "—",
+   same convention as any other missing team elsewhere on the site. Verified live via curl against
+   both the BDL-backed 2015/2025 seasons and the pre-2008 ESPN-only 2005 season (real, correctly
+   ranked historical leaders in each) -- Playwright/browser tooling was unavailable this session
+   (disconnected after an unrelated stray-process cleanup and didn't reconnect), so the client
+   rendering itself rode on a clean lint+build plus reusing Shot Zone Leaders' exact proven
+   structure/CSS classes, not a live screenshot; worth a quick visual pass next session.
 3. **Awards History hub** — `server/constants/wnbaAccolades.js` already has a full year-by-year
    MVP/DPOY/ROY/Finals MVP/Sixth Player/All-WNBA dataset, currently consumed only by Compare page
    verdict chips. New standalone page surfacing it by year/category.

@@ -162,7 +162,10 @@ class SportsDataProvider {
   getPlayerSeasonDefense() { return this._notImplemented('getPlayerSeasonDefense'); }
 
   // --- League-wide stats (percentile system) ---
-  /** getLeagueStatLines(season, mode) → normalized {pos, PTS, ...} entries for qualified players. */
+  /** getLeagueStatLines(season, mode) → normalized {pos, PTS, ..., name, teamAbbr, bdlPlayerId|espnId}
+   *  entries for qualified players. The identity fields (name/teamAbbr/bdlPlayerId or espnId) ride
+   *  along for getLeagueStatLeaders below -- percentileClient.js's distribution builder only ever
+   *  plucks the named stat keys off this object, so they're inert for that consumer. */
   getLeagueStatLines() { return this._notImplemented('getLeagueStatLines'); }
   /** getLeagueReboundFoulStats(season) → [{pos, gp, mpg, OREB, DREB, PF}] for distribution enrichment. */
   getLeagueReboundFoulStats() { return this._notImplemented('getLeagueReboundFoulStats'); }
@@ -170,6 +173,10 @@ class SportsDataProvider {
   getPlayerSeasonAverages() { return this._notImplemented('getPlayerSeasonAverages'); }
   /** getLeaguePlayerIndex(seasons) → deduped [{id, name, position, headshot}] for the search index. */
   getLeaguePlayerIndex() { return this._notImplemented('getLeaguePlayerIndex'); }
+  /** getLeagueStatLeaders(season, mode) → { season, mode, categories: [{key, label, leaders:
+   *  [{playerId, name, teamAbbr, value}]}] }, top-N per category (see lib/leagueLeaders.js). Reuses
+   *  getLeagueStatLines's already-qualified entries -- no separate bulk fetch. */
+  getLeagueStatLeaders() { return this._notImplemented('getLeagueStatLeaders'); }
 
   // --- Active players (source-neutral: list/look up the current player pool) ---
   /** getActivePlayers() → import('./types').RosterPlayer[] for the current pool (active-player search). */

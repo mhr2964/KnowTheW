@@ -17,7 +17,8 @@ const {
 
 // Real row shape confirmed live (Alyssa Thomas, /player_season_stats?season=2025, 2026-08-20 spike).
 const REAL_SEASON_ROW = {
-  player: { id: 373, position_abbreviation: 'F' },
+  player: { id: 373, first_name: 'Alyssa', last_name: 'Thomas', position_abbreviation: 'F' },
+  team: { abbreviation: 'CONN' },
   season: 2025, season_type: 2,
   games_played: 39, min: 31.31,
   fgm: 6.18, fga: 11.62, fg_pct: 53.2,
@@ -38,6 +39,9 @@ test('mapBdlLeagueStatLine: PerGame mode reads BDL fields directly, pct fields s
   assert.strictEqual(line.OREB, null);
   assert.strictEqual(line.DREB, null);
   assert.strictEqual(line.PF, null);
+  assert.strictEqual(line.bdlPlayerId, 373);
+  assert.strictEqual(line.name, 'Alyssa Thomas');
+  assert.strictEqual(line.teamAbbr, 'CONN');
 });
 
 test('mapBdlLeagueStatLine: Totals mode multiplies per-game by games_played', () => {

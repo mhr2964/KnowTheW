@@ -8,6 +8,7 @@ import HomePage from './pages/HomePage';
 import TeamsPage from './pages/TeamsPage';
 import StandingsPage from './pages/StandingsPage';
 import ShotZoneLeadersPage from './pages/ShotZoneLeadersPage';
+import LeagueLeadersPage from './pages/LeagueLeadersPage';
 import TeamPage from './pages/TeamPage';
 import TeamDashboard from './pages/TeamDashboard';
 import TeamRosterPage from './pages/TeamRosterPage';
@@ -141,6 +142,7 @@ export default function App() {
         <NavLink to="/" end className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>Home</NavLink>
         <NavLink to="/teams" className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>Teams</NavLink>
         <NavLink to="/standings" className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>Standings</NavLink>
+        <NavLink to="/league-leaders" className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>League Leaders</NavLink>
         <NavLink to="/leaders" className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>Shot Zone Leaders</NavLink>
       </nav>
 
@@ -164,6 +166,7 @@ export default function App() {
           />
           <Route path="/standings" element={<StandingsPage />} />
           <Route path="/leaders" element={<ShotZoneLeadersPage />} />
+          <Route path="/league-leaders" element={<LeagueLeadersPage />} />
           <Route
             path="/team/:slug"
             element={

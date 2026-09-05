@@ -75,7 +75,17 @@ function mapBdlLeagueStatLine(row, mode) {
   const ftPct = row.ft_pct != null ? row.ft_pct / 100 : null;
   // OREB/DREB/PF aren't on this endpoint -- left null here, same as ESPN's own mapLeagueStatLine,
   // filled in separately by getLeagueReboundFoulStatsBdl via percentileClient's enrichment pass.
-  const base = { pos, FG_PCT: fgPct, FG3_PCT: fg3Pct, FT_PCT: ftPct, PF: null, OREB: null, DREB: null };
+  // bdlPlayerId/name/teamAbbr are identity, not percentile inputs -- percentileClient.js's
+  // PERCENTILE_STATS-driven distribution builder only ever plucks named stat keys off this object,
+  // so these extra fields ride along harmlessly for the one consumer that does need identity:
+  // leagueStatLeaders.js's League Leaders board (BDL rows carry no ESPN id, bridged there by name
+  // via idMap.js's resolveEspnIdByName, same pattern getLeagueShotZoneLeaders already uses).
+  const base = {
+    pos, FG_PCT: fgPct, FG3_PCT: fg3Pct, FT_PCT: ftPct, PF: null, OREB: null, DREB: null,
+    bdlPlayerId: row.player?.id ?? null,
+    name: `${row.player?.first_name ?? ''} ${row.player?.last_name ?? ''}`.trim(),
+    teamAbbr: row.team?.abbreviation ?? null,
+  };
 
   if (mode === 'PerGame') {
     return { ...base,

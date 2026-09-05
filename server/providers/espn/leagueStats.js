@@ -122,8 +122,13 @@ function mapLeagueStatLine(a, mode = 'PerGame') {
   const fg3Pct = off[7]  != null ? off[7]  / 100 : null;
   const ftPct  = off[10] != null ? off[10] / 100 : null;
 
+  // espnId/name are identity, not percentile inputs -- see the matching comment on BDL's
+  // mapBdlLeagueStatLine (leagueStats.js) for why riding them along on this object is safe. ESPN
+  // rows are already the site's canonical id, so League Leaders needs no id bridge for these.
+  const identity = { espnId: a.athlete?.id ?? null, name: a.athlete?.displayName ?? null };
+
   if (mode === 'PerGame') {
-    return { pos,
+    return { pos, ...identity,
       PTS: pgPTS, REB: pgREB, AST: pgAST, STL: pgSTL, BLK: pgBLK,
       FG_PCT: fgPct, FG3_PCT: fg3Pct, FT_PCT: ftPct, TOV: pgTOV,
       PF: null, OREB: null, DREB: null,
@@ -133,7 +138,7 @@ function mapLeagueStatLine(a, mode = 'PerGame') {
 
   if (mode === 'Totals') {
     const t = v => (v !== null && v !== undefined) ? v * gp : null;
-    return { pos,
+    return { pos, ...identity,
       PTS: off[0] ?? null, REB: t(pgREB), AST: t(pgAST), STL: t(pgSTL), BLK: t(pgBLK),
       FG_PCT: fgPct, FG3_PCT: fg3Pct, FT_PCT: ftPct, TOV: t(pgTOV),
       PF: null, OREB: null, DREB: null,
@@ -145,7 +150,7 @@ function mapLeagueStatLine(a, mode = 'PerGame') {
   // Per36
   const scale = 36 / mpg;
   const p36 = v => (v !== null && v !== undefined) ? v * scale : null;
-  return { pos,
+  return { pos, ...identity,
     PTS: p36(pgPTS), REB: p36(pgREB), AST: p36(pgAST), STL: p36(pgSTL), BLK: p36(pgBLK),
     FG_PCT: fgPct, FG3_PCT: fg3Pct, FT_PCT: ftPct, TOV: p36(pgTOV),
     PF: null, OREB: null, DREB: null,
