@@ -112,9 +112,34 @@ verify + push/deploy per feature, this doc updated after each ships.
    highlighted, running score shown per play. Verified live: curl confirmed the play feed against
    the same real game as Feature 6 (412 plays, correctly ordered, real descriptions), then
    claude-in-chrome confirmed the rendered tab matches exactly.
-8. **Notable games / single-game records** — highest-scoring game, most assists in a game, etc.
-   Scans the existing per-season bulk `/player_stats` pull already fetched and cached for the
-   percentile system — no new endpoint, a new scan-and-rank pass over data already in hand.
+8. **Notable games / single-game records** — shipped 2026-09-05. New `/notable-games` page (nav
+   link "Notable Games"), top-10 single-game performances (PTS/REB/AST/STL/BLK) for a selected
+   season, each row linking through to that exact game's box score (Feature 6) since the gameId
+   is already this site's own BDL-native id. BDL-only (season >= 2008) — no ESPN equivalent, since
+   ESPN's percentile-system fetch is per-athlete season averages, not per-game rows, so there's no
+   comparable bulk data to scan pre-2008.
+   **Real refactor, not just a new feature:** the per-game bulk `/player_stats` pull this needed
+   was previously fetched inline inside `getLeagueReboundFoulStatsBdl` with no shared cache of the
+   raw rows (only its aggregated output was cached) — extracted into a new
+   `fetchBdlPlayerStatsRows(season)`, cached once per season, so this feature and the existing
+   rebound/foul percentile enrichment now share one fetch instead of two.
+   **Live investigation, not a bug:** the first verification attempt against the live dev server
+   timed out repeatedly (2+ minutes with zero response). Direct diagnostic (paginating
+   `/player_stats` page-by-page with per-page timing) showed pages typically take ~150-300ms each,
+   but one page took **57 seconds** — a genuine BDL-side latency spike, not an infinite loop or a
+   bug in this code. A season with many games elapsed can have 60-100+ pages, so even one or two
+   such spikes push total cold-load time well past a minute; confirmed the full pipeline does
+   complete correctly (137s on that run) and that the shared per-process cache makes every
+   subsequent request for that season instant (~50-60ms). This is the same class of cold-load risk
+   the percentile system has always carried for this exact per-game-bulk-pull pattern (see
+   `leagueStats.js`'s own "~12s cold" comment, likely written when seasons had fewer games played)
+   — worth adding to a production warming routine eventually, but out of scope for this feature
+   (the existing `scripts/seed-distributions.js` pre-warm approach is Mongo-cache-based and
+   wouldn't help this in-process-only cache anyway; a real fix would need its own persistent cache
+   or an actual startup prefetch, not a one-off CLI script).
+   Verified fully live once the cold fetch completed: curl confirmed real, correct top performances
+   for two different seasons, then claude-in-chrome confirmed the rendered page and a row's
+   click-through to its exact box score.
 9. **All-time / career league leaders** — no existing helper sums a stat across a player's whole
    career league-wide (existing career-total helpers in `advancedStats.js`/`per100Stats.js` sum one
    player's own seasons only). Needs a new aggregation job pulling full season history per player.

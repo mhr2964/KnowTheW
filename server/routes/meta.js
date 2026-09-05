@@ -118,6 +118,20 @@ router.get('/league/odds', async (req, res) => {
   }
 });
 
+// Notable single-game performances for a season -- cross-cutting like the other /league/* routes.
+router.get('/league/notable-games', async (req, res) => {
+  const season = parseInt(req.query.season, 10);
+  if (!Number.isFinite(season)) return res.status(400).json({ error: 'season is required' });
+
+  try {
+    const result = await getProvider().getNotableGames(season);
+    res.json(result);
+  } catch (err) {
+    console.error(`league/notable-games season=${season}:`, err.message);
+    res.status(502).json({ error: 'failed to load notable games' });
+  }
+});
+
 router.get('/status', (req, res) => {
   const activePlayers = getProvider().getActivePlayers();
   res.json({

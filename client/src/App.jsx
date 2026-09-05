@@ -13,6 +13,7 @@ import AwardsHistoryPage from './pages/AwardsHistoryPage';
 import InjuryReportPage from './pages/InjuryReportPage';
 import OddsHubPage from './pages/OddsHubPage';
 import GameBoxScorePage from './pages/GameBoxScorePage';
+import NotableGamesPage from './pages/NotableGamesPage';
 import TeamPage from './pages/TeamPage';
 import TeamDashboard from './pages/TeamDashboard';
 import TeamRosterPage from './pages/TeamRosterPage';
@@ -151,6 +152,7 @@ export default function App() {
         <NavLink to="/awards" className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>Awards</NavLink>
         <NavLink to="/injuries" className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>Injury Report</NavLink>
         <NavLink to="/odds" className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>Odds</NavLink>
+        <NavLink to="/notable-games" className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>Notable Games</NavLink>
       </nav>
 
       <AdSlot slotId={import.meta.env.VITE_AD_SLOT_TOP} className="ad-slot--top" />
@@ -178,6 +180,7 @@ export default function App() {
           <Route path="/injuries" element={<InjuryReportPage />} />
           <Route path="/odds" element={<OddsHubPage />} />
           <Route path="/game/:id" element={<GameBoxScorePage />} />
+          <Route path="/notable-games" element={<NotableGamesPage />} />
           <Route
             path="/team/:slug"
             element={

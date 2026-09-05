@@ -136,6 +136,11 @@ class SportsDataProvider {
    *  see schedule.js) -- null for a pre-BDL or playoff gameId, not an error. No ESPN equivalent
    *  exists. */
   getGameBoxScore() { return this._notImplemented('getGameBoxScore'); }
+  /** getNotableGames(season) → {season, categories: [{key, label, games: [{playerId, name,
+   *  teamAbbr, gameId, date, value}]}]}. Top-10 single-game performances per category (PTS/REB/
+   *  AST/STL/BLK), regular season only. BDL-only -- no ESPN equivalent exists (see
+   *  notableGames.js). Empty categories for a pre-BDL season, not an error. */
+  getNotableGames() { return this._notImplemented('getNotableGames'); }
   /** getGamePbpStats(eventId, playerId, season) → {fetched, onCourt, boxscore} (raw summary stays in
    *  provider). `season` is only used for the per-game cache's isPastSeason gate (gamePbpCache.js),
    *  not sent upstream -- safe to omit for a not-yet-cacheable (current-season) call. */

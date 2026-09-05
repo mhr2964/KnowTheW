@@ -53,6 +53,7 @@ const bdlInjuries = require('./injuries');
 const bdlOdds = require('./odds');
 const bdlLeagueOdds = require('./leagueOdds');
 const bdlBoxScore = require('./boxScore');
+const bdlNotableGames = require('./notableGames');
 const idMap = require('./idMap');
 const { BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON, ADVANCED_RATINGS_MIN_SEASON } = require('./client');
 const { SportsDataProvider } = require('../SportsDataProvider');
@@ -115,6 +116,13 @@ class BallDontLieProvider extends SportsDataProvider {
   }
   getPlayerSeasonAverages(playerId) {
     return bdlLeagueStats.getPlayerSeasonAveragesBdl(playerId);
+  }
+
+  // Notable Games: BDL-only, no ESPN equivalent -- ESPN's percentile-system fetch is per-athlete
+  // season averages (espn/leagueStats.js), not per-game rows, so there's no comparable bulk data
+  // to scan pre-2008. See notableGames.js.
+  getNotableGames(season) {
+    return usesBdl(season) ? bdlNotableGames.getNotableGamesBdl(season) : { season: Number(season), categories: [] };
   }
 
   // League Leaders: ranks the same qualified entries getLeagueStatLines already produces (see

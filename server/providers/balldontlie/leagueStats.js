@@ -151,6 +151,18 @@ function isDnpRow(row) {
   return row.min == null || row.min === '0' || row.min === '';
 }
 
+// One row per player per game for a full season (~7k rows, ~12s cold per this module's original
+// spike) -- cached so this real cost is paid once per season, shared by every consumer that needs
+// per-game rows (currently getLeagueReboundFoulStatsBdl below and notableGames.js's single-game
+// record scan), not once per consumer.
+const bdlPlayerStatsRowsCache = {};
+function fetchBdlPlayerStatsRows(season) {
+  if (season in bdlPlayerStatsRowsCache) return bdlPlayerStatsRowsCache[season];
+  const promise = fetchAllPagesBdl('/player_stats', { 'seasons[]': [season] });
+  bdlPlayerStatsRowsCache[season] = promise;
+  return promise;
+}
+
 const bdlReboundFoulStatsCache = {};
 /** Per-player rebound/foul averages for distribution enrichment: [{pos, gp, mpg, OREB, DREB, PF}].
  *  [] on a fetch failure, same contract as espn/leagueStats.js's version. */
@@ -159,7 +171,7 @@ async function getLeagueReboundFoulStatsBdl(season) {
 
   const [gameIdSet, rows] = await Promise.all([
     buildRegularSeasonGameIdSet(season),
-    fetchAllPagesBdl('/player_stats', { 'seasons[]': [season] }),
+    fetchBdlPlayerStatsRows(season),
   ]);
   if (!gameIdSet || !rows) { bdlReboundFoulStatsCache[season] = []; return []; }
 
@@ -260,6 +272,9 @@ module.exports = {
   getLeagueStatLinesBdl,
   getLeagueReboundFoulStatsBdl,
   getPlayerSeasonAveragesBdl,
+  // Shared per-game bulk data, reused by notableGames.js so it doesn't pay a second ~12s cold
+  // fetch for data this module already pulls and caches:
+  buildRegularSeasonGameIdSet, fetchBdlPlayerStatsRows,
   // exported for unit tests:
   mapBdlLeagueStatLine, toPercentileStatsFromRow, isDnpRow, fetchAllPagesBdl,
 };
