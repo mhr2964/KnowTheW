@@ -6,7 +6,7 @@ process.env.NODE_ENV = 'test';
 const { test } = require('node:test');
 const assert = require('node:assert');
 
-const { buildQuarterScores, toPlayerBoxRow, toTeamBoxLine } = require('../server/providers/balldontlie/boxScore');
+const { buildQuarterScores, buildPlayFeed, toPlayerBoxRow, toTeamBoxLine } = require('../server/providers/balldontlie/boxScore');
 
 // --- toPlayerBoxRow ---
 
@@ -79,4 +79,27 @@ test('buildQuarterScores: a play with no period is ignored', () => {
   const withGap = [...PLAY_ROWS, { order: 6, period: null, home_score: 999, away_score: 999 }];
   const quarters = buildQuarterScores(withGap);
   assert.strictEqual(quarters.length, 2);
+});
+
+// --- buildPlayFeed ---
+
+const RAW_PLAYS = [
+  { order: 2, period: 1, clock: '9:00', text: 'Made shot', scoring_play: true, home_score: 2, away_score: 0, team: { id: 1 } },
+  { order: 1, period: 1, clock: '10:00', text: 'Jumpball', scoring_play: false, home_score: 0, away_score: 0, team: { id: 8 } },
+];
+
+test('buildPlayFeed: sorts ascending by order (raw rows are not guaranteed ordered)', () => {
+  const feed = buildPlayFeed(RAW_PLAYS, 1);
+  assert.deepStrictEqual(feed.map(p => p.order), [1, 2]);
+});
+
+test('buildPlayFeed: resolves team.id to home/away, not a raw BDL id', () => {
+  const feed = buildPlayFeed(RAW_PLAYS, 1);
+  assert.strictEqual(feed[0].team, 'away'); // team.id 8, homeTeamId is 1
+  assert.strictEqual(feed[1].team, 'home'); // team.id 1
+});
+
+test('buildPlayFeed: a play with no team (e.g. End Game) gets team: null, not dropped', () => {
+  const feed = buildPlayFeed([{ order: 1, period: 4, clock: '0.0', text: 'End of Game', scoring_play: false, home_score: 92, away_score: 78, team: null }], 1);
+  assert.strictEqual(feed[0].team, null);
 });

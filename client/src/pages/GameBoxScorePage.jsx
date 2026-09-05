@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
@@ -78,9 +78,49 @@ function TeamBox({ label, rows, teamTotals, navigate }) {
   );
 }
 
+// Groups the flat play feed by period for display -- [{period, plays: [...]}], in chronological
+// (ascending) order, matching how the feed itself is already ordered.
+function groupPlaysByPeriod(plays) {
+  const groups = [];
+  for (const play of plays) {
+    const last = groups[groups.length - 1];
+    if (last && last.period === play.period) last.plays.push(play);
+    else groups.push({ period: play.period, plays: [play] });
+  }
+  return groups;
+}
+
+function periodLabel(period) {
+  return period <= 4 ? `Quarter ${period}` : `Overtime ${period - 4}`;
+}
+
+function PlayByPlayFeed({ plays, home, away }) {
+  const groups = groupPlaysByPeriod(plays);
+  return (
+    <div className="pbp-feed">
+      {groups.map(group => (
+        <div key={group.period} className="pbp-period">
+          <h3>{periodLabel(group.period)}</h3>
+          {group.plays.map(play => (
+            <div key={play.order} className={`pbp-row${play.scoringPlay ? ' pbp-row--scoring' : ''}`}>
+              <span className="pbp-clock">{play.clock}</span>
+              <span className={`pbp-team-tag${play.team ? ` pbp-team-tag--${play.team}` : ''}`}>
+                {play.team === 'home' ? home : play.team === 'away' ? away : ''}
+              </span>
+              <span className="pbp-text">{play.text}</span>
+              <span className="pbp-score">{play.awayScore != null ? `${play.awayScore}-${play.homeScore}` : ''}</span>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function GameBoxScorePage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [view, setView] = useState('box');
 
   useEffect(() => {
     setPageMeta('Box Score — KnowTheW', 'Full WNBA game box score: final score, quarter-by-quarter breakdown, and both teams’ player stat lines.');
@@ -134,8 +174,31 @@ export default function GameBoxScorePage() {
             </table>
           </div>
 
-          <TeamBox label={data.game.away.abbreviation} rows={data.boxScores.away} teamTotals={data.teamTotals.away} navigate={navigate} />
-          <TeamBox label={data.game.home.abbreviation} rows={data.boxScores.home} teamTotals={data.teamTotals.home} navigate={navigate} />
+          <div className="stat-season-bar" style={{ marginBottom: '1rem' }}>
+            <button
+              type="button"
+              className={`stat-season-tab${view === 'box' ? ' active' : ''}`}
+              onClick={() => setView('box')}
+            >
+              Box Score
+            </button>
+            <button
+              type="button"
+              className={`stat-season-tab${view === 'pbp' ? ' active' : ''}`}
+              onClick={() => setView('pbp')}
+            >
+              Play-by-Play
+            </button>
+          </div>
+
+          {view === 'box' ? (
+            <>
+              <TeamBox label={data.game.away.abbreviation} rows={data.boxScores.away} teamTotals={data.teamTotals.away} navigate={navigate} />
+              <TeamBox label={data.game.home.abbreviation} rows={data.boxScores.home} teamTotals={data.teamTotals.home} navigate={navigate} />
+            </>
+          ) : (
+            <PlayByPlayFeed plays={data.plays} home={data.game.home.abbreviation} away={data.game.away.abbreviation} />
+          )}
         </>
       )}
     </>

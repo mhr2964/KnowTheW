@@ -1,7 +1,8 @@
 // Single-game box score: final score, both teams' full stat lines, both teams' per-player rows,
-// and a quarter-by-quarter score breakdown. BDL-only (this site's own schedule/game-log events ARE
-// BDL game ids once BDL-sourced -- see schedule.js's header comment) -- no ESPN equivalent is
-// attempted here, same scope limit as odds/plus-minus (regular season, season >= BDL_MIN_SEASON).
+// a quarter-by-quarter score breakdown, and the full play-by-play feed. BDL-only (this site's own
+// schedule/game-log events ARE BDL game ids once BDL-sourced -- see schedule.js's header comment)
+// -- no ESPN equivalent is attempted here, same scope limit as odds/plus-minus (regular season,
+// season >= BDL_MIN_SEASON).
 //
 // Three independent per-game endpoints assembled together: /games/{id} (final score + team
 // identity), /player_stats?game_ids[]= (every player's box line, already used elsewhere for the
@@ -71,6 +72,27 @@ function buildQuarterScores(playRows) {
   });
 }
 
+// Pure: same raw /plays rows as buildQuarterScores, reused rather than a second fetch -- the full
+// play-by-play viewer (Feature 7) is a companion to the box score, not a separate page with its
+// own data path. `team` is resolved to 'home'/'away' here (not left as a BDL team id) so the
+// client needs no BDL-team-id knowledge at all, matching every other client-facing shape in this
+// module.
+function buildPlayFeed(playRows, homeTeamId) {
+  return (playRows ?? [])
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .map(p => ({
+      order: p.order,
+      period: p.period ?? null,
+      clock: p.clock ?? null,
+      text: p.text ?? '',
+      team: p.team?.id == null ? null : (p.team.id === homeTeamId ? 'home' : 'away'),
+      scoringPlay: !!p.scoring_play,
+      homeScore: p.home_score ?? null,
+      awayScore: p.away_score ?? null,
+    }));
+}
+
 async function fetchGameBoxScoreRawBdl(bdlGameId) {
   const [gameData, playerStatsData, teamStatsData, playsData, espnTeams] = await Promise.all([
     bdlFetch(`/games/${bdlGameId}`, {}),
@@ -93,6 +115,7 @@ async function fetchGameBoxScoreRawBdl(bdlGameId) {
 
   const playerRows = (playerStatsData?.data ?? []).map(toPlayerBoxRow);
   const quarterScores = buildQuarterScores(playsData?.data);
+  const plays = buildPlayFeed(playsData?.data, game.home_team?.id);
 
   return {
     game: {
@@ -104,6 +127,7 @@ async function fetchGameBoxScoreRawBdl(bdlGameId) {
       away: { espnId: awayEspn?.id ?? null, abbreviation: game.visitor_team?.abbreviation ?? null, score: game.away_score ?? null },
     },
     quarterScores,
+    plays,
     teamTotals: {
       home: homeTeamStats ? toTeamBoxLine(homeTeamStats) : null,
       away: awayTeamStats ? toTeamBoxLine(awayTeamStats) : null,
@@ -143,5 +167,5 @@ async function getGameBoxScoreBdl(bdlGameId) {
 }
 
 module.exports = {
-  getGameBoxScoreBdl, fetchGameBoxScoreRawBdl, buildQuarterScores, toPlayerBoxRow, toTeamBoxLine,
+  getGameBoxScoreBdl, fetchGameBoxScoreRawBdl, buildQuarterScores, buildPlayFeed, toPlayerBoxRow, toTeamBoxLine,
 };

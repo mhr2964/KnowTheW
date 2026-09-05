@@ -104,10 +104,14 @@ verify + push/deploy per feature, this doc updated after each ships.
    quarters summing correctly, every player row, team totals), then claude-in-chrome confirmed the
    rendered page matches exactly, a player row correctly navigates to that player's page, and a
    real Schedule row click lands on the exact right game's box score.
-7. **Standalone play-by-play viewer** — full scrolling play log (`text`, `type`, `team`, `period`,
-   `clock`, `scoring_play`, running score) as a companion tab/link on the Box Score page. `/plays`
-   is already fetched per-game for on-court/starting-five computation; this renders the raw feed
-   instead of only deriving from it.
+7. **Standalone play-by-play viewer** — shipped 2026-09-05, as a "Play-by-Play" tab on the Box
+   Score page (Feature 6), not a separate route -- the same fresh `/plays` fetch `boxScore.js`
+   already made for quarter scores is reused directly (zero additional cost), mapped to a flat,
+   chronologically-sorted feed with `team` resolved to `'home'`/`'away'` (not a raw BDL id) so the
+   client needs no team-identity knowledge at all. Grouped by period client-side, scoring plays
+   highlighted, running score shown per play. Verified live: curl confirmed the play feed against
+   the same real game as Feature 6 (412 plays, correctly ordered, real descriptions), then
+   claude-in-chrome confirmed the rendered tab matches exactly.
 8. **Notable games / single-game records** — highest-scoring game, most assists in a game, etc.
    Scans the existing per-season bulk `/player_stats` pull already fetched and cached for the
    percentile system — no new endpoint, a new scan-and-rank pass over data already in hand.

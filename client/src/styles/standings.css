@@ -69,3 +69,27 @@
      elsewhere on the site (e.g. BrefTable's .bref-col-low-priority). */
   .standings-col-split { display: none; }
 }
+
+/* Game Box Score's Play-by-Play tab (GameBoxScorePage.jsx). */
+.pbp-period { margin-bottom: var(--space-6); }
+.pbp-period h3 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+.pbp-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+.pbp-row--scoring { background: rgba(255, 107, 0, 0.05); }
+.pbp-clock { color: var(--text-muted); font-variant-numeric: tabular-nums; width: 3.5rem; flex-shrink: 0; }
+.pbp-team-tag { width: 2.5rem; flex-shrink: 0; font-weight: 700; color: var(--text-muted); }
+.pbp-team-tag--home { color: var(--accent); }
+.pbp-text { flex: 1; }
+.pbp-score { color: var(--text-muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
