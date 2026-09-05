@@ -80,12 +80,30 @@ verify + push/deploy per feature, this doc updated after each ships.
    page shipped this roadmap). Fixed with the same short `CURRENT_SEASON_TTL_MS` in-memory cache
    the rest of this provider's live/current-season data already uses — confirmed the fix live
    (cold request ~4s, cached repeat ~44ms).
-6. **Game Box Score page** — the structural gap: no `/game/:id` route exists at all, so Schedule
-   and Game Log rows are dead ends. Assembles `games/{id}` (final score) + `player_stats` (both
-   box lines) + `team_stats`, all already fetched elsewhere for other features. Bundles in the
-   quarter-by-quarter score line (aggregate `/plays`' running `home_score`/`away_score` by
-   `period` — not a stored field, derived). Needs real links wired in from `ScheduleTable.jsx` and
-   the Game Log tab, which currently have none.
+6. **Game Box Score page** — shipped 2026-09-05. New `/game/:id` route (`GameBoxScorePage.jsx`) —
+   the structural gap this whole roadmap flagged first: no per-game page existed at all, so
+   Schedule/Game Log rows were dead ends. BDL-only (this site's schedule/game-log events ARE BDL
+   game ids once BDL-sourced, see `schedule.js`'s header comment) — new `boxScore.js` assembles
+   `/games/{id}` (final score), `/player_stats?game_ids[]=` (both teams' full box lines),
+   `/team_stats?game_ids[]=` (team totals; no `pts` field on that endpoint, computed the same
+   `2*fgm+fg3m+ftm` formula `plays.js`'s `toTeamStatsRow` already uses), and a **fresh, separate**
+   `/plays` fetch for quarter-by-quarter scoring (deliberately NOT reusing the existing PBP
+   attribution cache in `gamePbpCache.js` — that cache's rows are trimmed to drop
+   `period`/`clock`/`home_score`/`away_score` specifically to avoid the Mongo storage-bloat
+   incident documented in `plays.js`'s `trimPlay` comment; reusing it would silently omit exactly
+   the fields this feature needs). Quarter score per period = that period's last play's cumulative
+   running score minus the prior period's. Same name-based ESPN-id bridge as every other BDL
+   leaderboard feature this roadmap has shipped, for per-player row links.
+   `ScheduleTable.jsx` rows now link through for completed, BDL-covered-season games (regular
+   season only — playoffs stay ESPN-sourced with no BDL game id to link to at all). **Scope
+   decision:** Game Log rows were NOT wired the same way — their row-click already does something
+   real (expanding Feature 10's inline per-game advanced-stats panel); overloading that same click
+   for navigation would have silently removed a shipped feature rather than adding one. The
+   Schedule fix alone resolves the dead-end this feature was named for.
+   Verified fully live: curl confirmed the assembled response byte-for-byte (final score, all four
+   quarters summing correctly, every player row, team totals), then claude-in-chrome confirmed the
+   rendered page matches exactly, a player row correctly navigates to that player's page, and a
+   real Schedule row click lands on the exact right game's box score.
 7. **Standalone play-by-play viewer** — full scrolling play log (`text`, `type`, `team`, `period`,
    `clock`, `scoring_play`, running score) as a companion tab/link on the Box Score page. `/plays`
    is already fetched per-game for on-court/starting-five computation; this renders the raw feed

@@ -2,6 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import ScheduleTable from '../components/ScheduleTable';
 
+// Box scores are BDL-only (see server/providers/balldontlie/boxScore.js) -- matches BDL_MIN_SEASON
+// on the server, duplicated here since a box-score link is presentation, not fetched data.
+const BOX_SCORE_MIN_SEASON = 2008;
+
 export default function TeamSchedulePage() {
   const { team, season, isCurrentSeason } = useOutletContext() ?? {};
   const isDefunct = !!team?.defunct;
@@ -102,6 +106,7 @@ export default function TeamSchedulePage() {
               events={regularEvents}
               todayIso={todayIso}
               dividerRef={regularHasFuture ? dividerRef : null}
+              linkable={season >= BOX_SCORE_MIN_SEASON}
             />
 
             {playoffEvents.length > 0 && (

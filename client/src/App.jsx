@@ -12,6 +12,7 @@ import LeagueLeadersPage from './pages/LeagueLeadersPage';
 import AwardsHistoryPage from './pages/AwardsHistoryPage';
 import InjuryReportPage from './pages/InjuryReportPage';
 import OddsHubPage from './pages/OddsHubPage';
+import GameBoxScorePage from './pages/GameBoxScorePage';
 import TeamPage from './pages/TeamPage';
 import TeamDashboard from './pages/TeamDashboard';
 import TeamRosterPage from './pages/TeamRosterPage';
@@ -176,6 +177,7 @@ export default function App() {
           <Route path="/awards" element={<AwardsHistoryPage />} />
           <Route path="/injuries" element={<InjuryReportPage />} />
           <Route path="/odds" element={<OddsHubPage />} />
+          <Route path="/game/:id" element={<GameBoxScorePage />} />
           <Route
             path="/team/:slug"
             element={

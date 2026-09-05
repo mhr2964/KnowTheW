@@ -1,4 +1,5 @@
 import { Fragment } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -29,7 +30,12 @@ function formatOdds(odds) {
   return [spread, total].filter(Boolean).join(' · ');
 }
 
-export default function ScheduleTable({ events, todayIso, dividerRef }) {
+// linkable: true only for a regular-season table on a BDL-covered season (playoffs are always
+// ESPN-sourced, with no BDL game id at all -- see schedule.js's header comment; the box score
+// route is BDL-only, see boxScore.js). Restricted further to completed games (event.result set) --
+// an upcoming game has no box score data yet.
+export default function ScheduleTable({ events, todayIso, dividerRef, linkable = false }) {
+  const navigate = useNavigate();
   if (!events || events.length === 0) return null;
 
   const todayMs = new Date(todayIso).getTime();
@@ -86,7 +92,10 @@ export default function ScheduleTable({ events, todayIso, dividerRef }) {
                     </td>
                   </tr>
                 )}
-                <tr className={`team-history-row team-schedule-row${showDivider ? ' team-schedule-row--next' : ''}`}>
+                <tr
+                  className={`team-history-row team-schedule-row${showDivider ? ' team-schedule-row--next' : ''}${linkable && !isFuture && event.result ? ' team-schedule-row--linkable' : ''}`}
+                  onClick={linkable && !isFuture && event.result ? () => navigate(`/game/${event.id}`) : undefined}
+                >
                   <td className="team-history-cell team-schedule-cell">
                     <span className="th-full">{formatDateFull(event.date)}</span>
                     <span className="th-short">{formatDateShort(event.date)}</span>

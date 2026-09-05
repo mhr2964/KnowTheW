@@ -128,6 +128,12 @@ class SportsDataProvider {
    *  null for a game with no line posted yet (unlike getGameOdds, which just omits it -- a hub
    *  page needs to show every upcoming game, not only priced ones). No ESPN equivalent exists. */
   getLeagueOdds() { return this._notImplemented('getLeagueOdds'); }
+  /** getGameBoxScore(gameId) → {game:{id,date,status,postseason,home:{espnId,abbreviation,score},
+   *  away:{...}}, quarterScores:[{period,home,away}], teamTotals:{home,away}, boxScores:{home:[
+   *  {name,playerId,minutes,points,...,plusMinus}],away:[...]}} | null. `gameId` is only ever a BDL
+   *  id (this site's schedule/game-log events ARE BDL games once BDL-sourced, see schedule.js) --
+   *  null for a pre-BDL or playoff gameId, not an error. No ESPN equivalent exists. */
+  getGameBoxScore() { return this._notImplemented('getGameBoxScore'); }
   /** getGamePbpStats(eventId, playerId, season) → {fetched, onCourt, boxscore} (raw summary stays in
    *  provider). `season` is only used for the per-game cache's isPastSeason gate (gamePbpCache.js),
    *  not sent upstream -- safe to omit for a not-yet-cacheable (current-season) call. */

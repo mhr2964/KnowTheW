@@ -572,6 +572,10 @@
   font-weight: 700;
 }
 
+/* A completed, BDL-covered game -- clickable through to its box score (GameBoxScorePage). */
+.team-schedule-row--linkable { cursor: pointer; }
+.team-schedule-row--linkable:hover .team-history-cell { background: var(--surface-2); }
+
 /* Divider row — "Next up" between past and future games */
 .team-schedule-divider-row { pointer-events: none; }
 

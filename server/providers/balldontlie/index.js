@@ -52,6 +52,7 @@ const bdlTeamShotChart = require('./teamShotChart');
 const bdlInjuries = require('./injuries');
 const bdlOdds = require('./odds');
 const bdlLeagueOdds = require('./leagueOdds');
+const bdlBoxScore = require('./boxScore');
 const idMap = require('./idMap');
 const { BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON, ADVANCED_RATINGS_MIN_SEASON } = require('./client');
 const { SportsDataProvider } = require('../SportsDataProvider');
@@ -244,6 +245,15 @@ class BallDontLieProvider extends SportsDataProvider {
   async getGameOdds(bdlGameIds) {
     const map = await bdlOdds.fetchOddsForGamesBdl(bdlGameIds);
     return Object.fromEntries(map);
+  }
+
+  // Single-game box score: BDL-only, no season-gate needed at this layer (the id ITSELF is only
+  // ever a BDL id once a schedule/game-log row is BDL-sourced -- see schedule.js's header comment
+  // and boxScore.js's own). A pre-BDL or playoff gameId simply won't resolve (getGameBoxScoreBdl
+  // returns null on a 404 from /games/{id}), same graceful-degradation posture as other BDL-only
+  // features.
+  getGameBoxScore(bdlGameId) {
+    return bdlBoxScore.getGameBoxScoreBdl(bdlGameId);
   }
 
   // League-wide odds hub: the upcoming slate ITSELF is new here (TeamSchedulePage.jsx's existing
