@@ -39,9 +39,19 @@ verify + push/deploy per feature, this doc updated after each ships.
    2015/2025 seasons and the true pre-2008 ESPN-only path, 2005) and then via claude-in-chrome
    against the running dev client -- Per Game/Totals toggle, a percentage category (FG%), and
    row-click-to-player-page all confirmed working with real data.
-3. **Awards History hub** — `server/constants/wnbaAccolades.js` already has a full year-by-year
-   MVP/DPOY/ROY/Finals MVP/Sixth Player/All-WNBA dataset, currently consumed only by Compare page
-   verdict chips. New standalone page surfacing it by year/category.
+3. **Awards History hub** — shipped 2026-09-05. New `/awards` page (nav link "Awards") over
+   `server/constants/wnbaAccolades.js`'s existing year-by-year MVP/Finals MVP/DPOY/ROY/Sixth
+   Player/All-WNBA First Team dataset, previously consumed only by Compare page verdict chips.
+   Not provider-dependent (static historical fact, not a stats-provider concern), so
+   `lib/awardsHistory.js` is a plain module the route calls directly, not a SportsDataProvider
+   method. Preparatory refactor: `resolveEspnIdByName` (name -> this site's ESPN id) moved out of
+   `providers/balldontlie/idMap.js` into `lib/playerNameIndex.js` first, since it turned out to
+   have no actual BDL dependency and this feature needed the identical bridge from a source that
+   has nothing to do with BallDontLie -- reaching into a provider-specific directory for a
+   provider-neutral utility would have been a new architectural inconsistency. Verified live via
+   curl (correct year-descending rows, real resolved ids, 2002's real ROY gap rendering as "—" not
+   a missing row) and via claude-in-chrome against the running dev client (table renders, a
+   resolved name correctly navigates to that player's page).
 4. **Injury Report hub** — `server/providers/balldontlie/injuries.js` already pulls the full
    league-wide `/player_injuries` list (~40 rows) for per-player/roster widgets. New page reusing
    that same bulk pull directly.

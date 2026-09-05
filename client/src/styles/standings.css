@@ -43,6 +43,11 @@
 .standings-row { cursor: pointer; transition: background 0.1s; }
 .standings-row:hover { background: var(--surface-2); }
 
+/* Per-cell player links (e.g. Awards History, where a row spans multiple distinct players --
+   unlike .standings-row's whole-row click, only the name itself is clickable here). */
+.awards-player-link { cursor: pointer; color: var(--accent); }
+.awards-player-link:hover { text-decoration: underline; }
+
 .standings-col-team {
   text-align: left;
   display: flex;

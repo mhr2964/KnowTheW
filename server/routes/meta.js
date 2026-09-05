@@ -7,6 +7,7 @@ const router  = express.Router();
 const { getDb }                = require('../db');
 const { searchBulkLegacyPlayers } = require('../constants/legacyPlayerBulk');
 const { getProvider }          = require('../providers');
+const { getAwardsHistory }     = require('../lib/awardsHistory');
 
 router.get('/search', async (req, res) => {
   const q = (req.query.q || '').toLowerCase().trim();
@@ -77,6 +78,19 @@ router.get('/league/leaders', async (req, res) => {
   } catch (err) {
     console.error(`league/leaders season=${season}:`, err.message);
     res.status(502).json({ error: 'failed to load league leaders' });
+  }
+});
+
+// Award history (MVP/Finals MVP/DPOY/ROY/Sixth Player/All-WNBA First Team) -- static historical
+// data (wnbaAccolades.js), not provider-dependent, so this calls the lib directly rather than
+// going through getProvider(). No season param: always the full 1997-present table.
+router.get('/league/awards', async (req, res) => {
+  try {
+    const result = await getAwardsHistory();
+    res.json(result);
+  } catch (err) {
+    console.error('league/awards:', err.message);
+    res.status(502).json({ error: 'failed to load awards history' });
   }
 });
 
