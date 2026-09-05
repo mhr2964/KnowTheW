@@ -57,6 +57,7 @@ const { SportsDataProvider } = require('../SportsDataProvider');
 const { withValidation } = require('../validation');
 const { aggregatePBPSummary } = require('../pbpAggregate');
 const { buildLeaderboards } = require('../../lib/leagueLeaders');
+const { resolveEspnIdByName } = require('../../lib/playerNameIndex');
 
 const usesBdl = (year) => Number(year) >= BDL_MIN_SEASON;
 
@@ -116,7 +117,7 @@ class BallDontLieProvider extends SportsDataProvider {
 
   // League Leaders: ranks the same qualified entries getLeagueStatLines already produces (see
   // leagueLeaders.js) rather than a new bulk fetch. BDL rows carry no ESPN id at the endpoint --
-  // bridged by name via idMap.js's resolveEspnIdByName, same once-per-unique-name batching
+  // bridged by name via lib/playerNameIndex.js's resolveEspnIdByName, same once-per-unique-name batching
   // getLeagueShotZoneLeaders uses (a stat leader can lead multiple categories). ESPN rows already
   // carry this site's canonical id (espnId), no bridge needed.
   async getLeagueStatLeaders(season, mode) {
@@ -127,7 +128,7 @@ class BallDontLieProvider extends SportsDataProvider {
     if (usesBdl(season)) {
       const uniqueNames = new Set(entries.map(e => e.name).filter(Boolean));
       const idByName = new Map(await Promise.all(
-        [...uniqueNames].map(async name => [name, await idMap.resolveEspnIdByName(name)])
+        [...uniqueNames].map(async name => [name, await resolveEspnIdByName(name)])
       ));
       withIds = entries.map(e => ({ ...e, playerId: idByName.get(e.name) ?? null }));
     } else {
@@ -177,7 +178,7 @@ class BallDontLieProvider extends SportsDataProvider {
   // attached at the endpoint -- resolve each unique name to this site's ESPN id here (once per
   // unique name across all 7 zones, not once per leaderboard row -- the same player can lead
   // multiple zones) so the route layer never needs to know this is a BDL-specific identity bridge.
-  // A name that fails to resolve (rare -- see idMap.js's resolveEspnIdByName) still shows on the
+  // A name that fails to resolve (rare -- see lib/playerNameIndex.js's resolveEspnIdByName) still shows on the
   // board with playerId: null rather than being dropped, same graceful-degradation posture as an
   // unresolvable player elsewhere in this provider.
   async getLeagueShotZoneLeaders(season, postseason) {
@@ -187,7 +188,7 @@ class BallDontLieProvider extends SportsDataProvider {
 
     const uniqueNames = new Set(raw.zones.flatMap(z => z.leaders.map(r => r.name)));
     const idByName = new Map(await Promise.all(
-      [...uniqueNames].map(async name => [name, await idMap.resolveEspnIdByName(name)])
+      [...uniqueNames].map(async name => [name, await resolveEspnIdByName(name)])
     ));
 
     const zones = raw.zones.map(z => ({
@@ -214,7 +215,7 @@ class BallDontLieProvider extends SportsDataProvider {
     return Promise.all(rows.map(async ({ playerName, ...rest }) => ({
       ...rest,
       playerName,
-      playerId: await idMap.resolveEspnIdByName(playerName) ?? null,
+      playerId: await resolveEspnIdByName(playerName) ?? null,
     })));
   }
 
