@@ -52,9 +52,19 @@ verify + push/deploy per feature, this doc updated after each ships.
    curl (correct year-descending rows, real resolved ids, 2002's real ROY gap rendering as "—" not
    a missing row) and via claude-in-chrome against the running dev client (table renders, a
    resolved name correctly navigates to that player's page).
-4. **Injury Report hub** — `server/providers/balldontlie/injuries.js` already pulls the full
-   league-wide `/player_injuries` list (~40 rows) for per-player/roster widgets. New page reusing
-   that same bulk pull directly.
+4. **Injury Report hub** — shipped 2026-09-05. New `/injuries` page (nav link "Injury Report")
+   reusing `injuries.js`'s existing bulk `/player_injuries` pull (~40 rows) via a new
+   `fetchLeagueInjuriesBdl` (unfiltered, vs. the per-player/per-team filtered versions already
+   used elsewhere), with `teamAbbr` read off each row's nested `player.team` (confirmed live --
+   not previously read anywhere). Same name->ESPN-id bridge as Features 2/3. Reuses the existing
+   `InjuryPill` component for the status column, so styling matches the player/roster widgets
+   exactly. Caught and fixed a real CSS bug live: the new free-text comment column's override
+   class lost a specificity fight against `.standings-table td`'s existing `white-space: nowrap`
+   rule, silently rendering every comment as one unreadably wide, non-wrapping row -- fixed by
+   scoping the selector to match (`.standings-table td.injury-report-comment`). Also confirmed
+   live (not a design decision, an observed BDL data quality issue): BDL's own player bio fields
+   are unreliable on this endpoint (`weight: "Maryland"` on a real row -- clearly a college value
+   in the wrong field), reinforcing why this site sources bio data from ESPN rather than BDL.
 5. **Odds/Betting hub** — `server/providers/balldontlie/odds.js` already calls `/odds` against an
    explicit `game_ids[]` list (currently one team's schedule). New page hands it the full upcoming
    slate instead.

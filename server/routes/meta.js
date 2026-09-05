@@ -94,6 +94,18 @@ router.get('/league/awards', async (req, res) => {
   }
 });
 
+// League-wide injury report -- cross-cutting like the other /league/* routes above. BDL-only, no
+// ESPN equivalent, same floor as the per-player/per-team injury widgets (Feature 11).
+router.get('/league/injuries', async (req, res) => {
+  try {
+    const result = await getProvider().getLeagueInjuries();
+    res.json(result);
+  } catch (err) {
+    console.error('league/injuries:', err.message);
+    res.status(502).json({ error: 'failed to load league injuries' });
+  }
+});
+
 router.get('/status', (req, res) => {
   const activePlayers = getProvider().getActivePlayers();
   res.json({

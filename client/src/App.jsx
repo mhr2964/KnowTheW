@@ -10,6 +10,7 @@ import StandingsPage from './pages/StandingsPage';
 import ShotZoneLeadersPage from './pages/ShotZoneLeadersPage';
 import LeagueLeadersPage from './pages/LeagueLeadersPage';
 import AwardsHistoryPage from './pages/AwardsHistoryPage';
+import InjuryReportPage from './pages/InjuryReportPage';
 import TeamPage from './pages/TeamPage';
 import TeamDashboard from './pages/TeamDashboard';
 import TeamRosterPage from './pages/TeamRosterPage';
@@ -146,6 +147,7 @@ export default function App() {
         <NavLink to="/league-leaders" className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>League Leaders</NavLink>
         <NavLink to="/leaders" className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>Shot Zone Leaders</NavLink>
         <NavLink to="/awards" className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>Awards</NavLink>
+        <NavLink to="/injuries" className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>Injury Report</NavLink>
       </nav>
 
       <AdSlot slotId={import.meta.env.VITE_AD_SLOT_TOP} className="ad-slot--top" />
@@ -170,6 +172,7 @@ export default function App() {
           <Route path="/leaders" element={<ShotZoneLeadersPage />} />
           <Route path="/league-leaders" element={<LeagueLeadersPage />} />
           <Route path="/awards" element={<AwardsHistoryPage />} />
+          <Route path="/injuries" element={<InjuryReportPage />} />
           <Route
             path="/team/:slug"
             element={

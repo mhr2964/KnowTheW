@@ -47,4 +47,19 @@ async function fetchTeamInjuriesBdl(bdlTeamId) {
   return rows.map(row => ({ ...mapInjuryRow(row), playerName: `${row.player.first_name} ${row.player.last_name}` }));
 }
 
-module.exports = { fetchPlayerInjuryBdl, fetchTeamInjuriesBdl, mapInjuryRow };
+// Unfiltered pull (the whole ~40-row league-wide list, per this module's header comment) for the
+// Injury Report hub. Unlike fetchTeamInjuriesBdl's caller (which already knows the team), a
+// league-wide list needs the team attached per row -- WNBAPlayer.team on the row's own nested
+// player object, not a separate lookup (confirmed live). NOT height/weight/college -- those BDL
+// bio fields are unreliable (confirmed live: a real row returned weight:"Maryland", clearly a
+// college value shifted into the wrong field) and this site sources bio data from ESPN anyway.
+async function fetchLeagueInjuriesBdl() {
+  const rows = await fetchAllInjuriesBdl({});
+  return rows.map(row => ({
+    ...mapInjuryRow(row),
+    playerName: `${row.player.first_name} ${row.player.last_name}`,
+    teamAbbr: row.player.team?.abbreviation ?? null,
+  }));
+}
+
+module.exports = { fetchPlayerInjuryBdl, fetchTeamInjuriesBdl, fetchLeagueInjuriesBdl, mapInjuryRow };

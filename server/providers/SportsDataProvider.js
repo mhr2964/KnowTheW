@@ -97,7 +97,8 @@ class SportsDataProvider {
    *  [{bdlPlayerId, name, teamAbbr, fga, fgm, fgPct, playerId}]}]} | null. Per-zone top-N by FG%
    *  among players clearing a minimum-attempts floor in that zone (see leagueShotZoneLeaders.js).
    *  playerId is this site's ESPN id, resolved from the BDL name server-side (null if the name
-   *  couldn't be linked -- see idMap.js's resolveEspnIdByName) -- routes/client never see a BDL id.
+   *  couldn't be linked -- see lib/playerNameIndex.js's resolveEspnIdByName) -- routes/client never
+   *  see a BDL id.
    *  No ESPN equivalent exists, same as getPlayerShotChart/getLeagueShotZones. */
   getLeagueShotZoneLeaders() { return this._notImplemented('getLeagueShotZoneLeaders'); }
   /** getPlayerInjuryStatus(playerId) → {status, returnDate, comment} | null. status/comment are
@@ -110,6 +111,11 @@ class SportsDataProvider {
    *  same identity-bridge posture as getLeagueShotZoneLeaders); [] when the team has no current
    *  injuries or has no source-side mapping. No ESPN equivalent exists. */
   getTeamInjuries() { return this._notImplemented('getTeamInjuries'); }
+  /** getLeagueInjuries() → [{playerId, playerName, teamAbbr, status, returnDate, comment}] for
+   *  every current league-wide injury entry. Same identity-bridge posture as getTeamInjuries
+   *  (playerId null if unresolved); [] when there are none or no source-side data. No ESPN
+   *  equivalent exists. */
+  getLeagueInjuries() { return this._notImplemented('getLeagueInjuries'); }
   /** getGameOdds(bdlGameIds) → {[gameId]: {vendor, spread:{home,away}, moneyline:{home,away},
    *  total:{value,over,under}, updatedAt}}. One representative sportsbook's line per game (see
    *  odds.js -- multiple books genuinely disagree, this isn't a consensus line). `bdlGameIds` are

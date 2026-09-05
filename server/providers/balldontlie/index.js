@@ -219,6 +219,23 @@ class BallDontLieProvider extends SportsDataProvider {
     })));
   }
 
+  // League-wide injury hub: same identity bridge, batched once per unique name across the whole
+  // ~40-row list (a player only ever appears once here, but batching still avoids resolving the
+  // same common name twice if it recurs) -- same pattern getLeagueStatLeaders uses.
+  async getLeagueInjuries() {
+    const rows = await bdlInjuries.fetchLeagueInjuriesBdl();
+    if (!rows.length) return [];
+    const uniqueNames = new Set(rows.map(r => r.playerName));
+    const idByName = new Map(await Promise.all(
+      [...uniqueNames].map(async name => [name, await resolveEspnIdByName(name)])
+    ));
+    return rows.map(({ playerName, ...rest }) => ({
+      ...rest,
+      playerName,
+      playerId: idByName.get(playerName) ?? null,
+    }));
+  }
+
   // --- Betting odds: new data, no ESPN equivalent -- see odds.js's header comment. bdlGameIds are
   // already-BDL-native (this site's own schedule events ARE BDL games once BDL-sourced -- see
   // schedule.js's mapGameToScheduleEvent, `id: String(game.id)`), so there's no ESPN-id resolution

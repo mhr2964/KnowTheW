@@ -48,6 +48,11 @@
 .awards-player-link { cursor: pointer; color: var(--accent); }
 .awards-player-link:hover { text-decoration: underline; }
 
+/* Injury Report's free-text comment column -- .standings-table td's default nowrap/right-align
+   would render a full sentence as one unreadably wide, scroll-only row. Selector scoped to match
+   .standings-table td's own specificity (a bare .injury-report-comment class loses that fight). */
+.standings-table td.injury-report-comment { text-align: left; white-space: normal; max-width: 28rem; }
+
 .standings-col-team {
   text-align: left;
   display: flex;
