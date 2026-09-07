@@ -270,6 +270,10 @@
      shooting-pct already cover the same ground more usefully at a glance at this width. */
   .bref-col-low-priority { display: none; }
 
+  /* Roster table's Ht/Wt/Age/Exp/College columns -- same reasoning as .bref-col-low-priority
+     above: Name/#/Pos already answer "who's on this team" at a courtside glance. */
+  .roster-cell--low-priority { display: none; }
+
   /* College/Hometown are trivia, not something a courtside glance needs -- see PlayerPage.jsx's
      bioItems comment. Position/Height/Weight/Age/Experience stay. */
   .bio-low-priority { display: none; }

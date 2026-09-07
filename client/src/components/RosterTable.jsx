@@ -31,6 +31,11 @@ export default function RosterTable({ players, teamName, onSaveDeck, onPlayerCli
               <th className="roster-cell roster-cell--head">Name</th>
               <th className="roster-cell roster-cell--head">#</th>
               <th className="roster-cell roster-cell--head">Pos</th>
+              <th className="roster-cell roster-cell--head roster-cell--low-priority">Ht</th>
+              <th className="roster-cell roster-cell--head roster-cell--low-priority">Wt</th>
+              <th className="roster-cell roster-cell--head roster-cell--low-priority">Age</th>
+              <th className="roster-cell roster-cell--head roster-cell--low-priority">Exp</th>
+              <th className="roster-cell roster-cell--head roster-cell--low-priority">College</th>
             </tr>
           </thead>
           <tbody>
@@ -65,6 +70,16 @@ export default function RosterTable({ players, teamName, onSaveDeck, onPlayerCli
                 </td>
                 <td className="roster-cell muted">{player.jersey || '—'}</td>
                 <td className="roster-cell muted">{player.position || '—'}</td>
+                {/* Ht/Wt/Age/Exp/College -- same RosterPlayer fields PlayerPage's own bio grid already
+                    reads (server/providers/schemas.js), just never surfaced in this table before.
+                    No raw birth date exists in this data (only age + birthPlace), so this shows Age
+                    where a bbref roster table shows Birth Date -- the honest substitute, not a
+                    fabricated date. */}
+                <td className="roster-cell muted roster-cell--low-priority">{player.height || '—'}</td>
+                <td className="roster-cell muted roster-cell--low-priority">{player.weight || '—'}</td>
+                <td className="roster-cell muted roster-cell--low-priority">{player.age ?? '—'}</td>
+                <td className="roster-cell muted roster-cell--low-priority">{player.experience != null ? (player.experience === 0 ? 'R' : player.experience) : '—'}</td>
+                <td className="roster-cell muted roster-cell--low-priority">{player.college || '—'}</td>
               </tr>
             ))}
           </tbody>

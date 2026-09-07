@@ -4,6 +4,7 @@ import DetailedStats from './DetailedStats';
 import ComparePickerModal from './ComparePickerModal';
 import ArchetypeBadge from './ArchetypeBadge';
 import InjuryBadge from './InjuryBadge';
+import PlayerAwardsBadges from './PlayerAwardsBadges';
 import { initialsOf } from '../lib/initials';
 
 export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onTabChange }) {
@@ -42,6 +43,7 @@ export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onT
           <h1 className="player-hero-name">{player.name}</h1>
           <ArchetypeBadge playerId={player.id} />
           <InjuryBadge playerId={player.id} retired={!!player.retired} />
+          <PlayerAwardsBadges playerId={player.id} />
           {bioItems.length > 0 && (
             <div className="player-bio-grid">
               {bioItems.map(item => (

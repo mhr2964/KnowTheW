@@ -21,6 +21,7 @@ const { isBulkLegacyId, getBulkLegacyPlayer, resolveLegacyId,
         buildBulkLegacyProfile, buildBulkLegacyDetailedStats }           = require('../constants/legacyPlayerBulk');
 const { getProvider }          = require('../providers');
 const { fetchPlayerSeasonData } = require('../lib/playerSeasonData');
+const { getPlayerAccolades } = require('../constants/wnbaAccolades');
 
 const fetchTeamStats = (...a) => getProvider().getTeamStats(...a);
 
@@ -296,6 +297,42 @@ router.get('/players/:id/defense', async (req, res) => {
   } catch (err) {
     console.error('defense:', err.message);
     res.status(502).json({ error: 'failed to load defense stats' });
+  }
+});
+
+// Player's own award history (MVP/Finals MVP/DPOY/ROY/Sixth Player/All-WNBA First Team/
+// Championships), for the player page's trophy case. Reuses getPlayerAccolades -- the same
+// name-matching lookup gradedReportClient.js already relies on for the AI report feature, including
+// WNBA_PLAYER_CHAMPIONSHIPS (a hand-curated player->years constant, not derived from season rows --
+// team titles don't otherwise attribute to individual players without a historical roster for that
+// season, which ESPN doesn't expose). Name-based, not id-based, so this resolves the player's name
+// through the same three sources /players/:id itself checks, then hands the plain name off.
+router.get('/players/:id/awards', async (req, res) => {
+  try {
+    const playerId = resolveLegacyId(req.params.id);
+    let name = null;
+    if (isBulkLegacyId(playerId)) {
+      name = getBulkLegacyPlayer(playerId)?.name ?? null;
+    } else {
+      const active = getProvider().findActivePlayer(playerId);
+      name = active?.name ?? (await getProvider().getRetiredPlayer(playerId))?.name ?? null;
+    }
+    if (!name) return res.json({ awards: [] });
+
+    const { mvp, finalsMVP, dpoy, roy, sixth, allWnbaFirst, championships } = getPlayerAccolades(name);
+    const awards = [
+      { key: 'championships', label: 'WNBA Champ', years: championships },
+      { key: 'mvp', label: 'MVP', years: mvp },
+      { key: 'finalsMvp', label: 'Finals MVP', years: finalsMVP },
+      { key: 'dpoy', label: 'Defensive POY', years: dpoy },
+      { key: 'roy', label: 'Rookie of the Year', years: roy },
+      { key: 'sixth', label: 'Sixth Player', years: sixth },
+      { key: 'allWnbaFirst', label: 'All-WNBA First Team', years: allWnbaFirst },
+    ].filter(a => a.years.length > 0);
+    res.json({ awards });
+  } catch (err) {
+    console.error('player-awards:', err.message);
+    res.status(502).json({ error: 'failed to load player awards' });
   }
 });
 

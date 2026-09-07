@@ -4,6 +4,7 @@ import { getCurrentSeason } from '../lib/currentSeason';
 import { WNBA_FOUNDED_CLIENT } from '../constants/wnbaFoundedClient';
 import { nameForYear } from '../constants/wnbaFranchiseLineageClient';
 import SeasonPicker from '../components/SeasonPicker';
+import TeamChampionBadge from '../components/TeamChampionBadge';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 import { setStructuredData, clearStructuredData } from '../lib/structuredData';
@@ -134,6 +135,7 @@ export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }
         )}
         <div className="team-header-text">
           <h2 className="team-header-name">{displayName}</h2>
+          <TeamChampionBadge teamId={team.id} season={selectedSeason} isDefunct={isDefunct} />
           {segs.length > 0
             ? <p className="team-header-meta">{segs.join(' · ')}</p>
             : seasonInfoLoading && !isCurrentSeason && !seasonInfoFailed

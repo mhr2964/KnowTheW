@@ -276,6 +276,14 @@
 .team-header-logo { width: 68px; height: 68px; object-fit: contain; }
 .team-header-text { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
 .team-header-name { font-size: clamp(1.1rem, 5vw, 1.75rem); font-weight: 800; }
+.team-champion-badge {
+  display: inline-flex; align-items: center; margin-left: 0.6rem;
+  padding: 0.2rem 0.65rem;
+  background: rgba(232, 200, 74, 0.15); border: 1px solid rgba(232, 200, 74, 0.45);
+  border-radius: 999px; color: var(--champion-text);
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase;
+  vertical-align: middle;
+}
 .team-header-meta { font-size: 0.85rem; font-weight: 500; color: var(--text-muted); line-height: 1.4; }
 .team-header-meta-loading { opacity: 0.5; }
 

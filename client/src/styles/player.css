@@ -391,6 +391,21 @@
 .archetype-conf-dot.conf-medium { background: var(--champion-text); }
 .archetype-conf-dot.conf-low    { background: var(--text-muted); }
 
+/* Career awards trophy case (PlayerAwardsBadges.jsx) -- same pill shape as archetype/injury badges
+   above, gold-tinted (var(--champion-text), already used elsewhere for title/achievement context)
+   since these are always positive career highlights, not a status indicator. */
+.player-awards-case {
+  display: flex; flex-wrap: wrap; gap: 0.4rem;
+  margin: 0.4rem 0 0.15rem;
+}
+.player-award-badge {
+  display: inline-flex; align-items: center;
+  padding: 0.28rem 0.75rem;
+  background: rgba(232, 200, 74, 0.12); border: 1px solid rgba(232, 200, 74, 0.4);
+  border-radius: 999px; color: var(--champion-text);
+  font-size: 0.8rem; font-weight: 700;
+}
+
 /* Portal-rendered to body with position:fixed + JS-computed left/top (ArchetypeBadge.jsx),
    same approach as .stat-help-pop -- isn't clipped by an ancestor's overflow, and the JS clamps
    left within the viewport instead of assuming the pill sits near the left edge (the mobile hero
