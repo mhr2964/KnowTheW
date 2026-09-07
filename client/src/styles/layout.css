@@ -208,6 +208,11 @@
 .status-msg--retry {
   display: flex; align-items: center; gap: 0.75rem; padding: 2rem 0;
 }
+.breadcrumbs { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.6rem; }
+.breadcrumbs a { color: var(--text-muted); text-decoration: none; }
+.breadcrumbs a:hover { color: var(--accent); text-decoration: underline; }
+.breadcrumb-sep { margin: 0 0.4rem; }
+
 .back-btn {
   background: none; border: none; color: var(--accent);
   cursor: pointer; font-size: 0.85rem; font-weight: 600;

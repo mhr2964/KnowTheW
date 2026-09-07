@@ -5,6 +5,7 @@ import { WNBA_FOUNDED_CLIENT } from '../constants/wnbaFoundedClient';
 import { nameForYear } from '../constants/wnbaFranchiseLineageClient';
 import SeasonPicker from '../components/SeasonPicker';
 import TeamChampionBadge from '../components/TeamChampionBadge';
+import Breadcrumbs from '../components/Breadcrumbs';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 import { setStructuredData, clearStructuredData } from '../lib/structuredData';
@@ -126,8 +127,20 @@ export default function TeamPage({ teams, teamsLoading, teamsError, onSaveDeck }
   const backLabel = onDashboard ? '← All Teams' : `← ${team.name}`;
   const backTarget = onDashboard ? '/' : `/team/${slug}`;
 
+  const currentTabKey = location.pathname.split('/').pop();
+  const currentTab = TAB_META[currentTabKey];
+  const breadcrumbItems = [
+    { label: 'Home', to: '/' },
+    { label: 'Teams', to: '/teams' },
+    onDashboard || !currentTab
+      ? { label: team.name }
+      : { label: team.name, to: `/team/${slug}${searchSuffix}` },
+    ...(onDashboard || !currentTab ? [] : [{ label: currentTab.label }]),
+  ];
+
   return (
     <>
+      <Breadcrumbs items={breadcrumbItems} />
       <button type="button" className="back-btn" onClick={() => navigate(backTarget)}>{backLabel}</button>
       <div className="team-header" style={{ '--team-color': `#${team.color}` }}>
         {team.logo && (

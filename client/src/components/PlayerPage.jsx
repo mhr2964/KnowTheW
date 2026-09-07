@@ -5,6 +5,7 @@ import ComparePickerModal from './ComparePickerModal';
 import ArchetypeBadge from './ArchetypeBadge';
 import InjuryBadge from './InjuryBadge';
 import PlayerAwardsBadges from './PlayerAwardsBadges';
+import Breadcrumbs from './Breadcrumbs';
 import { initialsOf } from '../lib/initials';
 
 export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onTabChange }) {
@@ -28,6 +29,7 @@ export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onT
 
   return (
     <>
+      <Breadcrumbs items={[{ label: 'Home', to: '/' }, { label: 'Players', to: '/players' }, { label: player.name }]} />
       <button type="button" className="back-btn" onClick={onBack}>← Back</button>
 
       <div className="player-hero">
