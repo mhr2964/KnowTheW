@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
+import HeadToHeadGrid from '../components/HeadToHeadGrid';
 
 // By-conference: seed already encodes BDL's own tiebreak logic (win% alone can disagree with
 // conference record/head-to-head), so ranking within a conference re-sorts on the number the seed
@@ -95,7 +96,7 @@ function groupByConference(data) {
   }));
 }
 
-export default function StandingsPage() {
+export default function StandingsPage({ teams }) {
   const { data, loading, error, refetch } = useLazyFetch('/api/standings', true);
   const [viewMode, setViewMode] = useState('conference');
 
@@ -139,6 +140,7 @@ export default function StandingsPage() {
       {viewMode === 'conference'
         ? conferenceGroups.map(g => <StandingsTable key={g.conference} title={g.conference} rows={g.rows} showConference={false} />)
         : <StandingsTable title="All Teams" rows={combinedRows} showConference />}
+      {teams && teams.length > 0 && <HeadToHeadGrid teams={teams} />}
     </>
   );
 }
