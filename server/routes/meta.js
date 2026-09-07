@@ -46,6 +46,29 @@ router.get('/search', async (req, res) => {
   }
 });
 
+// Full active-player directory (id/name/position/teamAbbr) -- cross-cutting like /search, backs the
+// site nav's Players directory page. getActivePlayers() is ESPN's startup-prefetch cache (see
+// espn/index.js), so this is free relative to a live provider call; getTeams() is only needed here
+// to resolve each player's numeric teamId to an abbreviation, same join every other /league/* route
+// does server-side (see leagueStats.js's mapBdlLeagueStatLine) rather than pushing a teamId->abbr
+// map-build onto every client of this route.
+router.get('/league/players', async (req, res) => {
+  try {
+    const [players, teams] = await Promise.all([
+      Promise.resolve(getProvider().getActivePlayers()),
+      getProvider().getTeams(),
+    ]);
+    const abbrById = new Map(teams.map(t => [t.id, t.abbreviation]));
+    const result = players
+      .map(p => ({ id: p.id, name: p.name, position: p.position, teamAbbr: abbrById.get(p.teamId) ?? null }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    res.json({ players: result });
+  } catch (err) {
+    console.error('league/players:', err.message);
+    res.status(502).json({ error: 'failed to load player directory' });
+  }
+});
+
 // League shot-zone leaderboards -- cross-cutting (not team- or player-scoped), same reasoning as
 // /search living here rather than in teams.js/players.js. BDL-only, same 2022 tracking floor as the
 // player/team shot charts (getLeagueShotZoneLeaders returns null before that floor).
