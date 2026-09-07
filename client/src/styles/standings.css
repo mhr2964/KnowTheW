@@ -124,6 +124,30 @@
   .standings-col-split { display: none; }
 }
 
+/* Playoffs Hub (PlayoffsHubPage.jsx) -- series grouped client-side from raw postseason games (see
+   lib/playoffSeries.js), deliberately no round labels (BDL's game data has no round field to draw
+   them from honestly -- see that file's header comment). */
+.playoff-series-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 1rem 1.25rem; margin-bottom: 1rem;
+}
+.playoff-series-header {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: 0.5rem; margin-bottom: 0.75rem;
+}
+.playoff-series-matchup { display: flex; align-items: center; gap: 0.4rem; font-weight: 700; flex-wrap: wrap; }
+.playoff-series-vs { color: var(--text-muted); margin: 0 0.15rem; }
+.playoff-series-result { color: var(--accent); font-size: 0.82rem; font-weight: 700; }
+.playoff-series-games { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.playoff-series-game {
+  display: flex; align-items: center; gap: 0.35rem;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0.4rem 0.7rem; font: inherit; font-size: 0.78rem; color: var(--text);
+  cursor: pointer; min-height: var(--touch-target-min);
+}
+.playoff-series-game:disabled { cursor: default; opacity: 0.6; }
+.playoff-series-game-date { color: var(--text-muted); margin-right: 0.2rem; }
+
 /* Game Box Score's team-identity chrome (GameBoxScorePage.jsx) -- larger logo than the inline
    table badges (.standings-team-logo), since these sit next to page/section headings. */
 .box-score-matchup-header, .box-score-team-header {

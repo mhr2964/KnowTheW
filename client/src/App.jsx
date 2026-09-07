@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, NavLink, useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
 import { useRecentDecks } from './hooks/useRecentDecks';
 import { useAuth } from './hooks/useAuth';
@@ -16,6 +16,8 @@ import GameBoxScorePage from './pages/GameBoxScorePage';
 import NotableGamesPage from './pages/NotableGamesPage';
 import CareerLeadersPage from './pages/CareerLeadersPage';
 import PlayersDirectoryPage from './pages/PlayersDirectoryPage';
+import ScheduleHubPage from './pages/ScheduleHubPage';
+import PlayoffsHubPage from './pages/PlayoffsHubPage';
 import TeamPage from './pages/TeamPage';
 import TeamDashboard from './pages/TeamDashboard';
 import TeamRosterPage from './pages/TeamRosterPage';
@@ -36,6 +38,8 @@ import SignupPage from './pages/SignupPage';
 import AccountPage from './pages/AccountPage';
 import NotificationBell from './components/NotificationBell';
 import NavDropdown from './components/NavDropdown';
+import MobileNav from './components/MobileNav';
+import { buildNavEntries, buildTeamsNavItems } from './lib/navEntries';
 import './styles/global.css';
 import './styles/layout.css';
 import './styles/shared.css';
@@ -95,6 +99,8 @@ export default function App() {
   const { decks, saveDeck } = useRecentDecks();
   const { user } = useAuth();
 
+  const navEntries = useMemo(() => buildNavEntries(buildTeamsNavItems(teams)), [teams]);
+
   useEffect(() => {
     const controller = new AbortController();
     Promise.all([
@@ -147,31 +153,30 @@ export default function App() {
       </header>
 
       <nav className="site-nav">
-        <NavLink to="/" end className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>Home</NavLink>
-        <NavDropdown label="Teams">
-          <NavLink to="/teams" className={({ isActive }) => `nav-dropdown-item nav-dropdown-item--strong${isActive ? ' active' : ''}`}>All Teams</NavLink>
-          <div className="nav-dropdown-divider" />
-          {teams.filter(t => !t.defunct).map(t => (
-            <NavLink key={t.id} to={`/team/${t.slug}`} className={({ isActive }) => `nav-dropdown-item${isActive ? ' active' : ''}`}>{t.name}</NavLink>
-          ))}
-        </NavDropdown>
-        <NavDropdown label="Players">
-          <NavLink to="/search" className={({ isActive }) => `nav-dropdown-item${isActive ? ' active' : ''}`}>Search</NavLink>
-          <NavLink to="/players" className={({ isActive }) => `nav-dropdown-item${isActive ? ' active' : ''}`}>Player Directory</NavLink>
-        </NavDropdown>
-        <NavLink to="/standings" className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>Standings</NavLink>
-        <NavDropdown label="Leaders">
-          <NavLink to="/league-leaders" className={({ isActive }) => `nav-dropdown-item${isActive ? ' active' : ''}`}>League Leaders</NavLink>
-          <NavLink to="/leaders" className={({ isActive }) => `nav-dropdown-item${isActive ? ' active' : ''}`}>Shot Zone Leaders</NavLink>
-          <NavLink to="/all-time-leaders" className={({ isActive }) => `nav-dropdown-item${isActive ? ' active' : ''}`}>All-Time Leaders</NavLink>
-          <NavLink to="/awards" className={({ isActive }) => `nav-dropdown-item${isActive ? ' active' : ''}`}>Awards History</NavLink>
-        </NavDropdown>
-        <NavDropdown label="Scores" align="right">
-          <NavLink to="/notable-games" className={({ isActive }) => `nav-dropdown-item${isActive ? ' active' : ''}`}>Notable Games</NavLink>
-          <NavLink to="/odds" className={({ isActive }) => `nav-dropdown-item${isActive ? ' active' : ''}`}>Odds</NavLink>
-        </NavDropdown>
-        <NavLink to="/injuries" className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}>Injury Report</NavLink>
+        {navEntries.map(entry => entry.type === 'link' ? (
+          <NavLink
+            key={entry.to}
+            to={entry.to}
+            end={entry.end}
+            className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}
+          >
+            {entry.label}
+          </NavLink>
+        ) : (
+          <NavDropdown key={entry.label} label={entry.label} align={entry.align}>
+            {entry.items.map(item => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) => `nav-dropdown-item${item.strong ? ' nav-dropdown-item--strong' : ''}${isActive ? ' active' : ''}`}
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </NavDropdown>
+        ))}
       </nav>
+      <MobileNav entries={navEntries} />
 
       <AdSlot slotId={import.meta.env.VITE_AD_SLOT_TOP} className="ad-slot--top" />
       <AdSlot slotId={import.meta.env.VITE_AD_SLOT_SIDEBAR} className="ad-slot--sidebar" />
@@ -201,6 +206,8 @@ export default function App() {
           <Route path="/notable-games" element={<NotableGamesPage teams={teams} />} />
           <Route path="/all-time-leaders" element={<CareerLeadersPage teams={teams} />} />
           <Route path="/players" element={<PlayersDirectoryPage />} />
+          <Route path="/schedule" element={<ScheduleHubPage teams={teams} />} />
+          <Route path="/playoffs" element={<PlayoffsHubPage teams={teams} />} />
           <Route
             path="/team/:slug"
             element={

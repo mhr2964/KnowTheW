@@ -54,6 +54,7 @@ const bdlOdds = require('./odds');
 const bdlLeagueOdds = require('./leagueOdds');
 const bdlBoxScore = require('./boxScore');
 const bdlNotableGames = require('./notableGames');
+const bdlLeagueSchedule = require('./leagueSchedule');
 const idMap = require('./idMap');
 const { BDL_MIN_SEASON, SHOT_CHART_MIN_SEASON, ADVANCED_RATINGS_MIN_SEASON } = require('./client');
 const { SportsDataProvider } = require('../SportsDataProvider');
@@ -125,6 +126,12 @@ class BallDontLieProvider extends SportsDataProvider {
   // to scan pre-2008. See notableGames.js.
   getNotableGames(season) {
     return usesBdl(season) ? bdlNotableGames.getNotableGamesBdl(season) : { season: Number(season), categories: [] };
+  }
+
+  // League Schedule: BDL-only, same pre-2008 floor as Notable Games above -- see
+  // leagueSchedule.js.
+  getLeagueSchedule(season) {
+    return usesBdl(season) ? bdlLeagueSchedule.getLeagueScheduleBdl(season) : [];
   }
 
   // League Leaders: ranks the same qualified entries getLeagueStatLines already produces (see

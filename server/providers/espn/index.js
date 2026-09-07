@@ -95,6 +95,7 @@ class EspnProvider extends SportsDataProvider {
   getLeagueOdds() { return []; }
   getGameBoxScore() { return null; }
   getNotableGames(season) { return { season: Number(season), categories: [] }; }
+  getLeagueSchedule() { return []; }
 
   // All-time / career leaders: same loop-and-sum approach as the BDL facade's version, but every
   // entry already carries this site's canonical id (espnId) -- no name bridge needed.

@@ -155,6 +155,23 @@ router.get('/league/notable-games', async (req, res) => {
   }
 });
 
+// League-wide schedule/scores for a season -- cross-cutting like the other /league/* routes,
+// optional postseason filter matching how the client's season-scoped pages already split
+// regular/playoffs (League Leaders' mode toggle, Career Leaders' regularCareer/playoffCareer).
+router.get('/league/schedule', async (req, res) => {
+  const season = parseInt(req.query.season, 10);
+  if (!Number.isFinite(season)) return res.status(400).json({ error: 'season is required' });
+
+  try {
+    const games = await getProvider().getLeagueSchedule(season);
+    const postseasonOnly = req.query.postseason === 'true';
+    res.json({ season, games: postseasonOnly ? games.filter(g => g.postseason) : games });
+  } catch (err) {
+    console.error(`league/schedule season=${season}:`, err.message);
+    res.status(502).json({ error: 'failed to load league schedule' });
+  }
+});
+
 // All-time / career league leaders -- cross-cutting like the other /league/* routes. No season
 // param: always the full 2002-through-latest-completed-season sum (see getCareerLeaders's doc).
 router.get('/league/career-leaders', async (req, res) => {

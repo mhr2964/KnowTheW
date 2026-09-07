@@ -141,6 +141,11 @@ class SportsDataProvider {
    *  AST/STL/BLK), regular season only. BDL-only -- no ESPN equivalent exists (see
    *  notableGames.js). Empty categories for a pre-BDL season, not an error. */
   getNotableGames() { return this._notImplemented('getNotableGames'); }
+  /** getLeagueSchedule(season) → [{gameId, date, postseason, final, home:{id,abbreviation,score},
+   *  away:{...}}], date-ordered, real franchises only, regular season AND playoffs both included
+   *  (no round labels -- see leagueSchedule.js's header comment for why). BDL-only, empty for a
+   *  pre-BDL season, not an error. */
+  getLeagueSchedule() { return this._notImplemented('getLeagueSchedule'); }
   /** getCareerLeaders() → {categories: [{key, label, leaders: [{playerId, name, teamAbbr, seasons,
    *  value}]}]}. Career totals (PTS/REB/AST/STL/BLK) summed from Totals-mode getLeagueStatLines
    *  across every season from 2002 (the ESPN byathlete floor) through latestCompletedSeason() --
