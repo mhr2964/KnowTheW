@@ -152,19 +152,29 @@ function SearchBar() {
       </form>
       {open && hasSuggestions && (
         <div className="search-suggestions">
-          {suggestions.teams.slice(0, 4).map(t => (
-            <button key={`team-${t.id}`} type="button" className="search-suggestion-item" onClick={() => goTo(`/team/${t.slug}`)}>
-              {t.logo && <img src={t.logo} alt="" className="standings-team-logo" />}
-              <span>{t.name}</span>
-              <span className="search-suggestion-meta">{t.abbreviation}</span>
-            </button>
-          ))}
-          {suggestions.players.slice(0, 6).map(p => (
-            <button key={`player-${p.id}`} type="button" className="search-suggestion-item" onClick={() => goTo(`/player/${p.id}`)}>
-              <span>{p.name}</span>
-              <span className="search-suggestion-meta">{p.teamName ?? p.position ?? ''}</span>
-            </button>
-          ))}
+          {suggestions.teams.length > 0 && (
+            <>
+              <div className="search-suggestion-heading">Teams</div>
+              {suggestions.teams.slice(0, 6).map(t => (
+                <button key={`team-${t.id}`} type="button" className="search-suggestion-item" onClick={() => goTo(`/team/${t.slug}`)}>
+                  {t.logo && <img src={t.logo} alt="" className="standings-team-logo" />}
+                  <span>{t.name}</span>
+                  <span className="search-suggestion-meta">{t.abbreviation}</span>
+                </button>
+              ))}
+            </>
+          )}
+          {suggestions.players.length > 0 && (
+            <>
+              <div className="search-suggestion-heading">Players</div>
+              {suggestions.players.slice(0, 10).map(p => (
+                <button key={`player-${p.id}`} type="button" className="search-suggestion-item" onClick={() => goTo(`/player/${p.id}`)}>
+                  <span>{p.name}</span>
+                  <span className="search-suggestion-meta">{p.retired ? 'Retired' : (p.teamName ?? p.position ?? '')}</span>
+                </button>
+              ))}
+            </>
+          )}
           <button
             type="button"
             className="search-suggestion-item search-suggestion-item--all"

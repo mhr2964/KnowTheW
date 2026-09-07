@@ -143,6 +143,10 @@
   color: var(--text); cursor: pointer;
 }
 .search-suggestion-item:hover { background: var(--surface-2); }
+.search-suggestion-heading {
+  padding: 0.5rem 0.9rem 0.2rem; font-size: 0.68rem; font-weight: 800;
+  letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted);
+}
 .search-suggestion-meta { color: var(--text-muted); font-size: 0.78rem; margin-left: auto; }
 .search-suggestion-item--all {
   border-top: 1px solid var(--border); margin-top: 0.3rem; padding-top: 0.7rem;
