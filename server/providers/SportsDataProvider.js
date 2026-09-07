@@ -205,6 +205,10 @@ class SportsDataProvider {
    *  along for getLeagueStatLeaders below -- percentileClient.js's distribution builder only ever
    *  plucks the named stat keys off this object, so they're inert for that consumer. */
   getLeagueStatLines() { return this._notImplemented('getLeagueStatLines'); }
+  /** getLeagueStatLinesWithIds(season, mode) → getLeagueStatLines' entries, each with a resolved
+   *  `playerId` (this site's canonical id) attached -- the identity-bridge step League Leaders and
+   *  the Season Stats table both need before an entry can link anywhere. */
+  getLeagueStatLinesWithIds() { return this._notImplemented('getLeagueStatLinesWithIds'); }
   /** getLeagueReboundFoulStats(season) → [{pos, gp, mpg, OREB, DREB, PF}] for distribution enrichment. */
   getLeagueReboundFoulStats() { return this._notImplemented('getLeagueReboundFoulStats'); }
   /** getPlayerSeasonAverages(playerId) → { pos, statsByModeBySeason: {[year]:{PerGame,Totals,Per36}} } | null. */

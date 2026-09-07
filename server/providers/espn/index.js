@@ -144,12 +144,17 @@ class EspnProvider extends SportsDataProvider {
   getPlayerSeasonAverages(playerId) { return leagueStats.getPlayerSeasonAverages(playerId); }
   getLeaguePlayerIndex(seasons) { return leagueStats.getLeaguePlayerIndex(seasons); }
 
-  // League Leaders: ESPN rows already carry this site's canonical id (espnId, see
-  // mapLeagueStatLine) -- no BDL name-bridge needed here, unlike balldontlie/index.js's version.
-  async getLeagueStatLeaders(season, mode) {
+  // ESPN rows already carry this site's canonical id (espnId, see mapLeagueStatLine) -- no BDL
+  // name-bridge needed here, unlike balldontlie/index.js's version. Shared by getLeagueStatLeaders
+  // (below) and getLeagueSeasonStats.
+  async getLeagueStatLinesWithIds(season, mode) {
     const entries = await this.getLeagueStatLines(season, mode);
-    if (!entries.length) return { season: Number(season), mode, categories: [] };
-    const withIds = entries.map(e => ({ ...e, playerId: e.espnId ?? null }));
+    return entries.map(e => ({ ...e, playerId: e.espnId ?? null }));
+  }
+
+  async getLeagueStatLeaders(season, mode) {
+    const withIds = await this.getLeagueStatLinesWithIds(season, mode);
+    if (!withIds.length) return { season: Number(season), mode, categories: [] };
     return { season: Number(season), mode, categories: buildLeaderboards(withIds) };
   }
 

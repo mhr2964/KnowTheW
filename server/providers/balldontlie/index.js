@@ -134,26 +134,29 @@ class BallDontLieProvider extends SportsDataProvider {
     return usesBdl(season) ? bdlLeagueSchedule.getLeagueScheduleBdl(season) : [];
   }
 
-  // League Leaders: ranks the same qualified entries getLeagueStatLines already produces (see
-  // leagueLeaders.js) rather than a new bulk fetch. BDL rows carry no ESPN id at the endpoint --
-  // bridged by name via lib/playerNameIndex.js's resolveEspnIdByName, same once-per-unique-name batching
-  // getLeagueShotZoneLeaders uses (a stat leader can lead multiple categories). ESPN rows already
-  // carry this site's canonical id (espnId), no bridge needed.
-  async getLeagueStatLeaders(season, mode) {
+  // BDL rows carry no ESPN id at the endpoint -- bridged by name via lib/playerNameIndex.js's
+  // resolveEspnIdByName, same once-per-unique-name batching getLeagueShotZoneLeaders uses (a stat
+  // leader can lead multiple categories). ESPN rows already carry this site's canonical id
+  // (espnId), no bridge needed. Shared by getLeagueStatLeaders (below) and getLeagueSeasonStats --
+  // both rank/list the same getLeagueStatLines entries and both need a clickable playerId.
+  async getLeagueStatLinesWithIds(season, mode) {
     const entries = await this.getLeagueStatLines(season, mode);
-    if (!entries.length) return { season: Number(season), mode, categories: [] };
+    if (!entries.length) return [];
 
-    let withIds;
     if (usesBdl(season)) {
       const uniqueNames = new Set(entries.map(e => e.name).filter(Boolean));
       const idByName = new Map(await Promise.all(
         [...uniqueNames].map(async name => [name, await resolveEspnIdByName(name)])
       ));
-      withIds = entries.map(e => ({ ...e, playerId: idByName.get(e.name) ?? null }));
-    } else {
-      withIds = entries.map(e => ({ ...e, playerId: e.espnId ?? null }));
+      return entries.map(e => ({ ...e, playerId: idByName.get(e.name) ?? null }));
     }
+    return entries.map(e => ({ ...e, playerId: e.espnId ?? null }));
+  }
 
+  // League Leaders: ranks the id-bridged entries above rather than a new bulk fetch.
+  async getLeagueStatLeaders(season, mode) {
+    const withIds = await this.getLeagueStatLinesWithIds(season, mode);
+    if (!withIds.length) return { season: Number(season), mode, categories: [] };
     return { season: Number(season), mode, categories: buildLeaderboards(withIds) };
   }
 

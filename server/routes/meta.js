@@ -87,6 +87,28 @@ router.get('/league/shot-zone-leaders', async (req, res) => {
   }
 });
 
+// Full season stat table -- every qualified player's stat line for a season, not just the top 10
+// each category's leaderboard shows. bbref's own "Player Stats" page is exactly this (Per Game/
+// Totals/Advanced tabs, every player, sortable); this reuses the same qualified-entries pipeline
+// getLeagueStatLeaders already ranks from (getLeagueStatLines), just unranked and unsliced. "Every
+// qualified player" is a real scope note, not "every player who suited up" -- getLeagueStatLines
+// applies the same games-played qualification threshold the percentile system needs, so a player
+// with only a couple of appearances won't appear here either, same as League Leaders.
+router.get('/league/season-stats', async (req, res) => {
+  const season = parseInt(req.query.season, 10);
+  if (!Number.isFinite(season)) return res.status(400).json({ error: 'season is required' });
+  const mode = req.query.mode === 'Totals' ? 'Totals' : 'PerGame';
+
+  try {
+    const entries = await getProvider().getLeagueStatLinesWithIds(season, mode);
+    const players = [...entries].sort((a, b) => a.name.localeCompare(b.name));
+    res.json({ season, mode, players });
+  } catch (err) {
+    console.error(`league/season-stats season=${season}:`, err.message);
+    res.status(502).json({ error: 'failed to load season stats' });
+  }
+});
+
 // League stat leaders (PTS/REB/AST/etc top-10, standard box-score categories) -- cross-cutting like
 // /search and /league/shot-zone-leaders above. Works back to 2002 (ESPN's byathlete floor, see
 // docs/design/design.md's data-sources note) unlike the shot-zone board's 2022 BDL-only floor.

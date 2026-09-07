@@ -23,6 +23,7 @@ export function buildNavEntries(teamsItems) {
       label: 'Leaders',
       items: [
         { to: '/league-leaders', label: 'League Leaders' },
+        { to: '/season-stats', label: 'Season Stats' },
         { to: '/leaders', label: 'Shot Zone Leaders' },
         { to: '/all-time-leaders', label: 'All-Time Leaders' },
         { to: '/awards', label: 'Awards History' },

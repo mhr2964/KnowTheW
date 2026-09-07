@@ -18,6 +18,7 @@ import CareerLeadersPage from './pages/CareerLeadersPage';
 import PlayersDirectoryPage from './pages/PlayersDirectoryPage';
 import ScheduleHubPage from './pages/ScheduleHubPage';
 import PlayoffsHubPage from './pages/PlayoffsHubPage';
+import SeasonStatsPage from './pages/SeasonStatsPage';
 import TeamPage from './pages/TeamPage';
 import TeamDashboard from './pages/TeamDashboard';
 import TeamRosterPage from './pages/TeamRosterPage';
@@ -296,6 +297,7 @@ export default function App() {
           <Route path="/players" element={<PlayersDirectoryPage />} />
           <Route path="/schedule" element={<ScheduleHubPage teams={teams} />} />
           <Route path="/playoffs" element={<PlayoffsHubPage teams={teams} />} />
+          <Route path="/season-stats" element={<SeasonStatsPage teams={teams} />} />
           <Route
             path="/team/:slug"
             element={
