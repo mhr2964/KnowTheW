@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { formatStatValue } from '../lib/statFormatters';
+import TeamGameChart from '../components/TeamGameChart';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -125,6 +126,7 @@ export default function TeamDashboard() {
 
   return (
     <div className="team-dashboard-grid">
+      {!isDefunct && <TeamGameChart teamId={team.id} season={season} />}
       <div className="team-dashboard-card">
         <div className="team-dashboard-card-headline">
           Roster

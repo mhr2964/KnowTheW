@@ -72,6 +72,26 @@
   gap: var(--space-4);
 }
 
+/* Game-margin bar chart (TeamGameChart.jsx) -- a grid child spanning every column so it sits as a
+   full-width strip above the Roster/Stats/History/Schedule cards, not squeezed into one cell. */
+.team-game-chart { grid-column: 1 / -1; }
+.team-game-chart-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+.team-game-chart-bars { display: flex; flex-direction: column; height: 70px; overflow-x: auto; }
+/* Each half is its own flex row spanning every game in order; align-items anchors bars to the
+   shared middle divider so wins grow up into it and losses grow down from it. */
+.team-game-chart-half { flex: 1; display: flex; align-items: flex-end; gap: 2px; }
+.team-game-chart-half--bottom { align-items: flex-start; }
+.team-game-chart-divider { border-top: 1px solid var(--border); flex-shrink: 0; }
+.team-game-chart-bar, .team-game-chart-spacer {
+  flex: 1 0 3px; min-width: 3px; max-width: 10px;
+}
+.team-game-chart-bar {
+  border: none; border-radius: 1px; cursor: pointer; padding: 0;
+}
+.team-game-chart-bar--win { background: var(--win); }
+.team-game-chart-bar--loss { background: #ef4444; }
+.team-game-chart-bar:disabled { cursor: default; }
+
 .team-dashboard-card {
   background: var(--surface);
   border: 1px solid var(--border);
