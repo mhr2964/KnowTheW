@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { initialsOf } from '../lib/initials';
+import { formatDateMonthDay } from '../lib/dateFormat';
 
 function FieldToggle({ col, side, active, onToggle }) {
   return (
@@ -47,6 +48,10 @@ function fmtVal(col, val) {
   if (col?.type === 'pct') {
     if (typeof val !== 'number') return '—';
     return (val * 100).toFixed(1) + '%';
+  }
+  if (col?.type === 'date') {
+    const d = new Date(val);
+    return Number.isNaN(d.getTime()) ? '—' : formatDateMonthDay(val);
   }
   if (typeof val === 'number') {
     return Number.isInteger(val) ? String(val) : val.toFixed(1);

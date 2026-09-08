@@ -15,12 +15,17 @@ function resolveColumns(columns, headers) {
     .filter(c => !HIDDEN.has(c.key));
 }
 
-// StudyFlow only special-cases type:'pct' (0-1 fraction -> "51.2%"); pct100 values fall through to
-// its plain-number formatting, same as 'num' always did.
+// StudyFlow special-cases type:'pct' (0-1 fraction -> "51.2%") and type:'date' (ISO string ->
+// "May 9", matching BrefTable's own 'date' kind); pct100 values fall through to its plain-number
+// formatting, same as 'num' always did.
 export function buildStudyDeck({ columns, headers, rows, careerRows = [] }) {
   const cols = resolveColumns(columns, headers);
   const allRows = [...(rows ?? []), ...careerRows];
   const data = allRows.map(row => Object.fromEntries(cols.map(c => [c.key, row[c.idx]])));
-  const studyColumns = cols.map(c => ({ key: c.key, label: c.label, type: c.kind === 'pct' ? 'pct' : 'text' }));
+  const studyColumns = cols.map(c => ({
+    key: c.key,
+    label: c.label,
+    type: c.kind === 'pct' ? 'pct' : c.kind === 'date' ? 'date' : 'text',
+  }));
   return { data, columns: studyColumns };
 }
