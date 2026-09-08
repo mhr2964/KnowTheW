@@ -65,6 +65,7 @@ export default function TeamsPage({ teams, loading, error }) {
   return (
     <>
       <h1>Teams</h1>
+      <p className="status-msg">Every WNBA team, current and historical, back to the league&rsquo;s 1997 founding.</p>
       <h2 className="section-title">All Teams</h2>
       <div className="team-grid">
         {active.map(team => (

@@ -121,6 +121,7 @@ export default function StandingsPage({ teams }) {
   return (
     <>
       <h1>Standings</h1>
+      <p className="status-msg">Current WNBA standings by conference — wins, losses, games behind, and playoff seed.</p>
       <div className="stat-season-bar standings-view-toggle">
         <button
           type="button"

@@ -33,7 +33,13 @@ export default function SearchBar() {
     clearTimeout(debounceRef.current);
     abortRef.current?.abort();
     const q = value.trim();
-    if (q.length < SUGGESTION_MIN_LEN) {
+    // On /search itself, `value` starts equal to the URL's own ?q= (see urlQuery above), which
+    // would otherwise fire this same debounced fetch on every load/refresh and pop the floating
+    // suggestions dropdown open over a page that's already showing the full results underneath it
+    // -- confirmed live, a genuinely redundant/confusing double-UI for the same query. Only the
+    // full-results page is shown here; the dropdown is for every other page, where there's no
+    // results list already on screen to duplicate.
+    if (q.length < SUGGESTION_MIN_LEN || location.pathname === '/search') {
       setSuggestions(null);
       return;
     }
@@ -46,7 +52,7 @@ export default function SearchBar() {
         .catch(err => { if (err.name !== 'AbortError') setSuggestions(null); });
     }, SUGGESTION_DEBOUNCE_MS);
     return () => clearTimeout(debounceRef.current);
-  }, [value]);
+  }, [value, location.pathname]);
 
   useEffect(() => {
     if (!open) return;

@@ -1,8 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 import { getCurrentSeason } from '../lib/currentSeason';
+import { buildTeamLogoMap, buildTeamNameMap } from '../lib/teamLookup';
+import TeamBadge from '../components/TeamBadge';
+import RankBadge from '../components/RankBadge';
 
 // Same 2022 floor as the player/team shot charts -- BDL's zone tracking doesn't exist before this.
 const SHOT_CHART_MIN_SEASON = 2022;
@@ -14,11 +17,13 @@ function buildSeasonOptions() {
   return years;
 }
 
-export default function ShotZoneLeadersPage() {
+export default function ShotZoneLeadersPage({ teams }) {
   const navigate = useNavigate();
   const [season, setSeason] = useState(getCurrentSeason());
   const [postseason, setPostseason] = useState(false);
   const [zoneKey, setZoneKey] = useState('restricted_area');
+  const logoByAbbr = useMemo(() => buildTeamLogoMap(teams), [teams]);
+  const nameByAbbr = useMemo(() => buildTeamNameMap(teams), [teams]);
 
   useEffect(() => {
     setPageMeta('Shot Zone Leaders — KnowTheW', 'League leaders by field goal percentage in each court shot zone, by season.');
@@ -33,6 +38,7 @@ export default function ShotZoneLeadersPage() {
   return (
     <>
       <h1>Shot Zone Leaders</h1>
+      <p className="status-msg">Top qualified players by field goal percentage in each court shot zone, by season.</p>
 
       <div className="stat-season-bar" style={{ marginBottom: '0.75rem' }}>
         <select className="gl-select" value={season} onChange={e => setSeason(parseInt(e.target.value, 10))}>
@@ -86,7 +92,7 @@ export default function ShotZoneLeadersPage() {
               <tr>
                 <th>#</th>
                 <th>Player</th>
-                <th>Team</th>
+                <th className="standings-col-team">Team</th>
                 <th>FGM-FGA</th>
                 <th>FG%</th>
               </tr>
@@ -98,9 +104,9 @@ export default function ShotZoneLeadersPage() {
                   className="standings-row"
                   onClick={() => row.playerId != null && navigate(`/player/${row.playerId}`)}
                 >
-                  <td>{i + 1}</td>
+                  <td><RankBadge rank={i + 1} /></td>
                   <td>{row.name}</td>
-                  <td>{row.teamAbbr ?? '—'}</td>
+                  <td className="standings-col-team"><TeamBadge abbr={row.teamAbbr} logoByAbbr={logoByAbbr} nameByAbbr={nameByAbbr} /></td>
                   <td>{row.fgm}-{row.fga}</td>
                   <td>{(row.fgPct * 100).toFixed(1)}%</td>
                 </tr>

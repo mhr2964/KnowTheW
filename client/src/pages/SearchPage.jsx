@@ -39,7 +39,7 @@ export default function SearchPage() {
 
   return (
     <>
-      <button type="button" className="back-btn" onClick={() => navigate('/')}>← All Teams</button>
+      <button type="button" className="back-btn" onClick={() => navigate('/')}>← Home</button>
       {loading && <p className="status-msg">Searching...</p>}
       {!loading && results && (
         <>

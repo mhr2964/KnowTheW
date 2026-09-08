@@ -168,7 +168,7 @@ export default function App() {
             element={<TeamsPage teams={teams} loading={teamsLoading} error={teamsError} />}
           />
           <Route path="/standings" element={<StandingsPage teams={teams} />} />
-          <Route path="/leaders" element={<ShotZoneLeadersPage />} />
+          <Route path="/leaders" element={<ShotZoneLeadersPage teams={teams} />} />
           <Route path="/league-leaders" element={<LeagueLeadersPage teams={teams} />} />
           <Route path="/awards" element={<AwardsHistoryPage />} />
           <Route path="/injuries" element={<InjuryReportPage teams={teams} />} />
