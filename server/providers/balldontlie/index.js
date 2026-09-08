@@ -143,14 +143,32 @@ class BallDontLieProvider extends SportsDataProvider {
     const entries = await this.getLeagueStatLines(season, mode);
     if (!entries.length) return [];
 
+    let withIds;
     if (usesBdl(season)) {
       const uniqueNames = new Set(entries.map(e => e.name).filter(Boolean));
       const idByName = new Map(await Promise.all(
         [...uniqueNames].map(async name => [name, await resolveEspnIdByName(name)])
       ));
-      return entries.map(e => ({ ...e, playerId: idByName.get(e.name) ?? null }));
+      withIds = entries.map(e => ({ ...e, playerId: idByName.get(e.name) ?? null }));
+    } else {
+      withIds = entries.map(e => ({ ...e, playerId: e.espnId ?? null }));
     }
-    return entries.map(e => ({ ...e, playerId: e.espnId ?? null }));
+
+    // BDL sometimes carries two distinct bdlPlayerId rows for the same real person in one season
+    // (confirmed live, 2026: "Alicia Florez" under bdlPlayerId 99338 AND 245094, identical stats,
+    // both resolving to the same ESPN playerId via the name bridge above -- most likely a
+    // reissued BDL id from a roster transaction, not two different players who happen to share a
+    // name). Left undeduped, this silently double-listed her in a full-roster view like Season
+    // Stats (and would double-list her in a League Leaders category too, had she ranked). Keep the
+    // entry with more minutes played when a playerId repeats -- the more complete of the two rows
+    // -- since a resolved id (not name) is the correct de-dup key here.
+    const byPlayerId = new Map();
+    for (const e of withIds) {
+      if (!e.playerId) { byPlayerId.set(Symbol(), e); continue; } // unresolved id: never collapse into another row
+      const existing = byPlayerId.get(e.playerId);
+      if (!existing || (e.MIN ?? 0) > (existing.MIN ?? 0)) byPlayerId.set(e.playerId, e);
+    }
+    return [...byPlayerId.values()];
   }
 
   // League Leaders: ranks the id-bridged entries above rather than a new bulk fetch.
@@ -180,11 +198,35 @@ class BallDontLieProvider extends SportsDataProvider {
       [...bdlNames].map(async name => [name, await resolveEspnIdByName(name)])
     ));
 
-    return flat.map(e => ({
+    const withIds = flat.map(e => ({
       canonicalId: e.espnId ?? idByName.get(e.name) ?? null,
       name: e.name, teamAbbr: e.teamAbbr ?? null,
       PTS: e.PTS, REB: e.REB, AST: e.AST, STL: e.STL, BLK: e.BLK,
     }));
+
+    // Dedupe WITHIN each season (not across the whole flattened multi-season array -- a player
+    // legitimately has one real entry per season, and this must not collapse different seasons'
+    // rows into each other). Same root cause getLeagueStatLinesWithIds above guards against: BDL
+    // occasionally carries two distinct bdlPlayerId rows for the same real person in one season
+    // (confirmed live: "Alicia Florez," 99338 and 245094, identical stats). Left undeduped here,
+    // that person's career totals would silently double-count that one season's PTS/REB/AST/STL/
+    // BLK -- a real correctness bug in Career Leaders, not just a display duplicate. Season
+    // boundaries come from perYear's own per-array grouping, applied before the flatten above
+    // would have erased them.
+    let cursor = 0;
+    const deduped = [];
+    for (const yearRaw of perYear) {
+      const yearWithIds = withIds.slice(cursor, cursor + yearRaw.length);
+      cursor += yearRaw.length;
+      const byId = new Map();
+      for (const e of yearWithIds) {
+        if (!e.canonicalId) { deduped.push(e); continue; }
+        const existing = byId.get(e.canonicalId);
+        if (!existing || (e.PTS ?? 0) > (existing.PTS ?? 0)) byId.set(e.canonicalId, e);
+      }
+      deduped.push(...byId.values());
+    }
+    return deduped;
   }
 
   async getCareerLeaders() {

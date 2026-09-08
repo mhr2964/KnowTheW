@@ -132,6 +132,12 @@ function SearchBar() {
   const goTo = (path) => {
     navigate(path);
     setOpen(false);
+    // The urlQuery-reset effect above only clears `value` when urlQuery's computed value actually
+    // changes -- navigating from Home to a suggestion's page never touches it (both are ''), so
+    // without this, the search box was confirmed live to keep showing stale query text (and stale
+    // suggestions data) after the user had already navigated away via a result.
+    setValue('');
+    setSuggestions(null);
   };
 
   const hasSuggestions = !!suggestions && (suggestions.teams.length > 0 || suggestions.players.length > 0);
