@@ -5,17 +5,11 @@ import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 import { getCurrentSeason } from '../lib/currentSeason';
 import { buildTeamLogoMap, buildTeamNameMap } from '../lib/teamLookup';
 import { groupIntoSeries } from '../lib/playoffSeries';
+import { formatDateMonthDay as formatDate } from '../lib/dateFormat';
 
 // Same BDL floor as Schedule Hub (this page is built on the same /api/league/schedule endpoint,
 // filtered to postseason).
 const PLAYOFFS_MIN_SEASON = 2008;
-
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-function formatDate(iso) {
-  const d = new Date(iso);
-  return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
-}
 
 function buildSeasonOptions() {
   const top = getCurrentSeason();

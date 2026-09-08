@@ -4,7 +4,7 @@
   /* .site-nav itself is display:none below 1020px now (layout.css's MobileNav breakpoint) -- no
      padding/gap override needed here anymore. */
   .snapshot-grid { grid-template-columns: 1fr; gap: var(--space-4); }
-  .standings-table th, .standings-table td { padding: 0.45rem 0.5rem; font-size: 0.78rem; }
+  .standings-table th, .standings-table td { padding: 0.45rem 0.5rem; font-size: var(--text-sm); }
   .search-input { min-height: var(--touch-target-min); padding: 0.65rem 0.85rem; }
   .search-btn { padding: 0.65rem 0.85rem; min-height: var(--touch-target-min); }
   .notif-bell-btn { min-width: var(--touch-target-min); min-height: var(--touch-target-min); }
@@ -14,9 +14,9 @@
   .premium-banner { flex-direction: column; align-items: flex-start; }
   .premium-cta { align-items: flex-start; }
   .team-header { padding: 1rem; }
-  .team-header-name { font-size: 0.95rem; }
-  .team-header-meta { font-size: 0.78rem; }
-  .card-field-value { font-size: 1.2rem; }
+  .team-header-name { font-size: var(--text-base); }
+  .team-header-meta { font-size: var(--text-sm); }
+  .card-field-value { font-size: var(--text-lg); }
   .study-fullscreen { padding: 1rem; }
   /* Condensed further per user feedback on the courtside pass: a centered vertical stack (photo,
      then meta, then name, then bio) reads as several distinct rows even at 76px -- a side-by-side
@@ -31,12 +31,12 @@
      grow the row; tightened padding/margin above claws back the "condense further" ask at the
      same time instead of the two working against each other. */
   .player-hero-img { width: 66px; height: 66px; }
-  .player-hero-img.placeholder { font-size: 1.3rem; }
+  .player-hero-img.placeholder { font-size: var(--text-lg); }
   .player-hero-info { gap: 0.2rem; min-width: 0; }
-  .player-hero-name { font-size: 1.15rem; }
+  .player-hero-name { font-size: var(--text-lg); }
   .player-hero-meta { justify-content: flex-start; }
   .player-hero-actions { justify-content: flex-start; gap: 0.4rem; }
-  .player-hero-actions .compare-trigger-btn { padding: 0.35rem 0.6rem; font-size: 0.72rem; }
+  .player-hero-actions .compare-trigger-btn { padding: 0.35rem 0.6rem; font-size: var(--text-xs); }
   .archetype-badge { margin: 0.15rem 0; }
 
   /* Row layout leaves bio items only the info column's width to work with (not the full hero
@@ -47,8 +47,8 @@
     justify-content: flex-start; width: auto; max-width: none; margin-inline: 0; margin-top: 0.1rem;
   }
   .player-bio-item { flex-direction: row; align-items: baseline; gap: 0.25rem; }
-  .player-bio-label { font-size: 0.58rem; }
-  .player-bio-value { font-size: 0.74rem; }
+  .player-bio-label { font-size: var(--text-2xs); }
+  .player-bio-value { font-size: var(--text-xs); }
 
   /* Current season's PTS/REB/AST/FG% right under the hero -- see DetailedStats.jsx's quickStats
      memo. The one thing a courtside "what's this player doing" glance actually wants, above the
@@ -59,11 +59,11 @@
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   }
   .quick-stat-season {
-    font-size: 0.66rem; font-weight: 700; color: var(--text-muted);
+    font-size: var(--text-2xs); font-weight: 700; color: var(--text-muted);
     text-transform: uppercase; letter-spacing: var(--tracking-label);
   }
-  .quick-stat-item { font-size: 0.76rem; color: var(--text-muted); }
-  .quick-stat-item strong { font-size: 1rem; font-weight: 800; color: var(--accent); margin-right: 0.2em; }
+  .quick-stat-item { font-size: var(--text-xs); color: var(--text-muted); }
+  .quick-stat-item strong { font-size: var(--text-md); font-weight: 800; color: var(--accent); margin-right: 0.2em; }
 
   /* 10 stat-type tabs wrapped into 3 messy rows at this width -- collapse to a single toggle
      showing the active tab, opening a dropdown list of all of them instead. Sticky lives on
@@ -90,7 +90,7 @@
        sides of both, bottom of table) is unaffected by one divider drawn inside it. */
     border-bottom: 1px solid var(--border);
     border-radius: var(--radius) var(--radius) 0 0;
-    color: var(--text); font-size: 0.85rem; font-weight: 700;
+    color: var(--text); font-size: var(--text-sm); font-weight: 700;
     padding: 0.6rem 0.9rem; cursor: pointer;
   }
   /* Suffix only appears once the in-page Regular Season/Playoffs toggle has scrolled out from
@@ -153,7 +153,7 @@
   /* Visually smaller (tighter padding/font), not a smaller tap target -- min-height stays at
      --touch-target-min like every other control on this row. */
   .stat-table-header:has(.stat-season-bar):not(:has(.perc-toggle)) .toolbar-more-toggle {
-    padding: 0 0.55rem; font-size: 0.68rem;
+    padding: 0 0.55rem; font-size: var(--text-2xs);
   }
   .stat-season-bar { display: flex; width: 100%; gap: 0.4rem; }
   .stat-table-header:not(:has(.perc-toggle)) .stat-season-bar { width: auto; }
@@ -177,7 +177,7 @@
     display: inline-flex; align-items: center; gap: 0.3rem;
     min-height: var(--touch-target-min); padding: 0 0.75rem;
     background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
-    color: var(--text-muted); font-size: 0.73rem; font-weight: 600; line-height: 1; cursor: pointer;
+    color: var(--text-muted); font-size: var(--text-xs); font-weight: 600; line-height: 1; cursor: pointer;
   }
   .toolbar-more-toggle:hover { color: var(--text); border-color: var(--text-muted); }
   .toolbar-more-backdrop { display: block; position: fixed; inset: 0; z-index: 9; background: rgba(0,0,0,0.35); }
@@ -191,7 +191,7 @@
   }
   .toolbar-more-menu.open .study-trigger-btn, .toolbar-more-menu.open .bref-export-btn { width: 100%; text-align: left; }
 
-  .bref-table { font-size: 0.7rem; }
+  .bref-table { font-size: var(--text-xs); }
   .bref-table th, .bref-table td { padding: 0.3rem 0.45rem; }
 
   /* Shot Chart never got a mobile pass at all -- the flex-wrap on .shot-chart-wrap already stacked
@@ -202,8 +202,8 @@
      fixes both without changing the stack itself, which is the only layout that fits here anyway. */
   .shot-chart-wrap { flex-direction: column; align-items: center; gap: 0.6rem; padding: 0.4rem 0 0.6rem; }
   .shot-chart-svg { max-width: 280px; }
-  .shot-chart-legend { width: 100%; font-size: 0.74rem; }
-  .shot-chart-legend th { font-size: 0.62rem; padding: 0.3rem 0.4rem; }
+  .shot-chart-legend { width: 100%; font-size: var(--text-xs); }
+  .shot-chart-legend th { font-size: var(--text-2xs); padding: 0.3rem 0.4rem; }
   .shot-chart-legend td { padding: 0.32rem 0.4rem; }
 
   /* Player-page controls never got a mobile tap-target pass -- these all sat well under
@@ -212,10 +212,10 @@
     display: inline-flex; align-items: center; justify-content: center;
     min-height: var(--touch-target-min);
   }
-  .gl-select { min-height: var(--touch-target-min); padding: 0.55rem 0.4rem; font-size: 0.76rem; }
+  .gl-select { min-height: var(--touch-target-min); padding: 0.55rem 0.4rem; font-size: var(--text-xs); }
   /* Trimmed so Game Log's 3-item leading group (season, page-size, count) leaves "..." enough
      room to share the row instead of wrapping alone onto its own -- see .stat-table-header above. */
-  .gl-game-count { font-size: 0.7rem; }
+  .gl-game-count { font-size: var(--text-xs); }
   .gl-page-btn {
     display: inline-flex; align-items: center; justify-content: center;
     min-height: var(--touch-target-min);
@@ -223,16 +223,16 @@
   .archetype-detail-toggle { min-height: var(--touch-target-min); display: flex; align-items: center; }
 
   /* Cell value size reduction */
-  .compare-cell-a, .compare-cell-b, .compare-cell-single { font-size: 0.7rem; }
+  .compare-cell-a, .compare-cell-b, .compare-cell-single { font-size: var(--text-xs); }
 
   .team-dashboard-grid { grid-template-columns: 1fr; }
   .team-spoke-nav { padding: 0.5rem 0.5rem 0; gap: 0.15rem; flex-wrap: wrap; }
-  .team-spoke-tab { font-size: 0.7rem; padding: 0.875rem 0.55rem; min-width: 44px; }
+  .team-spoke-tab { font-size: var(--text-xs); padding: 0.875rem 0.55rem; min-width: 44px; }
 
-  .team-history-cell { padding: 0.4rem 0.55rem; font-size: 0.78rem; }
+  .team-history-cell { padding: 0.4rem 0.55rem; font-size: var(--text-sm); }
   .team-history-cell--conf { display: none; }
   .team-history-champs { gap: 0.5rem; }
-  .team-history-champs-text { font-size: 0.82rem; }
+  .team-history-champs-text { font-size: var(--text-sm); }
 
   /* Footer links had no responsive treatment at all — wrap instead of overflowing a narrow
      viewport, and expand each link's tap area to the shared touch-target minimum. */
@@ -253,8 +253,8 @@
      its own full-width row instead of fighting logo/bell/username for space on one line --
      eliminates the overlap instead of tuning fragile crowded-row arithmetic. */
   .header { gap: 0.5rem; flex-wrap: wrap; }
-  .logo-text { font-size: 1.15rem; }
-  .logo-sub { font-size: 0.55rem; }
+  .logo-text { font-size: var(--text-lg); }
+  .logo-sub { font-size: var(--text-2xs); }
   .search-btn { padding: 0.65rem 0.55rem; }
   .search-input { min-width: 70px; }
   .search-form { order: 3; flex-basis: 100%; max-width: none; }
@@ -328,7 +328,7 @@
     max-width: 100%;
     min-height: 44px;
     padding: 0.6rem 0.75rem;
-    font-size: 0.95rem;
+    font-size: var(--text-base);
   }
   .team-header-text {
     order: 2;

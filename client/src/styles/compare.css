@@ -20,7 +20,7 @@
   justify-content: center;
   font-weight: 700;
   font-size: var(--text-lg);
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-label);
 }
 .compare-hero-avatar--skeleton {
   background: var(--surface-2);
@@ -44,7 +44,7 @@
   background: none;
   border: none;
   color: rgba(255, 255, 255, 0.82);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   cursor: pointer;
   padding: 0;
@@ -76,7 +76,7 @@
 .compare-cell-a,
 .compare-cell-b {
   display: block;
-  font-size: 0.78rem;
+  font-size: var(--text-sm);
 }
 
 .compare-cell-divider {
@@ -89,7 +89,7 @@
 }
 
 .compare-cell-single {
-  font-size: 0.78rem;
+  font-size: var(--text-sm);
   white-space: nowrap;
 }
 
@@ -100,7 +100,7 @@
 
 /* Error banner above merged table */
 .compare-table-error-banner {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--error);
   padding: 0.5rem 0;
   margin-bottom: var(--space-2);
@@ -111,7 +111,7 @@
   padding: 2rem 0;
   text-align: center;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 /* Same-player empty state */
@@ -177,7 +177,7 @@
 }
 
 .compare-picker-self-error {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--error);
 }
 
@@ -193,9 +193,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.78rem;
+  font-size: var(--text-sm);
   font-weight: 800;
-  letter-spacing: 0.03em;
+  letter-spacing: var(--tracking-label);
   padding: 0.18rem 0.55rem;
   border-radius: 5px;
   white-space: nowrap;
@@ -239,7 +239,7 @@
 }
 
 .grade-badge--large {
-  font-size: 1.35rem;
+  font-size: var(--text-lg);
   padding: 0.32rem 0.9rem;
   border-radius: 6px;
   min-width: 3.4rem;
@@ -372,7 +372,7 @@
 .grade-card-pos-adj {
   font-size: var(--text-2xs);
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
   color: var(--text-muted);
   text-transform: uppercase;
   opacity: 0.7;
@@ -397,7 +397,7 @@
 }
 .grade-card-badge-side--right { flex-direction: row-reverse; }
 .grade-card-badge-name {
-  font-size: 0.84rem;
+  font-size: var(--text-sm);
   font-weight: 700;
   color: var(--text);
   white-space: nowrap;
@@ -468,19 +468,19 @@
 }
 
 .grade-card-panel-stats {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   line-height: 1.4;
 }
 
 .grade-card-panel-context {
-  font-size: 0.78rem;
+  font-size: var(--text-sm);
   color: var(--text);
   line-height: 1.5;
 }
 
 .grade-card-panel-unavailable {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   font-style: italic;
 }
@@ -701,7 +701,7 @@
   font-weight: 800;
   color: var(--text);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
 }
 
 /* Accolades — side-by-side columns (position carries "whose", same left/right convention as the
@@ -806,7 +806,7 @@
   border-radius: 4px;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   padding: 0.35rem 0.85rem;
   transition: all 0.12s;
@@ -820,7 +820,7 @@
 }
 
 .compare-mode-peak-window {
-  font-size: 0.73rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   margin-top: var(--space-1);
 }
@@ -847,7 +847,7 @@
   font-weight: 800;
   color: var(--text);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-label);
   text-align: center;
 }
 
@@ -891,9 +891,9 @@
    avatar. Keeping justify-self content-sizing and just ensuring max-width is always a real number,
    never `none`, is the fix that doesn't have that side effect.) */
 .compare-verdict-fight-name {
-  font-size: 0.94rem;
+  font-size: var(--text-base);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
@@ -912,7 +912,7 @@
 }
 
 .compare-verdict-score {
-  font-size: 2rem;
+  font-size: var(--text-2xl);
   font-weight: 900;
   line-height: 1;
   min-width: 1.4ch;
@@ -928,7 +928,7 @@
 }
 
 .compare-verdict-fight-divider {
-  font-size: 1.6rem;
+  font-size: var(--text-xl);
   font-weight: 300;
   color: var(--text-muted);
   padding: 0 0.25rem;
@@ -953,9 +953,9 @@
      overflows into whatever's next to it (this caught a real overlap with the avatar, live, on a
      long-name matchup). 4.5rem is roughly proportional to the halved avatar-column width at this
      breakpoint (4.75rem vs. desktop's 8.5rem). */
-  .compare-verdict-fight-name { font-size: 0.74rem; max-width: 2.2rem; }
-  .compare-verdict-score { font-size: 1.5rem; }
-  .compare-verdict-fight-divider { font-size: 1.2rem; }
+  .compare-verdict-fight-name { font-size: var(--text-xs); max-width: 2.2rem; }
+  .compare-verdict-score { font-size: var(--text-xl); }
+  .compare-verdict-fight-divider { font-size: var(--text-lg); }
   /* The center track is only ~136px wide at this breakpoint; the three auto-sized columns (score,
      divider, score) plus 4 full-size gaps ate most of it — shrinking just the gap (not the font
      sizes bumped up this same round) gives the name columns a bit more room to work with. */
@@ -971,11 +971,11 @@
 }
 
 .compare-verdict-overall-label {
-  font-size: 0.6rem;
+  font-size: var(--text-2xs);
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--tracking-label);
   text-align: center;
   padding: 0 0.65rem;
   flex-shrink: 0;
@@ -984,19 +984,19 @@
 
 
 .compare-verdict-volume {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   line-height: 1.5;
 }
 
 .compare-verdict-grade-dash {
-  font-size: 1.1rem;
+  font-size: var(--text-md);
   color: var(--text-muted);
   line-height: 1;
 }
 
 .compare-verdict-error-notice {
-  font-size: 0.78rem;
+  font-size: var(--text-sm);
   color: var(--text-muted);
   border-top: 1px solid var(--border);
   padding-top: var(--space-2);
@@ -1005,7 +1005,7 @@
 }
 .compare-verdict-retry {
   padding: 0.2rem 0.55rem;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   flex-shrink: 0;
 }
 
@@ -1029,7 +1029,7 @@
   padding: var(--space-6);
   text-align: center;
   color: var(--text-muted);
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   margin-bottom: var(--space-5);
 }
 .compare-ai-unavailable-retries {
@@ -1059,14 +1059,14 @@
 }
 
 .compare-verdict-short-peak {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
   margin-top: 0.4rem;
   font-style: italic;
 }
 
 .compare-playoffs-empty {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--text-muted);
   padding: 0.5rem 0;
   margin-bottom: var(--space-4);
@@ -1111,7 +1111,7 @@
 .compare-overall-summary-name--b { color: var(--compare-b); }
 
 .compare-overall-summary p {
-  font-size: 0.86rem;
+  font-size: var(--text-sm);
   color: var(--text);
   line-height: 1.55;
 }

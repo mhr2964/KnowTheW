@@ -280,3 +280,71 @@ Findings applied, by category:
 **Convergence note:** this pass found 1 real behavior bug (the Compare-modal race) plus 8 small, low-risk mechanical improvements across 64 files that had never been checklist-reviewed before — a real, though modest, yield. It is not a "2-or-fewer, codebase has converged" result, but it's consistent with a codebase that's already been through one thorough pass: no repeated Cat-1/2/9 violations at scale, no new dead-code sprawl, and every "logged, not implemented" item was logged for a legitimate proportionality or cross-file-coordination reason rather than left out for lack of looking.
 
 **Verification:** full `npm run check` (lint + 172/172 tests) on the fully merged `refactor-pass-2` branch, `npm run build` clean, and a live Playwright smoke pass (Per Game table sort/CSV export/Career-row pinning, Splits tab across all three split types, Compare-picker search) — all correct and byte-identical to pre-refactor output where compared directly.
+
+---
+
+# Pass 3 — 2026-09-07
+
+**Trigger:** user feedback ("i see lots of inconsistancy visually and in general this is not professional") after a long session that shipped ~11 commits of new nav/UI/data features (BBRef-style nav dropdowns, mobile accordion, Players/Schedule/Playoffs/Season-Stats hubs, head-to-head grid, player awards trophy case, team game chart) directly on `master`. User granted explicit "creative freedom" for this pass.
+
+**Mode:** in-place on branch `refactor-pass-3`, off `master` at `c8f6a0c` (all of that session's commits, including two follow-up bugfix commits from the user's own live-testing feedback). Same reasoning as Pass 1/2 for staying in-place rather than the skill's default sibling copy.
+
+**Scope decision (stated up front, not discovered after the fact):** the literal skill instructions call for evaluating all ~350 tracked files. Two things changed that plan:
+1. Pass 1 and Pass 2 already gave ~290 of those files a full checklist pass, and neither this session's git history nor a spot-check of unrelated files (`ComparePage.jsx`, `TeamStatsPage.jsx`, `percentileClient.js`) showed drift since — re-deriving findings Pass 1/2 already logged would not be genuine new evaluation.
+2. The user's actual complaint ("visual inconsistency," "not professional") pointed at Cat 8 specifically, and investigating it surfaced something bigger than a per-file issue (see Area 1).
+
+So this pass did a full 12-category evaluation of the 31 files touched by this session's 11 commits (where new-code drift actually lives), plus the depth-first Cat 8 investigation below, which by its nature had to span every CSS file, not just the 31. The other ~319 files are left to Pass 1/2's existing entries. This is a narrower scope than the skill's literal instructions — stated here rather than silently substituted.
+
+## Area 1 — Cat 8, site-wide: the type scale existed but was never adopted
+
+`global.css` already declares a type scale (`--text-2xs` through `--text-2xl`) and `--tracking-label`, with its own comment explaining why: *"Font sizes across styles/*.css had drifted into ~30 distinct values for what were mostly a handful of intended tiers... these steps are the scale going forward."* Checked whether "going forward" had actually happened: it hadn't. A tally across every `styles/*.css` file found **39 distinct hardcoded `font-size` values** and **8 distinct hardcoded label-tracking `letter-spacing` values** still in use — including in files Pass 1/2 already reviewed and in every file this session added. This is almost certainly the concrete shape of "looks inconsistent, not professional": dozens of near-identical text sizes (0.78/0.8/0.82/0.84/0.85/0.86/0.88rem all rendering as "the same size, sort of") scattered with no discipline, plus 8 different letter-spacing values all serving the identical "uppercase eyebrow label" role.
+
+- **Changed (Cat 8):** every hardcoded `font-size` and label `letter-spacing` value across `auth.css`, `compare.css`, `layout.css`, `legal.css`, `player.css`, `responsive.css`, `shared.css`, `standings.css`, `team.css` — **233 individual declarations** — mapped to the nearest step in the existing scale (nearest-token by absolute rem distance; ties broken toward the larger step). Full mapping: 0.5/0.55/0.58/0.6/0.62/0.65/0.66/0.68 → `--text-2xs`; 0.7/0.72/0.73/0.74/0.75/0.76 → `--text-xs`; 0.78/0.8/0.82/0.84/0.85/0.86/0.88 → `--text-sm`; 0.9/0.92/0.94/0.95 → `--text-base`; 1/1.05/1.1 → `--text-md`; 1.15/1.2/1.25/1.3/1.35 → `--text-lg`; 1.4/1.5/1.6 → `--text-xl`; 1.75/2 → `--text-2xl`. Letter-spacing 0.03/0.04/0.05/0.06/0.08/0.1/0.12em (all uppercase-label contexts) → `var(--tracking-label)`.
+- **Reasoning:** this is the textbook Cat 8 signal (`global.css`'s own comment states the intent) at a scale neither prior pass caught, because neither was looking for "declared design token, never migrated" — Pass 1 covered *color* literal consolidation (Cat 8's other half) and explicitly noted the type scale wasn't yet a thing to check for.
+- **Deliberately not touched:** `.player-hero-img.placeholder`'s `2.4rem` (hero-avatar initials, legitimately above the scale's top step, same "genuine one-off" carve-out Pass 1's Area 6 used) and `.logo-sub`'s `0.15em` (brand wordmark tracking — the global.css comment's own drift range tops out at 0.15em as the *widest* observed value, and collapsing the brand mark's deliberately more dramatic spacing into the generic label token would be a real, visible identity change, not a consolidation). Two `em`-relative sizes (`.bref-sort-indicator`, `.stat-help-mark`) left alone — relative-to-parent by design, a different mechanism than the literal-rem drift this pass targeted.
+- **Potential Issues:** a small number of values moved 2-6% in either direction where several near-duplicate literals were deliberately collapsed onto one token (e.g. 0.85/0.86/0.88rem all now render at 0.82rem) — confirmed visually via a live smoke pass (Home, a player page, a team dashboard, the roster table) with no perceptible or broken layout change. This was an automated batch substitution (not a per-line manual edit), verified by full `npm run build` + `npm run lint` clean immediately after, plus the live smoke pass; a wider Percy/screenshot-diff pass across every page was not run (out of scope for this turn).
+
+## Area 2 — Cat 5, session-scoped: duplicated date formatting
+
+- **Created `client/src/lib/dateFormat.js`.** `ScheduleTable.jsx` (pre-existing), `OddsHubPage.jsx` (pre-existing), and this session's `ScheduleHubPage.jsx`, `PlayoffsHubPage.jsx`, and `TeamDashboard.jsx` each independently declared their own `DAY_NAMES`/`MONTH_NAMES` arrays and a `formatDate`/`fmtDateShort`/`formatTime` function — three genuinely distinct formats (`"Sun Sep 17"`, `"Sep 17"`, `"9/17"`) duplicated 5 times combined. This session's three new files copied an already-duplicated pattern instead of consolidating it.
+- **Changed:** all 5 files now import `formatDateWithDay` / `formatDateMonthDay` / `formatDateNumeric` / `formatTime` from the new shared module (aliased at the import site in files that already had local names like `formatDate`, so callsites needed no further changes). Kept the three formats as separate named exports rather than one options-bag formatter — each callsite already knows which one it wants; an options bag would just move the duplication into the call arguments.
+- **Potential Issues:** none — byte-identical output, confirmed by reading each original implementation before extracting.
+
+## Area 3 — Cat 11, session-scoped: `SearchBar` had no file of its own
+
+- **Created `client/src/components/SearchBar.jsx`**, moved the `SearchBar` function (added this session, ~125 lines including the live-suggestions logic) out of `App.jsx` verbatim. Every other component in this codebase — including every other component this same session added (`NavDropdown`, `MobileNav`, `Breadcrumbs`, etc.) — gets its own file; `SearchBar` was the one exception, defined inline in the app shell.
+- **Reasoning:** Cat 11 (file structure) + Cat 6 (consistency with the codebase's own established convention). `App.jsx` dropped from 393 to 259 lines.
+- **Potential Issues:** none — verified via `npm run build` (identical JS bundle size) immediately after.
+
+## Area 4 — Full 12-category pass, the 31 files this session touched
+
+Read in full: `App.jsx`, `Breadcrumbs.jsx`, `HeadToHeadGrid.jsx`, `MobileNav.jsx`, `NavDropdown.jsx`, `PlayerAwardsBadges.jsx`, `PlayerPage.jsx`, `RosterTable.jsx`, `TeamChampionBadge.jsx`, `TeamGameChart.jsx`, `headToHead.js`, `navEntries.js`, `playoffSeries.js`, `PlayersDirectoryPage.jsx`, `PlayoffsHubPage.jsx`, `ScheduleHubPage.jsx`, `SeasonStatsPage.jsx`, `StandingsPage.jsx`, `TeamDashboard.jsx`, `TeamPage.jsx`, plus the 5 CSS files and 6 server files from the same commit range.
+
+- **Cat 9 (a11y):** checked every new `<button>` for an explicit `type` — all correct (3 multi-line JSX button tags initially looked suspicious under a single-line grep; verified by reading full context, all three do have `type="button"` on the next attribute line).
+- **Cat 2 (Error/Correctness):** every new `fetch()` guards `res.ok`; every new effect that fetches uses `AbortController` with a cleanup return (`HeadToHeadGrid`, `TeamChampionBadge`, `TeamGameChart`, `PlayerAwardsBadges`, `SearchBar` all verified individually).
+- **Cat 11 (Architecture):** `server/providers/balldontlie/index.js` sits at 499 lines (this session added ~230 of those). Same call as Pass 1's Area 2: it's the deliberately-structured M0-M9 swappability facade — a real split needs multi-file coordination disproportionate to this pass. Logged as an opportunity, not implemented, consistent with the standing precedent.
+- **Reviewed and unchanged:** `headToHead.js`, `playoffSeries.js`, `navEntries.js`, `RosterTable.jsx`, `Breadcrumbs.jsx`, `HeadToHeadGrid.jsx`, `TeamChampionBadge.jsx`, `StandingsPage.jsx`, `PlayerPage.jsx`, the 6 touched server files — no findings beyond what's already logged in Areas 1-3 above.
+
+## Pass 3 Summary
+
+**Scope:** 31 session-touched files given a full 12-category pass, plus a depth-first Cat 8 audit spanning all 11 CSS files (9 of them changed). The other ~319 files in the repo are left to Pass 1/2's existing entries — explicitly not re-derived this pass (see Scope decision above).
+
+**Files changed: 15** (9 CSS files, `App.jsx`, 5 files updated to use the new `dateFormat.js`, plus 2 new files: `dateFormat.js`, `SearchBar.jsx`). Reviewed-and-unchanged: 16 (the rest of the 31-file session scope).
+
+Findings applied, by category:
+- **Cat 1 (I/O & Perf):** 0 — verified clean across the session-scoped files.
+- **Cat 2 (Error/Correctness):** 0 changes needed — verified clean (see Area 4).
+- **Cat 3 (Security):** 0 — no new external links or user-controlled paths in this session's files.
+- **Cat 4 (React Hooks):** 0 changes — every new effect's dependency array was already correct on inspection.
+- **Cat 5 (DRY & Cohesion):** 1 extraction — `dateFormat.js`, collapsing 5 duplicate implementations (Area 2).
+- **Cat 6 (Naming/Clarity):** folded into Area 3 (SearchBar's file placement was the naming/consistency finding, not a rename).
+- **Cat 7 (Dead code/Deps):** 0 — no new unused imports or dependencies found in the session scope.
+- **Cat 8 (CSS):** the pass's real finding — 233 hardcoded font-size/letter-spacing declarations across 9 files consolidated onto the existing (but until now unused) type-scale tokens (Area 1).
+- **Cat 9 (HTML/a11y):** 0 changes — verified clean (Area 4).
+- **Cat 10 (Server/API):** 0 — the session's new routes (`/league/schedule`, `/league/season-stats`, `/players/:id/awards`) already follow this codebase's established route conventions (checked against Pass 1's Cat 10 findings, none recur).
+- **Cat 11 (Architecture):** 1 extraction — `SearchBar.jsx` (Area 3). 1 logged-not-implemented — `balldontlie/index.js`'s 499 lines, same standing precedent as Pass 1.
+- **Cat 12 (Design Patterns):** 0 implemented, 0 new candidates found in the session scope beyond what Pass 1/2 already logged.
+
+**Convergence note:** not applicable in the usual sense — this pass deliberately scoped to new code + one deep cross-cutting Cat 8 investigation rather than the full repo, so a raw "files changed" count isn't comparable to Pass 1/2's full-repo numbers. Read narrowly (the 31-file session scope only), 3 of 31 files needed changes plus a 5-file DRY consolidation — consistent with "new code accumulates the same kind of drift a first pass would have caught, at a much smaller scale." The real finding wasn't file-count convergence, it was that a **declared** design-system fix (the type scale) had never been **adopted** — a gap neither Pass 1 nor Pass 2 was positioned to find, since Pass 1 predates the type scale's existence and Pass 2's Cat 8 section only checked the files in its own smaller changed-set.
+
+**Verification:** `npm run lint` clean, `npm run build` clean, `npm test` full suite green except the pre-existing/unrelated `auth-jwt-secret-missing.test.js` (requires `JWT_SECRET` unset in the shell, fails identically on `master` with none of this pass's changes). Live smoke pass: Home, a player page (award badges + Per Game table), a team dashboard (game chart + roster with new columns), a team roster page — all rendered correctly with no visual regression from the token consolidation.

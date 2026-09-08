@@ -4,22 +4,11 @@ import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 import { getCurrentSeason } from '../lib/currentSeason';
 import { buildTeamLogoMap } from '../lib/teamLookup';
+import { formatDateWithDay as formatDate, formatTime } from '../lib/dateFormat';
 
 // BDL's /games floor (BDL_MIN_SEASON on the server) -- a league-wide schedule pre-2008 would need
 // aggregating every team's ESPN schedule instead of one bulk fetch, out of scope for this page.
 const SCHEDULE_MIN_SEASON = 2008;
-
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-function formatDate(iso) {
-  const d = new Date(iso);
-  return `${DAY_NAMES[d.getDay()]} ${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
-}
-
-function formatTime(iso) {
-  return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
-}
 
 function buildSeasonOptions() {
   const top = getCurrentSeason();

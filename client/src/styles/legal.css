@@ -7,18 +7,18 @@
 }
 
 .legal-page h1 {
-  font-size: 1.5rem;
+  font-size: var(--text-xl);
   margin-bottom: 0.5rem;
 }
 
 .legal-updated {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   margin-bottom: 1.75rem;
 }
 
 .legal-page h2 {
-  font-size: 1.05rem;
+  font-size: var(--text-md);
   margin: 1.75rem 0 0.6rem;
   color: var(--accent-light);
 }
@@ -26,7 +26,7 @@
 .legal-page p,
 .legal-page li {
   color: var(--text);
-  font-size: 0.92rem;
+  font-size: var(--text-base);
 }
 
 .legal-page p {
@@ -49,7 +49,7 @@
   margin-top: 2.5rem;
   padding-top: 1.25rem;
   border-top: 1px solid var(--border);
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
 }
 
 .legal-nav a {

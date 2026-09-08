@@ -1,7 +1,7 @@
 /* ── Header auth link ── */
 .auth-header-link {
   background: none; border: none; cursor: pointer;
-  color: var(--text-muted); font-size: 0.85rem; font-weight: 600;
+  color: var(--text-muted); font-size: var(--text-sm); font-weight: 600;
   padding: 0.5rem 0; flex-shrink: 0; transition: color 0.12s;
 }
 .auth-header-link:hover { color: var(--accent-light); }
@@ -14,7 +14,7 @@
 }
 
 .auth-page h1 {
-  font-size: 1.5rem;
+  font-size: var(--text-xl);
   margin-bottom: 1.5rem;
 }
 
@@ -37,20 +37,20 @@
 .auth-input {
   background: var(--surface-2); border: 1px solid var(--border);
   border-radius: var(--radius); color: var(--text);
-  padding: 0.6rem 0.85rem; font-size: 0.9rem; outline: none;
+  padding: 0.6rem 0.85rem; font-size: var(--text-base); outline: none;
   transition: border-color 0.15s;
 }
 .auth-input:focus { border-color: var(--accent); }
 .auth-input:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .auth-error {
-  color: var(--error); font-size: 0.85rem; margin-top: var(--space-1);
+  color: var(--error); font-size: var(--text-sm); margin-top: var(--space-1);
 }
 
 .auth-submit { margin-top: var(--space-4); }
 
 .auth-switch {
-  margin-top: var(--space-6); font-size: 0.85rem; color: var(--text-muted);
+  margin-top: var(--space-6); font-size: var(--text-sm); color: var(--text-muted);
 }
 .auth-switch a { color: var(--accent-light); }
 

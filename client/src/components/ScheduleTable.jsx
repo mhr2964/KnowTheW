@@ -1,22 +1,6 @@
 import { Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-function formatDateFull(iso) {
-  const d = new Date(iso);
-  return `${DAY_NAMES[d.getDay()]} ${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
-}
-
-function formatDateShort(iso) {
-  const d = new Date(iso);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
-
-function formatTime(iso) {
-  return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
-}
+import { formatDateWithDay as formatDateFull, formatDateNumeric as formatDateShort, formatTime } from '../lib/dateFormat';
 
 // odds is already oriented to THIS team's side (server-side perspective flip -- see
 // routes/teams.js's /teams/:id/schedule and lib/gameOdds.js's orientOddsForTeam), so this is a

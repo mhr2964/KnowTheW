@@ -2,17 +2,7 @@ import { useState, useEffect } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { formatStatValue } from '../lib/statFormatters';
 import TeamGameChart from '../components/TeamGameChart';
-
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-function fmtDateShort(iso) {
-  const d = new Date(iso);
-  return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
-}
-
-function fmtTime(iso) {
-  return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
-}
+import { formatDateMonthDay as fmtDateShort, formatTime as fmtTime } from '../lib/dateFormat';
 
 export default function TeamDashboard() {
   const { team, season, isCurrentSeason } = useOutletContext() ?? {};

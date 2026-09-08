@@ -12,7 +12,7 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -23,10 +23,10 @@
   background: var(--surface-2);
   border-bottom: 2px solid var(--border);
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-label);
   padding: 0.6rem 0.75rem;
   text-align: right;
 }
@@ -137,12 +137,12 @@
 }
 .playoff-series-matchup { display: flex; align-items: center; gap: 0.4rem; font-weight: 700; flex-wrap: wrap; }
 .playoff-series-vs { color: var(--text-muted); margin: 0 0.15rem; }
-.playoff-series-result { color: var(--accent); font-size: 0.82rem; font-weight: 700; }
+.playoff-series-result { color: var(--accent); font-size: var(--text-sm); font-weight: 700; }
 .playoff-series-games { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .playoff-series-game {
   display: flex; align-items: center; gap: 0.35rem;
   background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 0.4rem 0.7rem; font: inherit; font-size: 0.78rem; color: var(--text);
+  padding: 0.4rem 0.7rem; font: inherit; font-size: var(--text-sm); color: var(--text);
   cursor: pointer; min-height: var(--touch-target-min);
 }
 .playoff-series-game:disabled { cursor: default; opacity: 0.6; }
@@ -168,9 +168,9 @@
 /* Game Box Score's Play-by-Play tab (GameBoxScorePage.jsx). */
 .pbp-period { margin-bottom: var(--space-6); }
 .pbp-period h3 {
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-label);
   color: var(--text-muted);
   margin-bottom: 0.5rem;
 }
@@ -180,7 +180,7 @@
   gap: 0.75rem;
   padding: 0.4rem 0.6rem;
   border-bottom: 1px solid var(--border);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 .pbp-row--scoring { background: rgba(255, 107, 0, 0.05); }
 .pbp-clock { color: var(--text-muted); font-variant-numeric: tabular-nums; width: 3.5rem; flex-shrink: 0; }

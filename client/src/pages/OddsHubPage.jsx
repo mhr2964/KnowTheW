@@ -2,18 +2,7 @@ import { useEffect, useMemo } from 'react';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 import { buildTeamLogoMap } from '../lib/teamLookup';
-
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-function formatDate(iso) {
-  const d = new Date(iso);
-  return `${DAY_NAMES[d.getDay()]} ${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
-}
-
-function formatTime(iso) {
-  return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
-}
+import { formatDateWithDay as formatDate, formatTime } from '../lib/dateFormat';
 
 // Home team's own spread value, signed (matches sports convention -- a line is quoted from the
 // home team's side). Not oriented per-team like gameOdds.js's orientOddsForTeam -- this hub shows

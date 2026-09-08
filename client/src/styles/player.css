@@ -11,14 +11,14 @@
 .player-hero-img.placeholder {
   background: var(--surface-2); color: var(--text-muted);
   display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 2.4rem; letter-spacing: 0.04em;
+  font-weight: 700; font-size: 2.4rem; letter-spacing: var(--tracking-label);
 }
 .player-hero-info { display: flex; flex-direction: column; gap: 0.5rem; }
 .player-hero-meta { display: flex; align-items: center; gap: 0.75rem; }
 .player-hero-jersey {
-  font-size: 1rem; font-weight: 800; color: var(--accent);
+  font-size: var(--text-md); font-weight: 800; color: var(--accent);
 }
-.player-hero-team { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+.player-hero-team { font-size: var(--text-sm); color: var(--text-muted); font-weight: 600; }
 .player-hero-name { font-size: clamp(1.3rem, 6vw, 2rem); font-weight: 800; line-height: 1.1; }
 /* Sibling hero actions (Compare with... / Similar players →) sit in a wrapping row. */
 .player-hero-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.35rem; }
@@ -34,7 +34,7 @@
 }
 .player-bio-item { display: flex; flex-direction: column; gap: 0.1rem; }
 .player-bio-label { font-size: var(--text-2xs); font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: var(--tracking-label); }
-.player-bio-value { font-size: 0.88rem; font-weight: 600; }
+.player-bio-value { font-size: var(--text-sm); font-weight: 600; }
 
 
 /* ── Detailed Stats ── */
@@ -70,7 +70,7 @@
   border-radius: 5px 5px 0 0;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   padding: 0.4rem 0.85rem 0.5rem;
   transition: color 0.12s, background 0.12s;
@@ -118,7 +118,7 @@
   border-radius: 4px;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 0.73rem;
+  font-size: var(--text-xs);
   font-weight: 600;
   padding: 0.28rem 0.65rem;
   transition: all 0.12s;
@@ -126,7 +126,7 @@
 .stat-season-tab:hover { color: var(--text); border-color: var(--text-muted); }
 .stat-season-tab.active { background: var(--bg); border-color: var(--border); color: var(--accent); }
 
-.bref-export-btn { padding: 0.35rem 0.8rem; font-size: 0.78rem; }
+.bref-export-btn { padding: 0.35rem 0.8rem; font-size: var(--text-sm); }
 
 .bref-wrap {
   background: var(--surface);
@@ -145,7 +145,7 @@
      so it moves in lockstep with the sticky compositing layer. */
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 0.78rem;
+  font-size: var(--text-sm);
   white-space: nowrap;
   /* Column 1's sticky-offset partner (below) reads this same value, so the two can't drift out
      of sync the way two independent literals could. 70px comfortably fits "Career", the widest
@@ -159,9 +159,9 @@
   border-bottom: 2px solid var(--border);
   border-right: 1px solid var(--border);
   color: var(--text-muted);
-  font-size: 0.68rem;
+  font-size: var(--text-2xs);
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: var(--tracking-label);
   padding: 0.48rem 0.65rem;
   text-align: right;
 }
@@ -197,7 +197,7 @@
   width: max-content; max-width: 220px;
   background: var(--surface-2); border: 1px solid var(--border);
   border-radius: var(--radius); color: var(--text);
-  font-size: 0.78rem; font-weight: 400;
+  font-size: var(--text-sm); font-weight: 400;
   letter-spacing: normal; text-transform: none; text-align: left;
   line-height: 1.35; padding: 0.5rem 0.7rem; white-space: normal;
   box-shadow: 0 4px 12px rgba(0,0,0,0.4);
@@ -254,7 +254,7 @@
   color: var(--text-muted);
   padding: 2.5rem;
   text-align: center;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .gl-win  { color: var(--win); }
@@ -267,10 +267,10 @@
 .gl-select {
   background: var(--surface-2); color: var(--text);
   border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 0.3rem 0.6rem; font-size: 0.82rem; cursor: pointer; outline: none;
+  padding: 0.3rem 0.6rem; font-size: var(--text-sm); cursor: pointer; outline: none;
 }
 .gl-select:focus { border-color: var(--accent); }
-.gl-game-count { font-size: 0.8rem; color: var(--text-muted); margin-left: auto; }
+.gl-game-count { font-size: var(--text-sm); color: var(--text-muted); margin-left: auto; }
 /* Pushes Export CSV to the row's right edge -- a no-op when gl-game-count already claims the
    auto margin (Game Log), and the thing that right-aligns it when nothing else does (Splits). */
 .gl-controls .bref-export-btn { margin-left: auto; }
@@ -281,11 +281,11 @@
 .gl-page-btn {
   background: var(--surface-2); color: var(--text);
   border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 0.28rem 0.75rem; font-size: 0.82rem; cursor: pointer;
+  padding: 0.28rem 0.75rem; font-size: var(--text-sm); cursor: pointer;
 }
 .gl-page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .gl-page-btn:disabled { opacity: 0.35; cursor: default; }
-.gl-page-info { font-size: 0.82rem; color: var(--text-muted); min-width: 6rem; text-align: center; }
+.gl-page-info { font-size: var(--text-sm); color: var(--text-muted); min-width: 6rem; text-align: center; }
 
 /* Shot chart: hand-rolled SVG half-court, zone-colored by FG% (BDL has no per-shot x/y, see
    ShotChart.jsx). Court markings drawn in translucent white so they read on any zone color. */
@@ -314,11 +314,11 @@
 }
 .shot-chart-legend {
   flex: 1 1 220px; min-width: 200px;
-  border-collapse: collapse; font-size: 0.85rem;
+  border-collapse: collapse; font-size: var(--text-sm);
 }
 .shot-chart-legend th {
   text-align: left; color: var(--text-muted); font-weight: 600;
-  font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em;
+  font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-label);
   padding: 0.3rem 0.6rem; border-bottom: 1px solid var(--border);
 }
 .shot-chart-legend td {
@@ -332,7 +332,7 @@
 }
 
 .pbp-badge {
-  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em;
+  font-size: var(--text-xs); font-weight: 600; letter-spacing: var(--tracking-label);
   background: var(--accent); color: #fff;
   padding: 0.15rem 0.5rem; border-radius: 4px; white-space: nowrap;
 }
@@ -352,7 +352,7 @@
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--text);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
@@ -384,7 +384,7 @@
   border: 1px solid rgba(220, 38, 38, 0.35);
   border-radius: 999px;
   color: #dc2626;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 .archetype-conf-dot.conf-high   { background: var(--win); }
@@ -403,10 +403,10 @@
   padding: 0.28rem 0.75rem;
   background: rgba(232, 200, 74, 0.12); border: 1px solid rgba(232, 200, 74, 0.4);
   border-radius: 999px; color: var(--champion-text);
-  font-size: 0.8rem; font-weight: 700;
+  font-size: var(--text-sm); font-weight: 700;
 }
 /* Visible, not hover-only -- a title tooltip never reaches a touch-screen visitor. */
-.player-award-badge-years { font-size: 0.68rem; font-weight: 600; opacity: 0.75; }
+.player-award-badge-years { font-size: var(--text-2xs); font-weight: 600; opacity: 0.75; }
 
 /* Portal-rendered to body with position:fixed + JS-computed left/top (ArchetypeBadge.jsx),
    same approach as .stat-help-pop -- isn't clipped by an ancestor's overflow, and the JS clamps
@@ -448,13 +448,13 @@
   gap: 0.5rem;
   margin-bottom: 0.55rem;
 }
-.archetype-card-name { font-size: 1rem; font-weight: 700; color: var(--text); }
-.archetype-card-conf { font-size: 0.72rem; white-space: nowrap; }
+.archetype-card-name { font-size: var(--text-md); font-weight: 700; color: var(--text); }
+.archetype-card-conf { font-size: var(--text-xs); white-space: nowrap; }
 .archetype-card-conf.conf-high   { color: var(--win); }
 .archetype-card-conf.conf-medium { color: var(--champion-text); }
 .archetype-card-conf.conf-low    { color: var(--text-muted); }
 .archetype-mods {
-  font-size: 0.78rem;
+  font-size: var(--text-sm);
   color: var(--text-muted);
   margin-bottom: 0.65rem;
 }
@@ -464,7 +464,7 @@
   grid-template-columns: 6.4rem 1fr 1.8rem;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
 }
 .archetype-axis-label {
   color: var(--text-muted);
@@ -495,7 +495,7 @@
   margin-top: 0.6rem;
   padding-top: 0.5rem;
   border-top: 1px solid var(--border);
-  font-size: 0.72rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
 }
 
@@ -504,7 +504,7 @@
 .similar-row-main .archetype-badge,
 .roster-name-cell .archetype-badge { margin: 0; flex-shrink: 0; }
 .similar-row-main .archetype-pill,
-.roster-name-cell .archetype-pill { font-size: 0.68rem; padding: 0.1rem 0.5rem; gap: 0.3rem; }
+.roster-name-cell .archetype-pill { font-size: var(--text-2xs); padding: 0.1rem 0.5rem; gap: 0.3rem; }
 .similar-row-main .archetype-conf-dot,
 .roster-name-cell .archetype-conf-dot { width: 6px; height: 6px; }
 /* Name + badge share the roster's name cell. */
@@ -519,7 +519,7 @@
 /* Plain-language playstyle sentence — the at-a-glance read above the radar. */
 .archetype-descriptor {
   margin: 0 0 0.6rem;
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   line-height: 1.35;
   color: var(--text);
 }
@@ -574,7 +574,7 @@
   border: none;
   border-top: 1px solid var(--border);
   color: var(--text-muted);
-  font-size: 0.74rem;
+  font-size: var(--text-xs);
   text-align: left;
   cursor: pointer;
 }
@@ -588,12 +588,12 @@
 .similar-players-section { margin-bottom: 2.5rem; }
 .similar-subtitle {
   margin: -0.5rem 0 1rem;
-  font-size: 0.78rem;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 .similar-status,
 .similar-retry {
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 .similar-retry {
@@ -625,14 +625,14 @@
 }
 .similar-row-img.placeholder {
   display: flex; align-items: center; justify-content: center;
-  font-size: 0.7rem; font-weight: 700; color: var(--text-muted);
+  font-size: var(--text-xs); font-weight: 700; color: var(--text-muted);
 }
 .similar-row-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.55rem; }
 .similar-row-name { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Static archetype label pill — now only inside the opened compare card (the row uses the hoverable
    ArchetypeBadge instead). */
 .similar-pill {
-  font-size: 0.68rem; font-weight: 600; white-space: nowrap;
+  font-size: var(--text-2xs); font-weight: 600; white-space: nowrap;
   color: var(--text-muted); background: var(--surface-2);
   border: 1px solid var(--border); border-radius: 999px; padding: 0.1rem 0.5rem;
 }
@@ -640,7 +640,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--accent);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -649,10 +649,10 @@
 .similar-row-btn.is-loose { opacity: 0.6; }
 .similar-row-btn.is-loose .similar-row-stat { color: var(--text-muted); }
 .similar-conf-tag {
-  font-size: 0.66rem;
+  font-size: var(--text-2xs);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--tracking-label);
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 0.05rem 0.3rem;
@@ -671,7 +671,7 @@
 }
 .similar-traits {
   margin: 0 0 0.6rem;
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   line-height: 1.35;
   color: var(--text);
 }
@@ -680,7 +680,7 @@
   justify-content: center;
   gap: 1.1rem;
   margin: 0.2rem 0 0.7rem;
-  font-size: 0.74rem;
+  font-size: var(--text-xs);
   color: var(--text-muted);
 }
 .similar-legend-item { display: inline-flex; align-items: center; gap: 0.35rem; }
@@ -699,7 +699,7 @@
   padding: 0;
   color: var(--accent);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   cursor: pointer;
 }
@@ -727,12 +727,12 @@
 }
 .similar-cmp-side.is-target .similar-cmp-img { border-color: #7fb3d4; }
 .similar-cmp-side.is-comp .similar-cmp-img   { border-color: var(--accent); }
-.similar-cmp-name { font-weight: 700; font-size: 0.9rem; color: var(--text); }
+.similar-cmp-name { font-weight: 700; font-size: var(--text-base); color: var(--text); }
 .similar-statline {
   display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center;
-  font-size: 0.82rem; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums;
+  font-size: var(--text-sm); font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums;
 }
-.similar-statline em { font-style: normal; font-weight: 600; font-size: 0.62rem; color: var(--text-muted); margin-left: 0.12rem; }
+.similar-statline em { font-style: normal; font-weight: 600; font-size: var(--text-2xs); color: var(--text-muted); margin-left: 0.12rem; }
 /* Narrow: stack the two players above the radar instead of flanking it. */
 @media (max-width: 560px) {
   .similar-compare { grid-template-columns: 1fr 1fr; }
@@ -743,9 +743,9 @@
 .pbp-tab { display: flex; flex-direction: column; gap: 2rem; padding-top: 0.25rem; }
 .pbp-section { display: flex; flex-direction: column; gap: 0.75rem; }
 .pbp-section-header {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--text-muted);
   margin: 0;
@@ -759,7 +759,7 @@
   gap: 1.25rem 1rem;
 }
 .pbp-stat-cell { display: flex; flex-direction: column; gap: 0.25rem; }
-.pbp-stat-value { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.01em; }
+.pbp-stat-value { font-size: var(--text-xl); font-weight: 700; letter-spacing: -0.01em; }
 .pbp-stat-label { font-size: var(--text-2xs); font-weight: 600; letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-muted); }
 .pbp-stat-value--good { color: var(--win); }
 .pbp-stat-value--bad  { color: var(--loss); }
@@ -793,11 +793,11 @@
 
 .onoff-panel-sub {
   display: flex; justify-content: center; gap: 1rem;
-  font-size: 0.78rem; color: var(--text-muted); font-variant-numeric: tabular-nums;
+  font-size: var(--text-sm); color: var(--text-muted); font-variant-numeric: tabular-nums;
 }
 
 .onoff-meta {
-  margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted); text-align: center;
+  margin-top: 0.75rem; font-size: var(--text-sm); color: var(--text-muted); text-align: center;
 }
 .onoff-pos { color: var(--win); font-weight: 700; }
 .onoff-neg { color: var(--loss); font-weight: 700; }
@@ -812,7 +812,7 @@
 .scoring-dist { display: flex; flex-direction: column; gap: 1.5rem; padding: 0.5rem 0 1rem; }
 .scoring-dist-section { display: flex; flex-direction: column; gap: 0.5rem; }
 .scoring-dist-heading {
-  font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: var(--tracking-label);
+  font-size: var(--text-sm); font-weight: 700; text-transform: uppercase; letter-spacing: var(--tracking-label);
   color: var(--text-muted); margin: 0;
 }
 
@@ -822,22 +822,22 @@
 }
 .scoring-dist-stack-seg { height: 100%; }
 
-.scoring-dist-legend { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; font-size: 0.78rem; color: var(--text-muted); }
+.scoring-dist-legend { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; font-size: var(--text-sm); color: var(--text-muted); }
 .scoring-dist-legend-item { display: flex; align-items: center; gap: 0.35rem; }
 .scoring-dist-legend-item strong { color: var(--text); font-variant-numeric: tabular-nums; }
 .scoring-dist-swatch { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
 
 .scoring-dist-row { display: flex; align-items: center; gap: 0.75rem; }
-.scoring-dist-row-label { flex: 0 0 7rem; font-size: 0.82rem; color: var(--text-muted); }
+.scoring-dist-row-label { flex: 0 0 7rem; font-size: var(--text-sm); color: var(--text-muted); }
 .scoring-dist-row-track {
   flex: 1; height: 10px; border-radius: 3px; background: rgba(255, 255, 255, 0.06); overflow: hidden;
 }
 .scoring-dist-row-fill { height: 100%; background: var(--accent); border-radius: 3px; }
-.scoring-dist-row-value { flex: 0 0 3rem; text-align: right; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.scoring-dist-row-value { flex: 0 0 3rem; text-align: right; font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 
 .scoring-dist-assist-group { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.75rem; }
 .scoring-dist-assist-group:last-child { margin-bottom: 0; }
-.scoring-dist-assist-label { font-size: 0.82rem; font-weight: 600; }
+.scoring-dist-assist-label { font-size: var(--text-sm); font-weight: 600; }
 
 @media (max-width: 480px) {
   .scoring-dist-row-label { flex-basis: 5.5rem; }
