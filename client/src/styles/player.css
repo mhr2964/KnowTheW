@@ -391,9 +391,14 @@
 .archetype-conf-dot.conf-medium { background: var(--champion-text); }
 .archetype-conf-dot.conf-low    { background: var(--text-muted); }
 
-/* Career awards trophy case (PlayerAwardsBadges.jsx) -- same pill shape as archetype/injury badges
-   above, gold-tinted (var(--champion-text), already used elsewhere for title/achievement context)
-   since these are always positive career highlights, not a status indicator. */
+/* Career awards trophy case (PlayerAwardsBadges.jsx). First cut used a saturated gold fill+border
+   (rgba(232,200,74,0.12)/0.4) that was numerically close to injury-badge's own tinted-pill formula
+   but read as much louder in practice -- confirmed live: injury-badge only ever shows ONE red pill
+   at a time, this shows up to 6 gold pills in a row, and warm gold reads hotter than red or the
+   archetype pill's neutral grey at any opacity. Fix is to match archetype-pill's actual visual
+   weight (neutral --surface-2 fill, plain --border) and use gold ONLY as the text/border accent --
+   consistent with how injury-badge itself only tints the border+text of a shape whose fill is still
+   restrained, not a solid-tinted block. */
 .player-awards-case {
   display: flex; flex-wrap: wrap; gap: 0.4rem;
   margin: 0.4rem 0 0.15rem;
@@ -401,12 +406,12 @@
 .player-award-badge {
   display: inline-flex; align-items: baseline; gap: 0.4rem;
   padding: 0.28rem 0.75rem;
-  background: rgba(232, 200, 74, 0.12); border: 1px solid rgba(232, 200, 74, 0.4);
+  background: var(--surface-2); border: 1px solid var(--border);
   border-radius: 999px; color: var(--champion-text);
-  font-size: var(--text-sm); font-weight: 700;
+  font-size: var(--text-sm); font-weight: 600;
 }
 /* Visible, not hover-only -- a title tooltip never reaches a touch-screen visitor. */
-.player-award-badge-years { font-size: var(--text-2xs); font-weight: 600; opacity: 0.75; }
+.player-award-badge-years { font-size: var(--text-2xs); font-weight: 600; color: var(--text-muted); opacity: 1; }
 
 /* Portal-rendered to body with position:fixed + JS-computed left/top (ArchetypeBadge.jsx),
    same approach as .stat-help-pop -- isn't clipped by an ancestor's overflow, and the JS clamps
