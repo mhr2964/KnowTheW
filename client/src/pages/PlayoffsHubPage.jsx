@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 import { getCurrentSeason } from '../lib/currentSeason';
@@ -26,9 +26,19 @@ function buildSeasonOptions() {
 
 // Series are grouped client-side from the season's raw postseason games (see playoffSeries.js) --
 // no round labels are shown, since BDL's game data has no round field to draw them from honestly.
+//
+// season lives in the URL, not local state -- see ScheduleHubPage.jsx's header comment for why
+// (browser Back after opening a game's box score must restore the selected season, not reset it).
 export default function PlayoffsHubPage({ teams }) {
   const navigate = useNavigate();
-  const [season, setSeason] = useState(getCurrentSeason());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawSeason = parseInt(searchParams.get('season'), 10);
+  const season = Number.isFinite(rawSeason) ? rawSeason : getCurrentSeason();
+  const setSeason = (y) => setSearchParams(prev => {
+    const next = new URLSearchParams(prev);
+    next.set('season', String(y));
+    return next;
+  });
   const logoByAbbr = useMemo(() => buildTeamLogoMap(teams), [teams]);
   const nameByAbbr = useMemo(() => buildTeamNameMap(teams), [teams]);
 

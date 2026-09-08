@@ -5,7 +5,6 @@ import ComparePickerModal from './ComparePickerModal';
 import ArchetypeBadge from './ArchetypeBadge';
 import InjuryBadge from './InjuryBadge';
 import PlayerAwardsBadges from './PlayerAwardsBadges';
-import Breadcrumbs from './Breadcrumbs';
 import { initialsOf } from '../lib/initials';
 
 export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onTabChange }) {
@@ -29,7 +28,12 @@ export default function PlayerPage({ player, onBack, onSaveDeck, initialTab, onT
 
   return (
     <>
-      <Breadcrumbs items={[{ label: 'Home', to: '/' }, { label: 'Players', to: '/players' }, { label: player.name }]} />
+      {/* No breadcrumb here on purpose -- a player has no single stable parent (reached from
+          search, a team roster, a leaderboard, retired-player search...), and the "Players"
+          directory is active-only, so a breadcrumb pointing there would be actively wrong for a
+          retired player's page. onBack already does real browser-history back navigation, which
+          correctly returns to wherever the user actually came from -- a fake taxonomic breadcrumb
+          sitting on top of that would just create two "go back" affordances that disagree. */}
       <button type="button" className="back-btn" onClick={onBack}>← Back</button>
 
       <div className="player-hero">

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 import { getCurrentSeason } from '../lib/currentSeason';
@@ -32,11 +32,30 @@ function buildSeasonOptions() {
 // final scores" list. Notable Games is a highlight reel (top single-game stat lines); team
 // schedules only ever show one team's own slate. This is the league-wide, game-centric view
 // neither of those covers.
+//
+// season/postseason live in the URL (not local state) so that clicking a game to view its box
+// score, then pressing the browser's Back button, restores the exact season/toggle the user had
+// selected instead of silently resetting to the current season -- confirmed this was a real bug
+// (local useState remounts fresh on a back-navigation), same fix applied to PlayoffsHubPage and
+// SeasonStatsPage.
 export default function ScheduleHubPage({ teams }) {
   const navigate = useNavigate();
-  const [season, setSeason] = useState(getCurrentSeason());
-  const [postseason, setPostseason] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawSeason = parseInt(searchParams.get('season'), 10);
+  const season = Number.isFinite(rawSeason) ? rawSeason : getCurrentSeason();
+  const postseason = searchParams.get('postseason') === 'true';
   const logoByAbbr = useMemo(() => buildTeamLogoMap(teams), [teams]);
+
+  const setSeason = (y) => setSearchParams(prev => {
+    const next = new URLSearchParams(prev);
+    next.set('season', String(y));
+    return next;
+  });
+  const setPostseason = (v) => setSearchParams(prev => {
+    const next = new URLSearchParams(prev);
+    if (v) next.set('postseason', 'true'); else next.delete('postseason');
+    return next;
+  });
 
   useEffect(() => {
     setPageMeta('Schedule & Scores — KnowTheW', 'Every WNBA game for a season, with final scores.');

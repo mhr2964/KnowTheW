@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 import { getCurrentSeason } from '../lib/currentSeason';
@@ -23,10 +23,25 @@ function num(v, digits = 1) { return v == null ? '—' : v.toFixed(digits); }
 // every player, alphabetical by default). Reuses the same qualified-entries data League Leaders
 // ranks from, just unranked -- see server/routes/meta.js's /league/season-stats doc comment for the
 // "qualified, not every player who suited up" scope note this page inherits.
+//
+// season/mode live in the URL, not local state -- see ScheduleHubPage.jsx's header comment for why
+// (browser Back after opening a player's page must restore the selected season/mode, not reset it).
 export default function SeasonStatsPage({ teams }) {
   const navigate = useNavigate();
-  const [season, setSeason] = useState(getCurrentSeason());
-  const [mode, setMode] = useState('PerGame');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawSeason = parseInt(searchParams.get('season'), 10);
+  const season = Number.isFinite(rawSeason) ? rawSeason : getCurrentSeason();
+  const mode = searchParams.get('mode') === 'Totals' ? 'Totals' : 'PerGame';
+  const setSeason = (y) => setSearchParams(prev => {
+    const next = new URLSearchParams(prev);
+    next.set('season', String(y));
+    return next;
+  });
+  const setMode = (m) => setSearchParams(prev => {
+    const next = new URLSearchParams(prev);
+    next.set('mode', m);
+    return next;
+  });
   const logoByAbbr = useMemo(() => buildTeamLogoMap(teams), [teams]);
 
   useEffect(() => {

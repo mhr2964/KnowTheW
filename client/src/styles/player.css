@@ -399,12 +399,14 @@
   margin: 0.4rem 0 0.15rem;
 }
 .player-award-badge {
-  display: inline-flex; align-items: center;
+  display: inline-flex; align-items: baseline; gap: 0.4rem;
   padding: 0.28rem 0.75rem;
   background: rgba(232, 200, 74, 0.12); border: 1px solid rgba(232, 200, 74, 0.4);
   border-radius: 999px; color: var(--champion-text);
   font-size: 0.8rem; font-weight: 700;
 }
+/* Visible, not hover-only -- a title tooltip never reaches a touch-screen visitor. */
+.player-award-badge-years { font-size: 0.68rem; font-weight: 600; opacity: 0.75; }
 
 /* Portal-rendered to body with position:fixed + JS-computed left/top (ArchetypeBadge.jsx),
    same approach as .stat-help-pop -- isn't clipped by an ancestor's overflow, and the JS clamps
