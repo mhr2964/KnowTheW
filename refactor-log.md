@@ -407,3 +407,48 @@ Checked the two other documented breakpoints for the same class rather than assu
 - **`TeamGameChart` on touch**: reconsidered whether tap-only interaction (no hover preview) is a gap. For BDL-covered seasons, tapping a bar goes straight to its box score — a normal, direct mobile pattern, not worse than desktop's hover-then-click. For pre-2008 seasons the bars are non-interactive and convey no per-game info on any device, touch or not — a real but narrow edge case (an old team's old-season chart on a phone), and the chart's aggregate win/loss shape still has value even without per-game drill-down. Not changed; logged as a known, low-priority limitation rather than silently accepted.
 
 **Verification:** `npm run lint` / `npm run build` / `npm test` clean (same 4 pre-existing failures). Live re-check of the Compare page's name truncation at desktop width (full names visible), 970px and 490px (both near the middle tier's boundaries, no avatar overlap), and 600px (mid-tier, names no longer reduced to 3-4 characters).
+
+---
+
+## Pass 3 Addendum 4 — same day, "you went on all the pages?"
+
+Direct, skeptical follow-up to Addendum 3: the "pleasant/intuitive" pass above had only actually tested 2-3 flows (Compare picker, nav dropdowns, touch charts) and leaned on Addendum 2's *different-lens* page sweep as if it already covered this one. It didn't — visual consistency and interaction pleasantness are different questions. This addendum is the honest follow-through: every Player-page stat tab, the Study flashcard flow, a Team's History/Roster/Schedule tabs, a Game Box Score's Play-by-Play tab, the Home page, and the Login page, actually opened and used.
+
+### Real bug found and fixed: Study flashcards showed raw ISO timestamps
+
+Built a Game Log study deck (Date front / PTS back) and the front of card 1 read **"2026-05-09T19:30:00.000Z"** instead of a formatted date — jarring, and inconsistent with every other date display on the site (the Game Log table two clicks away shows the same value as "May 9"). Root cause: `studyData.js`'s `buildStudyDeck` only special-cased `kind: 'pct'` when building each column's `type`, collapsing `'date'` (and everything else) into a generic `'text'` type; `StudyFlow.jsx`'s `fmtVal` then had nothing to format a date value with and fell straight through to `String(val)`.
+
+- **Changed, `studyData.js`:** `buildStudyDeck` now also maps `kind: 'date'` through to `type: 'date'` instead of collapsing it into `'text'`.
+- **Changed, `StudyFlow.jsx`:** `fmtVal` gained a `type === 'date'` branch using the same `formatDateMonthDay` helper (`lib/dateFormat.js`) the rest of the site already shares, with the same invalid-date guard `BrefTable.fmt`'s own `'date'` kind uses.
+- Verified live: rebuilt the same deck, front of card 1 now reads "May 9"; back still correctly shows PTS 19 for that row.
+
+### Real bug found and fixed (earlier in this session, folded in here): unrounded averaged +/-
+
+Splits tables (Home/Away/Month/Opponent) average per-game plus-minus across games with no rounding at the data layer (`gameSplits.js`, correctly — rounding is the display layer's job, same convention as `pct`/`pct100`), but `BrefTable.jsx`'s `fmt()` had a `'signed'` branch written assuming a per-game (always-integer) value and skipped rounding entirely, so a Splits row showed **"+7.066666666666666"**. Fixed by rounding non-integer `'signed'` values to 1 decimal, same as every other numeric kind; CSV export shares the same `fmt()` so one change covers both surfaces. Verified live at `/player/3149391/splits`: +/- column now reads "+4.9" and "+7.1".
+
+### Real data inconsistency found, investigated, and documented (not fixed): Usage/Defense tab game counts
+
+The Usage tab's "G" column for the *current, in-progress* 2026 season reads **37**, while every other tab for the same player/season (Per Game, Totals, Advanced, Adj. Shooting, Play-by-Play, Game Log) correctly reads **31**. The Defense tab shows the identical 37 for the same season — both pull `gp` straight from BDL's `/player_season_advanced_stats` endpoint (`measure_type=usage` / `measure_type=defense` respectively; see `usageShare.js`/`defenseStats.js`), unlike every other tab, which derives its numbers from ESPN's per-game box scores. Ruled out two more benign explanations before concluding this is upstream data lag:
+- Not a client display bug — hit `/api/players/3149391/usage?season=2026` directly, the server itself returns `gp: 37`.
+- Not "37 = the team's total games this season" — Las Vegas's actual 2026 record is 27-13 (40 games), which doesn't match either.
+- Historical seasons on the same endpoint are close but not exact (2022: BDL usage `gp` 36 vs. per-game 37; 2023: 40 vs. 41) — small, plausible box-score-coverage gaps, not the 6-game gap seen on the in-progress season.
+
+Most likely explanation: BDL's advanced-tracking-stats endpoint (a heavier, more heavily-processed pipeline than raw box scores, per this codebase's own `usageShare.js`/`defenseStats.js` comments) updates on a slower cadence mid-season than the box-score data every other tab uses, so it's read a real-but-different-endpoint games-played count from a few games behind the season's current point. This also means `defenseStats.js`'s per-game defensive rate stats (BLK/STL/DRB/Opp Pts, all divided by this same `gp`) are quietly understated for the *current* season specifically, by a factor of roughly 31/37 -- not just a cosmetic "G" mismatch.
+
+**Not fixed this pass, and here's why:** overriding the displayed G (and thus the per-game denominators) would require the `/usage` and `/defense` routes to also fetch the player's reliable per-game season data (currently only fetched by the separate `/detailed-stats` route) — a real architecture change (new provider round-trip on two routes, contract question about which source wins) rather than a one-line fix, and per this codebase's own `>>think`-gate convention that's a decision worth surfacing to the user rather than making unilaterally mid-sweep. It's also very likely self-correcting as BDL's backend catches up later in the season (the same 2022/2023 seasons show it nearly resolved once final). Flagging here for a future pass or a user decision on whether the added latency/complexity is worth it for a temporary in-season discrepancy.
+
+### Checked and confirmed NOT bugs (verified by computation/data, not just eyeballing)
+
+- **Shot Chart court coloring** (`CourtDiagram.jsx`): Restricted Area (73.2% FG) and Paint Non-RA (51.3% FG) render nearly identical colors; so do Mid-Range (42.5%) and Above the Break 3 (38.6%). Looked like a bug at a glance. Hand-computed the documented sigmoid formula against the actual API response (`leagueAvgPct` per zone) and confirmed both pairs are almost exactly the same number of points *above their own zone's league average* (~9pp and ~4.5pp respectively) — the color scheme is deliberately zone-relative, not raw-FG%, exactly as its header comment describes. Working as designed.
+- **Adj. Shooting's `r3PAr` column** showing small values (0-48) next to `rTS%`/`reFG%`/`rFTr` clustering near 100-175: also verified by back-computing the implied league-average 3PAr from each season's raw values (~0.32-0.36 throughout) — internally consistent, just a much wider relative range because a low-volume 3-point shooter's attempt-rate varies more relative to league average than her shooting efficiency does. Not a bug.
+- **Apparent page-wide horizontal scroll** on the Advanced tab: an artifact of the browser-automation tool's scroll gesture triggering a page zoom, not a real site bug — confirmed via `document.body.scrollWidth` (1646) < `window.innerWidth` (1661), and the wide stats table correctly scrolling within its own `.bref-wrap` container (`overflow-x: auto`) with no leakage to the page body.
+
+### Checked and found genuinely fine
+
+Advanced/Per 36/Per 100 Poss/Adj. Shooting/Clutch/Scoring Dist./Usage/Defense/Play-by-Play/Shot Chart tabs (percentile heat-toggle, "Study this table"/"Export CSV" wiring, season-progress loading indicator on Play-by-Play's "Loading rest of career... (n/9 seasons)"); a Team's History/Roster/Schedule tabs (schedule auto-scrolls to a highlighted "NEXT UP" divider on load, a nice touch); a completed Game Box Score's Box Score and Play-by-Play tabs; the Login page (functional, deliberately spare).
+
+### Noted, not changed: Home page is very thin for a stats site's front door
+
+`HomePage.jsx` renders exactly three things: recent study decks (empty for a fresh session), a League Snapshot (top-4-per-conference standings teaser), and a "Browse all teams" button — no scores, no leaders, no today's-games, nothing time-sensitive. That's not a bug (it's exactly what the component is coded to do), but it's a real "does this feel right for a stats site's landing page" gap worth the user's attention — deliberately not treated as a drive-by fix here since adding a scores/leaders widget is a scope decision, not a consistency correction.
+
+**Verification:** `npm run lint` / `npm run build` clean for both real changes (the +/- rounding fix and the Study date-format fix), committed separately (`1d92fcd`, `d118c4b`) on `refactor-pass-3`. Both verified live in-browser, not just from a green build.
