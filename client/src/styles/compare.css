@@ -898,7 +898,14 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 9rem;
+  /* Was 9rem -- confirmed live truncating "Breanna Stewart" (and would clip most real full names
+     longer than "A'ja Wilson") on a full-width desktop card with plenty of unused horizontal space
+     either side. The center column is minmax(0, 1fr), genuinely wide at desktop, and the avatar
+     sits in its own separate fixed-width side column -- nothing here actually needed the tight cap
+     at this tier. Widened rather than removed (still a real, finite number): the surrounding
+     comment's own reasoning for why max-width can never be `none` still applies, this just sets it
+     to a value that fits real names instead of an arbitrarily narrow one. */
+  max-width: 13rem;
   min-width: 0;
   opacity: 0.75;
 }
@@ -944,7 +951,13 @@
    widths" gap the headline-side rule above addresses — caught live via overlap measurement between
    .compare-verdict-fight-name and .compare-hero-avatar across 481-960px. */
 @media (min-width: 481px) and (max-width: 975px) {
-  .compare-verdict-fight-name { max-width: 3.3rem; }
+  /* Was 3.3rem -- confirmed live truncating even "A'ja Wilson" (11 characters, the shortest
+     realistic name) down to "A'JA...", which isn't a name-length edge case, it's every name at
+     this width. Widened to fit a typical two-word name; re-verified at both boundary widths
+     (just above 481px, just below 975px) for the avatar-collision this tier's max-width exists to
+     prevent -- see the "128px avatar doesn't clear a shrunk card" comment above -- no overlap at
+     either edge at 6rem. */
+  .compare-verdict-fight-name { max-width: 6rem; }
 }
 
 @media (max-width: 480px) {
