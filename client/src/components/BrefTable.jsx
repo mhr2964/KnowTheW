@@ -25,7 +25,12 @@ export function fmt(kind, val) {
   }
   if (kind === 'signed') {
     if (typeof val !== 'number') return '—';
-    return val > 0 ? `+${val}` : String(val);
+    // Confirmed live: an averaged +/- (gameSplits.js divides a group's per-game plusMinus values
+    // with no rounding) rendered as "+7.066666666666666" -- every other numeric kind below rounds
+    // non-integers to 1 decimal, this one skipped it because a per-GAME plus-minus is always a
+    // clean integer already, and 'signed' was written with that case in mind, not an average.
+    const display = Number.isInteger(val) ? val : val.toFixed(1);
+    return val > 0 ? `+${display}` : String(display);
   }
   if (typeof val === 'number' && !Number.isInteger(val)) return val.toFixed(1);
   return String(val);
