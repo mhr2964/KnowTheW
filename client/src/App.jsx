@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Routes, Route, Navigate, NavLink, useNavigate, useParams } from 'react-router-dom';
+import { Routes, Route, Navigate, NavLink, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useRecentDecks } from './hooks/useRecentDecks';
 import { useAuth } from './hooks/useAuth';
 import StudyFlow from './components/StudyFlow';
@@ -67,10 +67,19 @@ export default function App() {
   const [activeStudy, setActiveStudy] = useState(null);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { decks, saveDeck } = useRecentDecks();
   const { user } = useAuth();
 
   const navEntries = useMemo(() => buildNavEntries(buildTeamsNavItems(teams)), [teams]);
+
+  // A group's trigger (Teams/Players/Leaders/Scores) counts as "active" when the current route is
+  // one of its own item pages OR a sub-route of one (e.g. /team/las-vegas-aces/roster still counts
+  // for the Teams group's /team/las-vegas-aces item) -- prefixed with '/' so `/team/las-vegas-aces`
+  // doesn't also match an unrelated `/team/las-vegas-aces-ii` (were such a slug to ever exist).
+  const isGroupActive = (entry) => entry.items.some(item =>
+    location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -134,7 +143,7 @@ export default function App() {
             {entry.label}
           </NavLink>
         ) : (
-          <NavDropdown key={entry.label} label={entry.label} align={entry.align}>
+          <NavDropdown key={entry.label} label={entry.label} align={entry.align} isActive={isGroupActive(entry)}>
             {entry.items.map(item => (
               <NavLink
                 key={item.to}

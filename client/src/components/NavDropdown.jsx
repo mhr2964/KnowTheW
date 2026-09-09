@@ -15,7 +15,7 @@ import { createPortal } from 'react-dom';
 // (confirmed live: a plain absolutely-positioned panel measured a correct bounding rect via
 // getBoundingClientRect but rendered nothing, silently clipped by its own scrollable ancestor). A
 // portal escapes that clipping instead of fighting it with more CSS.
-export default function NavDropdown({ label, align = 'left', children }) {
+export default function NavDropdown({ label, align = 'left', isActive = false, children }) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState(null);
   const containerRef = useRef(null);
@@ -57,12 +57,17 @@ export default function NavDropdown({ label, align = 'left', children }) {
     };
   }, [open, updateCoords]);
 
+  // isActive (whether the current route is one of this group's own pages -- computed by the
+  // caller, which already has the group's item paths) gets the same `.active` treatment as `open`
+  // so a group trigger shows the current-section highlight the plain top-level links (Home/
+  // Standings/Injury Report) already get, instead of going visually blank while you're deep inside
+  // one of its pages (e.g. /league-leaders) -- confirmed live as the "nav looks weird" gap.
   return (
     <div className="nav-dropdown" ref={containerRef}>
       <button
         type="button"
         ref={triggerRef}
-        className={`site-nav-link nav-dropdown-trigger${open ? ' active' : ''}`}
+        className={`site-nav-link nav-dropdown-trigger${(open || isActive) ? ' active' : ''}`}
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
       >
