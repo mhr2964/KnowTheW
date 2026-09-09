@@ -169,6 +169,7 @@ export default function App() {
               <HomePage
                 decks={decks}
                 onRestudy={handleRestudy}
+                teams={teams}
               />
             }
           />

@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RecentDecks from '../components/RecentDecks';
+import HomeScoresStrip from '../components/HomeScoresStrip';
+import HomeLeadersTeaser from '../components/HomeLeadersTeaser';
 import useLazyFetch from '../hooks/useLazyFetch';
 import { setPageMeta, resetPageMeta } from '../lib/pageMeta';
 
@@ -67,7 +69,7 @@ function LeagueSnapshot({ navigate }) {
   );
 }
 
-export default function HomePage({ decks, onRestudy }) {
+export default function HomePage({ decks, onRestudy, teams }) {
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -78,6 +80,8 @@ export default function HomePage({ decks, onRestudy }) {
   return (
     <>
       <RecentDecks decks={decks} onRestudy={onRestudy} />
+      <HomeScoresStrip teams={teams} />
+      <HomeLeadersTeaser teams={teams} />
       <LeagueSnapshot navigate={navigate} />
       <section className="home-browse-cta">
         <button type="button" className="home-browse-btn" onClick={() => navigate('/teams')}>

@@ -4,6 +4,7 @@
   /* .site-nav itself is display:none below 1020px now (layout.css's MobileNav breakpoint) -- no
      padding/gap override needed here anymore. */
   .snapshot-grid { grid-template-columns: 1fr; gap: var(--space-4); }
+  .home-leaders-grid { grid-template-columns: 1fr; gap: var(--space-2); }
   .standings-table th, .standings-table td { padding: 0.45rem 0.5rem; font-size: var(--text-sm); }
   .search-input { min-height: var(--touch-target-min); padding: 0.65rem 0.85rem; }
   .search-btn { padding: 0.65rem 0.85rem; min-height: var(--touch-target-min); }

@@ -186,6 +186,53 @@
 .status-msg { color: var(--text-muted); padding: 3rem 0; text-align: center; }
 .status-msg.error { color: var(--error); }
 
+/* ── Homepage scores strip ── */
+.home-scores { margin-top: var(--space-8); }
+.home-scores-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2);
+}
+.home-scores-header .section-title { margin-bottom: 0; }
+.home-scores-strip { display: flex; gap: var(--space-3); overflow-x: auto; padding-bottom: 0.2rem; }
+.home-score-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0.7rem 0.9rem; display: flex; flex-direction: column; gap: 0.35rem;
+  min-width: 8.5rem; flex-shrink: 0; cursor: pointer; text-align: left;
+  transition: background 0.12s, border-color 0.12s;
+}
+.home-score-card:hover:not(:disabled) { background: var(--surface-2); border-color: var(--accent); }
+.home-score-card:disabled { cursor: default; opacity: 0.75; }
+.home-score-date {
+  font-size: var(--text-2xs); font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: var(--tracking-label);
+}
+.home-score-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.home-score-team { display: flex; align-items: center; gap: 0.35rem; font-size: var(--text-sm); font-weight: 700; color: var(--text); }
+.home-score-logo { width: 18px; height: 18px; object-fit: contain; }
+.home-score-value { font-size: var(--text-sm); font-weight: 700; color: var(--text); }
+.home-score-time { font-size: var(--text-xs); color: var(--text-muted); }
+
+/* ── Homepage league leaders teaser ── */
+.home-leaders { margin-top: var(--space-8); }
+.home-leaders-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-2);
+}
+.home-leaders-header .section-title { margin-bottom: 0; }
+.home-leaders-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
+.home-leader-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0.9rem 1.1rem; display: flex; flex-direction: column; gap: 0.2rem;
+  cursor: pointer; text-align: left; transition: background 0.12s, border-color 0.12s;
+}
+.home-leader-card:hover { background: var(--surface-2); border-color: var(--accent); }
+.home-leader-category {
+  font-size: var(--text-2xs); font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: var(--tracking-label);
+}
+.home-leader-value { font-size: var(--text-2xl); font-weight: 700; color: var(--accent); line-height: 1.15; }
+.home-leader-name { font-size: var(--text-base); font-weight: 600; color: var(--text); }
+.home-leader-team { display: flex; align-items: center; gap: 0.35rem; font-size: var(--text-sm); color: var(--text-muted); }
+.home-leader-logo { width: 16px; height: 16px; object-fit: contain; }
+
 /* ── Homepage league snapshot ── */
 .league-snapshot { margin-top: var(--space-8); }
 .league-snapshot-header {
