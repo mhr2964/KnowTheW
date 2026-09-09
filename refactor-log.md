@@ -452,3 +452,27 @@ Advanced/Per 36/Per 100 Poss/Adj. Shooting/Clutch/Scoring Dist./Usage/Defense/Pl
 `HomePage.jsx` renders exactly three things: recent study decks (empty for a fresh session), a League Snapshot (top-4-per-conference standings teaser), and a "Browse all teams" button — no scores, no leaders, no today's-games, nothing time-sensitive. That's not a bug (it's exactly what the component is coded to do), but it's a real "does this feel right for a stats site's landing page" gap worth the user's attention — deliberately not treated as a drive-by fix here since adding a scores/leaders widget is a scope decision, not a consistency correction.
 
 **Verification:** `npm run lint` / `npm run build` clean for both real changes (the +/- rounding fix and the Study date-format fix), committed separately (`1d92fcd`, `d118c4b`) on `refactor-pass-3`. Both verified live in-browser, not just from a green build.
+
+---
+
+## Pass 3 Addendum 5 — same day, "the nav looks weird" + homepage work
+
+User's follow-up asked for two specific things: fix the nav, work on the homepage. Both real, both fixed/built and verified live.
+
+### Real bug found and fixed: nav dropdown triggers rendering at the wrong font weight/size
+
+Zoomed into the top nav bar and Teams/Players/Leaders/Scores visibly read thinner and greyer than Home/Standings/Injury Report, which looked bold-white by comparison -- the opposite of what "these are peer nav items" should look like, and enough to misread the plain links as somehow more important. Root cause: `.nav-dropdown-trigger`'s `font: inherit` shorthand resets every font sub-property (not just family) to what the button's DOM PARENT has, not what the `.site-nav-link` class *also on the same element* declares -- buttons don't inherit font from ancestors by default, so this silently fell back to the browser's default button metrics (400/16px) instead of `.site-nav-link`'s 700/13px. Confirmed via `getComputedStyle` before touching anything. Fixed by narrowing the reset to `font-family: inherit` only, letting `.site-nav-link`'s own size/weight cascade through. Verified: `getComputedStyle` on the Teams trigger now matches Home's NavLink exactly (700/13.12px), dropdown open/close and its own item highlighting unaffected.
+
+### Real gap found and fixed: dropdown triggers had no active-section indicator
+
+Home/Standings/Injury Report show the current page (orange + underline via `NavLink`'s own `isActive`). Teams/Players/Leaders/Scores had no equivalent -- the trigger's `.active` class only ever reflected whether the panel was currently *open*, never whether the current route was actually inside that group. Confirmed live: navigating to `/league-leaders` left every nav item unhighlighted, including "Leaders." Fixed by adding an `isActive` prop to `NavDropdown`, computed in `App.jsx` per group from the same `items[].to` list already used to render (and highlight) the panel's own links, checked against `location.pathname` (exact match or sub-route). Verified live on `/league-leaders` (Leaders highlights), `/team/las-vegas-aces/roster` (Teams highlights on a sub-route, not just the exact team page), `/players` (Players highlights).
+
+### Homepage: added Scores strip and League Leaders teaser
+
+User picked all three options offered (scores strip, leaders teaser, general cleanup) when asked what the thin homepage (flagged in Addendum 4) needed. Built two new components, both reusing existing API endpoints (no new server routes):
+- `HomeScoresStrip.jsx` — last 4 final games + next 3 upcoming, from `/api/league/schedule` (no postseason filter, so a Finals game still shows). Found and fixed a real data-quality trap while building this: a 2026-07-17 NY@DAL game sits at `final:false` with a 0-0 score (postponed/uncorrected upstream) despite every August game around it being properly final -- naively sorting "not final" games by date would have surfaced this two-months-stale game as the featured "next game." Fixed by also requiring `date > now` for the upcoming bucket.
+- `HomeLeadersTeaser.jsx` — #1 leader in PTS/REB/AST from `/api/league/leaders`, not the full top-10 the League Leaders page itself shows.
+- Both follow `LeagueSnapshot`'s own established convention of silently omitting themselves on error/loading rather than showing an error on the site's front door.
+- New CSS (`layout.css`) matches the existing card/section-header language (`.recent-card`, `.league-snapshot-header`, `.section-title`) rather than inventing a new visual style.
+
+**Verification:** `npm run lint` / `npm run build` clean for all three changes, committed separately (`027434d`, `adef39a`, `87b9e0c`) on `refactor-pass-3`. Nav fixes verified via `getComputedStyle` and live route navigation. Homepage widgets verified live with real data (score card → box score navigation, leader card → player page navigation) and at mobile width (390px, injected iframe) -- scores strip scrolls horizontally, leaders grid stacks to one column, no layout breakage.
