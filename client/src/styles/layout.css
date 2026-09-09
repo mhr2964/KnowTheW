@@ -48,8 +48,15 @@
    separate flat top-level links (League/Shot Zone/All-Time/Awards); grouping them the way BBRef
    groups its own Leaders menu is most of what turned 10 flat items into ~7. */
 .nav-dropdown { position: relative; flex-shrink: 0; }
+/* font-family: inherit only, NOT the `font` shorthand -- `font: inherit` resets every font
+   sub-property (size/weight/line-height too) to what this button's DOM PARENT has, which is
+   .site-nav itself, not the .site-nav-link styling this button also carries as a second class.
+   That silently threw away .site-nav-link's font-size/font-weight, leaving the trigger at the
+   browser's default button metrics (16px/400) while every plain <NavLink> stayed at
+   var(--text-sm)/700 -- confirmed live via getComputedStyle, exactly the mismatch the user flagged
+   as "the nav looks weird" (2026-09-09). */
 .nav-dropdown-trigger {
-  background: none; border: none; font: inherit; cursor: pointer;
+  background: none; border: none; font-family: inherit; cursor: pointer;
   padding: 0; gap: 0.3rem;
 }
 .nav-dropdown-caret { font-size: var(--text-2xs); }
