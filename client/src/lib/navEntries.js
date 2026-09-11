@@ -8,10 +8,16 @@
 export function buildNavEntries(teamsItems) {
   return [
     { type: 'link', to: '/', label: 'Home', end: true },
-    { type: 'group', label: 'Teams', items: teamsItems },
+    // `to` on a group is its own "main page" -- clicking the label text itself navigates there,
+    // same as any plain top-level link; the separate caret button is the only thing that opens the
+    // dropdown panel of every item in the section. Picked as whichever item is the section's own
+    // index/hub page, not just "first item in the list" (Players' own first item is Search, which
+    // isn't a landing page).
+    { type: 'group', label: 'Teams', to: '/teams', items: teamsItems },
     {
       type: 'group',
       label: 'Players',
+      to: '/players',
       items: [
         { to: '/search', label: 'Search' },
         { to: '/players', label: 'Player Directory' },
@@ -21,6 +27,7 @@ export function buildNavEntries(teamsItems) {
     {
       type: 'group',
       label: 'Leaders',
+      to: '/league-leaders',
       items: [
         { to: '/league-leaders', label: 'League Leaders' },
         { to: '/season-stats', label: 'Season Stats' },
@@ -32,6 +39,7 @@ export function buildNavEntries(teamsItems) {
     {
       type: 'group',
       label: 'Scores',
+      to: '/schedule',
       align: 'right',
       items: [
         { to: '/schedule', label: 'Schedule & Scores' },

@@ -143,7 +143,7 @@ export default function App() {
             {entry.label}
           </NavLink>
         ) : (
-          <NavDropdown key={entry.label} label={entry.label} align={entry.align} isActive={isGroupActive(entry)}>
+          <NavDropdown key={entry.label} label={entry.label} to={entry.to} align={entry.align} isActive={isGroupActive(entry)}>
             {entry.items.map(item => (
               <NavLink
                 key={item.to}

@@ -47,22 +47,29 @@
 /* Grouped per the Basketball-Reference nav comparison (2026-09-07) -- Leaders alone used to be 4
    separate flat top-level links (League/Shot Zone/All-Time/Awards); grouping them the way BBRef
    groups its own Leaders menu is most of what turned 10 flat items into ~7. */
-.nav-dropdown { position: relative; flex-shrink: 0; }
-/* font-family: inherit only, NOT the `font` shorthand -- `font: inherit` resets every font
-   sub-property (size/weight/line-height too) to what this button's DOM PARENT has, which is
-   .site-nav itself, not the .site-nav-link styling this button also carries as a second class.
-   That silently threw away .site-nav-link's font-size/font-weight, leaving the trigger at the
-   browser's default button metrics (16px/400) while every plain <NavLink> stayed at
-   var(--text-sm)/700 -- confirmed live via getComputedStyle, exactly the mismatch the user flagged
-   as "the nav looks weird" (2026-09-09). */
-.nav-dropdown-trigger {
-  background: none; border: none; font-family: inherit; cursor: pointer;
-  padding: 0; gap: 0.3rem;
+/* The label (a real NavLink, styled by .site-nav-link like every other top-level item) and the
+   caret button sit side by side as two children of one flex row, not one combined element -- see
+   NavDropdown.jsx's doc comment for why (click-to-navigate on the label, plus fixing a real bug
+   where the old single-button version silently lost .site-nav-link's active-state underline). */
+.nav-dropdown { display: flex; align-items: stretch; gap: 0.15rem; position: relative; flex-shrink: 0; }
+/* Shares .site-nav-link as a second class (set in NavDropdown.jsx) so it gets the exact same color/
+   hover/active/underline/touch-target treatment as the label and every plain link for free --
+   `border: none` here only strips the browser's default button chrome; the very next declaration
+   re-adds .site-nav-link's own transparent-until-active bottom-border slot in the same rule, same
+   "shorthand reset then explicit override, one rule" pattern already used for .mobile-nav-trigger
+   below. (The PREVIOUS bug here was exactly this ordering done across two DIFFERENT classes on one
+   element instead of within one rule -- the shorthand in the second class silently won and there
+   was no follow-up line to restore what it clobbered.) */
+.nav-dropdown-caret-btn {
+  background: none; border: none; border-bottom: 2px solid transparent;
+  cursor: pointer; padding: 0 0.5rem 0 0.15rem;
 }
 .nav-dropdown-caret { font-size: var(--text-2xs); }
 /* position: fixed with top/left (or top/right) set inline by NavDropdown.jsx, computed from the
-   trigger's own getBoundingClientRect() -- see that component's doc comment for why this is a
-   portal into document.body rather than a normal in-flow child of .nav-dropdown. */
+   .nav-dropdown container's own getBoundingClientRect() (not either child individually, so the
+   panel lines up the same way regardless of whether the label or the caret was clicked) -- see
+   that component's doc comment for why this is a portal into document.body rather than a normal
+   in-flow child of .nav-dropdown. */
 .nav-dropdown-panel {
   position: fixed;
   display: flex; flex-direction: column;
