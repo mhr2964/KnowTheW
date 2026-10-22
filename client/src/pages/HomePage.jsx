@@ -86,7 +86,7 @@ export default function HomePage({ decks, onRestudy, teams }) {
           Look up any player, put two of them side by side, and read the advanced numbers without fighting the menus.
         </p>
       </section>
-      <RecentDecks decks={decks} onRestudy={onRestudy} />
+      <RecentDecks decks={decks} onRestudy={onRestudy} title="Last Deck" limit={1} showAllLink />
       <HomeScoresStrip teams={teams} />
       <HomeLeadersTeaser teams={teams} />
       <LeagueSnapshot navigate={navigate} />

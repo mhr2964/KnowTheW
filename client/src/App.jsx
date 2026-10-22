@@ -37,6 +37,7 @@ import TermsPage from './pages/TermsPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import AccountPage from './pages/AccountPage';
+import RecentDecksPage from './pages/RecentDecksPage';
 import NotificationBell from './components/NotificationBell';
 import SearchBar from './components/SearchBar';
 import NavDropdown from './components/NavDropdown';
@@ -173,6 +174,10 @@ export default function App() {
                 teams={teams}
               />
             }
+          />
+          <Route
+            path="/decks"
+            element={<RecentDecksPage decks={decks} onRestudy={handleRestudy} />}
           />
           <Route
             path="/teams"

@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 function timeAgo(ts) {
   const diff = Date.now() - ts;
   const mins = Math.floor(diff / 60000);
@@ -12,13 +14,17 @@ function fieldLabels(fields, columns) {
   return fields.map(k => columns.find(c => c.key === k)?.label || k).join(', ');
 }
 
-export default function RecentDecks({ decks, onRestudy }) {
+// The home page shows only the most recent deck (limit=1) with a link to /decks for the rest; the
+// Recent Decks page shows them all. Decks are stored newest-first, so slicing keeps the latest.
+export default function RecentDecks({ decks, onRestudy, title = 'Recent Decks', limit, showAllLink = false }) {
   if (!decks.length) return null;
+  const shown = limit ? decks.slice(0, limit) : decks;
+  const hiddenCount = decks.length - shown.length;
   return (
     <section className="recent-section">
-      <h2 className="section-title">Recent Decks</h2>
+      {title && <h2 className="section-title">{title}</h2>}
       <div className="recent-list">
-        {decks.map(deck => (
+        {shown.map(deck => (
           <button key={deck.id} type="button" className="recent-card" onClick={() => onRestudy(deck)}>
             <div className="recent-card-info">
               <span className="recent-card-name">{deck.name}</span>
@@ -31,6 +37,11 @@ export default function RecentDecks({ decks, onRestudy }) {
           </button>
         ))}
       </div>
+      {showAllLink && hiddenCount > 0 && (
+        <Link to="/decks" className="recent-all-link">
+          View all recent decks ({decks.length}) →
+        </Link>
+      )}
     </section>
   );
 }
