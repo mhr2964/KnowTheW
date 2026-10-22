@@ -79,6 +79,13 @@ export default function HomePage({ decks, onRestudy, teams }) {
 
   return (
     <>
+      <section className="home-hero" aria-labelledby="home-hero-title">
+        <p className="home-hero-kicker">WNBA stats · 1997 to now</p>
+        <h1 id="home-hero-title" className="home-hero-title">Know the <span>W</span></h1>
+        <p className="home-hero-line">
+          Look up any player, put two of them side by side, and read the advanced numbers without fighting the menus.
+        </p>
+      </section>
       <RecentDecks decks={decks} onRestudy={onRestudy} />
       <HomeScoresStrip teams={teams} />
       <HomeLeadersTeaser teams={teams} />

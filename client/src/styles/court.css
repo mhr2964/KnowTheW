@@ -1,0 +1,321 @@
+/* ── Court theme layer ──
+   Loaded LAST so it can restyle the existing components without rewriting each stylesheet. The
+   look comes from the KnowTheW world on the portfolio site: an orange court (body, global.css),
+   a black scoreboard header, content printed on one cream "stat sheet" (.main), and cards with
+   thick ink borders and hard offset shadows instead of soft rounded dark panels. Colors that only
+   made sense on a dark background were already fixed in place in each file; this layer adds the
+   shape and type. Deleting this file + its import reverts the shape (tokens live in global.css). */
+
+/* Dark "scoreboard" zones re-scope the color tokens back to a dark palette, so every component
+   inside them (search, dropdown carets, notification bell) reads correctly without per-rule
+   overrides. */
+.header, .site-nav, .mobile-nav, .ink-zone {
+  --surface: var(--ink);
+  --surface-2: #2e1c08;
+  --text: #ffffff;
+  --text-muted: #e8d6bc;
+  --border: #4a3520;
+  --accent-ink: var(--accent);
+  --accent-ink-hover: var(--accent-light);
+}
+
+/* ── Header: scoreboard strip ── */
+.header {
+  background: var(--ink);
+  border-bottom: none;
+}
+.logo-text {
+  font-family: var(--font-loud); font-weight: 400; text-transform: uppercase;
+  font-size: 1.9rem; letter-spacing: 0.02em; color: #fff;
+}
+.logo-text em { font-style: normal; color: var(--accent); }
+.logo-sub {
+  font-family: var(--font-mono); font-weight: 800; color: var(--ink); background: var(--accent);
+  padding: 0 0.35em; margin-top: 0.15rem; letter-spacing: 0.2em;
+}
+
+.search-input {
+  background: #fff; color: var(--ink); border: 3px solid #fff; border-right: none;
+  font-family: var(--font-body);
+}
+.search-input::placeholder { color: #8a7a64; }
+.search-input:focus { border-color: var(--accent); }
+.search-btn {
+  background: var(--accent); border: 3px solid var(--accent); color: var(--ink);
+  font-family: var(--font-cond); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 1.05rem;
+}
+.search-btn:hover { background: #fff; border-color: #fff; }
+/* Suggestions drop down onto the page, not the header -- give them paper colors back. */
+.search-suggestions, .notif-dropdown {
+  --surface: #fff; --surface-2: #fff1dc; --text: var(--ink); --text-muted: #6b5a44;
+  --border: #d9c8aa; --accent-ink: #b84a00; --accent-ink-hover: #8a3700;
+  border: 3px solid var(--ink); box-shadow: var(--shadow-hard);
+}
+
+/* ── Nav: second scoreboard row with a white rule under it ── */
+.site-nav, .mobile-nav {
+  background: var(--ink);
+  border-top: 1px solid #3a2810;
+  border-bottom: 4px solid #fff;
+}
+.site-nav-link, .mobile-nav-trigger {
+  font-family: var(--font-cond); font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.06em; font-size: 1.05rem; color: #e8d6bc;
+}
+.site-nav-link:hover { color: var(--accent); }
+.site-nav-link.active { color: var(--accent); border-bottom: 4px solid var(--accent); }
+.nav-dropdown-caret-btn { border-bottom-width: 4px; }
+
+.nav-dropdown-panel, .mobile-nav-panel {
+  --surface: #fff; --surface-2: #fff1dc; --text: var(--ink); --text-muted: #6b5a44;
+  --border: #d9c8aa; --accent-ink: #b84a00; --accent-ink-hover: #8a3700;
+}
+.nav-dropdown-panel { border: 3px solid var(--ink); box-shadow: var(--shadow-hard); }
+.nav-dropdown-item {
+  font-family: var(--font-cond); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  font-size: 1rem;
+}
+.nav-dropdown-item:hover { background: var(--accent); color: var(--ink); }
+.mobile-nav-panel { background: var(--bg); }
+.mobile-nav-flat-link, .mobile-nav-section-trigger {
+  font-family: var(--font-cond); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+  font-size: 1.2rem; border-bottom-color: var(--ink);
+}
+.mobile-nav-section { border-bottom-color: var(--ink); }
+
+/* ── The printed sheet: all page content sits on cream paper ── */
+.main {
+  margin: 2rem auto 2.5rem;
+  width: calc(100% - 2rem);
+  background-color: var(--bg);
+  background-image: repeating-linear-gradient(0deg, transparent 0 31px, rgba(26, 13, 0, 0.045) 31px 32px);
+  border: 4px solid var(--ink);
+  box-shadow: 10px 10px 0 var(--ink);
+}
+.ad-slot--top { padding: 0 1rem; }
+
+/* Section headings: the world's loud condensed caps with an orange underline. */
+.section-title {
+  font-family: var(--font-loud); font-weight: 400; color: var(--ink);
+  font-size: clamp(1.6rem, 4vw, 2.2rem); line-height: 1; letter-spacing: 0.01em;
+  padding-bottom: 0.35rem; border-bottom: 4px solid var(--ink);
+  margin-bottom: var(--space-4);
+}
+.table-toolbar .section-title, .home-scores-header .section-title,
+.home-leaders-header .section-title, .league-snapshot-header .section-title { border-bottom: none; padding-bottom: 0; }
+
+.player-hero-name, .team-header-name, .box-score-matchup-header {
+  font-family: var(--font-loud); font-weight: 400; text-transform: uppercase;
+  letter-spacing: 0.01em; line-height: 0.95;
+}
+.player-hero-name { font-size: clamp(2.2rem, 8vw, 4rem); }
+.team-header-name { font-size: clamp(1.8rem, 6vw, 3rem); }
+
+.back-btn, .breadcrumbs {
+  font-family: var(--font-cond); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 1rem;
+}
+
+/* ── Cards and panels: white stock, ink border, hard shadow, square corners ── */
+.home-score-card, .home-leader-card, .team-card, .team-header, .roster-table-wrap,
+.search-player-row, .player-hero, .bref-wrap, .archetype-card, .similar-card, .recent-card,
+.premium-banner, .modal, .picker-modal, .compare-picker-modal, .done-modal, .flashcard-face,
+.standings-table, .playoff-series-card, .team-dashboard-card, .team-history-era-card,
+.grade-card, .compare-verdict, .compare-overall-summaries, .quick-stat-strip,
+.team-history-champs, .compare-ai-unavailable, .team-history-narrative-error {
+  border: 3px solid var(--ink);
+  box-shadow: var(--shadow-hard);
+}
+.team-card { border-top: 8px solid var(--team-color, var(--accent)); }
+.team-header { border-left: 12px solid var(--team-color, var(--accent)); }
+
+/* Clickable cards lift on hover like the world's buttons. */
+.home-score-card, .home-leader-card, .team-card, .recent-card, .search-player-row-btn {
+  transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+}
+.home-score-card:hover:not(:disabled), .home-leader-card:hover, .team-card:hover, .recent-card:hover {
+  transform: translate(-2px, -2px); box-shadow: 7px 7px 0 var(--ink);
+  border-color: var(--ink); background: #fff;
+}
+
+/* Stat figures read like the scoreboard: mono, heavy. */
+.home-leader-value, .home-score-value, .card-field-value, .premium-price {
+  font-family: var(--font-mono); font-weight: 800; letter-spacing: -0.02em;
+}
+.home-leader-value { color: var(--ink); text-shadow: 2px 2px 0 var(--accent); }
+
+/* Small uppercase labels -> condensed caps (the world's label voice). */
+.home-score-date, .home-leader-category, .card-group-label, .card-field-label, .team-abbr,
+.search-suggestion-heading, .perc-toggle-label, .snapshot-conference-title, .recent-card-cta {
+  font-family: var(--font-cond); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+}
+.home-score-date, .home-leader-category { font-size: 0.85rem; }
+.team-name, .home-leader-name, .recent-card-name, .snapshot-name {
+  font-family: var(--font-cond); font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em;
+  font-size: 1.05rem;
+}
+
+/* ── Tables: printed stat sheets with a scoreboard header row ── */
+.bref-table th, .standings-table th, .roster-cell--head, .h2h-table th, .shot-chart-legend th {
+  background: var(--ink); color: #fff; border-color: #3a2810;
+  font-family: var(--font-cond); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 0.85rem;
+}
+.bref-th-sortable:hover { color: var(--accent); }
+.bref-table th .bref-sort-indicator { color: var(--accent); }
+.bref-table td, .standings-table td, .roster-cell, .h2h-table td { font-variant-numeric: tabular-nums; }
+.bref-table td { font-family: var(--font-mono); font-weight: 500; font-size: 0.82rem; }
+.bref-table tbody tr:nth-child(even) td, .standings-table tbody tr:nth-child(even) td { background-color: #fff6e8; }
+.bref-table tbody tr:hover td, .standings-table tbody tr:hover td, .roster-row:hover { background-color: #ffe3c4; }
+
+/* ── Buttons: ink slabs with a hard shadow, like the world's CTAs ── */
+.btn-primary, .premium-btn, .home-browse-btn, .compare-trigger-btn, .study-trigger-btn {
+  font-family: var(--font-cond); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 1.05rem; border: 3px solid var(--ink); box-shadow: var(--shadow-hard-sm);
+  transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+}
+.btn-primary:hover:not(:disabled), .premium-btn:hover, .home-browse-btn:hover,
+.compare-trigger-btn:hover, .study-trigger-btn:hover {
+  transform: translate(-2px, -2px); box-shadow: 5px 5px 0 var(--ink);
+}
+.btn-primary:active:not(:disabled), .premium-btn:active, .home-browse-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.home-browse-btn { background: var(--ink); color: #fff; }
+.home-browse-btn:hover { background: var(--ink); color: var(--accent); border-color: var(--ink); }
+
+/* Pill/tab toggles become chips: ink outline, ink-on-orange when active. */
+.field-btn, .compare-mode-btn, .stat-season-tab, .team-spoke-tab {
+  font-family: var(--font-cond); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.field-btn.active, .compare-mode-btn.active {
+  background: var(--ink); border-color: var(--ink); color: var(--accent);
+}
+
+/* Square everything that was a pill or soft rect, except avatars and toggles that are round. */
+.team-defunct-badge, .team-champion-badge, .premium-label { border-radius: 0; }
+.team-champion-badge, .premium-label { border: 2px solid var(--ink); }
+
+/* ── Footer sits on the court, so it gets ink text ── */
+.footer {
+  border-top: none; color: var(--ink);
+  font-family: var(--font-cond); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  font-size: 0.85rem; padding-bottom: 2rem;
+}
+.footer-link-btn {
+  color: var(--ink); font-family: var(--font-cond); font-weight: 800; font-size: 0.95rem;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.footer-link-btn:hover { color: #fff; }
+
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.header :focus-visible, .site-nav :focus-visible, .mobile-nav :focus-visible { outline-color: #fff; }
+
+@media (max-width: 600px) {
+  .main { width: calc(100% - 1rem); margin-top: 1rem; box-shadow: 6px 6px 0 var(--ink); border-width: 3px; }
+  .logo-text { font-size: 1.5rem; }
+}
+
+/* ── Home hero: the world's slammed title on a court-orange panel ── */
+.home-hero {
+  position: relative; overflow: hidden;
+  margin-bottom: var(--space-8); padding: 1.5rem 1.5rem 1.6rem;
+  background:
+    radial-gradient(circle at 100% 50%, transparent 31%, rgba(255, 255, 255, 0.5) 31.3% 32.3%, transparent 32.6%),
+    repeating-linear-gradient(90deg, rgba(26, 13, 0, 0.08) 0 2px, transparent 2px 48px),
+    var(--court);
+  border: 4px solid var(--ink); box-shadow: var(--shadow-hard);
+}
+.home-hero-kicker {
+  display: inline-block; margin-bottom: 0.4rem; padding: 0.1rem 0.6rem;
+  background: var(--ink); color: var(--accent);
+  font-family: var(--font-cond); font-weight: 800; text-transform: uppercase; letter-spacing: 0.18em; font-size: 0.9rem;
+}
+.home-hero-title {
+  font-family: var(--font-loud); font-weight: 400; text-transform: uppercase; color: var(--ink);
+  font-size: clamp(3.4rem, 13vw, 8.5rem); line-height: 0.86; letter-spacing: 0.01em;
+  text-shadow: 5px 5px 0 rgba(255, 255, 255, 0.35);
+  animation: court-slam 0.55s cubic-bezier(.2, 1.4, .4, 1) both;
+}
+.home-hero-title span {
+  color: #fff; -webkit-text-stroke: clamp(2px, 0.5vw, 5px) var(--ink); text-shadow: 6px 6px 0 var(--ink);
+}
+@keyframes court-slam { from { transform: scale(1.15) rotate(-2deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.home-hero-line {
+  max-width: 34rem; margin-top: 0.9rem;
+  font-family: var(--font-cond); font-weight: 600; font-size: clamp(1.15rem, 2.4vw, 1.5rem); line-height: 1.2; color: var(--ink);
+}
+
+/* Secondary link buttons ("Full schedule ->", etc.) */
+.btn-ghost {
+  font-family: var(--font-cond); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 0.95rem; color: var(--ink); background: #fff; border: 2px solid var(--ink);
+  box-shadow: var(--shadow-hard-sm); transition: transform 0.12s, box-shadow 0.12s;
+}
+.btn-ghost:hover { color: var(--ink); border-color: var(--ink); background: var(--accent); transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+
+@media (prefers-reduced-motion: reduce) { .home-hero-title { animation: none; } }
+
+/* Most pages title themselves with a bare <h1>/<h2> -- give those the loud headline voice. */
+.main h1:not([class]) {
+  font-family: var(--font-loud); font-weight: 400; text-transform: uppercase; color: var(--ink);
+  font-size: clamp(2.6rem, 8vw, 4.75rem); line-height: 0.92; letter-spacing: 0.01em;
+  margin-bottom: var(--space-3);
+}
+.main h1:not([class])::after {
+  content: ""; display: block; width: 5.5rem; height: 8px; margin-top: 0.55rem;
+  background: var(--accent); border: 2px solid var(--ink);
+}
+.main h2:not([class]) {
+  font-family: var(--font-loud); font-weight: 400; text-transform: uppercase;
+  font-size: clamp(1.5rem, 4vw, 2rem); line-height: 1; letter-spacing: 0.01em;
+}
+
+/* Top-3 leaderboard ranks: square scoreboard chips (gold = orange, 2nd/3rd = ink). */
+.leaderboard-rank { border-radius: 0; font-family: var(--font-mono); font-weight: 800; }
+.leaderboard-rank--1 { background: var(--accent); color: var(--ink); border: 2px solid var(--ink); }
+.leaderboard-rank--2, .leaderboard-rank--3 { background: var(--ink); color: var(--accent); }
+
+/* ── Player page ── */
+/* The frozen Season/Team columns paint their own background so scrolled cells don't show through;
+   their header cells must stay on the scoreboard ink like the rest of the header row. */
+.bref-table thead th:nth-child(-n+2), .bref-table th:nth-child(-n+2) { background: var(--ink); color: #fff; }
+.career-row td { font-weight: 800; }
+
+/* Stat-type and team-spoke tabs: condensed caps on paper; the active tab is an ink slab. */
+.stat-type-tabs { border: 3px solid var(--ink); border-bottom: none; background: #fff; }
+.stat-type-tab, .team-spoke-tab {
+  font-family: var(--font-cond); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+  font-size: 0.98rem; border-radius: 0; color: #4a3b27;
+}
+.stat-type-tab:hover:not(:disabled), .team-spoke-tab:hover { background: var(--accent); color: var(--ink); }
+.stat-type-tab.active, .team-spoke-tab.active {
+  background: var(--ink); color: var(--accent); border-color: var(--ink); border-bottom-color: var(--ink);
+}
+.team-spoke-nav { border-bottom: 3px solid var(--ink); }
+.stat-season-tab { border-radius: 0; }
+.stat-season-tab.active { background: var(--ink); border-color: var(--ink); color: var(--accent); }
+
+/* Award case and archetype pill: square printed tags. */
+.player-award-badge {
+  border-radius: 0; background: #fff; border: 2px solid var(--ink); color: var(--ink);
+  font-family: var(--font-cond); font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em;
+  box-shadow: 2px 2px 0 var(--accent);
+}
+.archetype-pill {
+  border-radius: 0; border: 2px solid var(--ink); background: var(--ink); color: #fff;
+  font-family: var(--font-cond); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.archetype-pill:hover, .archetype-pill:focus-visible { background: var(--accent); color: var(--ink); border-color: var(--ink); }
+.player-hero-meta { font-family: var(--font-cond); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.player-hero-number { font-family: var(--font-mono); font-weight: 800; }
+
+/* Loading placeholders: white-on-white would vanish inside the new white cards. */
+.grade-card--skeleton .grade-card-skeleton-panel { background: var(--surface-2); }
+
+/* "View all recent decks" link under the home page's Last Deck card. */
+.recent-all-link {
+  display: inline-block; margin-top: var(--space-3);
+  font-family: var(--font-cond); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 1rem; color: var(--accent-ink); text-decoration: none; border-bottom: 3px solid var(--accent);
+}
+.recent-all-link:hover { color: var(--ink); background: var(--accent); }

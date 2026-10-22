@@ -16,7 +16,7 @@
   display: flex; flex-direction: column; align-items: flex-start;
   padding: 0; flex-shrink: 0;
 }
-.logo-text { font-size: var(--text-xl); font-weight: 800; color: var(--accent); letter-spacing: -0.02em; line-height: 1; }
+.logo-text { font-size: var(--text-xl); font-weight: 800; color: var(--accent-ink); letter-spacing: -0.02em; line-height: 1; }
 .logo-sub { font-size: var(--text-2xs); font-weight: 700; color: var(--text-muted); letter-spacing: 0.15em; text-transform: uppercase; }
 
 /* ── Site nav ── */
@@ -41,7 +41,7 @@
   flex-shrink: 0; white-space: nowrap;
 }
 .site-nav-link:hover { color: var(--text); }
-.site-nav-link.active { color: var(--accent); border-bottom-color: var(--accent); }
+.site-nav-link.active { color: var(--accent-ink); border-bottom-color: var(--accent); }
 
 /* ── Nav dropdowns (Teams/Players/Leaders/Scores mega-menus) ── */
 /* Grouped per the Basketball-Reference nav comparison (2026-09-07) -- Leaders alone used to be 4
@@ -85,7 +85,7 @@
   text-decoration: none; white-space: normal;
 }
 .nav-dropdown-item:hover { background: var(--surface-2); }
-.nav-dropdown-item.active { color: var(--accent); }
+.nav-dropdown-item.active { color: var(--accent-ink); }
 .nav-dropdown-item--strong { font-weight: 800; }
 
 /* ── Mobile nav (hamburger + accordion, MobileNav.jsx) ── */
@@ -113,7 +113,7 @@
   color: var(--text); font-weight: 700; font-size: var(--text-base); text-decoration: none;
   border-bottom: 1px solid var(--border);
 }
-.mobile-nav-flat-link.active { color: var(--accent); }
+.mobile-nav-flat-link.active { color: var(--accent-ink); }
 .mobile-nav-section { border-bottom: 1px solid var(--border); }
 .mobile-nav-section-trigger {
   display: flex; align-items: center; justify-content: space-between; width: 100%;
@@ -137,7 +137,7 @@
 .search-input:focus { border-color: var(--accent); }
 .search-btn {
   background: var(--accent); border: 1px solid var(--accent);
-  border-radius: 0 var(--radius) var(--radius) 0; color: #fff;
+  border-radius: 0 var(--radius) var(--radius) 0; color: var(--ink);
   padding: 0.55rem 1.1rem; font-size: var(--text-base); font-weight: 600;
   cursor: pointer; transition: background 0.15s;
 }
@@ -164,7 +164,7 @@
 .search-suggestion-meta { color: var(--text-muted); font-size: var(--text-sm); margin-left: auto; }
 .search-suggestion-item--all {
   border-top: 1px solid var(--border); margin-top: 0.3rem; padding-top: 0.7rem;
-  color: var(--accent); font-weight: 600;
+  color: var(--accent-ink); font-weight: 600;
 }
 
 /* ── Main ── */
@@ -235,7 +235,7 @@
   font-size: var(--text-2xs); font-weight: 700; color: var(--text-muted);
   text-transform: uppercase; letter-spacing: var(--tracking-label);
 }
-.home-leader-value { font-size: var(--text-2xl); font-weight: 700; color: var(--accent); line-height: 1.15; }
+.home-leader-value { font-size: var(--text-2xl); font-weight: 700; color: var(--accent-ink); line-height: 1.15; }
 .home-leader-name { font-size: var(--text-base); font-weight: 600; color: var(--text); }
 .home-leader-team { display: flex; align-items: center; gap: 0.35rem; font-size: var(--text-sm); color: var(--text-muted); }
 .home-leader-logo { width: 16px; height: 16px; object-fit: contain; }
@@ -266,7 +266,7 @@
   color: var(--text); font-size: var(--text-base); font-weight: 700; cursor: pointer;
   min-height: var(--touch-target-min); padding: 0.6rem 1.5rem;
 }
-.home-browse-btn:hover { border-color: var(--accent); color: var(--accent); }
+.home-browse-btn:hover { border-color: var(--accent); color: var(--accent-ink); }
 
 /* Modifier for an error message paired with an inline retry button (PlayerRoutePage,
    SimilarPlayersPage) — was a duplicated inline style object on both pages. */
@@ -275,15 +275,15 @@
 }
 .breadcrumbs { font-size: var(--text-sm); color: var(--text-muted); margin-bottom: 0.6rem; }
 .breadcrumbs a { color: var(--text-muted); text-decoration: none; }
-.breadcrumbs a:hover { color: var(--accent); text-decoration: underline; }
+.breadcrumbs a:hover { color: var(--accent-ink); text-decoration: underline; }
 .breadcrumb-sep { margin: 0 0.4rem; }
 
 .back-btn {
-  background: none; border: none; color: var(--accent);
+  background: none; border: none; color: var(--accent-ink);
   cursor: pointer; font-size: var(--text-sm); font-weight: 600;
   padding: 0; margin-bottom: 1.5rem; display: block;
 }
-.back-btn:hover { color: var(--accent-light); }
+.back-btn:hover { color: var(--accent-ink-hover); }
 
 /* ── Team Grid ── */
 .team-grid {
@@ -323,7 +323,7 @@
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   color: var(--text-muted); font-size: var(--text-sm); font-weight: 700; text-decoration: none;
 }
-.player-directory-jump a:hover { color: var(--accent); border-color: var(--accent); }
+.player-directory-jump a:hover { color: var(--accent-ink); border-color: var(--accent); }
 .player-directory-group { margin-bottom: 1.75rem; scroll-margin-top: 5rem; }
 .player-directory-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -333,7 +333,7 @@
   display: block; padding: 0.4rem 0; min-height: var(--touch-target-min);
   color: var(--text); text-decoration: none; font-size: var(--text-sm);
 }
-.player-directory-link:hover { color: var(--accent); }
+.player-directory-link:hover { color: var(--accent-ink); }
 .player-directory-team { color: var(--text-muted); font-size: var(--text-sm); }
 
 /* ── Team Header ── */
@@ -424,7 +424,7 @@
   background: none; border: none; padding: 0; margin: 0;
   color: inherit; font: inherit; font-weight: 600; cursor: pointer; text-align: left;
 }
-.roster-name-btn:hover { color: var(--accent); text-decoration: underline; }
+.roster-name-btn:hover { color: var(--accent-ink); text-decoration: underline; }
 .table-headshot {
   width: 36px; height: 36px; border-radius: 50%; object-fit: cover;
 }

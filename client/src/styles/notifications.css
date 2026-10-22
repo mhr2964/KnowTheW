@@ -6,11 +6,11 @@
   color: var(--text-muted); padding: 0.5rem; display: flex; align-items: center;
   justify-content: center; transition: color 0.12s;
 }
-.notif-bell-btn:hover { color: var(--accent-light); }
+.notif-bell-btn:hover { color: var(--accent-ink-hover); }
 
 .notif-bell-badge {
   position: absolute; top: 0.15rem; right: 0.15rem;
-  background: var(--accent); color: #fff;
+  background: var(--accent); color: var(--ink);
   font-size: var(--text-2xs); font-weight: 700; line-height: 1;
   min-width: 15px; height: 15px; padding: 0 3px;
   border-radius: 999px; display: flex; align-items: center; justify-content: center;

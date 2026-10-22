@@ -43,7 +43,7 @@
 .compare-change-link {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(26, 13, 0, 0.82);
   font-size: var(--text-xs);
   font-weight: 600;
   cursor: pointer;
@@ -56,7 +56,7 @@
 
 .compare-leader {
   font-weight: 800;
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 /* Season toggle row above merged table */
@@ -210,7 +210,7 @@
 
 .grade-badge--high {
   background: rgba(96, 165, 250, 0.18);
-  color: #60a5fa;
+  color: #1d5fb4;
   border: 1px solid rgba(96, 165, 250, 0.3);
 }
 
@@ -222,7 +222,7 @@
 
 .grade-badge--low {
   background: rgba(251, 146, 60, 0.15);
-  color: #fb923c;
+  color: #b84a00;
   border: 1px solid rgba(251, 146, 60, 0.3);
 }
 
@@ -278,9 +278,9 @@
   position: relative;
   width: 100%;
   height: 10px;
-  background: rgba(255, 255, 255, 0.10);
+  background: rgba(26, 13, 0, 0.10);
   border-radius: 3px;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45), inset 0 -1px 0 rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45), inset 0 -1px 0 rgba(26, 13, 0, 0.03);
 }
 .compare-mag-bar--lg .compare-mag-bar-track { height: 13px; }
 .compare-mag-bar-center {
@@ -301,7 +301,7 @@
   top: 1px;
   width: 1px;
   height: 8px;
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(26, 13, 0, 0.22);
   transform: translateX(-50%);
 }
 .compare-mag-bar--lg .compare-mag-bar-notch { top: 1.5px; height: 10px; }
@@ -739,7 +739,7 @@
   font-size: var(--text-2xs);
   font-weight: 700;
 }
-.compare-accolades-col--a .compare-accolade-col-name { color: var(--accent); }
+.compare-accolades-col--a .compare-accolade-col-name { color: var(--accent-ink); }
 .compare-accolades-col--b .compare-accolade-col-name { color: var(--compare-b); }
 .compare-accolade-col-body {
   display: flex;
@@ -768,12 +768,12 @@
 }
 .compare-accolade-chip--gold {
   background: rgba(250, 204, 21, 0.15);
-  color: #facc15;
+  color: #8a6500;
   border-color: rgba(250, 204, 21, 0.35);
 }
 .compare-accolade-chip--blue {
   background: rgba(96, 165, 250, 0.18);
-  color: #60a5fa;
+  color: #1d5fb4;
   border-color: rgba(96, 165, 250, 0.3);
 }
 .compare-accolade-chip--gray {
@@ -815,7 +815,7 @@
 .compare-mode-btn.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--ink);
   font-weight: 700;
 }
 
@@ -910,7 +910,7 @@
   opacity: 0.75;
 }
 
-.compare-verdict-fight-name--a { color: var(--accent); justify-self: end; text-align: right; }
+.compare-verdict-fight-name--a { color: var(--accent-ink); justify-self: end; text-align: right; }
 .compare-verdict-fight-name--b { color: var(--compare-b); justify-self: start; text-align: left; }
 
 .compare-verdict-fight-name--winner {
@@ -927,7 +927,7 @@
   opacity: 0.6;
 }
 
-.compare-verdict-score--a { color: var(--accent); }
+.compare-verdict-score--a { color: var(--accent-ink); }
 .compare-verdict-score--b { color: var(--compare-b); }
 
 .compare-verdict-score--winner {
@@ -1120,7 +1120,7 @@
   text-transform: uppercase;
   letter-spacing: var(--tracking-label);
 }
-.compare-overall-summary-name--a { color: var(--accent); }
+.compare-overall-summary-name--a { color: var(--accent-ink); }
 .compare-overall-summary-name--b { color: var(--compare-b); }
 
 .compare-overall-summary p {

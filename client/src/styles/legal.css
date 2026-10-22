@@ -20,7 +20,7 @@
 .legal-page h2 {
   font-size: var(--text-md);
   margin: 1.75rem 0 0.6rem;
-  color: var(--accent-light);
+  color: var(--accent-ink-hover);
 }
 
 .legal-page p,
@@ -42,7 +42,7 @@
 }
 
 .legal-page a {
-  color: var(--accent-light);
+  color: var(--accent-ink-hover);
 }
 
 .legal-nav {
@@ -58,5 +58,5 @@
 }
 
 .legal-nav a:hover {
-  color: var(--accent-light);
+  color: var(--accent-ink-hover);
 }

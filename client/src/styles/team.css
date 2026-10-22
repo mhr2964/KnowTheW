@@ -16,7 +16,7 @@
   color: var(--text-muted); font-size: var(--text-xs); text-decoration: underline;
 }
 
-.footer-link-btn:hover { color: var(--accent-light); }
+.footer-link-btn:hover { color: var(--accent-ink-hover); }
 
 /* ── Team Spoke Nav ── */
 .team-spoke-nav {
@@ -52,7 +52,7 @@
   background: var(--bg);
   border-color: var(--border);
   border-bottom-color: var(--bg);
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 /* Container that sits flush under the nav tabs */
@@ -180,11 +180,11 @@
 .team-dashboard-card-link {
   font-size: var(--text-sm);
   font-weight: 600;
-  color: var(--accent);
+  color: var(--accent-ink);
   text-decoration: none;
   margin-top: auto;
 }
-.team-dashboard-card-link:hover { color: var(--accent-light); }
+.team-dashboard-card-link:hover { color: var(--accent-ink-hover); }
 
 
 /* ── Team Stats Page ── */
@@ -243,7 +243,7 @@
 
 .team-history-meta {
   display: flex; align-items: center; gap: 0.5rem;
-  font-size: var(--text-sm); font-weight: 600; color: rgba(255,255,255,0.7);
+  font-size: var(--text-sm); font-weight: 600; color: rgba(26, 13, 0, 0.7);
 }
 .team-history-meta-sep { color: var(--border); }
 
@@ -256,8 +256,8 @@
 
 .team-history-champs {
   display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
-  background: linear-gradient(135deg, #1a1400 0%, #201800 100%);
-  border: 1px solid #3a2e00;
+  background: #fff3cc;
+  border: 1px solid #d9b84a;
   border-left: 4px solid var(--champion);
   border-radius: var(--radius);
   padding: 0.85rem 1.1rem;
@@ -267,7 +267,7 @@
   font-size: var(--text-base); font-weight: 700; color: var(--champion-text);
 }
 .team-history-champs-years {
-  font-size: var(--text-sm); font-weight: 600; color: #b8a030;
+  font-size: var(--text-sm); font-weight: 600; color: #8a6500;
 }
 
 .team-history-champs--none {
@@ -588,7 +588,7 @@
 }
 .team-schedule-row--next .team-schedule-opp-abbr,
 .team-schedule-row--next .team-schedule-gametime {
-  color: var(--accent-light);
+  color: var(--accent-ink-hover);
   font-weight: 700;
 }
 
@@ -620,7 +620,7 @@
 .team-schedule-divider-label {
   font-size: var(--text-xs);
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-ink);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   white-space: nowrap;

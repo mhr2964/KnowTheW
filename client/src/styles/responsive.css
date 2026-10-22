@@ -64,7 +64,7 @@
     text-transform: uppercase; letter-spacing: var(--tracking-label);
   }
   .quick-stat-item { font-size: var(--text-xs); color: var(--text-muted); }
-  .quick-stat-item strong { font-size: var(--text-md); font-weight: 800; color: var(--accent); margin-right: 0.2em; }
+  .quick-stat-item strong { font-size: var(--text-md); font-weight: 800; color: var(--accent-ink); margin-right: 0.2em; }
 
   /* 10 stat-type tabs wrapped into 3 messy rows at this width -- collapse to a single toggle
      showing the active tab, opening a dropdown list of all of them instead. Sticky lives on

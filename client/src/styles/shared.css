@@ -11,30 +11,30 @@
 .recent-card:hover { background: var(--surface-2); border-color: var(--accent); }
 .recent-card-info { display: flex; flex-direction: column; gap: 0.2rem; }
 .recent-card-name { font-size: var(--text-base); font-weight: 600; color: var(--text); }
-.recent-card-config { font-size: var(--text-sm); color: var(--accent); }
+.recent-card-config { font-size: var(--text-sm); color: var(--accent-ink); }
 .recent-card-meta { font-size: var(--text-xs); color: var(--text-muted); }
 .recent-card-cta { font-size: var(--text-sm); font-weight: 600; color: var(--text-muted); flex-shrink: 0; }
 
 /* ── Premium Banner ── */
 .premium-banner {
-  background: linear-gradient(135deg, var(--surface) 0%, #1f1208 100%);
-  border: 1px solid #3a2800; border-left: 4px solid var(--accent);
+  background: var(--surface);
+  border: 1px solid var(--ink); border-left: 4px solid var(--accent);
   border-radius: var(--radius); padding: 1.5rem 2rem;
   display: flex; align-items: center; justify-content: space-between;
   gap: var(--space-8); margin-top: var(--space-4);
 }
 .premium-label {
-  display: inline-block; background: var(--accent); color: #fff;
+  display: inline-block; background: var(--accent); color: var(--ink);
   font-size: var(--text-2xs); font-weight: 800; letter-spacing: var(--tracking-label);
   padding: 0.15rem 0.5rem; border-radius: 3px; margin-bottom: var(--space-2);
 }
 .premium-text h3 { font-size: var(--text-md); font-weight: 700; margin-bottom: var(--space-1); }
 .premium-text p { font-size: var(--text-sm); color: var(--text-muted); }
 .premium-cta { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); flex-shrink: 0; }
-.premium-price { font-size: var(--text-md); font-weight: 800; color: var(--accent); }
+.premium-price { font-size: var(--text-md); font-weight: 800; color: var(--accent-ink); }
 .premium-btn {
   background: var(--accent); border: none; border-radius: var(--radius);
-  color: #fff; padding: 0.55rem 1.25rem; font-size: var(--text-base); font-weight: 700;
+  color: var(--ink); padding: 0.55rem 1.25rem; font-size: var(--text-base); font-weight: 700;
   cursor: pointer; transition: background 0.15s; white-space: nowrap;
 }
 .premium-btn:hover { background: var(--accent-light); }
@@ -92,10 +92,10 @@
 .picker-side h3 { font-size: var(--text-base); font-weight: 700; }
 .select-all-btn {
   background: none; border: none; cursor: pointer;
-  font-size: var(--text-xs); font-weight: 600; color: var(--accent);
+  font-size: var(--text-xs); font-weight: 600; color: var(--accent-ink);
   padding: 0; white-space: nowrap;
 }
-.select-all-btn:hover { color: var(--accent-light); }
+.select-all-btn:hover { color: var(--accent-ink-hover); }
 .side-hint { font-size: var(--text-xs); color: var(--text-muted); font-weight: 400; margin-left: 0.4rem; }
 .picker-arrow { font-size: var(--text-xl); color: var(--text-muted); padding-top: var(--space-8); flex-shrink: 0; }
 
@@ -107,7 +107,7 @@
   cursor: pointer; transition: all 0.12s;
 }
 .field-btn:hover { border-color: var(--accent); color: var(--text); }
-.field-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.field-btn.active { background: var(--accent); border-color: var(--accent); color: var(--ink); }
 
 .picker-footer {
   display: flex; align-items: center; justify-content: flex-end;
@@ -118,7 +118,7 @@
 /* ── Shared Buttons ── */
 .btn-primary {
   background: var(--accent); border: none; border-radius: var(--radius);
-  color: #fff; padding: 0.55rem 1.25rem; font-size: var(--text-base); font-weight: 700;
+  color: var(--ink); padding: 0.55rem 1.25rem; font-size: var(--text-base); font-weight: 700;
   cursor: pointer; transition: background 0.15s;
 }
 .btn-primary:hover:not(:disabled) { background: var(--accent-light); }
@@ -135,7 +135,7 @@
    verbatim under two different class names across layout.css and compare.css. */
 .study-trigger-btn, .compare-trigger-btn {
   background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: var(--radius); color: var(--accent);
+  border-radius: var(--radius); color: var(--accent-ink);
   padding: 0.4rem 0.9rem; font-size: var(--text-sm); font-weight: 600;
   cursor: pointer; transition: background 0.12s, border-color 0.12s;
   /* Squeezing this into 3 lines inside a flex row read as broken, not just cramped --
@@ -235,7 +235,7 @@
 .card-group-header {
   display: flex; align-items: center; gap: 0.45rem;
   padding-bottom: 0.3rem; margin-bottom: 0.1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(26, 13, 0, 0.08);
 }
 .card-group-bar { width: 3px; height: 11px; border-radius: 2px; flex-shrink: 0; }
 .card-group-label {
@@ -246,7 +246,7 @@
 .card-field {
   display: flex; justify-content: space-between; align-items: baseline;
   gap: var(--space-6); padding: 0.35rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(26, 13, 0, 0.04);
 }
 .card-field:last-child { border-bottom: none; }
 .card-subgroup {
@@ -263,7 +263,7 @@
   font-size: var(--text-2xs); font-weight: 700;
   letter-spacing: var(--tracking-label); text-transform: uppercase;
   color: var(--text-muted);
-  border-left: 2px solid rgba(255,255,255,0.1);
+  border-left: 2px solid rgba(26, 13, 0, 0.1);
   display: flex; align-items: center; justify-content: center;
 }
 .card-subgroup-fields {
@@ -271,7 +271,7 @@
 }
 
 .card-field-label {
-  font-size: var(--text-xs); font-weight: 600; color: #b0b0b0;
+  font-size: var(--text-xs); font-weight: 600; color: var(--text-muted);
   text-transform: uppercase; letter-spacing: var(--tracking-label);
   white-space: nowrap; flex-shrink: 0;
 }
@@ -306,7 +306,7 @@
 }
 .done-check {
   width: 64px; height: 64px; border-radius: 50%;
-  background: var(--accent); color: #fff;
+  background: var(--accent); color: var(--ink);
   display: flex; align-items: center; justify-content: center;
   font-size: var(--text-2xl); font-weight: 700;
 }

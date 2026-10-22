@@ -53,6 +53,7 @@ import './styles/auth.css';
 import './styles/notifications.css';
 import './styles/standings.css';
 import './styles/responsive.css';
+import './styles/court.css';
 
 function RedirectToPlayer() {
   const { idA } = useParams();
@@ -122,7 +123,7 @@ export default function App() {
     <div className="app">
       <header className="header">
         <button type="button" className="logo-btn" onClick={() => navigate('/')}>
-          <span className="logo-text">KnowTheW</span>
+          <span className="logo-text">KnowThe<em>W</em></span>
           <span className="logo-sub">WNBA</span>
         </button>
         <SearchBar />

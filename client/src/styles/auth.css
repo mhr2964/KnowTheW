@@ -4,7 +4,7 @@
   color: var(--text-muted); font-size: var(--text-sm); font-weight: 600;
   padding: 0.5rem 0; flex-shrink: 0; transition: color 0.12s;
 }
-.auth-header-link:hover { color: var(--accent-light); }
+.auth-header-link:hover { color: var(--accent-ink-hover); }
 
 /* ── Login / Signup / Account ── */
 .auth-page {
@@ -19,7 +19,7 @@
 }
 
 .account-username {
-  font-size: var(--text-md); font-weight: 700; color: var(--accent-light);
+  font-size: var(--text-md); font-weight: 700; color: var(--accent-ink-hover);
   margin-bottom: 1.75rem;
 }
 
@@ -52,6 +52,6 @@
 .auth-switch {
   margin-top: var(--space-6); font-size: var(--text-sm); color: var(--text-muted);
 }
-.auth-switch a { color: var(--accent-light); }
+.auth-switch a { color: var(--accent-ink-hover); }
 
 .auth-logout { margin-top: var(--space-6); }
